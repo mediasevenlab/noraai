@@ -43,6 +43,9 @@ bun-debug.log*
 backend/src/generated/prisma/
 backend/.prisma-generate.lock
 
+# Local Git credential store (never commit)
+.git-credentials
+
 # Editors and OS
 .DS_Store
 .idea/
