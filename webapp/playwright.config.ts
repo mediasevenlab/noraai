@@ -31,6 +31,11 @@ const backendEnv = normalizeEnv({
     process.env.JWT_SECRET ?? 'web-e2e-secret-at-least-thirty-two-characters',
   CORS_ORIGINS: [frontendUrl, 'http://localhost:5173'].join(','),
   COOKIE_SECURE: 'false',
+  // E2E owns its backend process; never compete with a real Telegram poller.
+  TELEGRAM_MEALS_BOT_TOKEN: '',
+  TELEGRAM_NOTIFY_BOT_TOKEN: '',
+  N8N_MEAL_WEBHOOK_URL: '',
+  N8N_APP_MEAL_WEBHOOK_URL: '',
 })
 
 export default defineConfig({

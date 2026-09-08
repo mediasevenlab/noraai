@@ -39,21 +39,23 @@ From the repository root, use `bun run dev:webapp`, `bun run build:webapp`, `bun
 
 ## Env
 
-Create `webapp/.env` when needed:
+Create `webapp/.env` when needed. For local dev prefer an empty API URL so the Vite proxy serves `/api` same-origin (auth cookies then work on both `localhost` and `127.0.0.1`):
 
 ```bash
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=
 ```
 
-`VITE_API_URL` is build-time config. In production it must be a concrete backend origin such as `https://api.example.com`; if it changes, redeploy the App Platform Static Site so the built bundle stops using the old URL.
+To call the backend directly instead, set a concrete origin on the **same hostname** you open in the browser, for example `VITE_API_URL=http://127.0.0.1:3000` with the app at `http://127.0.0.1:5173`. Mixing `localhost` and `127.0.0.1` breaks refresh cookies (`SameSite=Lax`).
+
+`VITE_API_URL` is build-time config. In production it must be a concrete backend origin such as `https://api.example.com` (or empty when `/api` is reverse-proxied on the same site); if it changes, redeploy the App Platform Static Site so the built bundle stops using the old URL.
 
 ## Deployment
 
-Production deployment for the browser app uses DigitalOcean App Platform Static Sites from the full Git monorepo branch with `bun install --frozen-lockfile && bun run build:webapp`, `webapp/dist`, and `index.html` as the SPA catch-all by default. Generate the concrete spec with `bun run deploy:do:specs webapp`; App Platform builds from Git, not from local `dist`. Follow the shared runbook in [../docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md). If the user explicitly chooses Yandex Cloud, deploy the built `webapp/dist` output through Yandex Object Storage static website hosting plus Cloud CDN by following [../docs/YANDEX_CLOUD.md](../docs/YANDEX_CLOUD.md).
+Production for the browser app is the current VPS behind `https://24nutrition.site`. Follow [../docs/VPS.md](../docs/VPS.md) and [../docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md). DigitalOcean App Platform Static Sites remain an optional alternate path (`bun run deploy:do:specs webapp`); App Platform builds from Git, not from local `dist`. If the user explicitly chooses Yandex Cloud, deploy the built `webapp/dist` output through Yandex Object Storage static website hosting plus Cloud CDN by following [../docs/YANDEX_CLOUD.md](../docs/YANDEX_CLOUD.md).
 
 ## Practice
 
-Use TanStack Query for server state, TanStack Mutation for API writes, TanStack Form for forms, and shared Zod schemas from `packages/contracts` for validation. The access token lives only in browser memory; refresh uses the HttpOnly cookie set by the backend. One browser Web Lock serializes every cookie-changing auth transition across same-origin tabs. Versioned session events make login, registration, refresh expiry, and logout invalidate stale access tokens and session-scoped caches before another principal can be applied; refresh/retry also compares JWT subjects and never repeats an authenticated operation as a different user. `src/features/auth` is the golden path: its public index exposes the provider, user context, auth UI, and an authenticated transport capability for future product APIs; its API adapter owns auth paths and refresh/retry; and the login, signup, forgot-password, and reset-password forms validate submissions with shared contracts without putting product logic in pages.
+Use TanStack Query for server state, TanStack Mutation for API writes, TanStack Form for forms, and shared Zod schemas from `packages/contracts` for validation. The access token lives only in browser memory; refresh uses the HttpOnly cookie set by the backend. One browser Web Lock serializes every cookie-changing auth transition across same-origin tabs. Versioned session events make login, registration, refresh expiry, and logout invalidate stale access tokens and session-scoped caches before another principal can be applied; refresh/retry also compares JWT subjects and never repeats an authenticated operation as a different user. `src/features/auth` is the golden path: its public index exposes the provider, user context, auth UI, and an authenticated transport capability for future product APIs; its API adapter owns auth paths and refresh/retry; and the login and signup forms validate submissions with shared contracts without putting product logic in pages.
 
 Put user-specific TanStack Query keys under the `['session', ...]` prefix. Login, registration, confirmed logout, and auth expiry remove and cancel stale session scope while preserving public caches. Successful account changes notify other same-origin tabs to bootstrap from the winning HttpOnly cookie; confirmed logout and auth expiry clear their in-memory session UI. A failed server logout leaves both the HttpOnly cookie and local authenticated state intact and shows a retryable error instead of pretending the user signed out.
 
@@ -61,9 +63,9 @@ The route map is intentionally disjoint:
 
 - `/` resolves the current session and redirects guests to `/login`.
 - `/login` and `/signup` use the official shadcn `login-02`/`signup-02` two-column Vega composition.
-- `/forgot-password` requests generic reset instructions; `/reset-password` consumes the one-time token from the URL fragment and removes it from browser history.
+- `/forgot-password` and `/reset-password` redirect to `/login` until a real email provider is chosen. The API still accepts generic reset requests so accounts cannot be enumerated.
 - `user` owns `/app`, `/app/profile`, and `/app/settings`.
-- `admin` owns `/admin`, `/admin/users`, and `/admin/settings`.
+- `admin` owns `/admin/users`, `/admin/profile`, and `/admin/settings`.
 
 The auth bootstrap finishes before a workspace shell renders. Guests are returned
 to a safe known internal path after login, while an authenticated account that

@@ -1,0 +1,172 @@
+import { SearchIcon } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
+
+import { DataTableFrame } from '@/components/dashboard'
+import { NoraBadge, NoraSearch } from '@/components/nora/primitives'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from '@/components/ui/empty'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  formatUserReferralBonus,
+  USER_REFERRAL_BONUS,
+  userReferralBonusTotal,
+} from './model'
+import { useUserReferralsQuery } from './queries'
+
+export function ReferralsDirectory() {
+  const [draftQuery, setDraftQuery] = useState('')
+  const [query, setQuery] = useState('')
+  const [page, setPage] = useState(1)
+  const referrals = useUserReferralsQuery({
+    q: query || undefined,
+    page,
+    pageSize: 20,
+  })
+  const totalPages = referrals.data
+    ? Math.max(1, Math.ceil(referrals.data.total / referrals.data.pageSize))
+    : 1
+  const shownCount = referrals.data?.items.length
+  const description = referrals.data
+    ? `${shownCount} показано`
+    : referrals.isError
+      ? 'Недоступно'
+      : 'Загрузка…'
+  const bonusTotal = referrals.data
+    ? userReferralBonusTotal(referrals.data.total)
+    : null
+  const perReferralBonusLabel = formatUserReferralBonus(USER_REFERRAL_BONUS)
+
+  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setPage(1)
+    setQuery(draftQuery.trim())
+  }
+
+  return (
+    <div className="grid gap-4">
+      <DataTableFrame
+        description={description}
+        nextDisabled={!referrals.data?.hasNext}
+        onNext={() => setPage((current) => current + 1)}
+        onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+        previousDisabled={page <= 1}
+        summary={referrals.data
+          ? `Страница ${referrals.data.page} из ${totalPages} · ${referrals.data.total} рефералов`
+          : referrals.isError
+            ? 'Рефералы недоступны'
+            : 'Загрузка рефералов'}
+        title="Каталог рефералов"
+        toolbar={
+          <form className="flex items-center gap-2" onSubmit={submitSearch}>
+            {bonusTotal !== null ? (
+              <div className="flex items-center gap-1.5 pr-1">
+                <span className="text-[11px] font-medium text-[var(--nora-text-secondary)]">
+                  Бонусы
+                </span>
+                <NoraBadge variant="green">
+                  {formatUserReferralBonus(bonusTotal)}
+                </NoraBadge>
+              </div>
+            ) : null}
+            <NoraSearch
+              aria-label="Поиск рефералов"
+              className="w-[220px]"
+              icon={<SearchIcon />}
+              onChange={(event) => setDraftQuery(event.target.value)}
+              placeholder="Поиск рефералов…"
+              value={draftQuery}
+            />
+          </form>
+        }
+      >
+        {referrals.isPending && (
+          <div aria-label="Загрузка рефералов" className="grid gap-3 p-3.5" role="status">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        )}
+        {referrals.isError && (
+          <div className="p-3.5">
+            <Alert variant="destructive">
+              <AlertTitle>Не удалось загрузить рефералов</AlertTitle>
+              <AlertDescription>{referrals.error.message}</AlertDescription>
+            </Alert>
+          </div>
+        )}
+        {referrals.data?.items.length === 0 && (
+          <div className="p-3.5">
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>Рефералы не найдены</EmptyTitle>
+                <EmptyDescription>
+                  {query ? 'Рефералы не найдены.' : 'У вас пока нет рефералов.'}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          </div>
+        )}
+        {referrals.data && referrals.data.items.length > 0 && (
+          <Table className="w-full table-fixed text-xs">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[40%] px-3.5 text-xs font-medium text-[var(--nora-text)]">
+                  Аккаунт
+                </TableHead>
+                <TableHead className="w-[20%] pl-6 text-xs font-medium text-[var(--nora-text)]">
+                  Никнейм
+                </TableHead>
+                <TableHead className="w-[20%] text-xs font-medium text-[var(--nora-text)]">
+                  ID
+                </TableHead>
+                <TableHead className="w-[20%] text-xs font-medium text-[var(--nora-text)]">
+                  Бонусы
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {referrals.data.items.map((user) => (
+                <TableRow
+                  className="even:bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:bg-[var(--nora-row-hover)]"
+                  key={user.id}
+                >
+                  <TableCell className="h-auto px-3.5 py-2.5 whitespace-normal">
+                    <div className="grid min-w-0 gap-1">
+                      <span className="truncate text-xs font-medium text-[var(--nora-text)]">
+                        {user.displayName ?? user.email}
+                      </span>
+                      <span className="truncate text-[11px] text-[var(--nora-text-tertiary)]">
+                        {user.email}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="h-auto min-w-0 truncate py-2.5 pl-6 text-xs font-medium text-[var(--nora-text-secondary)]">
+                    {user.nickname ?? '—'}
+                  </TableCell>
+                  <TableCell className="h-auto min-w-0 truncate py-2.5 text-xs font-medium text-[var(--nora-text-secondary)]">
+                    {user.publicId}
+                  </TableCell>
+                  <TableCell className="h-auto min-w-0 py-2.5">
+                    <NoraBadge variant="green">{perReferralBonusLabel}</NoraBadge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </DataTableFrame>
+    </div>
+  )
+}

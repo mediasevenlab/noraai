@@ -12,6 +12,15 @@ test-results/
 webapp/e2e/.artifacts/
 mobile/.expo/
 mobile/.maestro/reports/
+hybrid/node_modules/
+hybrid/android/app/build/
+hybrid/android/.gradle/
+hybrid/android/app/.cxx/
+hybrid/android/local.properties
+hybrid/android/captures/
+
+# Local meal image uploads (Telegram / diary)
+backend/uploads/
 
 # Runtime and logs
 *.log
@@ -27,6 +36,7 @@ bun-debug.log*
 !webapp/.env*.example
 !website/.env*.example
 !mobile/.env*.example
+!n8n/.env*.example
 !mobile/.maestro/.env*.example
 
 # Prisma generated client

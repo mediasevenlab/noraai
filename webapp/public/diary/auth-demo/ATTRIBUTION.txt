@@ -1,0 +1,26 @@
+Login diary demo meal photos.
+
+01, 03–06 — Pexels License (free for commercial use, no attribution required).
+02 / 02b / 02c — stills from gastronom.ru recipe 6707 (demo/login chrome only).
+avatars/viewer-01…04 — Pexels portrait stubs for the share-audience cue.
+
+01 — Healthy poke bowl with rice and vegetables
+     https://www.pexels.com/photo/healthy-poke-bowl-with-rice-and-vegetables-32981296/
+02 — Тёплый салат с фасолью (cover) — gastronom.ru recipe 6707
+     https://www.gastronom.ru/recipe/6707/teplyj-salat-s-fasolju
+02b — Same recipe, step photo (white + red beans)
+     https://www.gastronom.ru/recipe/6707/teplyj-salat-s-fasolju
+02c — Same recipe, step photo (roasted cherry tomatoes)
+     https://www.gastronom.ru/recipe/6707/teplyj-salat-s-fasolju
+03 — Grilled salmon with greens and avocado
+     https://www.pexels.com/photo/725991/
+04 — Grilled chicken with rice and fresh salad
+     https://www.pexels.com/photo/grilled-chicken-with-rice-and-fresh-salad-34134207/
+05 — Quinoa vegetable Buddha bowl
+     https://www.pexels.com/photo/1640777/
+06 — Avocado, salmon toast, and eggs breakfast
+     https://www.pexels.com/photo/healthy-breakfast-with-avocado-and-salmon-34644297/
+viewer-01 — https://www.pexels.com/photo/415829/
+viewer-02 — https://www.pexels.com/photo/220453/
+viewer-03 — https://www.pexels.com/photo/774909/
+viewer-04 — https://www.pexels.com/photo/1222271/

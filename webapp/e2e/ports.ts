@@ -17,7 +17,9 @@ export type PortPlan = {
 
 export async function resolveE2ePorts(): Promise<PortPlan> {
   const reservedPorts = new Set<number>()
-  const explicitDatabaseUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL
+  // Production/development DATABASE_URL must never redirect E2E to a
+  // non-compose database inherited from a developer shell.
+  const explicitDatabaseUrl = process.env.TEST_DATABASE_URL
   const explicitPostgresPort = explicitDatabaseUrl
     ? parsePortValue(portFromUrl(explicitDatabaseUrl), explicitDatabaseUrl)
     : undefined

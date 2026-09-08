@@ -1,5 +1,7 @@
 ---
 import '@fontsource-variable/inter'
+import '@fontsource-variable/plus-jakarta-sans/wght.css'
+import '@/styles/general-sans.css'
 import '@/styles/global.css'
 
 interface Props {
@@ -12,12 +14,14 @@ const { canonicalUrl, description, title } = Astro.props
 ---
 
 <!doctype html>
-<html lang="ru">
+<html lang="ru" translate="no" class="notranslate">
   <head>
     <meta charset="utf-8" />
+    <meta name="google" content="notranslate" />
+    <meta http-equiv="Content-Language" content="ru" />
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
-    <meta name="theme-color" content="#f7faf8" />
+    <meta name="theme-color" content="#ffffff" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" href="/favicon.ico" />
     <title>{title}</title>
@@ -28,8 +32,28 @@ const { canonicalUrl, description, title } = Astro.props
     <meta property="og:description" content={description} />
     {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
     <meta name="twitter:card" content="summary" />
+    <script is:inline>
+      ;(function () {
+        try {
+          var key = 'web_app_demo_theme'
+          var stored = localStorage.getItem(key)
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : prefersDark
+                ? 'dark'
+                : 'light'
+          var root = document.documentElement
+          if (theme === 'dark') root.classList.add('dark')
+          else root.classList.remove('dark')
+          var meta = document.querySelector('meta[name="theme-color"]')
+          if (meta) meta.setAttribute('content', theme === 'dark' ? '#111111' : '#ffffff')
+        } catch (_) {}
+      })()
+    </script>
   </head>
-  <body>
+  <body class="notranslate" translate="no">
     <a
       class="sr-only z-50 rounded-md bg-primary px-4 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
       href="#main-content"

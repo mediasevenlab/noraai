@@ -1,14 +1,21 @@
 import * as React from "react"
+import { Input as InputPrimitive } from "@base-ui/react/input"
 
 import { cn } from "@/lib/utils"
 
+/** Nora `.nora-input`: плоское поле, без рамки, focus — `--nora-shadow-focus` */
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
-    <input
+    <InputPrimitive
       type={type}
       data-slot="input"
       className={cn(
-        "h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-2.5 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        "h-[var(--nora-control-h,30px)] w-full min-w-0 rounded-[var(--nora-radius-md,8px)] border-0 bg-[var(--nora-input-bg)] px-2 font-[family-name:var(--nora-font)] text-xs font-medium text-[var(--nora-input-text)] transition-[box-shadow] duration-[var(--nora-duration,0.15s)] outline-none",
+        "placeholder:text-[var(--nora-input-placeholder)]",
+        "file:me-2 file:inline-flex file:h-[22px] file:items-center file:rounded-[var(--nora-radius-sm)] file:border-0 file:bg-[var(--nora-panel)] file:px-2 file:text-[11px] file:font-medium file:text-[var(--nora-text)] file:shadow-[inset_0_0_0_1px_var(--nora-border)]",
+        "focus-visible:shadow-[var(--nora-shadow-focus)]",
+        "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
+        "aria-invalid:shadow-[inset_0_0_0_1px_var(--nora-error)]",
         className
       )}
       {...props}

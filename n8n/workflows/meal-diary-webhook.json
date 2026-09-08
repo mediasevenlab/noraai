@@ -1,0 +1,202 @@
+{
+  "updatedAt": "2026-07-24T09:05:05.000Z",
+  "createdAt": "2026-07-24T06:41:48.836Z",
+  "id": "MealDiaryWebhook001",
+  "name": "Дневник питания: фото → карточка",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Дневник питания\nЕдиное распознавание приёма пищи для **Telegram-бота** и UI.\n\n**Путь:** backend poller → этот webhook → `POST /api/internal/meals-gemini` на `host.docker.internal:3000` → JSON карточки.\n\nПоддержка **нескольких фото** (продукт + этикетка/состав): поле `images[]` или `imageBase64`.\n\nЕсли n8n недоступен, backend poller делает fallback напрямую в Gemini.",
+        "height": 300,
+        "width": 400,
+        "color": 4
+      },
+      "id": "meal-note-overview",
+      "name": "Note: обзор",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meal-diary-analyze",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "meal-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "meal-diary-analyze",
+      "notes": "JSON: images[{base64,mime}] или imageBase64; note?; audioBase64?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = items[0].json || {};\nconst body = j.body || j;\nlet images = Array.isArray(body.images) ? body.images.filter((x) => x && x.base64) : [];\nif (!images.length && body.imageBase64) {\n  images = [{ base64: body.imageBase64, mime: body.imageMime || 'image/jpeg' }];\n}\nif (!images.length) throw new Error('images or imageBase64 required');\nreturn [{\n  json: {\n    images,\n    imageBase64: images[0].base64,\n    imageMime: images[0].mime || 'image/jpeg',\n    note: body.note || '',\n    audioBase64: body.audioBase64 || '',\n    audioMime: body.audioMime || 'audio/ogg',\n    host: 'http://host.docker.internal:3000',\n    serviceToken: $env.INTERNAL_SERVICE_TOKEN || $env.GEMINI_PROXY_TOKEN || '',\n  }\n}];"
+      },
+      "id": "meal-prepare",
+      "name": "Подготовить вход",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.host }}/api/internal/meals-gemini",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.serviceToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ images: $json.images, imageBase64: $json.imageBase64, imageMime: $json.imageMime, note: $json.note, audioBase64: $json.audioBase64 || undefined, audioMime: $json.audioMime }) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "meal-gemini",
+      "name": "Gemini meal на хосте",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const res = items[0].json;\nif (res.ok && res.meal) {\n  return [{ json: { ok: true, meal: res.meal, model: res.model, via: 'n8n->host-meal-gemini' } }];\n}\nreturn [{ json: { ok: false, error: res.error || JSON.stringify(res).slice(0,400) } }];"
+      },
+      "id": "meal-assemble",
+      "name": "Собрать ответ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "meal-respond",
+      "name": "Ответ",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1020,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Подготовить вход",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Подготовить вход": {
+      "main": [
+        [
+          {
+            "node": "Gemini meal на хосте",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini meal на хосте": {
+      "main": [
+        [
+          {
+            "node": "Собрать ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Собрать ответ": {
+      "main": [
+        [
+          {
+            "node": "Ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "418b3b84-a337-4161-953d-7cfb09a97211",
+  "activeVersionId": "418b3b84-a337-4161-953d-7cfb09a97211",
+  "versionCounter": 4,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-07-24T06:41:48.844Z",
+      "createdAt": "2026-07-24T06:41:48.844Z",
+      "role": "workflow:owner",
+      "workflowId": "MealDiaryWebhook001",
+      "projectId": "nWYPNiZqJ7E0yUch",
+      "project": {
+        "updatedAt": "2026-07-24T04:59:32.078Z",
+        "createdAt": "2026-07-24T04:57:30.275Z",
+        "id": "nWYPNiZqJ7E0yUch",
+        "name": "IGOR IVLEV <mediasevenlab@yandex.ru>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "7a78cc43-fbde-44c8-8e60-d0443106ad8e"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

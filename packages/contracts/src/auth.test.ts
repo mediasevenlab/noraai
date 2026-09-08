@@ -13,6 +13,10 @@ import {
   passwordResetRequestResponseSchema,
   passwordResetRequestSchema,
   registerRequestSchema,
+  registrationMentorLookupQuerySchema,
+  registrationMentorLookupResponseSchema,
+  referralLookupQuerySchema,
+  referralLookupResponseSchema,
   tokenAuthResponseSchema,
   tokenLogoutRequestSchema,
   tokenRefreshRequestSchema,
@@ -21,9 +25,14 @@ import {
 
 const validUser = {
   id: 'user_1',
+  publicId: 101,
   email: 'user@example.com',
   displayName: null,
+  nickname: null,
+  telegramUsername: null,
+    telegramPhone: null,
   role: 'user',
+  questionnaireCompleted: true,
   createdAt: '2026-05-11T00:00:00.000Z',
 } satisfies UserDto
 
@@ -39,6 +48,7 @@ describe('auth contracts', () => {
       email: 'user@example.com',
       password: 'password123',
       displayName: 'Jane',
+      role: 'user',
     })
 
     expect(
@@ -51,7 +61,59 @@ describe('auth contracts', () => {
       email: 'user@example.com',
       password: 'password123',
       displayName: undefined,
+      role: 'user',
     })
+
+    expect(
+      registerRequestSchema.parse({
+        email: 'mentor@example.com',
+        password: 'password123',
+        role: 'mentor',
+      }).role,
+    ).toBe('mentor')
+    expect(() =>
+      registerRequestSchema.parse({
+        email: 'admin@example.com',
+        password: 'password123',
+        role: 'admin',
+      }),
+    ).toThrow()
+    expect(
+      registerRequestSchema.parse({
+        email: 'mentee@example.com',
+        password: 'password123',
+        role: 'user',
+        mentorIdentifier: '  MENTOR_01  ',
+      }).mentorIdentifier,
+    ).toBe('mentor_01')
+    expect(() =>
+      registerRequestSchema.parse({
+        email: 'mentor@example.com',
+        password: 'password123',
+        role: 'mentor',
+        mentorIdentifier: 'other_mentor',
+      }),
+    ).toThrow()
+    expect(registrationMentorLookupQuerySchema.parse({
+      identifier: '  MENTOR_01 ',
+    })).toEqual({ identifier: 'mentor_01' })
+    expect(registrationMentorLookupResponseSchema.parse({
+      found: false,
+      mentor: null,
+    })).toEqual({ found: false, mentor: null })
+    expect(referralLookupQuerySchema.parse({ code: '  101 ' })).toEqual({
+      code: '101',
+    })
+    expect(referralLookupResponseSchema.parse({
+      found: true,
+      referrer: {
+        id: validUser.id,
+        publicId: validUser.publicId,
+        displayName: validUser.displayName,
+        nickname: validUser.nickname,
+        role: validUser.role,
+      },
+    }).found).toBe(true)
 
     expect(
       loginRequestSchema.parse({
@@ -85,9 +147,17 @@ describe('auth contracts', () => {
     expect(passwordResetRequestSchema.parse({ email: ' USER@Example.COM ' })).toEqual({
       email: 'user@example.com',
     })
-    expect(passwordResetRequestResponseSchema.parse({ accepted: true })).toEqual({
+    expect(passwordResetRequestResponseSchema.parse({ accepted: true, delivery: 'queued' })).toEqual({
       accepted: true,
+      delivery: 'queued',
     })
+    expect(
+      passwordResetRequestResponseSchema.parse({ accepted: true, delivery: 'unavailable' }),
+    ).toEqual({
+      accepted: true,
+      delivery: 'unavailable',
+    })
+    expect(() => passwordResetRequestResponseSchema.parse({ accepted: true })).toThrow()
     expect(() => passwordResetRequestResponseSchema.parse({ accepted: false })).toThrow()
   })
 

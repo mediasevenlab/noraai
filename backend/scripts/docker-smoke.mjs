@@ -43,6 +43,26 @@ function run(command, args, options = {}) {
   }
 }
 
+function assertImageOmitsDotEnv() {
+  const result = spawnSync(
+    'docker',
+    [
+      'run',
+      '--rm',
+      '--entrypoint',
+      'sh',
+      imageName,
+      '-c',
+      'if [ -f /app/.env ] || [ -f /app/backend/.env ]; then exit 1; fi',
+    ],
+    { stdio: 'inherit' },
+  )
+
+  if (result.status !== 0) {
+    throw new Error('Backend Docker image must not include .env files')
+  }
+}
+
 function findOpenPort() {
   return new Promise((resolve, reject) => {
     const server = createServer()
@@ -159,7 +179,7 @@ try {
   run('docker', [...composeArgs, 'up', '-d', 'postgres_test'], { env: dockerEnv })
   await waitForComposePostgres()
 
-  run('bun', ['run', '--cwd', 'backend', 'prisma:deploy'], {
+  run(process.execPath, ['run', '--cwd', 'backend', 'prisma:deploy'], {
     env: {
       ...process.env,
       DATABASE_URL: databaseUrlForHost,
@@ -167,6 +187,7 @@ try {
   })
 
   run('docker', ['build', '-f', 'backend/Dockerfile', '-t', imageName, '.'])
+  assertImageOmitsDotEnv()
   spawnSync('docker', ['rm', '-f', containerName], { stdio: 'ignore' })
 
   run('docker', [
@@ -186,6 +207,8 @@ try {
     `JWT_SECRET=${'0123456789abcdef'.repeat(4)}`,
     '-e',
     'CORS_ORIGINS=https://web.example.com',
+    '-e',
+    'WEBAPP_ORIGIN=https://web.example.com',
     '-e',
     'COOKIE_SECURE=true',
     imageName,

@@ -47,6 +47,8 @@
     "test:webapp": "bun run --cwd webapp test",
     "test:website": "bun run --cwd website test",
     "smoke:backend:docker": "bun run --cwd backend smoke:docker",
-    "e2e:webapp": "bun run --cwd webapp e2e"
+    "lint:webapp": "bun run --cwd webapp lint",
+    "e2e:webapp": "bun run --cwd webapp e2e",
+    "validate:release": "bun run architecture:check && bun run typecheck && bun run lint:webapp && bun run test && bun run build && bun run test:website"
   }
 }

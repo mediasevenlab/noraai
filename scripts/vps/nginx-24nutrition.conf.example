@@ -1,0 +1,77 @@
+# Example nginx site for https://24nutrition.site
+# Replace certificate paths. Do not put secrets in this file.
+#
+# Landing (Astro website) owns `/` and `/_astro/`.
+# Authenticated CSR app (webapp) owns everything else via SPA fallback.
+
+upstream nutrition_api {
+  server 127.0.0.1:3000;
+}
+
+server {
+  listen 443 ssl http2;
+  server_name 24nutrition.site;
+
+  # ssl_certificate     /etc/letsencrypt/live/24nutrition.site/fullchain.pem;
+  # ssl_certificate_key /etc/letsencrypt/live/24nutrition.site/privkey.pem;
+
+  client_max_body_size 12m;
+
+  location /api/ {
+    proxy_pass http://nutrition_api;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+
+  location /health {
+    proxy_pass http://nutrition_api;
+    proxy_set_header Host $host;
+  }
+
+  location ^~ /landing/ {
+    root /var/www/nutrition-landing;
+    access_log off;
+    expires 7d;
+    add_header Cache-Control "public";
+    try_files $uri =404;
+  }
+
+  location ^~ /fonts/ {
+    root /var/www/nutrition-landing;
+    access_log off;
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+    try_files $uri =404;
+  }
+
+  location ^~ /_astro/ {
+    root /var/www/nutrition-landing;
+    access_log off;
+    expires 1y;
+    add_header Cache-Control "public, immutable";
+    try_files $uri =404;
+  }
+
+  location = /favicon.svg {
+    root /var/www/nutrition-landing;
+    try_files /favicon.svg =404;
+  }
+
+  location = /favicon.ico {
+    root /var/www/nutrition-landing;
+    try_files /favicon.ico =404;
+  }
+
+  location = / {
+    root /var/www/nutrition-landing;
+    try_files /index.html =404;
+  }
+
+  location / {
+    root /var/www/nutrition-app;
+    try_files $uri $uri/ /index.html;
+  }
+}

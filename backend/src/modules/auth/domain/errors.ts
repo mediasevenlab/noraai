@@ -3,6 +3,8 @@ export type AuthFailureKind =
   | 'access_token_required'
   | 'email_already_exists'
   | 'invalid_credentials'
+  | 'mentor_not_found'
+  | 'referrer_not_found'
   | 'password_reset_invalid'
   | 'refresh_session_invalid'
   | 'refresh_token_required'

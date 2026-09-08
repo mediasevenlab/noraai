@@ -24,7 +24,11 @@ import {
 } from './queries'
 import { AuthContext, type AuthContextValue } from './context'
 import { bootstrapAuthSession } from './bootstrap'
-import { subscribeToBrowserSessionChanges } from './session-coordinator'
+import {
+  currentBrowserSessionEpoch,
+  subscribeToBrowserSessionChanges,
+} from './session-coordinator'
+import { isAuthSessionPending } from './session-status'
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const queryClient = useQueryClient()
@@ -32,12 +36,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isBootstrapping, setIsBootstrapping] = useState(true)
   const [bootstrapError, setBootstrapError] = useState<Error | null>(null)
   const [bootstrapAttempt, setBootstrapAttempt] = useState(0)
+  const [, setSessionEpoch] = useState(currentBrowserSessionEpoch)
   const bootstrapGeneration = useRef(0)
+  const accessTokenRef = useRef<string | null>(null)
 
-  const setAccessToken = useCallback(
-    (nextAccessToken: string | null) => setAccessTokenState(nextAccessToken),
-    [],
-  )
+  const setAccessToken = useCallback((nextAccessToken: string | null) => {
+    accessTokenRef.current = nextAccessToken
+    setAccessTokenState(nextAccessToken)
+  }, [])
   const clearLocalSession = useCallback(async () => {
     await clearAuthenticatedSession(queryClient, setAccessToken)
   }, [queryClient, setAccessToken])
@@ -50,6 +56,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       subscribeToBrowserSessionChanges((sessionEvent) => {
         const generation = ++bootstrapGeneration.current
         const shouldBootstrap = sessionEvent.state === 'authenticated'
+        setSessionEpoch(sessionEvent.epoch)
         setBootstrapError(null)
         setIsBootstrapping(shouldBootstrap)
         void clearLocalSession()
@@ -69,11 +76,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const api = useMemo(
     () =>
       new AuthApi({
-        getAccessToken: () => accessToken,
+        getAccessToken: () => accessTokenRef.current,
         setAccessToken,
         onAuthExpired: handleAuthExpired,
       }),
-    [accessToken, handleAuthExpired, setAccessToken],
+    [handleAuthExpired, setAccessToken],
   )
 
   useEffect(() => {
@@ -109,7 +116,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const meQuery = useCurrentUserQuery({
     api,
-    enabled: !isBootstrapping && Boolean(accessToken),
+    enabled: Boolean(accessToken),
   })
   const { mutateAsync: registerAsync } = useRegisterMutation({ api, setAccessToken })
   const { mutateAsync: loginAsync } = useLoginMutation({ api, setAccessToken })
@@ -129,13 +136,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
     [loginAsync],
   )
 
+  const lookupRegistrationMentor = useCallback(
+    (identifier: string) => api.lookupRegistrationMentor({ identifier }),
+    [api],
+  )
+  const lookupReferrer = useCallback(
+    (code: string) => api.lookupReferrer({ code }),
+    [api],
+  )
+
   const logout = useCallback(async () => {
     await logoutAsync()
   }, [logoutAsync])
 
   const requestPasswordReset = useCallback(
     async (input: PasswordResetRequest) => {
-      await api.requestPasswordReset(input)
+      return api.requestPasswordReset(input)
     },
     [api],
   )
@@ -150,17 +166,48 @@ export function AuthProvider({ children }: PropsWithChildren) {
   )
 
   const retrySession = useCallback(async () => {
-    if (accessToken) {
+    if (accessTokenRef.current) {
       await meQuery.refetch()
       return
     }
 
+    // Await the bootstrap round-trip so "Повторить" stays pending until the
+    // session check finishes (effect-only retries returned before refresh settled).
     setIsBootstrapping(true)
     setBootstrapError(null)
-    setBootstrapAttempt((attempt) => attempt + 1)
-  }, [accessToken, meQuery])
+    const generation = ++bootstrapGeneration.current
+    const shouldApply = () => bootstrapGeneration.current === generation
+    const bootstrapApi = new AuthApi({
+      getAccessToken: () => null,
+      setAccessToken,
+      onAuthExpired: handleAuthExpired,
+    })
+
+    try {
+      await bootstrapAuthSession({
+        api: bootstrapApi,
+        shouldApply,
+        setAccessToken,
+      })
+    } catch (error: unknown) {
+      if (shouldApply()) {
+        setBootstrapError(toError(error))
+      }
+    } finally {
+      if (shouldApply()) {
+        setIsBootstrapping(false)
+      }
+    }
+  }, [handleAuthExpired, meQuery, setAccessToken])
 
   const sessionError = bootstrapError ?? (accessToken ? toOptionalError(meQuery.error) : null)
+  const isSessionPending = isAuthSessionPending({
+    isRefreshing: isBootstrapping,
+    accessToken,
+    user: meQuery.data?.user ?? null,
+    meError: sessionError,
+  })
+
   const transport = useMemo(
     () => ({
       request: api.requestAuthenticated.bind(api),
@@ -171,18 +218,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = useMemo<AuthContextValue>(
     () => ({
       user: meQuery.data?.user ?? null,
-      isBootstrapping,
+      isBootstrapping: isSessionPending,
       isAuthenticated: Boolean(meQuery.data?.user),
       sessionError,
       retrySession,
       transport,
       register,
+      lookupRegistrationMentor,
+      lookupReferrer,
       login,
       logout,
       requestPasswordReset,
       confirmPasswordReset,
     }),
-    [confirmPasswordReset, isBootstrapping, login, logout, meQuery.data?.user, register, requestPasswordReset, retrySession, sessionError, transport],
+    [confirmPasswordReset, isSessionPending, login, logout, lookupReferrer, lookupRegistrationMentor, meQuery.data?.user, register, requestPasswordReset, retrySession, sessionError, transport],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

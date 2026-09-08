@@ -1,0 +1,482 @@
+{
+  "updatedAt": "2026-07-24T05:23:28.000Z",
+  "createdAt": "2026-07-24T04:58:05.047Z",
+  "id": "LabInterpret001",
+  "name": "Лаборатория: интерпретация анализов",
+  "description": null,
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Интерпретация\nWebhook из **Расшифровка / Анализы**: массив анализов → Gemini на хосте → сводная interpretation.\nШаги `Шаг: …` обновляют прогресс в UI.",
+        "height": 200,
+        "width": 340,
+        "color": 4
+      },
+      "id": "c3000001-0000-4000-8000-000000000100",
+      "name": "Note: обзор",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -380,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Webhook\nПринимает **POST** `{ analyses[], jobId }`.\nОтвет отдаёт нода **Ответ**.",
+        "height": 160,
+        "width": 220,
+        "color": 5
+      },
+      "id": "c3000001-0000-4000-8000-000000000101",
+      "name": "Note: Webhook",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lab-interpret",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "c3000001-0000-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "lab-interpret",
+      "notes": "Вход: analyses[] + jobId. Path: lab-interpret"
+    },
+    {
+      "parameters": {
+        "content": "### Подготовить данные\nДостаёт `analyses`, `jobId`, `sourceIds`, задаёт `host` Docker→хост.",
+        "height": 160,
+        "width": 220,
+        "color": 3
+      },
+      "id": "c3000001-0000-4000-8000-000000000102",
+      "name": "Note: Подготовить данные",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        220,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = items[0].json || {};\nconst analyses = body.analyses || body.body?.analyses || [];\nconst jobId = body.jobId || body.body?.jobId || '';\nif (!Array.isArray(analyses) || !analyses.length) {\n  throw new Error('analyses[] пуст — нечего интерпретировать');\n}\nreturn [{\n  json: {\n    analyses,\n    jobId,\n    sourceIds: body.sourceIds || analyses.map((a) => a.id).filter(Boolean),\n    host: 'http://host.docker.internal:8787',\n  },\n}];"
+      },
+      "id": "c3000001-0000-4000-8000-000000000002",
+      "name": "Подготовить данные",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "notes": "Проверка analyses[] + host.docker.internal:8787"
+    },
+    {
+      "parameters": {
+        "content": "### Шаг: prepare done\nUI: данные подготовлены (`n8n_prepare`).\n`continueOnFail` — UI не ломает пайплайн.",
+        "height": 160,
+        "width": 220,
+        "color": 6
+      },
+      "id": "c3000001-0000-4000-8000-000000000103",
+      "name": "Note: prepare done",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        460,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.host }}/api/jobs/{{ $json.jobId }}/step",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: 'n8n_prepare', status: 'done', detail: 'Данные анализов подготовлены' }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "c3000001-0000-4000-8000-000000000010",
+      "name": "Шаг: prepare done",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "continueOnFail": true,
+      "notes": "SSE/прогресс: n8n_prepare = done"
+    },
+    {
+      "parameters": {
+        "content": "### Шаг: gemini running\nUI: «идёт интерпретация Gemini» (`n8n_gemini` running).",
+        "height": 160,
+        "width": 220,
+        "color": 6
+      },
+      "id": "c3000001-0000-4000-8000-000000000104",
+      "name": "Note: gemini running",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        680,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Подготовить данные').item.json.host }}/api/jobs/{{ $('Подготовить данные').item.json.jobId }}/step",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: 'n8n_gemini', status: 'running', detail: 'Запрос к Gemini' }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "c3000001-0000-4000-8000-000000000011",
+      "name": "Шаг: gemini running",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        0
+      ],
+      "continueOnFail": true,
+      "notes": "SSE/прогресс: n8n_gemini = running"
+    },
+    {
+      "parameters": {
+        "content": "### Gemini интерпретация\nГлавный вызов: `POST /api/internal/interpret`.\nАнализы → **interpretation** (таблицы, alerts, summary).",
+        "height": 180,
+        "width": 240,
+        "color": 2
+      },
+      "id": "c3000001-0000-4000-8000-000000000105",
+      "name": "Note: Gemini",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        900,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Подготовить данные').item.json.host }}/api/internal/interpret",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ analyses: $('Подготовить данные').item.json.analyses, jobId: $('Подготовить данные').item.json.jobId }) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "c3000001-0000-4000-8000-000000000003",
+      "name": "Gemini интерпретация",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        0
+      ],
+      "notes": "Host interpret: analyses → interpretation JSON"
+    },
+    {
+      "parameters": {
+        "content": "### Шаг: assemble\nUI: «сборка ответа» (`n8n_assemble` running).",
+        "height": 160,
+        "width": 220,
+        "color": 6
+      },
+      "id": "c3000001-0000-4000-8000-000000000106",
+      "name": "Note: assemble",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Подготовить данные').item.json.host }}/api/jobs/{{ $('Подготовить данные').item.json.jobId }}/step",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: 'n8n_assemble', status: 'running', detail: 'Сборка ответа' }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "c3000001-0000-4000-8000-000000000012",
+      "name": "Шаг: assemble",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1140,
+        0
+      ],
+      "continueOnFail": true,
+      "notes": "SSE/прогресс: n8n_assemble = running"
+    },
+    {
+      "parameters": {
+        "content": "### Собрать ответ\nНормализует ответ в `{ ok, interpretation }` или `{ ok:false, error }` для lab-ui.",
+        "height": 160,
+        "width": 220,
+        "color": 3
+      },
+      "id": "c3000001-0000-4000-8000-000000000107",
+      "name": "Note: Собрать ответ",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Подготовить данные').first().json;\nconst res = $('Gemini интерпретация').first().json || {};\nif (res.ok && res.interpretation) {\n  return [{\n    json: {\n      ok: true,\n      model: res.model,\n      interpretation: res.interpretation,\n      sourceIds: prev.sourceIds,\n      via: 'n8n->host-gemini',\n    },\n  }];\n}\nreturn [{\n  json: {\n    ok: false,\n    error: res.error || res.message || JSON.stringify(res).slice(0, 400),\n  },\n}];"
+      },
+      "id": "c3000001-0000-4000-8000-000000000004",
+      "name": "Собрать ответ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        0
+      ],
+      "notes": "ok+interpretation или error для webhook response"
+    },
+    {
+      "parameters": {
+        "content": "### Шаг: assemble done\nUI: сборка завершена (`n8n_assemble` done).",
+        "height": 160,
+        "width": 220,
+        "color": 6
+      },
+      "id": "c3000001-0000-4000-8000-000000000108",
+      "name": "Note: assemble done",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Подготовить данные').item.json.host }}/api/jobs/{{ $('Подготовить данные').item.json.jobId }}/step",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: 'n8n_assemble', status: 'done' }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "c3000001-0000-4000-8000-000000000013",
+      "name": "Шаг: assemble done",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1580,
+        0
+      ],
+      "continueOnFail": true,
+      "notes": "SSE/прогресс: n8n_assemble = done"
+    },
+    {
+      "parameters": {
+        "content": "### Ответ\nВозвращает JSON из **Собрать ответ** вызывающему lab-ui (HTTP 200).",
+        "height": 160,
+        "width": 220,
+        "color": 5
+      },
+      "id": "c3000001-0000-4000-8000-000000000109",
+      "name": "Note: Ответ",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Собрать ответ').item.json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "c3000001-0000-4000-8000-000000000005",
+      "name": "Ответ",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1800,
+        0
+      ],
+      "notes": "Respond to Webhook: тело из «Собрать ответ»"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Подготовить данные",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Подготовить данные": {
+      "main": [
+        [
+          {
+            "node": "Шаг: prepare done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Шаг: prepare done": {
+      "main": [
+        [
+          {
+            "node": "Шаг: gemini running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Шаг: gemini running": {
+      "main": [
+        [
+          {
+            "node": "Gemini интерпретация",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini интерпретация": {
+      "main": [
+        [
+          {
+            "node": "Шаг: assemble",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Шаг: assemble": {
+      "main": [
+        [
+          {
+            "node": "Собрать ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Собрать ответ": {
+      "main": [
+        [
+          {
+            "node": "Шаг: assemble done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Шаг: assemble done": {
+      "main": [
+        [
+          {
+            "node": "Ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "3d44fd7f-1e40-4a21-8907-0a3640c4636d",
+  "activeVersionId": null,
+  "versionCounter": 1,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-07-24T04:58:05.053Z",
+      "createdAt": "2026-07-24T04:58:05.053Z",
+      "role": "workflow:owner",
+      "workflowId": "LabInterpret001",
+      "projectId": "nWYPNiZqJ7E0yUch",
+      "project": {
+        "updatedAt": "2026-07-24T04:59:32.078Z",
+        "createdAt": "2026-07-24T04:57:30.275Z",
+        "id": "nWYPNiZqJ7E0yUch",
+        "name": "IGOR IVLEV <mediasevenlab@yandex.ru>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "7a78cc43-fbde-44c8-8e60-d0443106ad8e"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

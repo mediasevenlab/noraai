@@ -2,7 +2,10 @@ import type {
   LoginRequest,
   PasswordResetConfirmRequest,
   PasswordResetRequest,
+  PasswordResetRequestResponse,
   RegisterRequest,
+  RegistrationMentorLookupResponse,
+  ReferralLookupResponse,
   UserDto,
 } from '@web-app-demo/contracts'
 import { createContext } from 'react'
@@ -16,9 +19,11 @@ export type AuthContextValue = {
   retrySession: () => Promise<void>
   transport: AuthenticatedTransport
   register: (input: RegisterRequest) => Promise<void>
+  lookupRegistrationMentor: (identifier: string) => Promise<RegistrationMentorLookupResponse>
+  lookupReferrer: (code: string) => Promise<ReferralLookupResponse>
   login: (input: LoginRequest) => Promise<void>
   logout: () => Promise<void>
-  requestPasswordReset: (input: PasswordResetRequest) => Promise<void>
+  requestPasswordReset: (input: PasswordResetRequest) => Promise<PasswordResetRequestResponse>
   confirmPasswordReset: (input: PasswordResetConfirmRequest) => Promise<void>
 }
 

@@ -1,0 +1,160 @@
+{
+  "updatedAt": "2026-08-18T06:00:00.000Z",
+  "createdAt": "2026-08-18T06:00:00.000Z",
+  "id": "MealVoiceTranscribe001",
+  "name": "Дневник питания: голос → текст",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Голос → текст\nРасшифровка голосового уточнения в модалке карточки приёма пищи.\n\n**Путь:** webapp (сессия) → `POST /api/users/me/meals/transcribe` → этот webhook → `POST /api/internal/meals-transcribe` на `host.docker.internal:3000` → Gemini → `{ ok, text }`.\n\nЕсли n8n недоступен, backend делает fallback напрямую в Gemini.",
+        "height": 280,
+        "width": 400,
+        "color": 4
+      },
+      "id": "voice-note-overview",
+      "name": "Note: обзор",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-420, -60]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meal-voice-transcribe",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "voice-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "meal-voice-transcribe",
+      "notes": "JSON: audioBase64, audioMime?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = items[0].json || {};\nconst body = j.body || j;\nconst audioBase64 = body.audioBase64 || '';\nif (!audioBase64) throw new Error('audioBase64 required');\nreturn [{\n  json: {\n    audioBase64,\n    audioMime: body.audioMime || 'audio/webm',\n    host: 'http://host.docker.internal:3000',\n    serviceToken: $env.INTERNAL_SERVICE_TOKEN || $env.GEMINI_PROXY_TOKEN || '',\n  }\n}];"
+      },
+      "id": "voice-prepare",
+      "name": "Подготовить вход",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.host }}/api/internal/meals-transcribe",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.serviceToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ audioBase64: $json.audioBase64, audioMime: $json.audioMime }) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "voice-gemini",
+      "name": "Gemini transcribe на хосте",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const res = items[0].json;\nif (res.ok === true && typeof res.text === 'string') {\n  return [{ json: { ok: true, text: res.text, model: res.model || 'gemini', via: 'n8n->host-meal-transcribe' } }];\n}\nreturn [{ json: { ok: false, error: res.error || JSON.stringify(res).slice(0,400) } }];"
+      },
+      "id": "voice-assemble",
+      "name": "Собрать ответ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "voice-respond",
+      "name": "Ответ",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1020, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Подготовить вход",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Подготовить вход": {
+      "main": [
+        [
+          {
+            "node": "Gemini transcribe на хосте",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini transcribe на хосте": {
+      "main": [
+        [
+          {
+            "node": "Собрать ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Собрать ответ": {
+      "main": [
+        [
+          {
+            "node": "Ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "b7e2c1a0-4d18-4c8e-9f11-mealvoice0001",
+  "activeVersionId": "b7e2c1a0-4d18-4c8e-9f11-mealvoice0001",
+  "versionCounter": 1,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": []
+}

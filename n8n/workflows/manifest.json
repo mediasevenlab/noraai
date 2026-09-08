@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Лаборатория PDF → JSON (webhook)",
+    "id": "LabPdfWebhook001",
+    "active": true,
+    "file": "lab-pdf-webhook.json",
+    "nodes": 19,
+    "telegram_tokens_redacted": 0,
+    "gemini_keys_redacted": 0
+  },
+  {
+    "name": "Лаборатория: интерпретация анализов",
+    "id": "LabInterpret001",
+    "active": false,
+    "file": "lab-interpret-webhook.json",
+    "nodes": 19,
+    "telegram_tokens_redacted": 0,
+    "gemini_keys_redacted": 0
+  },
+  {
+    "name": "Telegram Polling → PCC Inbox",
+    "id": "uoyf4C6X30fcz44P",
+    "active": false,
+    "file": "telegram-polling-pcc-inbox.json",
+    "nodes": 25,
+    "telegram_tokens_redacted": 0,
+    "gemini_keys_redacted": 0
+  },
+  {
+    "name": "Дневник питания: фото → карточка",
+    "id": "MealDiaryWebhook001",
+    "active": true,
+    "file": "meal-diary-webhook.json",
+    "nodes": 6,
+    "telegram_tokens_redacted": 0,
+    "gemini_keys_redacted": 0
+  },
+  {
+    "name": "Дневник питания: приложение → карточка",
+    "id": "MealAppComposer001",
+    "active": true,
+    "file": "meal-app-analyze.json",
+    "nodes": 6,
+    "telegram_tokens_redacted": 0,
+    "gemini_keys_redacted": 0
+  },
+  {
+    "name": "Дневник питания: голос → текст",
+    "id": "MealVoiceTranscribe001",
+    "active": true,
+    "file": "meal-voice-transcribe.json",
+    "nodes": 6,
+    "telegram_tokens_redacted": 0,
+    "gemini_keys_redacted": 0
+  },
+  {
+    "name": "Наставник: новый приём подопечного",
+    "id": "MentorMealNotify001",
+    "active": true,
+    "file": "mentor-meal-notify.json",
+    "nodes": 6,
+    "telegram_tokens_redacted": 0,
+    "gemini_keys_redacted": 0
+  }
+]

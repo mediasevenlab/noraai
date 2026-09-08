@@ -151,7 +151,7 @@ function commonReplacements() {
 async function writePreparedSpec(templateName, outputName, replacements) {
   const templatePath = resolve(repoRoot, '.do', templateName)
   const outputPath = resolve(scratchDir, outputName)
-  let contents = await readFile(templatePath, 'utf8')
+  let contents = (await readFile(templatePath, 'utf8')).replaceAll('\r\n', '\n')
 
   for (const [placeholder, value] of Object.entries(replacements)) {
     contents = contents.split(placeholder).join(value)

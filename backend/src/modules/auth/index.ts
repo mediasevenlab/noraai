@@ -88,6 +88,7 @@ export function createAuthModule({
       service.authenticateAccessToken(accessToken),
     requireAuth,
     requireAdmin: createRequireRole('admin'),
+    requireMentor: createRequireRole('mentor'),
     routes: createAuthRoutes({ env, requireAuth, service }),
   }
 }
@@ -95,3 +96,4 @@ export function createAuthModule({
 export type { AuthHttpEnv }
 export type { LogoutCleanup, ProjectUser } from './application/ports'
 export type { AuthenticatedPrincipal } from './domain/user'
+export { toBaseUserDto } from './domain/user'

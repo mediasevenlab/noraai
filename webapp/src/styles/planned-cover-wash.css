@@ -1,0 +1,103 @@
+:root {
+  --planned-cover-wash: transparent;
+}
+
+html[data-planned-cover-wash='0'] {
+  --planned-cover-wash: transparent;
+}
+
+html[data-planned-cover-wash='2'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 2%, transparent);
+}
+
+html[data-planned-cover-wash='4'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 4%, transparent);
+}
+
+html[data-planned-cover-wash='6'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 6%, transparent);
+}
+
+html[data-planned-cover-wash='8'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 8%, transparent);
+}
+
+html[data-planned-cover-wash='10'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 10%, transparent);
+}
+
+html[data-planned-cover-wash='12'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 12%, transparent);
+}
+
+html[data-planned-cover-wash='14'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 14%, transparent);
+}
+
+html[data-planned-cover-wash='16'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 16%, transparent);
+}
+
+html[data-planned-cover-wash='20'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 20%, transparent);
+}
+
+html[data-planned-cover-wash='24'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 24%, transparent);
+}
+
+html[data-planned-cover-wash='28'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 28%, transparent);
+}
+
+html[data-planned-cover-wash='32'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 32%, transparent);
+}
+
+html[data-planned-cover-wash='36'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 36%, transparent);
+}
+
+html[data-planned-cover-wash='40'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 40%, transparent);
+}
+
+html[data-planned-cover-wash='44'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 44%, transparent);
+}
+
+html[data-planned-cover-wash='48'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 48%, transparent);
+}
+
+html[data-planned-cover-wash='52'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 52%, transparent);
+}
+
+html[data-planned-cover-wash='56'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 56%, transparent);
+}
+
+html[data-planned-cover-wash='60'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 60%, transparent);
+}
+
+html[data-planned-cover-wash='64'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 64%, transparent);
+}
+
+html[data-planned-cover-wash='68'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 68%, transparent);
+}
+
+html[data-planned-cover-wash='72'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 72%, transparent);
+}
+
+html[data-planned-cover-wash='76'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 76%, transparent);
+}
+
+html[data-planned-cover-wash='80'] {
+  --planned-cover-wash: color-mix(in srgb, var(--nora-tint) 80%, transparent);
+}

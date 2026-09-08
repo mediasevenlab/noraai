@@ -1,0 +1,77 @@
+---
+import { PixelChevron, PixelChevronButton } from './PixelChevron.tsx'
+import ScrollRevealText from './ScrollRevealText.tsx'
+
+interface Props {
+  loginHref: string
+  signupHref: string
+}
+
+const { loginHref, signupHref } = Astro.props
+---
+
+<section class="py-16 sm:py-20" id="cta" aria-labelledby="dark-cta-title">
+  <div class="site-container">
+    <div
+      class="relative overflow-hidden rounded-[32px] px-6 py-16 text-center sm:rounded-[40px] sm:px-10 sm:py-20 lg:px-16"
+      style="background-color: #020108;"
+    >
+      <div
+        aria-hidden="true"
+        class="pointer-events-none absolute inset-0 opacity-[0.55]"
+        style="background-image: radial-gradient(rgba(255,255,255,0.14) 1.1px, transparent 1.1px); background-size: 18px 18px;"
+      >
+      </div>
+
+      <PixelChevronButton
+        className="absolute top-5 left-5 sm:top-7 sm:left-7"
+        tone="dark"
+      />
+      <PixelChevronButton
+        className="absolute top-5 right-5 sm:top-7 sm:right-7"
+        direction="left"
+        tone="dark"
+      />
+      <PixelChevronButton
+        className="absolute bottom-5 left-5 sm:bottom-7 sm:left-7"
+        tone="dark"
+      />
+      <PixelChevronButton
+        className="absolute right-5 bottom-5 sm:right-7 sm:bottom-7"
+        direction="left"
+        tone="dark"
+      />
+
+      <div class="relative mx-auto flex max-w-2xl flex-col items-center gap-5">
+        <ScrollRevealText
+          client:visible
+          as="h2"
+          className="font-heading text-3xl font-semibold tracking-tight text-balance text-white sm:text-4xl lg:text-5xl"
+          id="dark-cta-title"
+          text="Ваш полный помощник по питанию"
+          variant="primary"
+        />
+        <p class="max-w-lg text-base leading-7 text-white/55 text-pretty sm:text-lg">
+          Ведите дневник, собирайте планы и держите фокус на целях в одном спокойном приложении.
+        </p>
+
+        <div class="mt-2 flex w-full flex-col items-stretch justify-center gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <a
+            class="inline-flex h-11 items-center justify-center gap-2.5 rounded-full bg-white px-5 text-sm font-medium text-black transition-colors hover:bg-white/90"
+            href={signupHref}
+          >
+            Начать сейчас
+            <PixelChevron className="h-3.5 w-[8px] text-black" />
+          </a>
+          <a
+            class="inline-flex h-11 items-center justify-center gap-2.5 rounded-full bg-white/10 px-5 text-sm font-medium text-white transition-colors hover:bg-white/15"
+            href={loginHref}
+          >
+            Войти
+            <PixelChevron className="h-3.5 w-[8px] text-white" />
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

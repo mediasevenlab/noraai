@@ -73,14 +73,15 @@ test('official shadcn primitives stay independent from project Typography', () =
   const inputSource = readFileSync(resolve(webRoot, 'src/components/ui/input.tsx'), 'utf8')
   const buttonSource = readFileSync(resolve(webRoot, 'src/components/ui/button.tsx'), 'utf8')
 
-  expect(inputSource).toContain('rounded-md')
+  expect(inputSource).toContain('rounded-[var(--nora-radius-md,8px)]')
   expect(inputSource).not.toContain('components/typography')
   expect(buttonSource).not.toContain('components/typography')
 })
 
-test('Typography keeps its asChild slot implementation outside the registry', () => {
+test('Typography composes its asChild implementation outside the registry', () => {
   const source = readFileSync(resolve(webRoot, 'src/components/typography.tsx'), 'utf8')
 
-  expect(source).toContain('asChild ? Slot.Root')
-  expect(source).toContain('const slotProps = asChild ? {}')
+  expect(source).toContain('if (asChild)')
+  expect(source).toContain('React.cloneElement(child')
+  expect(source).not.toContain('radix-ui')
 })

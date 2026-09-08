@@ -1,0 +1,741 @@
+/* ============================================================
+   Nora UI — токены (единственный источник цвета/ритма).
+   UI только React (@/components/nora + @/components/ui).
+   Три схемы: editor-dark, editor-light, marketing.
+   ============================================================ */
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-Variable-Italic.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter Display";
+  src: url("/fonts/InterDisplay-SemiBold.woff2") format("woff2");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+.scheme-editor-dark,
+[data-scheme="editor-dark"] {
+  --nora-bg: #111111;
+  --nora-canvas: #171717;
+  --nora-panel: #111111;
+  --nora-surface: #1a1a1a;
+  --nora-popover: #1f1f1f;
+  --nora-modal: #1a1a1a;
+  --nora-inset: #2b2b2b;
+
+  --nora-text: #ffffff;
+  --nora-text-secondary: #999999;
+  --nora-text-tertiary: #666666;
+  --nora-text-dimmed: #555555;
+
+  --nora-tint: #0099ff;
+  --nora-tint-dark: #0088ff;
+  --nora-tint-dimmed: rgba(0, 153, 255, 0.15);
+  --nora-component: #8855ff;
+  --nora-component-hover: #7744ff;
+  --nora-error: #ff3366;
+  --nora-error-hover: #ee2255;
+  --nora-warning: #ffbb00;
+  --nora-success: #3aaa5c;
+  --nora-success-dimmed: rgba(58, 170, 92, 0.18);
+
+  --nora-button-bg: #242424;
+  --nora-button-bg-hover: #2b2b2b;
+  --nora-button-text: #ffffff;
+  --nora-button-secondary-bg: #2b2b2b;
+  --nora-button-on-tint-text: #ffffff;
+
+  /* Match Framer marketplace control (#242424) so trigger + menu share one surface */
+  --nora-input-bg: #242424;
+  --nora-input-text: #ffffff;
+  --nora-input-placeholder: #666666;
+
+  --nora-divider: rgba(255, 255, 255, 0.06);
+  /* Dense sidebar section rules — softer than content dividers */
+  --nora-sidebar-divider: rgba(255, 255, 255, 0.03);
+  --nora-border: #252525;
+  --nora-border-strong: #333333;
+  --nora-row-hover: rgba(255, 255, 255, 0.05);
+  --nora-row-active-bg: #242424;
+
+  /* Kbd: resting + on tint (меню highlight) */
+  --nora-kbd-bg: rgba(255, 255, 255, 0.12);
+  --nora-kbd-text: var(--nora-text-secondary);
+  --nora-kbd-on-tint-bg: rgba(0, 0, 0, 0.28);
+  --nora-kbd-on-tint-text: #ffffff;
+
+  --nora-toast-bg: #222222;
+  --nora-toast-text: #ffffff;
+  --nora-toast-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --nora-toast-action-bg: rgba(255, 255, 255, 0.12);
+  --nora-toast-action-text: #ffffff;
+  --nora-toast-action-hover: rgba(255, 255, 255, 0.18);
+  --nora-tooltip-bg: #222222;
+  --nora-tooltip-text: #ffffff;
+  --nora-badge-neutral-bg: rgba(153, 153, 153, 0.15);
+  --nora-badge-neutral-text: #999999;
+  --nora-badge-purple-bg: rgba(136, 85, 255, 0.15);
+  --nora-badge-purple-text: #a883ff;
+  --nora-badge-green-bg: rgba(76, 217, 99, 0.15);
+  --nora-badge-green-text: #3aaa5c;
+  --nora-badge-red-bg: rgba(255, 51, 102, 0.15);
+  --nora-badge-red-text: #ff3366;
+  --nora-badge-yellow-bg: rgba(255, 187, 0, 0.15);
+  --nora-badge-yellow-text: #ff9900;
+  --nora-error-soft-bg: rgba(255, 51, 102, 0.12);
+  --nora-error-soft-bg-hover: rgba(255, 51, 102, 0.18);
+  --nora-tint-soft-hover: rgba(0, 153, 255, 0.22);
+  --nora-artboard-stroke: rgba(0, 0, 0, 0.35);
+  --nora-chip-muted-bg: rgba(153, 153, 153, 0.1);
+  --nora-avatar-fallback-bg: #2b2b2b;
+  --nora-avatar-gradient-from: #0099ff;
+  --nora-avatar-gradient-to: #8855ff;
+  --nora-on-accent: #ffffff;
+  --nora-mk-btn-bg: #ffffff;
+  --nora-mk-btn-text: #000000;
+  --nora-mk-btn-hover: #e6e6e6;
+  --nora-mk-outline-bg: rgba(255, 255, 255, 0.1);
+  --nora-mk-outline-hover: rgba(255, 255, 255, 0.15);
+  --nora-mk-outline-ring: rgba(255, 255, 255, 0.1);
+
+  --nora-shadow-popover: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  /* Framer marketplace menu: soft lift + solid #333 border on the panel */
+  --nora-shadow-menu: 0 3px 6px 0 rgba(0, 0, 0, 0.08);
+  --nora-menu-bg: #242424;
+  --nora-menu-border: #333333;
+  --nora-menu-item-hover: #333333;
+  /* Segmented thumb must read “raised” vs track (lighter than --nora-input-bg #242) */
+  --nora-segmented-active: #333333;
+  --nora-shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --nora-shadow-button: 0px 2px 4px 0px rgba(0, 0, 0, 0.2);
+  --nora-shadow-focus: inset 0 0 0 1px #0099ff, 0 0 5px #0099ff;
+
+  color-scheme: dark;
+  color: var(--nora-text);
+}
+
+.scheme-editor-light,
+[data-scheme="editor-light"] {
+  --nora-bg: #ffffff;
+  --nora-canvas: #eeeeee;
+  --nora-panel: #ffffff;
+  --nora-surface: #f3f3f3;
+  --nora-popover: #ffffff;
+  --nora-modal: #ffffff;
+  --nora-inset: #f3f3f3;
+
+  --nora-text: #222222;
+  --nora-text-secondary: #666666;
+  --nora-text-tertiary: #999999;
+  --nora-text-dimmed: #aaaaaa;
+
+  --nora-tint: #0099ff;
+  --nora-tint-dark: #0088ff;
+  --nora-tint-dimmed: rgba(0, 153, 255, 0.1);
+  --nora-component: #8855ff;
+  --nora-component-hover: #7744ff;
+  --nora-error: #ff3366;
+  --nora-error-hover: #ee2255;
+  --nora-warning: #ffbb00;
+  --nora-success: #3aaa5c;
+  --nora-success-dimmed: rgba(58, 170, 92, 0.18);
+
+  --nora-button-bg: #f3f3f3;
+  --nora-button-bg-hover: #eeeeee;
+  --nora-button-text: #333333;
+  --nora-button-secondary-bg: #f3f3f3;
+  --nora-button-on-tint-text: #ffffff;
+
+  --nora-input-bg: #f3f3f3;
+  --nora-input-text: #222222;
+  --nora-input-placeholder: #999999;
+
+  --nora-divider: #eeeeee;
+  --nora-sidebar-divider: var(--nora-divider);
+  --nora-border: #eeeeee;
+  --nora-border-strong: #dddddd;
+  --nora-row-hover: rgba(0, 0, 0, 0.04);
+  --nora-row-active-bg: #f3f3f3;
+
+  /* Light: светлый чип на popover; на tint — тёмный, иначе белый текст сливается */
+  --nora-kbd-bg: rgba(0, 0, 0, 0.06);
+  --nora-kbd-text: var(--nora-text-secondary);
+  --nora-kbd-on-tint-bg: rgba(0, 0, 0, 0.22);
+  --nora-kbd-on-tint-text: #ffffff;
+
+  --nora-toast-bg: #ffffff;
+  --nora-toast-text: #222222;
+  --nora-toast-shadow: 0 8px 28px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --nora-toast-action-bg: #f3f3f3;
+  --nora-toast-action-text: #222222;
+  --nora-toast-action-hover: #ebebeb;
+  --nora-tooltip-bg: #222222;
+  --nora-tooltip-text: #ffffff;
+  --nora-badge-neutral-bg: rgba(0, 0, 0, 0.06);
+  --nora-badge-neutral-text: #666666;
+  --nora-badge-purple-bg: rgba(136, 85, 255, 0.12);
+  --nora-badge-purple-text: #7744dd;
+  --nora-badge-green-bg: rgba(76, 217, 99, 0.15);
+  --nora-badge-green-text: #2da44e;
+  --nora-badge-red-bg: rgba(255, 51, 102, 0.12);
+  --nora-badge-red-text: #ee2255;
+  --nora-badge-yellow-bg: rgba(255, 187, 0, 0.18);
+  --nora-badge-yellow-text: #b38600;
+  --nora-error-soft-bg: rgba(255, 51, 102, 0.1);
+  --nora-error-soft-bg-hover: rgba(255, 51, 102, 0.16);
+  --nora-tint-soft-hover: rgba(0, 153, 255, 0.18);
+  --nora-artboard-stroke: rgba(0, 0, 0, 0.08);
+  --nora-chip-muted-bg: rgba(0, 0, 0, 0.06);
+  --nora-avatar-fallback-bg: #eeeeee;
+  --nora-avatar-gradient-from: #0099ff;
+  --nora-avatar-gradient-to: #8855ff;
+  --nora-on-accent: #ffffff;
+  --nora-mk-btn-bg: #ffffff;
+  --nora-mk-btn-text: #000000;
+  --nora-mk-btn-hover: #e6e6e6;
+  --nora-mk-outline-bg: rgba(0, 0, 0, 0.06);
+  --nora-mk-outline-hover: rgba(0, 0, 0, 0.1);
+  --nora-mk-outline-ring: rgba(0, 0, 0, 0.1);
+
+  --nora-shadow-popover: 0 10px 30px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --nora-shadow-menu: 0 3px 6px 0 rgba(0, 0, 0, 0.08);
+  /* Soft hairline — border-strong is too heavy for open filter + menu */
+  --nora-menu-bg: #ffffff;
+  --nora-menu-border: #eeeeee;
+  --nora-menu-item-hover: #f2f2f2;
+  --nora-segmented-active: #ffffff;
+  --nora-shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --nora-shadow-button: 0px 0px 0px 1px rgba(0, 0, 0, 0.02), 0px 1px 3px 0px rgba(0, 0, 0, 0.05);
+  --nora-shadow-focus: inset 0 0 0 1px #0099ff, 0 0 5px rgba(0, 153, 255, 0.5);
+
+  color-scheme: light;
+  color: var(--nora-text);
+}
+
+/* Light appearance variants: quiet mineral / airy whites, no beige or hue.
+   2026 references: Cloud Dancer, limewash plaster, limestone, cool gray whisper.
+   The active class is set on <html> by ThemeProvider; editor-dark does not consume them. */
+.scheme-editor-light.light-palette-default { --light-bg: #ffffff; --light-canvas: #eeeeee; --light-panel: #ffffff; --light-surface: #f3f3f3; --light-popover: #ffffff; --light-inset: #f3f3f3; --light-border: #eeeeee; }
+.scheme-editor-light.light-palette-paper { --light-bg: #fbfbfa; --light-canvas: #f1f1ef; --light-panel: #ffffff; --light-surface: #f6f6f4; --light-popover: #ffffff; --light-inset: #f0f0ee; --light-border: #e4e4e1; }
+.scheme-editor-light.light-palette-porcelain { --light-bg: #fcfcfb; --light-canvas: #f3f3f2; --light-panel: #ffffff; --light-surface: #f7f7f6; --light-popover: #ffffff; --light-inset: #f1f1f0; --light-border: #e5e5e3; }
+.scheme-editor-light.light-palette-pearl { --light-bg: #fbfbfc; --light-canvas: #f0f0f2; --light-panel: #ffffff; --light-surface: #f5f5f7; --light-popover: #ffffff; --light-inset: #eeeef1; --light-border: #e1e1e5; }
+.scheme-editor-light.light-palette-cloud { --light-bg: #fcfcfc; --light-canvas: #f2f3f3; --light-panel: #ffffff; --light-surface: #f7f8f8; --light-popover: #ffffff; --light-inset: #eff1f1; --light-border: #e3e5e5; }
+.scheme-editor-light.light-palette-dove { --light-bg: #fafafa; --light-canvas: #eeeeee; --light-panel: #fdfdfd; --light-surface: #f3f3f3; --light-popover: #fdfdfd; --light-inset: #e9e9e9; --light-border: #dcdddd; }
+.scheme-editor-light.light-palette-aluminum { --light-bg: #f4f4f5; --light-canvas: #ebeced; --light-panel: #f9f9fa; --light-surface: #f0f1f2; --light-popover: #f9f9fa; --light-inset: #e0e1e3; --light-border: #d3d5d7; }
+.scheme-editor-light.light-palette-rain { --light-bg: #f1f3f4; --light-canvas: #e8eaec; --light-panel: #f7f8f9; --light-surface: #eef0f1; --light-popover: #f7f8f9; --light-inset: #dde0e3; --light-border: #d0d4d8; }
+.scheme-editor-light.light-palette-breath { --light-bg: #fbfcfb; --light-canvas: #f0f2f1; --light-panel: #ffffff; --light-surface: #f7f8f7; --light-popover: #ffffff; --light-inset: #f5f7f6; --light-border: #e4e8e6; }
+.scheme-editor-light.light-palette-limestone { --light-bg: #f6f7f7; --light-canvas: #eceeed; --light-panel: #fafbfb; --light-surface: #f1f3f2; --light-popover: #fafbfb; --light-inset: #e4e6e5; --light-border: #d6d9d8; }
+.scheme-editor-light.light-palette-plaster { --light-bg: #fbfbf9; --light-canvas: #f2f3f1; --light-panel: #ffffff; --light-surface: #f7f7f5; --light-popover: #ffffff; --light-inset: #eceeea; --light-border: #dfe2dc; }
+.scheme-editor-light.light-palette-limewash { --light-bg: #fbfbfb; --light-canvas: #f2f2f2; --light-panel: #ffffff; --light-surface: #f7f7f7; --light-popover: #ffffff; --light-inset: #ececec; --light-border: #dfdfdf; }
+.scheme-editor-light.light-palette-gesso { --light-bg: #fcfcfb; --light-canvas: #f5f5f4; --light-panel: #ffffff; --light-surface: #f8f8f7; --light-popover: #ffffff; --light-inset: #f0f0ef; --light-border: #e2e2e0; }
+.scheme-editor-light.light-palette-kaolin { --light-bg: #f8f9f8; --light-canvas: #eef0ef; --light-panel: #ffffff; --light-surface: #f4f5f4; --light-popover: #ffffff; --light-inset: #e6e8e7; --light-border: #d8dcd9; }
+.scheme-editor-light.light-palette-calcite { --light-bg: #f4f5f4; --light-canvas: #e9ebea; --light-panel: #fafbfa; --light-surface: #f0f2f1; --light-popover: #fafbfa; --light-inset: #dfe1e0; --light-border: #d1d4d2; }
+.scheme-editor-light.light-palette-whisper { --light-bg: #fafafb; --light-canvas: #eff0f1; --light-panel: #ffffff; --light-surface: #f5f6f7; --light-popover: #ffffff; --light-inset: #e7e8ea; --light-border: #d9dbde; }
+.scheme-editor-light.light-palette-still { --light-bg: #f1f2f2; --light-canvas: #e6e8e8; --light-panel: #f7f8f8; --light-surface: #eceeee; --light-popover: #f7f8f8; --light-inset: #dbdddd; --light-border: #cdd0d0; }
+.scheme-editor-light.light-palette-nordic { --light-bg: #fbfbfa; --light-canvas: #f4f5f4; --light-panel: #ffffff; --light-surface: #f8f8f7; --light-popover: #ffffff; --light-inset: #eceeed; --light-border: #e0e2e0; }
+.scheme-editor-light.light-palette-mineral { --light-bg: #eeefee; --light-canvas: #e3e5e4; --light-panel: #f5f6f5; --light-surface: #e9ebea; --light-popover: #f5f6f5; --light-inset: #d8dad9; --light-border: #c9ccc9; }
+.scheme-editor-light.light-palette-honed { --light-bg: #eff0ef; --light-canvas: #e5e7e6; --light-panel: #f6f7f6; --light-surface: #ebeeec; --light-popover: #f6f7f6; --light-inset: #dbdddc; --light-border: #ccd0ce; }
+.scheme-editor-light.light-palette-dolomite { --light-bg: #f5f6f7; --light-canvas: #edeeef; --light-panel: #fafbfb; --light-surface: #f1f2f3; --light-popover: #fafbfb; --light-inset: #e5e6e8; --light-border: #d7d9db; }
+.scheme-editor-light.light-palette-feldspar { --light-bg: #eceeed; --light-canvas: #e1e3e2; --light-panel: #f3f4f3; --light-surface: #e7e9e8; --light-popover: #f3f4f3; --light-inset: #d5d8d6; --light-border: #c6cac7; }
+.scheme-editor-light.light-palette-dew { --light-bg: #fcfcfb; --light-canvas: #f6f7f6; --light-panel: #ffffff; --light-surface: #f9f9f8; --light-popover: #ffffff; --light-inset: #f0f1f0; --light-border: #e3e5e3; }
+.scheme-editor-light.light-palette-cirrus { --light-bg: #fafbfc; --light-canvas: #f3f4f5; --light-panel: #ffffff; --light-surface: #f7f8f9; --light-popover: #ffffff; --light-inset: #eceeef; --light-border: #dfe2e4; }
+.scheme-editor-light.light-palette-hush { --light-bg: #f2f3f4; --light-canvas: #e7e8ea; --light-panel: #f8f8f9; --light-surface: #edeeef; --light-popover: #f8f8f9; --light-inset: #dcdee0; --light-border: #cdd0d3; }
+.scheme-editor-light.light-palette-gallery { --light-bg: #fcfcfc; --light-canvas: #f7f8f7; --light-panel: #ffffff; --light-surface: #fafafa; --light-popover: #ffffff; --light-inset: #f1f2f1; --light-border: #e4e6e4; }
+.scheme-editor-light.light-palette-zen { --light-bg: #f7f8f8; --light-canvas: #eef0f0; --light-panel: #ffffff; --light-surface: #f3f4f4; --light-popover: #ffffff; --light-inset: #e6e8e8; --light-border: #d8dbdb; }
+.scheme-editor-light.light-palette-spa { --light-bg: #f8f9f8; --light-canvas: #f1f3f2; --light-panel: #ffffff; --light-surface: #f5f6f5; --light-popover: #ffffff; --light-inset: #e9ebea; --light-border: #dce0dd; }
+.scheme-editor-light.light-palette-wisp { --light-bg: #fbfbfc; --light-canvas: #f4f5f6; --light-panel: #ffffff; --light-surface: #f8f8f9; --light-popover: #ffffff; --light-inset: #edeeef; --light-border: #e0e2e4; }
+.scheme-editor-light.light-palette-murmur { --light-bg: #fafafb; --light-canvas: #eff0f1; --light-panel: #ffffff; --light-surface: #f5f6f7; --light-popover: #ffffff; --light-inset: #e7e8ea; --light-border: #d9dbde; }
+
+.scheme-editor-light {
+  --nora-bg: var(--light-bg, #fbfbfa);
+  --nora-canvas: var(--light-canvas, #f1f1ef);
+  --nora-panel: var(--light-panel, #ffffff);
+  --nora-surface: var(--light-surface, #f6f6f4);
+  --nora-popover: var(--light-popover, #ffffff);
+  --nora-modal: var(--light-popover, #ffffff);
+  --nora-inset: var(--light-inset, #f0f0ee);
+  --nora-button-bg: color-mix(in srgb, var(--nora-panel) 64%, var(--nora-canvas) 36%);
+  --nora-button-bg-hover: color-mix(in srgb, var(--nora-panel) 42%, var(--nora-canvas) 58%);
+  --nora-button-text: var(--nora-text);
+  --nora-button-secondary-bg: color-mix(in srgb, var(--nora-panel) 64%, var(--nora-canvas) 36%);
+  --nora-input-bg: color-mix(in srgb, var(--nora-panel) 64%, var(--nora-canvas) 36%);
+  --nora-input-text: var(--nora-text);
+  --nora-input-placeholder: var(--nora-text-tertiary);
+  /* Hairlines sit between Базовая (#eee) and Голубь (#dcd): a 4% mix of
+     canvas toward text, so cement/steel no longer get hard outlines. */
+  --nora-divider: color-mix(in srgb, var(--light-canvas) 96%, var(--nora-text) 4%);
+  --nora-sidebar-divider: var(--nora-divider);
+  --nora-border: var(--nora-divider);
+  --nora-border-strong: color-mix(in srgb, var(--nora-divider) 88%, var(--nora-text) 12%);
+  --nora-menu-bg: var(--light-popover, #ffffff);
+  --nora-menu-border: var(--nora-divider);
+  --nora-artboard-stroke: var(--nora-divider);
+  --nora-menu-item-hover: color-mix(in srgb, var(--nora-panel) 72%, var(--nora-canvas) 28%);
+  --nora-segmented-active: var(--light-panel, #ffffff);
+  /* Content lists/tables: distinct from panel without a fixed black overlay.
+     Sidebar search/active chips are remapped from --sidebar in index.css. */
+  --nora-row-hover: color-mix(in srgb, var(--nora-panel) 64%, var(--nora-canvas) 36%);
+  --nora-row-active-bg: color-mix(in srgb, var(--nora-panel) 46%, var(--nora-canvas) 54%);
+  --nora-avatar-fallback-bg: var(--light-inset, #f0f0ee);
+  --nora-toast-bg: var(--light-panel, #ffffff);
+  --nora-toast-text: var(--nora-text);
+  --nora-toast-action-bg: var(--light-surface, #f6f6f4);
+  --nora-toast-action-text: var(--nora-text);
+  --nora-toast-action-hover: var(--light-inset, #f0f0ee);
+  --nora-badge-neutral-text: var(--nora-text-secondary);
+}
+
+.scheme-editor-light.light-palette-default {
+  --nora-button-bg: #f3f3f3;
+  --nora-button-bg-hover: #eeeeee;
+  --nora-button-secondary-bg: #f3f3f3;
+  --nora-input-bg: #f3f3f3;
+  --nora-row-hover: rgba(0, 0, 0, 0.04);
+  --nora-row-active-bg: #f3f3f3;
+}
+
+.scheme-editor-light.light-palette-limewash {
+  /* One small step darker than the shared 96/4 hairline. */
+  --nora-divider: color-mix(in srgb, var(--light-canvas) 94%, var(--nora-text) 6%);
+}
+
+.scheme-editor-light.light-palette-breath {
+  /* Wells must read against white modal/panel; the shared 64/36 input mix is too close. */
+  --nora-input-bg: var(--light-inset);
+  --nora-button-bg: var(--light-inset);
+  --nora-button-secondary-bg: var(--light-inset);
+  --nora-row-hover: var(--light-inset);
+}
+
+.scheme-editor-light.light-text-default { --nora-text: #222222; --nora-text-secondary: #666666; --nora-text-tertiary: #999999; --nora-text-dimmed: #aaaaaa; }
+.scheme-editor-light.light-text-graphite { --nora-text: #393939; --nora-text-secondary: #747474; --nora-text-tertiary: #9d9d9d; --nora-text-dimmed: #b8b8b8; }
+.scheme-editor-light.light-text-charcoal { --nora-text: #404040; --nora-text-secondary: #7a7a7a; --nora-text-tertiary: #a2a2a2; --nora-text-dimmed: #bdbdbd; }
+.scheme-editor-light.light-text-ink { --nora-text: #464646; --nora-text-secondary: #7f7f7f; --nora-text-tertiary: #a6a6a6; --nora-text-dimmed: #c0c0c0; }
+.scheme-editor-light.light-text-smoke { --nora-text: #4c4c4c; --nora-text-secondary: #858585; --nora-text-tertiary: #aaaaaa; --nora-text-dimmed: #c4c4c4; }
+.scheme-editor-light.light-text-steel { --nora-text: #525252; --nora-text-secondary: #8b8b8b; --nora-text-tertiary: #aeaeae; --nora-text-dimmed: #c7c7c7; }
+.scheme-editor-light.light-text-slate { --nora-text: #585858; --nora-text-secondary: #909090; --nora-text-tertiary: #b2b2b2; --nora-text-dimmed: #cacaca; }
+.scheme-editor-light.light-text-stone { --nora-text: #5e5e5e; --nora-text-secondary: #969696; --nora-text-tertiary: #b6b6b6; --nora-text-dimmed: #cdcdcd; }
+.scheme-editor-light.light-text-ash { --nora-text: #646464; --nora-text-secondary: #9b9b9b; --nora-text-tertiary: #b9b9b9; --nora-text-dimmed: #d0d0d0; }
+.scheme-editor-light.light-text-soft { --nora-text: #6a6a6a; --nora-text-secondary: #a0a0a0; --nora-text-tertiary: #bdbdbd; --nora-text-dimmed: #d3d3d3; }
+.scheme-editor-light.light-text-calm { --nora-text: #707070; --nora-text-secondary: #a5a5a5; --nora-text-tertiary: #c0c0c0; --nora-text-dimmed: #d5d5d5; }
+.scheme-editor-light.light-text-quiet { --nora-text: #767676; --nora-text-secondary: #aaaaaa; --nora-text-tertiary: #c4c4c4; --nora-text-dimmed: #d8d8d8; }
+.scheme-editor-light.light-text-neutral { --nora-text: #4e4e4e; --nora-text-secondary: #878787; --nora-text-tertiary: #ababab; --nora-text-dimmed: #c4c4c4; }
+.scheme-editor-light.light-text-carbon { --nora-text: #363636; --nora-text-secondary: #707070; --nora-text-tertiary: #999999; --nora-text-dimmed: #b5b5b5; }
+.scheme-editor-light.light-text-pewter { --nora-text: #6c6c6c; --nora-text-secondary: #9e9e9e; --nora-text-tertiary: #bdbdbd; --nora-text-dimmed: #d3d3d3; }
+.scheme-editor-light.light-text-mineral { --nora-text: #606060; --nora-text-secondary: #949494; --nora-text-tertiary: #b4b4b4; --nora-text-dimmed: #cdcdcd; }
+.scheme-editor-light.light-text-frost { --nora-text: #7c7c7c; --nora-text-secondary: #adadad; --nora-text-tertiary: #c8c8c8; --nora-text-dimmed: #dcdcdc; }
+.scheme-editor-light.light-text-silk { --nora-text: #686868; --nora-text-secondary: #9a9a9a; --nora-text-tertiary: #b9b9b9; --nora-text-dimmed: #d0d0d0; }
+.scheme-editor-light.light-text-velvet { --nora-text: #444444; --nora-text-secondary: #7d7d7d; --nora-text-tertiary: #a4a4a4; --nora-text-dimmed: #bebebe; }
+.scheme-editor-light.light-text-cinder { --nora-text: #4a4a4a; --nora-text-secondary: #838383; --nora-text-tertiary: #a8a8a8; --nora-text-dimmed: #c2c2c2; }
+.scheme-editor-light.light-text-monochrome { --nora-text: #565656; --nora-text-secondary: #8d8d8d; --nora-text-tertiary: #b0b0b0; --nora-text-dimmed: #c9c9c9; }
+
+.scheme-marketing,
+[data-scheme="marketing"] {
+  --nora-bg: #000000;
+  --nora-canvas: #000000;
+  --nora-panel: #0a0a0a;
+  --nora-surface: #111111;
+  --nora-popover: #141414;
+  --nora-modal: #141414;
+  --nora-inset: #1a1a1a;
+
+  --nora-text: #ffffff;
+  --nora-text-secondary: rgba(255, 255, 255, 0.8);
+  --nora-text-tertiary: rgba(255, 255, 255, 0.6);
+  --nora-text-dimmed: rgba(255, 255, 255, 0.4);
+
+  --nora-tint: #0099ff;
+  --nora-tint-dark: #0055ff;
+  --nora-tint-dimmed: rgba(0, 153, 255, 0.15);
+  --nora-component: #8855ff;
+  --nora-component-hover: #7744ff;
+  --nora-error: #ff0066;
+  --nora-error-hover: #ee0055;
+  --nora-warning: #ffbb00;
+  --nora-success: #3aaa5c;
+  --nora-success-dimmed: rgba(58, 170, 92, 0.18);
+  --nora-lime: #cbff00;
+
+  --nora-button-bg: rgba(255, 255, 255, 0.1);
+  --nora-button-bg-hover: rgba(255, 255, 255, 0.15);
+  --nora-button-text: #ffffff;
+  --nora-button-secondary-bg: rgba(255, 255, 255, 0.07);
+  --nora-button-on-tint-text: #ffffff;
+
+  --nora-input-bg: rgba(255, 255, 255, 0.07);
+  --nora-input-text: #ffffff;
+  --nora-input-placeholder: rgba(255, 255, 255, 0.4);
+
+  --nora-divider: rgba(255, 255, 255, 0.06);
+  --nora-sidebar-divider: rgba(255, 255, 255, 0.03);
+  --nora-border: rgba(255, 255, 255, 0.1);
+  --nora-border-strong: rgba(255, 255, 255, 0.16);
+  --nora-row-hover: rgba(255, 255, 255, 0.06);
+  --nora-row-active-bg: rgba(255, 255, 255, 0.1);
+
+  --nora-kbd-bg: rgba(255, 255, 255, 0.12);
+  --nora-kbd-text: var(--nora-text-secondary);
+  --nora-kbd-on-tint-bg: rgba(0, 0, 0, 0.28);
+  --nora-kbd-on-tint-text: #ffffff;
+
+  --nora-toast-bg: #141414;
+  --nora-toast-text: #ffffff;
+  --nora-toast-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --nora-toast-action-bg: rgba(255, 255, 255, 0.1);
+  --nora-toast-action-text: #ffffff;
+  --nora-toast-action-hover: rgba(255, 255, 255, 0.16);
+  --nora-tooltip-bg: #222222;
+  --nora-tooltip-text: #ffffff;
+  --nora-badge-neutral-bg: rgba(255, 255, 255, 0.1);
+  --nora-badge-neutral-text: rgba(255, 255, 255, 0.8);
+  --nora-badge-purple-bg: rgba(136, 85, 255, 0.2);
+  --nora-badge-purple-text: #a883ff;
+  --nora-badge-green-bg: rgba(76, 217, 99, 0.15);
+  --nora-badge-green-text: #3aaa5c;
+  --nora-badge-red-bg: rgba(255, 0, 102, 0.18);
+  --nora-badge-red-text: #ff3377;
+  --nora-badge-yellow-bg: rgba(255, 187, 0, 0.18);
+  --nora-badge-yellow-text: #ffbb00;
+  --nora-error-soft-bg: rgba(255, 0, 102, 0.15);
+  --nora-error-soft-bg-hover: rgba(255, 0, 102, 0.22);
+  --nora-tint-soft-hover: rgba(0, 153, 255, 0.22);
+  --nora-artboard-stroke: rgba(255, 255, 255, 0.2);
+  --nora-chip-muted-bg: rgba(255, 255, 255, 0.08);
+  --nora-avatar-fallback-bg: rgba(255, 255, 255, 0.1);
+  --nora-avatar-gradient-from: #0099ff;
+  --nora-avatar-gradient-to: #8855ff;
+  --nora-on-accent: #ffffff;
+  --nora-mk-btn-bg: #ffffff;
+  --nora-mk-btn-text: #000000;
+  --nora-mk-btn-hover: #e6e6e6;
+  --nora-mk-outline-bg: rgba(255, 255, 255, 0.1);
+  --nora-mk-outline-hover: rgba(255, 255, 255, 0.15);
+  --nora-mk-outline-ring: rgba(255, 255, 255, 0.1);
+
+  --nora-shadow-popover: 0 10px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  --nora-shadow-menu: 0 3px 6px 0 rgba(0, 0, 0, 0.08);
+  --nora-menu-bg: #242424;
+  --nora-menu-border: rgba(255, 255, 255, 0.12);
+  --nora-menu-item-hover: #333333;
+  --nora-segmented-active: rgba(255, 255, 255, 0.12);
+  --nora-shadow-modal: 0 40px 64px rgba(0, 0, 0, 0.4);
+  --nora-shadow-button: 0 1px 2px rgba(0, 153, 255, 0.15), 0 2px 4px rgba(0, 153, 255, 0.2);
+  --nora-shadow-focus: inset 0 0 0 1px #0099ff, 0 0 5px #0099ff;
+
+  color-scheme: dark;
+  color: var(--nora-text);
+}
+
+:root {
+  --nora-font: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --nora-font-display: "Inter Display", "Inter", system-ui, sans-serif;
+  --nora-font-mono: "Input Mono", "SF Mono", Menlo, Consolas, monospace;
+
+  --nora-radius-xs: 4px;
+  --nora-radius-sm: 6px;
+  --nora-radius-lg: 10px;
+  --nora-radius-md: 8px;
+  /* Menus sit under pills: 16px shell, 12px rows (4px pad fills the corners). */
+  --nora-radius-menu: 16px;
+  --nora-radius-menu-item: 12px;
+  --nora-radius-xl: 14px;
+  --nora-radius-round: 50%;
+
+  --nora-space-1: 5px;
+  --nora-space-2: 10px;
+  --nora-space-3: 15px;
+  --nora-space-4: 20px;
+  --nora-space-5: 25px;
+  --nora-space-6: 30px;
+  --nora-space-8: 40px;
+
+  /* Плотность Nora: контролы 26 · строки панелей/списков 30 · compact 22 */
+  --nora-row-h: 30px;
+  /* Framer marketplace controls / menu rows are 30px. */
+  --nora-control-h: 30px;
+  --nora-control-h-sm: 22px;
+
+  --nora-ease: cubic-bezier(0.44, 0, 0.56, 1);
+  --nora-duration-fast: 0.1s;
+  --nora-duration: 0.15s;
+  --nora-duration-slow: 0.25s;
+  --nora-success-dimmed: color-mix(in srgb, var(--nora-success) 15%, transparent);
+  --nora-component-dimmed: color-mix(in srgb, var(--nora-component) 15%, transparent);
+  --nora-shadow-subtle: 0 1px 2px color-mix(in srgb, var(--nora-text) 6%, transparent);
+  --nora-inset-ring: inset 0 0 0 1px color-mix(in srgb, var(--nora-text) 8%, transparent);
+  /* Shared structural defaults only — theme colors live on .scheme-editor-*
+     (same specificity as :root; later :root values would clobber light theme). */
+  --nora-shadow-menu: 0 3px 6px 0 rgba(0, 0, 0, 0.08);
+}
+
+@keyframes nora-shimmer {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.nora-shimmer {
+  animation: nora-shimmer 1.2s var(--nora-ease) infinite;
+}
+
+/* Dashboard cards: как chrome Nora — плоско, без drop-shadow.
+   Dark: surface + hairline border. Light: panel на canvas (#fff/#eee),
+   ring = --nora-border / artboard-stroke, не border-strong. */
+.dashboard-page,
+.news-page {
+  --dash-card-bg: var(--nora-surface);
+  --dash-card-ring: var(--nora-border);
+  --dash-atmosphere-mid: color-mix(in srgb, var(--nora-canvas) 55%, var(--nora-panel));
+  --dash-glow-tint: 18%;
+  --dash-glow-component: 12%;
+  --dash-chart-fill: 0.35;
+}
+
+.scheme-editor-light .dashboard-page,
+[data-scheme="editor-light"] .dashboard-page,
+.scheme-editor-light .news-page,
+[data-scheme="editor-light"] .news-page {
+  --dash-card-bg: var(--nora-panel);
+  --dash-card-ring: var(--nora-artboard-stroke);
+  --dash-atmosphere-mid: var(--nora-canvas);
+  --dash-glow-tint: 12%;
+  --dash-glow-component: 7%;
+  --dash-chart-fill: 0.4;
+}
+
+/* iOS 26-style liquid glass: frosted circle, hairline rim, not tinted. */
+.ios-glass-fab,
+.ios-glass-chip,
+.ios-glass-sheet,
+.ios-glass-tile {
+  isolation: isolate;
+}
+
+.ios-glass-fab,
+.ios-glass-chip {
+  background: color-mix(in srgb, var(--nora-panel) 58%, transparent);
+  border: 1px solid color-mix(in srgb, white 62%, var(--nora-border) 38%);
+  color: var(--nora-text);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+}
+
+.ios-glass-fab {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 72%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--nora-text) 6%, transparent),
+    0 8px 24px color-mix(in srgb, var(--nora-text) 14%, transparent);
+}
+
+.ios-glass-chip,
+.ios-glass-glare {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 70%, transparent);
+}
+
+.ios-glass-glare.ios-float-chip {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 70%, transparent),
+    0 2px 4px color-mix(in srgb, var(--nora-text) 6%, transparent),
+    0 8px 18px color-mix(in srgb, var(--nora-text) 10%, transparent);
+}
+
+/* Quieter top highlight for modal body chrome (tabs, composer). */
+.ios-glass-glare-soft {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 32%, transparent) !important;
+}
+
+/* Grok / iOS 18 floating chrome: opaque white capsules + soft drop shadow. */
+.ios-float-pill {
+  background: var(--nora-panel);
+  border-radius: 9999px;
+  box-shadow:
+    0 1px 1px color-mix(in srgb, var(--nora-text) 4%, transparent),
+    0 4px 10px color-mix(in srgb, var(--nora-text) 6%, transparent);
+}
+
+.ios-float-pill[data-search-open] {
+  box-shadow:
+    0 1px 1px color-mix(in srgb, var(--nora-text) 3%, transparent),
+    0 3px 8px color-mix(in srgb, var(--nora-text) 5%, transparent);
+}
+
+.ios-float-status {
+  border-radius: 9999px;
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--nora-text) 5%, transparent),
+    0 6px 18px color-mix(in srgb, var(--nora-text) 10%, transparent);
+}
+
+.ios-float-status[data-tone="yellow"] {
+  background: var(--nora-badge-yellow-bg);
+  color: var(--nora-badge-yellow-text);
+}
+
+.ios-float-status[data-tone="red"] {
+  background: var(--nora-badge-red-bg);
+  color: var(--nora-badge-red-text);
+}
+
+.ios-float-status[data-tone="green"] {
+  background: var(--nora-badge-green-bg);
+  color: var(--nora-badge-green-text);
+}
+
+.ios-float-pill [data-slot="select-trigger"],
+.ios-float-pill [data-slot="select-trigger"][data-popup-open] {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--nora-text-secondary);
+}
+
+.ios-float-seg[data-active] {
+  background: color-mix(in srgb, var(--nora-text) 7%, transparent);
+  color: var(--nora-text);
+}
+
+.scheme-editor-dark .ios-float-status,
+[data-scheme="editor-dark"] .ios-float-status {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.32),
+    0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.scheme-editor-dark .ios-float-pill,
+[data-scheme="editor-dark"] .ios-float-pill {
+  background: var(--nora-input-bg);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, white 8%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.18),
+    0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.scheme-editor-dark .ios-float-pill[data-search-open],
+[data-scheme="editor-dark"] .ios-float-pill[data-search-open] {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, white 8%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.16),
+    0 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+.scheme-editor-dark .ios-float-seg[data-active],
+[data-scheme="editor-dark"] .ios-float-seg[data-active] {
+  background: color-mix(in srgb, white 12%, transparent);
+}
+
+/* Floating Control Center panel: beat the opaque sheet fill. */
+[data-slot="sheet-content"].ios-glass-sheet {
+  background: color-mix(in srgb, var(--nora-panel) 78%, transparent);
+  border: 1px solid color-mix(in srgb, white 58%, var(--nora-border) 42%) !important;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 70%, transparent),
+    0 18px 50px color-mix(in srgb, var(--nora-text) 16%, transparent);
+  backdrop-filter: blur(40px) saturate(190%);
+  -webkit-backdrop-filter: blur(40px) saturate(190%);
+}
+
+.ios-glass-tile {
+  background: color-mix(in srgb, black 4%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 70%, transparent);
+}
+
+.ios-glass-glyph {
+  background: color-mix(in srgb, black 6%, transparent);
+}
+
+.scheme-editor-dark .ios-glass-fab,
+[data-scheme="editor-dark"] .ios-glass-fab,
+.scheme-editor-dark .ios-glass-chip,
+[data-scheme="editor-dark"] .ios-glass-chip {
+  background: color-mix(in srgb, var(--nora-panel) 42%, transparent);
+  border-color: color-mix(in srgb, white 20%, transparent);
+}
+
+.scheme-editor-dark .ios-glass-fab,
+[data-scheme="editor-dark"] .ios-glass-fab {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 28%, transparent),
+    0 10px 28px rgba(0, 0, 0, 0.42);
+}
+
+.scheme-editor-dark .ios-glass-chip,
+[data-scheme="editor-dark"] .ios-glass-chip,
+.scheme-editor-dark .ios-glass-glare,
+[data-scheme="editor-dark"] .ios-glass-glare {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 24%, transparent);
+}
+
+.scheme-editor-dark .ios-glass-glare.ios-float-chip,
+[data-scheme="editor-dark"] .ios-glass-glare.ios-float-chip {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 24%, transparent),
+    0 2px 6px rgba(0, 0, 0, 0.22),
+    0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.scheme-editor-dark .ios-glass-glare-soft,
+[data-scheme="editor-dark"] .ios-glass-glare-soft {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 12%, transparent) !important;
+}
+
+.scheme-editor-dark [data-slot="sheet-content"].ios-glass-sheet,
+[data-scheme="editor-dark"] [data-slot="sheet-content"].ios-glass-sheet {
+  background: color-mix(in srgb, var(--nora-panel) 52%, transparent);
+  border-color: color-mix(in srgb, white 16%, transparent) !important;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 22%, transparent),
+    0 22px 56px rgba(0, 0, 0, 0.48);
+}
+
+.scheme-editor-dark .ios-glass-tile,
+[data-scheme="editor-dark"] .ios-glass-tile {
+  background: color-mix(in srgb, white 8%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 16%, transparent);
+}
+
+.scheme-editor-dark .ios-glass-glyph,
+[data-scheme="editor-dark"] .ios-glass-glyph {
+  background: color-mix(in srgb, white 12%, transparent);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ios-glass-fab,
+  .ios-glass-chip,
+  [data-slot="sheet-content"].ios-glass-sheet {
+    background: var(--nora-panel);
+  }
+}
+
+html[data-android] .ios-glass-fab,
+html[data-android] .ios-glass-chip,
+html[data-android] [data-slot="sheet-content"].ios-glass-sheet {
+  background: var(--nora-panel);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+html[data-android] .ios-glass-glare,
+html[data-android] .ios-glass-glare-soft {
+  background: var(--nora-panel);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}

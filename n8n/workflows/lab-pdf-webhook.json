@@ -1,0 +1,482 @@
+{
+  "updatedAt": "2026-07-24T06:21:59.140Z",
+  "createdAt": "2026-07-24T04:57:57.825Z",
+  "id": "LabPdfWebhook001",
+  "name": "Лаборатория PDF → JSON (webhook)",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## PDF → JSON\nЕдиное распознавание для **UI** и **Telegram**.\nВызов идёт из **lab-api** (`/api/analyze` / `analyze-sync`) → этот webhook → Gemini → JSON.\nШаги `Шаг: …` пишут прогресс в lab-api (`/api/jobs/:id/step`).",
+        "height": 284,
+        "width": 340,
+        "color": 4
+      },
+      "id": "b2000001-0000-4000-8000-000000000100",
+      "name": "Note: обзор",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Webhook\nВход от **lab-api** (канал UI или Telegram — уже выбран снаружи).\n**POST** binary PDF + `jobId`. Ответ — нода **Ответ**.",
+        "height": 266,
+        "color": 5
+      },
+      "id": "b2000001-0000-4000-8000-000000000101",
+      "name": "Note: Webhook",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lab-pdf-analyze",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "id": "b2000001-0000-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "lab-pdf-analyze",
+      "notes": "Вход: PDF + jobId от lab-api (UI или Telegram). Path: lab-pdf-analyze"
+    },
+    {
+      "parameters": {
+        "content": "### Подготовить PDF\nДостаёт PDF из binary → **base64**, имя файла, sizeMb, `host` Docker→хост.",
+        "height": 256,
+        "width": 220,
+        "color": 3
+      },
+      "id": "b2000001-0000-4000-8000-000000000102",
+      "name": "Note: Подготовить PDF",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        224,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = items[0];\nconst binary = item.binary || {};\nconst binaryKey = Object.keys(binary).find((k) => {\n  const b = binary[k] || {};\n  return (b.mimeType || '').includes('pdf') || /\\.pdf$/i.test(b.fileName || '') || /data|file|pdf/i.test(k);\n}) || Object.keys(binary)[0];\nif (!binaryKey) throw new Error('PDF не найден');\nconst meta = binary[binaryKey];\nconst buffer = await this.helpers.getBinaryDataBuffer(0, binaryKey);\nconst jobId = item.json.jobId || '';\nreturn [{\n  json: {\n    jobId,\n    fileName: meta.fileName || 'document.pdf',\n    sizeMb: Number((buffer.length / 1024 / 1024).toFixed(2)),\n    pdfBase64: buffer.toString('base64'),\n    host: 'http://host.docker.internal:8787',\n  },\n}];"
+      },
+      "id": "b2000001-0000-4000-8000-000000000002",
+      "name": "Подготовить PDF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "notes": "Binary PDF → base64 + meta + host.docker.internal:8787"
+    },
+    {
+      "parameters": {
+        "content": "### Шаг: prepare done\nПрогресс в lab-api: подготовка PDF готова (`n8n_prepare`).\n`continueOnFail` — сбой шага не рвёт пайплайн.",
+        "height": 170,
+        "width": 220,
+        "color": 6
+      },
+      "id": "b2000001-0000-4000-8000-000000000103",
+      "name": "Note: prepare done",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        464,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.host }}/api/jobs/{{ $json.jobId }}/step",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: 'n8n_prepare', status: 'done', detail: 'PDF подготовлен' }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "b2000001-0000-4000-8000-000000000010",
+      "name": "Шаг: prepare done",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "continueOnFail": true,
+      "notes": "SSE/прогресс: n8n_prepare = done"
+    },
+    {
+      "parameters": {
+        "content": "### Шаг: gemini running\nПрогресс: «идёт запрос к Gemini» (`n8n_gemini` running).",
+        "height": 150,
+        "width": 220,
+        "color": 6
+      },
+      "id": "b2000001-0000-4000-8000-000000000104",
+      "name": "Note: gemini running",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Подготовить PDF').item.json.host }}/api/jobs/{{ $('Подготовить PDF').item.json.jobId }}/step",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: 'n8n_gemini', status: 'running', detail: 'Запрос к Gemini' }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "b2000001-0000-4000-8000-000000000011",
+      "name": "Шаг: gemini running",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        704,
+        0
+      ],
+      "continueOnFail": true,
+      "notes": "SSE/прогресс: n8n_gemini = running"
+    },
+    {
+      "parameters": {
+        "content": "### Gemini на хосте\nГлавный вызов: `POST /api/internal/gemini`.\nPDF → структурированный **analysis** JSON (таймаут до 5 мин).",
+        "height": 180,
+        "color": 2
+      },
+      "id": "b2000001-0000-4000-8000-000000000105",
+      "name": "Note: Gemini",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        912,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Подготовить PDF').item.json.host }}/api/internal/gemini",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ pdfBase64: $('Подготовить PDF').item.json.pdfBase64, fileName: $('Подготовить PDF').item.json.fileName, jobId: $('Подготовить PDF').item.json.jobId }) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "b2000001-0000-4000-8000-000000000003",
+      "name": "Gemini на хосте",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        928,
+        0
+      ],
+      "continueOnFail": true,
+      "notes": "Host Gemini: PDF → analysis JSON"
+    },
+    {
+      "parameters": {
+        "content": "### Шаг: assemble\nПрогресс: «сборка ответа» (`n8n_assemble` running).",
+        "height": 150,
+        "width": 220,
+        "color": 6
+      },
+      "id": "b2000001-0000-4000-8000-000000000106",
+      "name": "Note: assemble",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Подготовить PDF').item.json.host }}/api/jobs/{{ $('Подготовить PDF').item.json.jobId }}/step",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: 'n8n_assemble', status: 'running', detail: 'Сборка ответа' }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "b2000001-0000-4000-8000-000000000012",
+      "name": "Шаг: assemble",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1152,
+        0
+      ],
+      "continueOnFail": true,
+      "notes": "SSE/прогресс: n8n_assemble = running"
+    },
+    {
+      "parameters": {
+        "content": "### Собрать ответ\nНормализует ответ Gemini в `{ ok, analysis }` или `{ ok:false, error }` для lab-api.",
+        "width": 220,
+        "color": 3
+      },
+      "id": "b2000001-0000-4000-8000-000000000107",
+      "name": "Note: Собрать ответ",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Подготовить PDF').first().json;\nconst res = $('Gemini на хосте').first().json;\nif (res.ok && res.analysis) {\n  return [{ json: { ok: true, fileName: res.fileName || prev.fileName, sizeMb: res.sizeMb || prev.sizeMb, model: res.model, analysis: res.analysis, via: 'n8n->host-gemini' } }];\n}\nreturn [{ json: { ok: false, error: res.error || res.message || JSON.stringify(res).slice(0,400), fileName: prev.fileName } }];"
+      },
+      "id": "b2000001-0000-4000-8000-000000000004",
+      "name": "Собрать ответ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        0
+      ],
+      "notes": "ok+analysis или error для webhook response"
+    },
+    {
+      "parameters": {
+        "content": "### Шаг: assemble done\nПрогресс: сборка завершена (`n8n_assemble` done).",
+        "height": 150,
+        "width": 220,
+        "color": 6
+      },
+      "id": "b2000001-0000-4000-8000-000000000108",
+      "name": "Note: assemble done",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1568,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Подготовить PDF').item.json.host }}/api/jobs/{{ $('Подготовить PDF').item.json.jobId }}/step",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: 'n8n_assemble', status: 'done' }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "b2000001-0000-4000-8000-000000000013",
+      "name": "Шаг: assemble done",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1584,
+        0
+      ],
+      "continueOnFail": true,
+      "notes": "SSE/прогресс: n8n_assemble = done"
+    },
+    {
+      "parameters": {
+        "content": "### Ответ\nJSON из **Собрать ответ** → обратно в **lab-api**.\nДальше lab-api сохраняет карточку (канал UI или Telegram).",
+        "height": 180,
+        "color": 5
+      },
+      "id": "b2000001-0000-4000-8000-000000000109",
+      "name": "Note: Ответ",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $('Собрать ответ').item.json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "b2000001-0000-4000-8000-000000000005",
+      "name": "Ответ",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1808,
+        0
+      ],
+      "notes": "Respond to Webhook: тело из «Собрать ответ»"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Подготовить PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Подготовить PDF": {
+      "main": [
+        [
+          {
+            "node": "Шаг: prepare done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Шаг: prepare done": {
+      "main": [
+        [
+          {
+            "node": "Шаг: gemini running",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Шаг: gemini running": {
+      "main": [
+        [
+          {
+            "node": "Gemini на хосте",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini на хосте": {
+      "main": [
+        [
+          {
+            "node": "Шаг: assemble",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Шаг: assemble": {
+      "main": [
+        [
+          {
+            "node": "Собрать ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Собрать ответ": {
+      "main": [
+        [
+          {
+            "node": "Шаг: assemble done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Шаг: assemble done": {
+      "main": [
+        [
+          {
+            "node": "Ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "84a818a1-e3e8-4fac-980d-c5c0829b53e7",
+  "activeVersionId": "55ae53e6-7f07-4d3c-8ab6-e6a10484de30",
+  "versionCounter": 6,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-07-24T04:57:57.834Z",
+      "createdAt": "2026-07-24T04:57:57.834Z",
+      "role": "workflow:owner",
+      "workflowId": "LabPdfWebhook001",
+      "projectId": "nWYPNiZqJ7E0yUch",
+      "project": {
+        "updatedAt": "2026-07-24T04:59:32.078Z",
+        "createdAt": "2026-07-24T04:57:30.275Z",
+        "id": "nWYPNiZqJ7E0yUch",
+        "name": "IGOR IVLEV <mediasevenlab@yandex.ru>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "7a78cc43-fbde-44c8-8e60-d0443106ad8e"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

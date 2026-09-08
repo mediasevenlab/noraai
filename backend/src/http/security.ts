@@ -7,8 +7,10 @@ import { errorResponse } from './errors'
 
 type AuthSecurityOptions = {
   bodyLimitBytes: number
+  mealBodyLimitBytes?: number
   rateLimitMax: number
   rateLimitWindowSeconds: number
+  mealRateLimitMax?: number
   trustProxy: boolean
   trustedProxyClientIpHeader?: string
   trustedProxyClientIpPosition?: 'first' | 'last'
@@ -19,24 +21,93 @@ type RateLimitBucket = {
   resetAt: number
 }
 
+type RateLimitOptions = AuthSecurityOptions & {
+  skipGet?: boolean
+  errorMessage?: string
+  skipPath?: (pathname: string) => boolean
+  matchPath?: (pathname: string) => boolean
+}
+
 const maxTrackedClients = 10_000
 
+export function isMealWritePath(pathname: string): boolean {
+  return /\/meals(?:\/|$)/.test(pathname)
+}
+
+export function isFavoritesPath(pathname: string): boolean {
+  return /\/favorites(?:\/|$)/.test(pathname)
+}
+
+export function isPlanLibraryPath(pathname: string): boolean {
+  return /\/plan-library(?:\/|$)/.test(pathname)
+}
+
+export function isAuthWriteBudgetExemptPath(pathname: string): boolean {
+  return isMealWritePath(pathname) || isFavoritesPath(pathname) || isPlanLibraryPath(pathname)
+}
+
+/** Catalog week clone posts ~21–28 meals; keep that off the login budget. */
+export function mealWriteRateLimitMax(accountRateLimitMax: number) {
+  return Math.max(accountRateLimitMax * 4, 120)
+}
+
+function payloadTooLargeLimit(maxSize: number): MiddlewareHandler {
+  return bodyLimit({
+    maxSize,
+    onError: (c) => c.json(errorResponse('PAYLOAD_TOO_LARGE', 'Request body is too large'), 413),
+  })
+}
+
 export function createAuthSecurity(options: AuthSecurityOptions): MiddlewareHandler[] {
+  const accountBodyLimit = payloadTooLargeLimit(options.bodyLimitBytes)
+  const mealBodyLimit = options.mealBodyLimitBytes != null
+    ? payloadTooLargeLimit(Math.max(options.bodyLimitBytes, options.mealBodyLimitBytes))
+    : accountBodyLimit
+
   return [
-    bodyLimit({
-      maxSize: options.bodyLimitBytes,
-      onError: (c) => c.json(errorResponse('PAYLOAD_TOO_LARGE', 'Request body is too large'), 413),
+    async (c, next) => {
+      if (options.mealBodyLimitBytes != null && isMealWritePath(c.req.path)) {
+        return mealBodyLimit(c, next)
+      }
+      return accountBodyLimit(c, next)
+    },
+    createRateLimit({
+      ...options,
+      skipGet: true,
+      skipPath: isAuthWriteBudgetExemptPath,
+      errorMessage: 'Too many authentication requests',
     }),
-    createAuthRateLimit(options),
+    createRateLimit({
+      ...options,
+      skipGet: true,
+      matchPath: isMealWritePath,
+      rateLimitMax: options.mealRateLimitMax ?? mealWriteRateLimitMax(options.rateLimitMax),
+      errorMessage: 'Too many meal requests',
+    }),
   ]
 }
 
-function createAuthRateLimit(options: AuthSecurityOptions): MiddlewareHandler {
+export function createInternalRateLimit(
+  options: Omit<AuthSecurityOptions, 'bodyLimitBytes'>,
+): MiddlewareHandler {
+  return createRateLimit({
+    ...options,
+    bodyLimitBytes: 1,
+    skipGet: false,
+    errorMessage: 'Too many internal requests',
+  })
+}
+
+function createRateLimit(options: RateLimitOptions): MiddlewareHandler {
   const buckets = new Map<string, RateLimitBucket>()
   const windowMs = options.rateLimitWindowSeconds * 1000
 
   return async (c, next) => {
-    if (c.req.method === 'OPTIONS' || c.req.method === 'GET') {
+    if (c.req.method === 'OPTIONS' || (options.skipGet !== false && c.req.method === 'GET')) {
+      await next()
+      return
+    }
+    if (options.skipPath?.(c.req.path) || (options.matchPath && !options.matchPath(c.req.path))) {
       await next()
       return
     }
@@ -67,7 +138,7 @@ function createAuthRateLimit(options: AuthSecurityOptions): MiddlewareHandler {
 
     if (bucket.count > options.rateLimitMax) {
       c.header('Retry-After', String(Math.max(1, Math.ceil((bucket.resetAt - now) / 1000))))
-      return c.json(errorResponse('RATE_LIMITED', 'Too many authentication requests'), 429)
+      return c.json(errorResponse('RATE_LIMITED', options.errorMessage ?? 'Too many authentication requests'), 429)
     }
 
     await next()

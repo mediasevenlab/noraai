@@ -1,0 +1,149 @@
+{
+  "updatedAt": "2026-08-28T09:00:00.000Z",
+  "createdAt": "2026-08-28T09:00:00.000Z",
+  "id": "MentorMealNotify001",
+  "name": "Наставник: новый приём подопечного",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Уведомление наставнику\nBackend сохраняет приём и решает, кому слать. Этот workflow только **доставляет** сообщение.\n\n**Путь:** `createMeal` → `POST /webhook/mentor-meal-notify` → Telegram `sendMessage`.\n\nСрабатывает, когда подопечный сам добавил приём (дневник **Добавить** или бот дневника). Рацион в план и копия из ленты **не** шлют webhook.\n\nПоля: `chatId`, `text`, плюс структурированные `menteeLabel`, `title`, КБЖУ — их можно позже развести в WhatsApp / другие мессенджеры параллельной веткой от «Подготовить вход».\n\nТокен бота: `$env.TELEGRAM_NOTIFY_BOT_TOKEN` (не хранить в нодах).",
+        "height": 340,
+        "width": 440,
+        "color": 6
+      },
+      "id": "mentor-notify-note",
+      "name": "Note: обзор",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-460, -80]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mentor-meal-notify",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "mentor-notify-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "mentor-meal-notify",
+      "notes": "JSON: chatId, text, menteeLabel?, title?, kcal?…"
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = items[0].json || {};\nconst body = j.body || j;\nconst chatId = String(body.chatId || '').trim();\nconst text = String(body.text || '').trim();\nif (!chatId) throw new Error('chatId required');\nif (!text) throw new Error('text required');\nconst botToken = $env.TELEGRAM_NOTIFY_BOT_TOKEN || '';\nif (!botToken) throw new Error('TELEGRAM_NOTIFY_BOT_TOKEN is not set');\nreturn [{\n  json: {\n    chatId,\n    text,\n    botToken,\n    menteeLabel: body.menteeLabel || '',\n    title: body.title || '',\n  }\n}];"
+      },
+      "id": "mentor-notify-prepare",
+      "name": "Подготовить вход",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $json.botToken }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $json.chatId, text: $json.text, disable_web_page_preview: true }) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "mentor-notify-telegram",
+      "name": "Telegram sendMessage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const res = items[0].json;\nif (res.ok === true) {\n  return [{ json: { ok: true, via: 'n8n-telegram-notify' } }];\n}\nreturn [{ json: { ok: false, error: res.description || JSON.stringify(res).slice(0, 400) } }];"
+      },
+      "id": "mentor-notify-assemble",
+      "name": "Собрать ответ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "mentor-notify-respond",
+      "name": "Ответ",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1020, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Подготовить вход",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Подготовить вход": {
+      "main": [
+        [
+          {
+            "node": "Telegram sendMessage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram sendMessage": {
+      "main": [
+        [
+          {
+            "node": "Собрать ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Собрать ответ": {
+      "main": [
+        [
+          {
+            "node": "Ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "mentor-meal-notify-v1",
+  "activeVersionId": "mentor-meal-notify-v1",
+  "versionCounter": 1,
+  "triggerCount": 1,
+  "tags": []
+}

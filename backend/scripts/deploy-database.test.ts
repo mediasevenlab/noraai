@@ -39,7 +39,19 @@ describe('database deployment command', () => {
       dependenciesRecording(calls),
     )
 
-    expect(calls).toEqual(['migrate', 'create', 'assert', 'disconnect', 'log'])
+    expect(calls).toEqual([
+      'migrate',
+      'create',
+      'backfill-meal-client-keys',
+      'log',
+      'backfill-meal-versions',
+      'log',
+      'backfill',
+      'log',
+      'assert',
+      'disconnect',
+      'log',
+    ])
   })
 
   test('bootstraps paired strong credentials before verifying the administrator', async () => {
@@ -56,10 +68,41 @@ describe('database deployment command', () => {
     expect(calls).toEqual([
       'migrate',
       'create',
+      'backfill-meal-client-keys',
+      'log',
+      'backfill-meal-versions',
+      'log',
       'bootstrap:admin@example.com',
+      'backfill',
+      'log',
       'assert',
       'disconnect',
       'log',
+    ])
+  })
+
+  test('fails fast on a meal client-key conflict and still disconnects', async () => {
+    const calls: string[] = []
+    const dependencies = dependenciesRecording(calls)
+
+    await expect(
+      deployDatabase(
+        { DATABASE_URL: databaseUrl },
+        {
+          ...dependencies,
+          async backfillMealClientKeys() {
+            calls.push('backfill-meal-client-keys')
+            throw new Error('meal clientKey conflict')
+          },
+        },
+      ),
+    ).rejects.toThrow('meal clientKey conflict')
+
+    expect(calls).toEqual([
+      'migrate',
+      'create',
+      'backfill-meal-client-keys',
+      'disconnect',
     ])
   })
 })
@@ -69,6 +112,15 @@ const databaseUrl = 'postgresql://unused:unused@127.0.0.1:1/unused'
 const unusedDependencies = {
   async assertAdmin() {
     throw new Error('assertAdmin must not run')
+  },
+  async backfillQuestionnaires() {
+    throw new Error('backfillQuestionnaires must not run')
+  },
+  async backfillMealClientKeys() {
+    throw new Error('backfillMealClientKeys must not run')
+  },
+  async backfillMealVersions() {
+    throw new Error('backfillMealVersions must not run')
   },
   async bootstrap() {
     throw new Error('bootstrap must not run')
@@ -94,6 +146,18 @@ function dependenciesRecording(calls: string[]) {
   return {
     async assertAdmin() {
       calls.push('assert')
+    },
+    async backfillQuestionnaires() {
+      calls.push('backfill')
+      return { scanned: 0, created: 0, skipped: 0 }
+    },
+    async backfillMealClientKeys() {
+      calls.push('backfill-meal-client-keys')
+      return { migrated: 0 }
+    },
+    async backfillMealVersions() {
+      calls.push('backfill-meal-versions')
+      return { scanned: 0, updated: 0 }
     },
     async bootstrap(
       _db: DbClient,

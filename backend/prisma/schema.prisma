@@ -9,17 +9,184 @@ datasource db {
 
 model User {
   id           String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  publicId     Int           @unique @default(autoincrement()) @map("public_id")
   email        String        @unique
   passwordHash String?       @map("password_hash")
   displayName  String?       @map("display_name")
+  nickname     String?       @unique(map: "users_nickname_key")
+  telegramUsername String?   @unique(map: "users_telegram_username_key") @map("telegram_username")
+  telegramPhone    String?   @unique(map: "users_telegram_phone_key") @map("telegram_phone")
+  telegramChatId   String?   @unique(map: "users_telegram_chat_id_key") @map("telegram_chat_id")
   role         UserRole      @default(user)
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
+  referredByUserId    String?            @map("referred_by_user_id") @db.Uuid
+  referredBy          User?              @relation("UserReferrals", fields: [referredByUserId], references: [id], onDelete: SetNull, map: "users_referred_by_user_id_fkey")
+  referrals           User[]             @relation("UserReferrals")
   sessions            AuthSession[]
   passwordResetTokens PasswordResetToken[]
+  mentorAssignments   MentorAssignment[] @relation("MentorAssignments")
+  menteeAssignment    MentorAssignment?   @relation("MenteeAssignment")
+  questionnaireProfile UserQuestionnaireProfile?
+  meals               Meal[]
+  mealLikes           MealLike[]
+  mentorMealViewCursors MentorMenteeMealCursor[] @relation("MentorMealViewCursors")
+  menteeMealViewCursors MentorMenteeMealCursor[] @relation("MenteeMealViewCursors")
+  mentorMealViews       MentorMenteeMealView[]   @relation("MentorMealViews")
+  menteeMealViews       MentorMenteeMealView[]   @relation("MenteeMealViews")
+  planAssignments     PlanAssignment[]
+  savedItems          UserSavedItems?
+  planLibrary         UserPlanLibrary?
+  mentorPlans         MentorPlan[]
+  telegramLinkChallenges TelegramLinkChallenge[]
 
   @@index([role], map: "users_role_idx")
+  @@index([referredByUserId], map: "users_referred_by_user_id_idx")
   @@map("users")
+}
+
+enum MealSource {
+  telegram
+  manual
+
+  @@map("meal_source")
+}
+
+model Meal {
+  id               String     @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId           String     @map("user_id") @db.Uuid
+  title            String
+  ingredients      String     @default("")
+  category         String
+  mealSlot         String     @map("meal_slot")
+  recordedAt       DateTime   @map("recorded_at")
+  kcal             Int
+  protein          Int
+  fat              Int
+  carbs            Int
+  portionItems     Json       @default("[]") @map("portion_items")
+  clientComment    String     @default("") @map("client_comment")
+  assumptions      Json       @default("[]")
+  micronutrients   Json       @default("[]")
+  versions         Json       @default("[]")
+  activeVersionId  String?    @map("active_version_id") @db.Uuid
+  source           MealSource @default(telegram)
+  telegramUpdateId String?    @unique(map: "meals_telegram_update_id_key") @map("telegram_update_id")
+  clientKey        String?    @map("client_key")
+  imageKey         String?    @map("image_key")
+  imageMime        String?    @map("image_mime")
+  sharedAt         DateTime?  @map("shared_at")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade, map: "meals_user_id_fkey")
+  likes            MealLike[]
+  mentorViews      MentorMenteeMealView[]
+
+  @@index([userId, recordedAt], map: "meals_user_id_recorded_at_idx")
+  @@index([sharedAt], map: "meals_shared_at_idx")
+  @@unique([userId, clientKey], map: "meals_user_id_client_key_key")
+  @@map("meals")
+}
+
+model MealLike {
+  mealId    String   @map("meal_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  meal      Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade, map: "meal_likes_meal_id_fkey")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "meal_likes_user_id_fkey")
+
+  @@id([mealId, userId], map: "meal_likes_pkey")
+  @@index([mealId], map: "meal_likes_meal_id_idx")
+  @@map("meal_likes")
+}
+
+model TelegramPollerCursor {
+  id        String   @id
+  offset    BigInt   @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("telegram_poller_cursors")
+}
+
+model MentorPlan {
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  mentorId    String   @map("mentor_id") @db.Uuid
+  title       String
+  description String   @default("")
+  goal        String
+  source      String   @default("План наставника")
+  image       String   @default("")
+  days        Int      @default(7)
+  mealsPerDay Int      @map("meals_per_day")
+  meals       Json
+  kcal        Int
+  protein     Int
+  fat         Int
+  carbs       Int
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  mentor      User     @relation(fields: [mentorId], references: [id], onDelete: Cascade, map: "mentor_plans_mentor_id_fkey")
+
+  @@index([mentorId, updatedAt], map: "mentor_plans_mentor_id_updated_at_idx")
+  @@map("mentor_plans")
+}
+
+model TelegramLinkChallenge {
+  id              String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  codeHash        String    @unique(map: "telegram_link_challenges_code_hash_key") @map("code_hash")
+  claimedUsername String?   @map("claimed_username")
+  claimedPhone    String?   @map("claimed_phone")
+  expiresAt       DateTime  @map("expires_at")
+  consumedAt      DateTime? @map("consumed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "telegram_link_challenges_user_id_fkey")
+
+  @@index([userId, createdAt], map: "telegram_link_challenges_user_id_created_at_idx")
+  @@map("telegram_link_challenges")
+}
+
+model PlanAssignment {
+  userId      String   @id @map("user_id") @db.Uuid
+  planIds     Json     @default("[]") @map("plan_ids")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "plan_assignments_user_id_fkey")
+
+  @@map("plan_assignments")
+}
+
+model UserSavedItems {
+  userId    String   @id @map("user_id") @db.Uuid
+  mealIds   Json     @default("[]") @map("meal_ids")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "user_saved_items_user_id_fkey")
+
+  @@map("user_saved_items")
+}
+
+model UserPlanLibrary {
+  userId          String   @id @map("user_id") @db.Uuid
+  authoredPlans   Json     @default("[]") @map("authored_plans")
+  savedPlanIds    Json     @default("[]") @map("saved_plan_ids")
+  selectedPlanIds Json     @default("[]") @map("selected_plan_ids")
+  planStarts      Json     @default("[]") @map("plan_starts")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "user_plan_libraries_user_id_fkey")
+
+  @@map("user_plan_libraries")
+}
+
+model UserQuestionnaireProfile {
+  userId      String    @id @map("user_id") @db.Uuid
+  answers     Json
+  version     Int       @default(1)
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "user_questionnaire_profiles_user_id_fkey")
+
+  @@map("user_questionnaire_profiles")
 }
 
 model PasswordResetToken {
@@ -39,8 +206,46 @@ model PasswordResetToken {
 enum UserRole {
   user
   admin
+  mentor
 
   @@map("user_role")
+}
+
+model MentorAssignment {
+  menteeId  String   @id @map("mentee_id") @db.Uuid
+  mentorId  String   @map("mentor_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  mentor    User     @relation("MentorAssignments", fields: [mentorId], references: [id], onDelete: Cascade, map: "mentor_assignments_mentor_id_fkey")
+  mentee    User     @relation("MenteeAssignment", fields: [menteeId], references: [id], onDelete: Cascade, map: "mentor_assignments_mentee_id_fkey")
+
+  @@index([mentorId, createdAt], map: "mentor_assignments_mentor_id_created_at_idx")
+  @@map("mentor_assignments")
+}
+
+model MentorMenteeMealCursor {
+  mentorId String   @map("mentor_id") @db.Uuid
+  menteeId String   @map("mentee_id") @db.Uuid
+  viewedAt DateTime @map("viewed_at")
+  mentor   User     @relation("MentorMealViewCursors", fields: [mentorId], references: [id], onDelete: Cascade, map: "mentor_mentee_meal_cursors_mentor_id_fkey")
+  mentee   User     @relation("MenteeMealViewCursors", fields: [menteeId], references: [id], onDelete: Cascade, map: "mentor_mentee_meal_cursors_mentee_id_fkey")
+
+  @@id([mentorId, menteeId], map: "mentor_mentee_meal_cursors_pkey")
+  @@index([mentorId], map: "mentor_mentee_meal_cursors_mentor_id_idx")
+  @@map("mentor_mentee_meal_cursors")
+}
+
+model MentorMenteeMealView {
+  mentorId String   @map("mentor_id") @db.Uuid
+  menteeId String   @map("mentee_id") @db.Uuid
+  mealId   String   @map("meal_id") @db.Uuid
+  viewedAt DateTime @default(now()) @map("viewed_at")
+  mentor   User     @relation("MentorMealViews", fields: [mentorId], references: [id], onDelete: Cascade, map: "mentor_mentee_meal_views_mentor_id_fkey")
+  mentee   User     @relation("MenteeMealViews", fields: [menteeId], references: [id], onDelete: Cascade, map: "mentor_mentee_meal_views_mentee_id_fkey")
+  meal     Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade, map: "mentor_mentee_meal_views_meal_id_fkey")
+
+  @@id([mentorId, mealId], map: "mentor_mentee_meal_views_pkey")
+  @@index([mentorId, menteeId], map: "mentor_mentee_meal_views_mentor_id_mentee_id_idx")
+  @@map("mentor_mentee_meal_views")
 }
 
 model AuthSession {

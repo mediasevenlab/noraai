@@ -12,6 +12,23 @@ export function toFieldErrors(issues: z.ZodIssue[]): FieldErrors {
   }, {})
 }
 
+export function toRussianAuthFieldErrors(issues: z.ZodIssue[]): FieldErrors {
+  const messages: Record<FieldName, string> = {
+    confirmPassword: 'Пароли не совпадают.',
+    displayName: 'Имя должно содержать от 2 до 80 символов.',
+    email: 'Введите корректный адрес электронной почты.',
+    password: 'Пароль должен содержать от 8 до 128 символов.',
+  }
+
+  return issues.reduce<FieldErrors>((errors, issue) => {
+    const field = issue.path[0]
+    if (!isFieldName(field)) return errors
+
+    errors[field] = [...(errors[field] ?? []), { message: messages[field] }]
+    return errors
+  }, {})
+}
+
 export function clearFieldError(
   field: FieldName,
   setFieldErrors: (updater: (errors: FieldErrors) => FieldErrors) => void,

@@ -1,5 +1,4 @@
-import { Search01Icon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+import { MoreHorizontalIcon, SearchIcon } from 'lucide-react'
 import {
   userRoleSchema,
   type AdminUserSummary,
@@ -9,6 +8,7 @@ import {
 import { useState, type FormEvent } from 'react'
 
 import { DataTableFrame } from '@/components/dashboard'
+import { NoraIconButton, NoraSearch } from '@/components/nora/primitives'
 import {
   Alert,
   AlertAction,
@@ -17,16 +17,17 @@ import {
 } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty'
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from '@/components/ui/input-group'
 import {
   Select,
   SelectContent,
@@ -43,16 +44,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Typography } from '@/components/typography'
 import {
   adminUsersPagination,
   adminUsersViewState,
+  canDeleteAdminUser,
   roleMutationFeedback,
 } from './model'
 import {
   useAdminUsersQuery,
+  useDeleteAdminUserMutation,
   useUpdateAdminUserRoleMutation,
 } from './queries'
+import { DeleteUserDialog } from './DeleteUserDialog'
 import { RoleChangeDialog } from './RoleChangeDialog'
 
 type PendingRoleChange = {
@@ -64,19 +67,21 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
   const [draftQuery, setDraftQuery] = useState('')
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
+  const [pendingDelete, setPendingDelete] = useState<AdminUserSummary | null>(null)
   const [pendingRole, setPendingRole] = useState<PendingRoleChange | null>(null)
   const usersQuery = useAdminUsersQuery({
     q: query || undefined,
     page,
     pageSize: 20,
   })
+  const deleteMutation = useDeleteAdminUserMutation()
   const roleMutation = useUpdateAdminUserRoleMutation()
+  const mutationFeedback = roleMutationFeedback(roleMutation)
   const viewState = adminUsersViewState({
     isError: usersQuery.isError,
     isPending: usersQuery.isPending,
     itemCount: usersQuery.data?.items.length,
   })
-  const mutationFeedback = roleMutationFeedback(roleMutation)
   const pagination = usersQuery.data
     ? adminUsersPagination(usersQuery.data)
     : null
@@ -95,51 +100,80 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
     )
   }
 
+  const confirmDelete = () => {
+    if (!pendingDelete) return
+    deleteMutation.mutate(
+      { userId: pendingDelete.id },
+      {
+        onSuccess: () => {
+          if (usersQuery.data?.items.length === 1 && page > 1) {
+            setPage((current) => Math.max(1, current - 1))
+          }
+          setPendingDelete(null)
+        },
+      },
+    )
+  }
+
+  const shownCount = usersQuery.data?.items.length
+  const description = usersQuery.data
+    ? `${shownCount} показано`
+    : viewState === 'error'
+      ? 'Недоступно'
+      : 'Загрузка…'
+
   const summary = usersQuery.data
-    ? `Page ${usersQuery.data.page} of ${pagination?.totalPages ?? 1} · ${usersQuery.data.total} users${
+    ? `Страница ${usersQuery.data.page} из ${pagination?.totalPages ?? 1} · ${usersQuery.data.total} пользователей${
         pagination?.wasBounded
-          ? ` · First ${pagination.reachableUsers} matches available`
+          ? ` · Доступны первые ${pagination.reachableUsers} совпадений`
           : ''
       }`
     : viewState === 'error'
-      ? 'Users unavailable'
-      : 'Loading users'
+      ? 'Пользователи недоступны'
+      : 'Загрузка пользователей'
 
   return (
     <>
       <div className="grid gap-4">
         {mutationFeedback === 'success' && roleMutation.isSuccess && (
           <Alert>
-            <AlertTitle>Role changed</AlertTitle>
+            <AlertTitle>Роль изменена</AlertTitle>
             <AlertDescription>
-              {roleMutation.data.user.email} is now {roleMutation.data.user.role}.
-              Their previous sessions have been revoked.
+              {roleMutation.data.user.email} теперь {roleMutation.data.user.role}.
+              Предыдущие сессии отозваны.
+            </AlertDescription>
+          </Alert>
+        )}
+        {deleteMutation.isSuccess && (
+          <Alert>
+            <AlertTitle>Пользователь удалён</AlertTitle>
+            <AlertDescription>
+              Аккаунт {deleteMutation.data.user.email} и связанные с ним сессии удалены.
             </AlertDescription>
           </Alert>
         )}
 
         <DataTableFrame
-          description="Role changes revoke the affected user’s active sessions."
+          description={description}
           nextDisabled={!pagination?.canGoNext}
           onNext={() => setPage((current) => current + 1)}
           onPrevious={() => setPage((current) => Math.max(1, current - 1))}
           previousDisabled={page <= 1}
           summary={summary}
-          title="User directory"
+          title="Каталог пользователей"
           toolbar={
-            <form className="flex flex-col gap-2 sm:flex-row" onSubmit={submitSearch}>
-              <InputGroup>
-                <InputGroupAddon>
-                  <HugeiconsIcon aria-hidden icon={Search01Icon} strokeWidth={2} />
-                </InputGroupAddon>
-                <InputGroupInput
-                  aria-label="Search users"
-                  onChange={(event) => setDraftQuery(event.target.value)}
-                  placeholder="Search by email or name"
-                  value={draftQuery}
-                />
-              </InputGroup>
-              <Button type="submit">Search</Button>
+            <form className="flex items-center gap-2" onSubmit={submitSearch}>
+              <NoraSearch
+                aria-label="Поиск пользователей"
+                className="w-[220px]"
+                icon={<SearchIcon />}
+                onChange={(event) => setDraftQuery(event.target.value)}
+                placeholder="Поиск пользователей…"
+                value={draftQuery}
+              />
+              <Button type="submit" variant="outline">
+                Найти
+              </Button>
             </form>
           }
         >
@@ -152,69 +186,116 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
           )}
           {viewState === 'empty' && <DirectoryEmpty hasQuery={query.length > 0} />}
           {viewState === 'ready' && usersQuery.data && (
-            <Table className="block sm:table">
-              <TableHeader className="hidden sm:table-header-group">
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Created</TableHead>
+            <Table className="min-w-[720px] text-xs">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="px-3.5 text-xs font-medium text-[var(--nora-text)]">
+                    Пользователь
+                  </TableHead>
+                  <TableHead className="text-xs font-medium text-[var(--nora-text)]">
+                    Никнейм
+                  </TableHead>
+                  <TableHead className="text-xs font-medium text-[var(--nora-text)]">
+                    ID
+                  </TableHead>
+                  <TableHead className="text-xs font-medium text-[var(--nora-text)]">
+                    Роль
+                  </TableHead>
+                  <TableHead className="text-xs font-medium text-[var(--nora-text)]">
+                    Создан
+                  </TableHead>
+                  <TableHead className="w-10 px-2" />
                 </TableRow>
               </TableHeader>
-              <TableBody className="grid gap-3 sm:table-row-group">
-                {usersQuery.data.items.map((user) => (
-                  <TableRow
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border-0 p-4 ring-1 ring-border sm:table-row sm:rounded-none sm:border-b sm:p-0 sm:ring-0"
-                    key={user.id}
-                  >
-                    <TableCell className="min-w-0 p-0 whitespace-normal sm:p-3 sm:whitespace-nowrap">
-                      <div className="grid">
-                        <Typography variant="bodySmMedium">
-                          {user.displayName ?? user.email}
-                        </Typography>
-                        <Typography className="break-all" variant="caption" tone="muted">
-                          {user.email}
-                        </Typography>
-                      </div>
-                    </TableCell>
-                    <TableCell className="p-0 sm:p-3">
-                      <Select
-                        disabled={roleMutation.isPending}
-                        onValueChange={(value) => {
-                          const parsedRole = userRoleSchema.safeParse(value)
-                          if (parsedRole.success && parsedRole.data !== user.role) {
-                            roleMutation.reset()
-                            setPendingRole({ role: parsedRole.data, user })
-                          }
-                        }}
-                        value={user.role}
-                      >
-                        <SelectTrigger
-                          aria-label={`Role for ${user.email}`}
-                          className="w-28 capitalize"
+              <TableBody>
+                {usersQuery.data.items.map((user) => {
+                  const canDelete = canDeleteAdminUser(currentUser.id, user)
+                  const busy = deleteMutation.isPending
+                  return (
+                    <TableRow
+                      className="even:bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:bg-[var(--nora-row-hover)]"
+                      key={user.id}
+                    >
+                      <TableCell className="h-auto px-3.5 py-2.5 whitespace-normal">
+                        <div className="grid min-w-0 gap-1">
+                          <span className="truncate text-xs font-medium text-[var(--nora-text)]">
+                            {user.displayName ?? user.email}
+                          </span>
+                          <span className="truncate text-[11px] text-[var(--nora-text-tertiary)]">
+                            {user.email}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="h-auto py-2.5 text-xs font-medium text-[var(--nora-text-secondary)]">
+                        {user.nickname ?? '—'}
+                      </TableCell>
+                      <TableCell className="h-auto py-2.5 text-xs font-medium text-[var(--nora-text-secondary)]">
+                        {user.publicId}
+                      </TableCell>
+                      <TableCell className="h-auto py-2.5">
+                        <Select
+                          disabled={roleMutation.isPending || deleteMutation.isPending}
+                          onValueChange={(value) => {
+                            const parsedRole = userRoleSchema.safeParse(value)
+                            if (parsedRole.success && parsedRole.data !== user.role) {
+                              roleMutation.reset()
+                              setPendingRole({ role: parsedRole.data, user })
+                            }
+                          }}
+                          value={user.role}
                         >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem
-                            disabled={user.id === currentUser.id && user.role === 'admin'}
-                            value="user"
+                          <SelectTrigger
+                            aria-label={`Роль для ${user.email}`}
+                            className="h-[var(--nora-control-h,30px)] w-[132px] text-xs"
+                            size="sm"
                           >
-                            User
-                          </SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="col-span-2 flex items-center justify-between border-t p-0 pt-3 tabular-nums sm:table-cell sm:border-0 sm:p-3">
-                      <Typography className="sm:hidden" variant="caption" tone="muted">
-                        Created
-                      </Typography>
-                      <Typography as="span" variant="bodySm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem
+                              disabled={user.id === currentUser.id && user.role === 'admin'}
+                              value="user"
+                            >
+                              Пользователь
+                            </SelectItem>
+                            <SelectItem value="mentor">Наставник</SelectItem>
+                            <SelectItem value="admin">Администратор</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="h-auto py-2.5 text-xs font-medium text-[var(--nora-text-secondary)]">
                         {new Date(user.createdAt).toLocaleDateString()}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className="h-auto px-2 py-2.5">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <NoraIconButton
+                                aria-label={`Действия для ${user.email}`}
+                                disabled={busy}
+                              />
+                            }
+                          >
+                            <MoreHorizontalIcon />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem
+                              disabled={!canDelete}
+                              onClick={() => {
+                                if (!canDelete) return
+                                deleteMutation.reset()
+                                setPendingDelete(user)
+                              }}
+                              variant="destructive"
+                            >
+                              Удалить
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}
@@ -231,16 +312,27 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
         onConfirm={confirmRoleChange}
         pendingChange={pendingRole}
       />
+
+      <DeleteUserDialog
+        error={deleteMutation.isError ? deleteMutation.error : null}
+        isPending={deleteMutation.isPending}
+        onCancel={() => {
+          deleteMutation.reset()
+          setPendingDelete(null)
+        }}
+        onConfirm={confirmDelete}
+        pendingUser={pendingDelete}
+      />
     </>
   )
 }
 
 function DirectoryLoading() {
   return (
-    <div aria-label="Loading users" className="grid gap-3 py-2" role="status">
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-12 w-full" />
-      <Skeleton className="h-12 w-full" />
+    <div aria-label="Загрузка пользователей" className="grid gap-3 p-3.5" role="status">
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
     </div>
   )
 }
@@ -253,29 +345,33 @@ function DirectoryError({
   onRetry: () => void
 }) {
   return (
-    <Alert variant="destructive">
-      <AlertTitle>Users are unavailable</AlertTitle>
-      <AlertDescription>{error.message}</AlertDescription>
-      <AlertAction>
-        <Button onClick={onRetry} size="sm" type="button" variant="outline">
-          Try again
-        </Button>
-      </AlertAction>
-    </Alert>
+    <div className="p-3.5">
+      <Alert variant="destructive">
+        <AlertTitle>Пользователи недоступны</AlertTitle>
+        <AlertDescription>{error.message}</AlertDescription>
+        <AlertAction>
+          <Button onClick={onRetry} size="sm" type="button" variant="outline">
+            Повторить
+          </Button>
+        </AlertAction>
+      </Alert>
+    </div>
   )
 }
 
 function DirectoryEmpty({ hasQuery }: { hasQuery: boolean }) {
   return (
-    <Empty>
-      <EmptyHeader>
-        <EmptyTitle>No users found</EmptyTitle>
-        <EmptyDescription>
-          {hasQuery
-            ? 'Try a different name or email.'
-            : 'No accounts are available yet.'}
-        </EmptyDescription>
-      </EmptyHeader>
-    </Empty>
+    <div className="p-3.5">
+      <Empty>
+        <EmptyHeader>
+          <EmptyTitle>Пользователи не найдены</EmptyTitle>
+          <EmptyDescription>
+            {hasQuery
+              ? 'Попробуйте другое имя или email.'
+              : 'Пока нет доступных аккаунтов.'}
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    </div>
   )
 }

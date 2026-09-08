@@ -3,10 +3,8 @@ import { useId, useState, type FormEvent } from 'react'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { Typography } from '@/components/typography'
 import { useUpdateProfileMutation } from './queries'
 
 export function ProfilePanel({ user }: { user: UserDto }) {
@@ -18,82 +16,98 @@ export function ProfilePanel({ user }: { user: UserDto }) {
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const normalized = displayName.trim()
-    mutation.mutate(normalized === '' ? null : normalized, {
+    mutation.mutate({ displayName: normalized === '' ? null : normalized }, {
       onSuccess: (response) => setDisplayName(response.user.displayName ?? ''),
     })
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <Typography as="h2" variant="h6">
-          Profile details
-        </Typography>
-        <CardDescription>
-          Update the name shown throughout your workspace. Your email is managed separately.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="grid gap-5" noValidate onSubmit={submit}>
-          <FieldGroup>
-            <Field data-invalid={displayNameInvalid}>
-              <FieldLabel htmlFor="profile-display-name">Display name</FieldLabel>
-              <Input
-                aria-describedby={displayNameInvalid ? displayNameErrorId : undefined}
-                aria-invalid={displayNameInvalid}
-                autoComplete="name"
-                disabled={mutation.isPending}
-                id="profile-display-name"
-                maxLength={80}
-                onChange={(event) => {
-                  setDisplayName(event.target.value)
-                  mutation.reset()
-                }}
-                placeholder="Your name"
-                value={displayName}
-              />
-              <FieldDescription>Leave empty to use your email instead.</FieldDescription>
-              {displayNameInvalid && (
-                <FieldError id={displayNameErrorId}>
-                  Display name must be at least 2 characters.
-                </FieldError>
-              )}
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="profile-email">Email</FieldLabel>
-              <Input
-                aria-readonly="true"
-                id="profile-email"
-                readOnly
-                value={user.email}
-              />
-              <FieldDescription>Email changes are not enabled in this template.</FieldDescription>
-            </Field>
-          </FieldGroup>
+    <div className="flex flex-col overflow-hidden rounded-[var(--nora-radius-lg)] bg-[var(--dash-card-bg,var(--nora-panel))] shadow-[inset_0_0_0_1px_var(--dash-card-ring,var(--nora-border))]">
+      <div className="border-b border-[var(--nora-divider)] p-3.5">
+        <h2 className="text-[13px] font-semibold text-[var(--nora-text)]">
+          Данные профиля
+        </h2>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--nora-text-tertiary)]">
+          Обновите имя, которое видно в рабочей области. Email меняется отдельно.
+        </p>
+      </div>
 
-          {mutation.isError && (
-            <Alert variant="destructive">
-              <AlertTitle>Profile was not saved</AlertTitle>
-              <AlertDescription>{mutation.error.message}</AlertDescription>
-            </Alert>
-          )}
-          {mutation.isSuccess && (
-            <Alert>
-              <AlertTitle>Profile saved</AlertTitle>
-              <AlertDescription>Your display name is up to date.</AlertDescription>
-            </Alert>
-          )}
-
-          <div>
-            <Button
-              disabled={mutation.isPending || displayNameInvalid}
-              type="submit"
+      <form className="grid gap-3.5 p-3.5" noValidate onSubmit={submit}>
+        <FieldGroup>
+          <Field data-invalid={displayNameInvalid}>
+            <FieldLabel
+              className="font-normal text-[var(--nora-text-secondary)]"
+              htmlFor="profile-display-name"
             >
-              {mutation.isPending ? 'Saving…' : 'Save profile'}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+              Отображаемое имя
+            </FieldLabel>
+            <Input
+              aria-describedby={displayNameInvalid ? displayNameErrorId : undefined}
+              aria-invalid={displayNameInvalid}
+              autoComplete="name"
+              className="font-normal"
+              disabled={mutation.isPending}
+              id="profile-display-name"
+              maxLength={80}
+              onChange={(event) => {
+                setDisplayName(event.target.value)
+                mutation.reset()
+              }}
+              placeholder="Ваше имя"
+              value={displayName}
+            />
+            <FieldDescription className="font-normal">
+              Оставьте пустым, чтобы использовать email.
+            </FieldDescription>
+            {displayNameInvalid && (
+              <FieldError id={displayNameErrorId}>
+                Имя должно содержать не меньше 2 символов.
+              </FieldError>
+            )}
+          </Field>
+          <Field>
+            <FieldLabel
+              className="font-normal text-[var(--nora-text-secondary)]"
+              htmlFor="profile-email"
+            >
+              Email
+            </FieldLabel>
+            <Input
+              aria-readonly="true"
+              className="font-normal"
+              id="profile-email"
+              readOnly
+              value={user.email}
+            />
+            <FieldDescription className="font-normal">
+              Смена email в этом шаблоне пока недоступна.
+            </FieldDescription>
+          </Field>
+        </FieldGroup>
+
+        {mutation.isError && (
+          <Alert variant="destructive">
+            <AlertTitle>Профиль не сохранён</AlertTitle>
+            <AlertDescription>{mutation.error.message}</AlertDescription>
+          </Alert>
+        )}
+        {mutation.isSuccess && (
+          <Alert>
+            <AlertTitle>Профиль сохранён</AlertTitle>
+            <AlertDescription>Отображаемое имя обновлено.</AlertDescription>
+          </Alert>
+        )}
+
+        <div>
+          <Button
+            className="font-normal"
+            disabled={mutation.isPending || displayNameInvalid}
+            type="submit"
+          >
+            {mutation.isPending ? 'Сохраняем…' : 'Сохранить профиль'}
+          </Button>
+        </div>
+      </form>
+    </div>
   )
 }

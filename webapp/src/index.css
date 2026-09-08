@@ -1,13 +1,57 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/figtree";
+@import "./styles/nora-ui.css";
+@import "./styles/modal-motion.css";
+@import "./styles/card-hover.css";
+@import "./styles/card-radius.css";
+@import "./styles/card-shadow.css";
+@import "./styles/planned-cover-wash.css";
+@import "./styles/planned-cover-blur.css";
+@import "./styles/composer-press.css";
+
+@font-face {
+    font-family: "Inter Variable";
+    src: url("/fonts/Inter-Variable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Inter Variable";
+    src: url("/fonts/Inter-Variable-Italic.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: italic;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Inter";
+    src: url("/fonts/Inter-Variable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Inter";
+    src: url("/fonts/Inter-Variable-Italic.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: italic;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Inter Display";
+    src: url("/fonts/InterDisplay-SemiBold.woff2") format("woff2");
+    font-weight: 400 900;
+    font-style: normal;
+    font-display: swap;
+}
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-heading: var(--font-sans);
-    --font-sans: 'Figtree Variable', sans-serif;
+    --font-heading: "Inter Display", "Inter Variable", "Inter", system-ui, sans-serif;
+    --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
+    --font-mono: "Input Mono", "SF Mono", Menlo, Consolas, monospace;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,73 +92,132 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+/* ------------------------------------------------------------------
+   Nora UI: единый источник цвета — токены --nora-* (nora-ui.css).
+   shadcn-переменные ВЫВОДЯТСЯ из nora-переменных, а не дублируют их.
+   Схема задаётся классом scheme-* на <html> (NoraSchemeSync).
+   `.dark` от next-themes нужен для Tailwind `dark:` — цвета не
+   переопределяет, их меняет scheme-editor-dark / light через --nora-*.
+   ------------------------------------------------------------------ */
+
+/*
+  Capacitor SystemBars writes --safe-area-inset-* on <html>. Android WebView
+  often leaves env(safe-area-inset-*) at 0, so the hybrid shell uses the
+  custom properties (with a cutout-sized fallback until native insets land).
+*/
+html {
+  --app-safe-top: env(safe-area-inset-top, 0px);
+  --app-safe-right: env(safe-area-inset-right, 0px);
+  --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --app-safe-left: env(safe-area-inset-left, 0px);
 }
 
-.dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+html[data-hybrid] {
+  --safe-area-inset-top: 48px;
+  --safe-area-inset-right: 0px;
+  --safe-area-inset-bottom: 24px;
+  --safe-area-inset-left: 0px;
+  --app-safe-top: var(--safe-area-inset-top);
+  --app-safe-right: var(--safe-area-inset-right);
+  --app-safe-bottom: var(--safe-area-inset-bottom);
+  --app-safe-left: var(--safe-area-inset-left);
+  background: var(--nora-canvas, var(--background));
+}
+
+html[data-hybrid] #root {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  padding-top: var(--app-safe-top);
+  padding-right: var(--app-safe-right);
+  padding-bottom: var(--app-safe-bottom);
+  padding-left: var(--app-safe-left);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: contain;
+}
+
+html[data-diary-picking] [data-diary-add-meal] {
+  display: none;
+}
+
+@keyframes hybrid-opacity-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+html:is([data-hybrid], [data-android]) .animate-spin {
+  animation: hybrid-opacity-pulse 900ms ease-in-out infinite !important;
+}
+
+html:is([data-hybrid], [data-android]) .animate-pulse {
+  animation: none !important;
+  opacity: 0.55;
+}
+:root {
+    --background: var(--nora-canvas);
+    --foreground: var(--nora-text);
+    --card: var(--nora-surface);
+    --card-foreground: var(--nora-text);
+    --popover: var(--nora-popover);
+    --popover-foreground: var(--nora-text);
+    --primary: var(--nora-tint);
+    --primary-foreground: #ffffff;
+    --secondary: var(--nora-inset);
+    --secondary-foreground: var(--nora-text);
+    --muted: var(--nora-surface);
+    --muted-foreground: var(--nora-text-secondary);
+    --accent: var(--nora-inset);
+    --accent-foreground: var(--nora-text);
+    --destructive: var(--nora-error);
+    --border: var(--nora-border);
+    --input: var(--nora-input-bg);
+    --ring: color-mix(in srgb, var(--nora-tint) 50%, transparent);
+    --chart-1: var(--nora-tint);
+    --chart-2: var(--nora-component);
+    --chart-3: var(--nora-success);
+    --chart-4: var(--nora-warning);
+    --chart-5: var(--nora-error);
+    --radius: 0.5rem;
+    --sidebar: var(--nora-bg);
+    --sidebar-foreground: var(--nora-text);
+    --sidebar-primary: var(--nora-tint);
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: var(--nora-row-active-bg);
+    --sidebar-accent-foreground: var(--nora-text);
+    --sidebar-border: var(--nora-border);
+    --sidebar-ring: color-mix(in srgb, var(--nora-tint) 50%, transparent);
+}
+
+/* Светлая схема: sidebar на полшага плотнее рабочей области. */
+.scheme-editor-light {
+    --background: color-mix(in srgb, var(--nora-panel) 72%, var(--nora-canvas) 28%);
+    --card: var(--nora-panel);
+    --sidebar: color-mix(in srgb, var(--nora-panel) 28%, var(--nora-canvas) 72%);
+    /* Поиск и чипы меню темнее самого сайдбара и в тоне схемы.
+       Глобальный mix panel+canvas для input/row здесь не работает: сайдбар
+       уже близок к canvas, поэтому серые чипы базовой схемы почти не видны. */
+    --nora-sidebar-search-bg: color-mix(in srgb, var(--sidebar) 36%, var(--light-border, var(--nora-border)) 64%);
+    --nora-sidebar-item-hover: color-mix(in srgb, var(--sidebar) 74%, var(--light-border, var(--nora-border)) 26%);
+    --nora-sidebar-item-active: color-mix(in srgb, var(--sidebar) 50%, var(--light-border, var(--nora-border)) 50%);
+}
+
+.scheme-editor-light.light-palette-default {
+    --sidebar: color-mix(in srgb, var(--nora-panel) 98.5%, var(--nora-text) 1.5%);
+}
+
+.scheme-editor-light :is([data-sidebar="sidebar"], [data-slot="sidebar-inner"]) {
+    --nora-input-bg: var(--nora-sidebar-search-bg);
+    --nora-row-hover: var(--nora-sidebar-item-hover);
+    --nora-row-active-bg: var(--nora-sidebar-item-active);
+    --sidebar-accent: var(--nora-sidebar-item-active);
+}
+
+.marketing,
+.scheme-marketing {
+    --card: var(--nora-surface);
+    --sidebar: var(--nora-panel);
+    --muted-foreground: var(--nora-text-tertiary);
+    --radius: 0.75rem;
 }
 
 @layer base {
@@ -122,11 +225,436 @@
     @apply border-border outline-ring/50;
     }
   body {
+    position: relative;
     @apply bg-background text-foreground;
+    /* No ss01 / zero: product digits use Inter's plain zero, not open/slashed forms. */
+    font-feature-settings: "rlig" 1, "calt" 1, "cv01" 1, "zero" 0;
     }
   html {
     @apply font-sans;
     }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+    }
+}
+
+/* ------------------------------------------------------------------
+   Поповеры shadcn в стиле меню редактора Nora:
+   радиус 10px, шрифт 12–13px, крупная мягкая тень (--nora-shadow-popover),
+   компактные пункты высотой ~26px.
+   ------------------------------------------------------------------ */
+[data-slot="dropdown-menu-content"],
+[data-slot="select-content"],
+[data-slot="context-menu-content"],
+[data-slot="menubar-content"],
+[data-slot="combobox-content"],
+[data-slot="popover-content"],
+[data-slot="command"] {
+  border-radius: var(--nora-radius-lg, 10px);
+  box-shadow: var(--nora-shadow-popover);
+  font-size: 13px;
+}
+
+/* Nora menu/select density + tint highlight (matches Nora UI index.css). */
+[data-slot="dropdown-menu-item"],
+[data-slot="dropdown-menu-checkbox-item"],
+[data-slot="dropdown-menu-radio-item"],
+[data-slot="select-item"],
+[data-slot="context-menu-item"],
+[data-slot="context-menu-checkbox-item"],
+[data-slot="context-menu-radio-item"],
+[data-slot="menubar-item"],
+[data-slot="menubar-checkbox-item"],
+[data-slot="menubar-radio-item"],
+[data-slot="combobox-item"],
+[data-slot="command-item"] {
+  min-height: 26px;
+  border-radius: var(--nora-radius-sm, 6px);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Account workspace menu: Nora popup 16px / items 12px, 13px regular like the sidebar. */
+[data-slot="dropdown-menu-content"].account-workspace-menu {
+  border-radius: var(--nora-radius-menu, 16px);
+  box-shadow: var(--nora-shadow-menu, var(--nora-shadow-popover));
+}
+
+[data-slot="dropdown-menu-content"].account-workspace-menu [data-slot="dropdown-menu-item"] {
+  min-height: var(--nora-control-h, 30px);
+  border-radius: var(--nora-radius-menu-item, 12px);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+[data-slot="dropdown-menu-item"]:not([data-variant="destructive"]):hover,
+[data-slot="dropdown-menu-item"]:not([data-variant="destructive"])[data-highlighted]:not([data-highlighted="false"]),
+[data-slot="dropdown-menu-checkbox-item"][data-highlighted]:not([data-highlighted="false"]),
+[data-slot="dropdown-menu-radio-item"][data-highlighted]:not([data-highlighted="false"]),
+[data-slot="select-item"]:hover,
+[data-slot="select-item"][data-highlighted]:not([data-highlighted="false"]),
+[data-slot="context-menu-item"]:not([data-variant="destructive"])[data-highlighted]:not([data-highlighted="false"]),
+[data-slot="menubar-item"]:not([data-variant="destructive"])[data-highlighted]:not([data-highlighted="false"]),
+[data-slot="menubar-checkbox-item"][data-highlighted]:not([data-highlighted="false"]),
+[data-slot="menubar-radio-item"][data-highlighted]:not([data-highlighted="false"]),
+[data-slot="combobox-item"][data-highlighted]:not([data-highlighted="false"]) {
+  background: var(--nora-menu-item-hover) !important;
+  color: var(--nora-text) !important;
+}
+
+[data-slot="dropdown-menu-item"]:not([data-variant="destructive"]):hover *,
+[data-slot="dropdown-menu-item"]:not([data-variant="destructive"])[data-highlighted]:not([data-highlighted="false"]) *,
+[data-slot="dropdown-menu-checkbox-item"][data-highlighted]:not([data-highlighted="false"]) *,
+[data-slot="dropdown-menu-radio-item"][data-highlighted]:not([data-highlighted="false"]) *,
+[data-slot="select-item"]:hover *,
+[data-slot="select-item"][data-highlighted]:not([data-highlighted="false"]) *,
+[data-slot="context-menu-item"]:not([data-variant="destructive"])[data-highlighted]:not([data-highlighted="false"]) *,
+[data-slot="menubar-item"]:not([data-variant="destructive"])[data-highlighted]:not([data-highlighted="false"]) *,
+[data-slot="menubar-checkbox-item"][data-highlighted]:not([data-highlighted="false"]) *,
+[data-slot="menubar-radio-item"][data-highlighted]:not([data-highlighted="false"]) *,
+[data-slot="combobox-item"][data-highlighted]:not([data-highlighted="false"]) * {
+  color: var(--nora-text) !important;
+}
+
+[data-slot="select-item"][data-selected],
+[data-slot="select-item"][data-selected]:hover,
+[data-slot="select-item"][data-selected][data-highlighted]:not([data-highlighted="false"]),
+[data-slot="command-item"][aria-selected="true"] {
+  background: var(--nora-tint) !important;
+  color: var(--nora-button-on-tint-text) !important;
+}
+
+[data-slot="select-item"][data-selected] *,
+[data-slot="select-item"][data-selected]:hover *,
+[data-slot="select-item"][data-selected][data-highlighted]:not([data-highlighted="false"]) *,
+[data-slot="command-item"][aria-selected="true"] * {
+  color: var(--nora-button-on-tint-text) !important;
+}
+
+[data-slot="dropdown-menu-item"][data-highlighted]:not([data-highlighted="false"]) [data-slot="dropdown-menu-shortcut"],
+[data-slot="menubar-item"][data-highlighted]:not([data-highlighted="false"]) [data-slot="menubar-shortcut"],
+[data-slot="context-menu-item"][data-highlighted]:not([data-highlighted="false"]) [data-slot="context-menu-shortcut"] {
+  color: var(--nora-text-tertiary) !important;
+}
+
+[data-slot="command-item"][aria-selected="true"] .nora-kbd,
+[data-slot="command-item"][aria-selected="true"] [data-slot="kbd"],
+[data-slot="select-item"][data-selected] .nora-kbd,
+[data-slot="select-item"][data-selected] [data-slot="kbd"] {
+  background: var(--nora-kbd-on-tint-bg) !important;
+  color: var(--nora-kbd-on-tint-text) !important;
+}
+
+/* Sonner → Nora toast (NoraToast geometry) */
+.cn-toast[data-sonner-toast] {
+  --border-radius: 9999px;
+  font-family: var(--nora-font);
+  font-size: 12px;
+  font-weight: 500;
+  gap: 10px;
+  min-height: 48px;
+  height: 48px;
+  align-items: center;
+  padding: 0 14px !important;
+  border-radius: 9999px;
+  border: none !important;
+  background: color-mix(in srgb, var(--nora-panel) 72%, transparent) !important;
+  color: var(--nora-toast-text) !important;
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 70%, transparent),
+    0 8px 24px color-mix(in srgb, var(--nora-text) 10%, transparent) !important;
+}
+
+.scheme-editor-dark .cn-toast[data-sonner-toast],
+[data-scheme='editor-dark'] .cn-toast[data-sonner-toast] {
+  background: color-mix(in srgb, var(--nora-input-bg) 78%, transparent) !important;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 24%, transparent),
+    0 8px 24px rgba(0, 0, 0, 0.36) !important;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .cn-toast[data-sonner-toast] {
+    background: var(--nora-toast-bg) !important;
+  }
+}
+
+.cn-toast[data-sonner-toast] [data-icon] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.cn-toast-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--nora-toast-text);
+}
+
+.cn-toast-description {
+  font-size: 11px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--nora-toast-text) 72%, transparent);
+}
+
+.cn-toast-action {
+  height: 24px !important;
+  min-width: auto !important;
+  padding: 0 8px !important;
+  border: none !important;
+  border-radius: var(--nora-radius-sm, 6px) !important;
+  background: var(--nora-toast-action-bg) !important;
+  color: var(--nora-toast-action-text) !important;
+  font-family: var(--nora-font) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+}
+
+.cn-toast-action:hover {
+  background: var(--nora-toast-action-hover) !important;
+}
+
+.cn-toast-close {
+  background: transparent !important;
+  color: color-mix(in srgb, var(--nora-toast-text) 55%, transparent) !important;
+  border: none !important;
+}
+
+@media (max-width: 767px) {
+  [data-sonner-toaster] {
+    left: 0.75rem !important;
+    right: auto !important;
+    bottom: max(1rem, var(--app-safe-bottom, env(safe-area-inset-bottom))) !important;
+    width: min(66.67vw, calc(100vw - 5.5rem)) !important;
+    max-width: min(66.67vw, calc(100vw - 5.5rem)) !important;
+  }
+
+  [data-sonner-toaster] [data-sonner-toast] {
+    --width: 100%;
+    width: 100% !important;
+    left: 0 !important;
+    right: auto !important;
+  }
+}
+
+@keyframes auth-demo-marquee-left {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes auth-demo-marquee-right {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes auth-demo-diary-enter {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(1.25rem) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) scale(1);
+  }
+}
+
+.auth-demo-diary-enter {
+  animation: auth-demo-diary-enter 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes auth-demo-composer-caret {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.auth-demo-composer-caret {
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  margin-left: 1px;
+  vertical-align: -2px;
+  flex-shrink: 0;
+  background: var(--nora-text);
+  animation: auth-demo-composer-caret 1.05s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-demo-composer-caret {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+@keyframes auth-demo-bridge-enter {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+
+.auth-demo-bridge-enter {
+  animation: auth-demo-bridge-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-demo-diary-enter {
+    animation: none;
+  }
+
+  .auth-demo-bridge-enter {
+    animation: none;
+  }
+}
+
+.auth-demo-marquee-mask {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    rgb(0 0 0 / 0.2) 6%,
+    rgb(0 0 0 / 0.7) 14%,
+    #000 20%,
+    #000 80%,
+    rgb(0 0 0 / 0.7) 86%,
+    rgb(0 0 0 / 0.2) 94%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    rgb(0 0 0 / 0.2) 6%,
+    rgb(0 0 0 / 0.7) 14%,
+    #000 20%,
+    #000 80%,
+    rgb(0 0 0 / 0.7) 86%,
+    rgb(0 0 0 / 0.2) 94%,
+    transparent 100%
+  );
+}
+
+.auth-demo-feature-mock {
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.38);
+}
+
+.auth-demo-feature-mock > img {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.auth-demo-feature-mock::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    to top,
+    rgb(0 0 0 / 0.8) 0%,
+    rgb(0 0 0 / 0.22) 46%,
+    rgb(0 0 0 / 0.04) 72%
+  );
+}
+
+@keyframes auth-demo-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.84);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(0.9);
+  }
+}
+
+@keyframes auth-demo-toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(0.9);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.86);
+  }
+}
+
+@keyframes auth-demo-author-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes auth-demo-share-audience-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-demo-share-avatar-in {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes auth-demo-share-audience-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.045);
+  }
+}
+
+@keyframes questionnaire-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -137,5 +665,73 @@
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/*
+ * iOS Safari zooms focused form controls when computed font-size < 16px.
+ * Keep mobile inputs at 16px before and after focus so the viewport does not jump.
+ */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image']):not([type='hidden']),
+  textarea,
+  select,
+  [data-slot='input'],
+  [data-slot='textarea'],
+  [contenteditable='true'] {
+    font-size: 16px !important;
+  }
+}
+
+/* Native overlay scrollbar — thin pill, Nora tokens, not the Windows chrome bar. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--nora-text) 22%, transparent) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--nora-text) 22%, transparent);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--nora-text) 38%, transparent);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile: hide the gutter scrollbar so left/right page padding stay equal. */
+@media (max-width: 767px) {
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
   }
 }

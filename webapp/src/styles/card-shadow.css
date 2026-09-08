@@ -1,0 +1,65 @@
+:root {
+  --meal-card-shadow-y: 3px;
+  --meal-card-shadow-blur: 12px;
+  --meal-card-shadow-alpha: 5%;
+}
+
+html[data-card-shadow='none'] {
+  --meal-card-shadow-y: 0px;
+  --meal-card-shadow-blur: 0px;
+  --meal-card-shadow-alpha: 0%;
+}
+
+html[data-card-shadow='hint'] {
+  --meal-card-shadow-y: 2px;
+  --meal-card-shadow-blur: 8px;
+  --meal-card-shadow-alpha: 4%;
+}
+
+html[data-card-shadow='faint'] {
+  --meal-card-shadow-y: 3px;
+  --meal-card-shadow-blur: 12px;
+  --meal-card-shadow-alpha: 5%;
+}
+
+html[data-card-shadow='soft'] {
+  --meal-card-shadow-y: 4px;
+  --meal-card-shadow-blur: 16px;
+  --meal-card-shadow-alpha: 6%;
+}
+
+html[data-card-shadow='light'] {
+  --meal-card-shadow-y: 6px;
+  --meal-card-shadow-blur: 20px;
+  --meal-card-shadow-alpha: 7%;
+}
+
+html[data-card-shadow='mid'] {
+  --meal-card-shadow-y: 8px;
+  --meal-card-shadow-blur: 24px;
+  --meal-card-shadow-alpha: 9%;
+}
+
+html[data-card-shadow='clear'] {
+  --meal-card-shadow-y: 10px;
+  --meal-card-shadow-blur: 28px;
+  --meal-card-shadow-alpha: 11%;
+}
+
+html[data-card-shadow='strong'] {
+  --meal-card-shadow-y: 12px;
+  --meal-card-shadow-blur: 36px;
+  --meal-card-shadow-alpha: 13%;
+}
+
+html[data-card-shadow='deep'] {
+  --meal-card-shadow-y: 16px;
+  --meal-card-shadow-blur: 44px;
+  --meal-card-shadow-alpha: 16%;
+}
+
+html[data-card-shadow='max'] {
+  --meal-card-shadow-y: 20px;
+  --meal-card-shadow-blur: 56px;
+  --meal-card-shadow-alpha: 20%;
+}

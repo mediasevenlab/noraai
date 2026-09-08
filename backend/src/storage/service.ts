@@ -143,6 +143,34 @@ export class StorageService {
     )
   }
 
+  async putPrivateObject(input: { key: string; bytes: Uint8Array; contentType: string }) {
+    const key = assertSafeObjectKey(input.key)
+    const contentType = assertContentType(input.contentType)
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.config.bucket,
+        Key: key,
+        Body: input.bytes,
+        ContentType: contentType,
+        ACL: 'private',
+      }),
+    )
+    return { key }
+  }
+
+  async readObject(key: string): Promise<Buffer | null> {
+    try {
+      const result = await this.s3.send(
+        new GetObjectCommand({ Bucket: this.config.bucket, Key: assertSafeObjectKey(key) }),
+      )
+      if (!result.Body) return null
+      const bytes = await result.Body.transformToByteArray()
+      return Buffer.from(bytes)
+    } catch {
+      return null
+    }
+  }
+
   publicUrlForKey(key: string) {
     assertSafeObjectKey(key)
     const baseUrl =

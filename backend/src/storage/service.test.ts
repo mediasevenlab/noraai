@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import { AppError } from '../http/errors'
+import { testAppEnv } from '../test-app-env'
 import {
   assertSafeObjectKey,
   createStorageObjectKey,
@@ -97,27 +98,12 @@ describe('StorageService', () => {
 describe('storageConfigFromEnv', () => {
   test('returns null until Spaces is configured', () => {
     expect(
-      storageConfigFromEnv({
-        PORT: 3000,
-        DATABASE_URL: 'postgresql://superuser:superpassword@localhost:54329/web_app_demo',
-        JWT_SECRET: '12345678901234567890123456789012',
-        CORS_ORIGINS: ['http://localhost:5173'],
-        ACCESS_TOKEN_TTL_SECONDS: 900,
-        REFRESH_TOKEN_TTL_DAYS: 30,
-        REFRESH_REUSE_GRACE_SECONDS: 10,
-        SESSION_ABSOLUTE_TTL_DAYS: 90,
-        SESSION_RETENTION_DAYS: 7,
-        AUTH_BODY_LIMIT_BYTES: 64 * 1024,
-        AUTH_RATE_LIMIT_MAX: 60,
-        AUTH_RATE_LIMIT_WINDOW_SECONDS: 60,
-        SHUTDOWN_GRACE_SECONDS: 20,
-        TRUST_PROXY: false,
-        COOKIE_SECURE: false,
-        SPACES_UPLOAD_MAX_BYTES: 10 * 1024 * 1024,
-        SPACES_UPLOAD_URL_TTL_SECONDS: 900,
-        SPACES_DOWNLOAD_URL_TTL_SECONDS: 300,
-        SPACES_PUBLIC_CACHE_CONTROL: 'public, max-age=31536000, immutable',
-      }),
+      storageConfigFromEnv(
+        testAppEnv({
+          DATABASE_URL: 'postgresql://superuser:superpassword@localhost:54329/web_app_demo',
+          JWT_SECRET: '12345678901234567890123456789012',
+        }),
+      ),
     ).toBeNull()
   })
 })

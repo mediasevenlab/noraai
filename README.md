@@ -1,10 +1,12 @@
-# Vibe Coding Template
+# 24nutrition
+
+Live product: [https://24nutrition.site](https://24nutrition.site). Production is the current VPS; see [docs/VPS.md](docs/VPS.md). Demo UI stays under `/demo` and is not a production home.
+
+Local development still uses this Bun monorepo: Hono backend, React webapp, Astro website, and shared contracts.
 
 <p align="center">
-  <img src="docs/assets/vibe_tmpl_schema.png" alt="Vibe Coding Template architecture schema" width="100%">
+  <img src="docs/assets/vibe_tmpl_schema.png" alt="24nutrition architecture schema" width="100%">
 </p>
-
-A full-stack starter for web and backend products: one repository with a Bun/Hono backend, a React CSR browser client (`webapp`), an Astro SSG/SSR site (`website`), and shared API contracts. The runnable Expo mobile template lives on the `mobile` branch so the default branch stays focused on webapp, backend, website, infrastructure, and shared contracts.
 
 ## Agent Intake Checklist Before Installing
 
@@ -73,6 +75,7 @@ Install this repository into the project. Before cloning from a GitHub URL, ask 
 - `backend` - Bun + Hono + Prisma + PostgreSQL, custom JWT auth, Zod validation, and OpenAPI output.
 - `webapp` - React + Vite + TanStack Query/Form/Router CSR browser client with the baseline auth flow.
 - `website` - a separate Astro project for public SSG/SSR pages (landing, content sites, marketplace).
+- `hybrid/` - optional Capacitor wrapper around `webapp` for a sideloadable Android APK. Not the Expo `mobile` client.
 - `mobile/README.md` - pointer to the runnable Expo mobile template on the `mobile` branch.
 - `packages/contracts` - shared Zod schemas and TypeScript API types.
 - `.do` - committed DigitalOcean App Platform spec templates; generate concrete specs into `.scratch/deploy` with `bun run deploy:do:specs`.
@@ -80,6 +83,7 @@ Install this repository into the project. Before cloning from a GitHub URL, ask 
 - `docs/TESTING.md` - the backend and Playwright testing contract. Mobile Maestro guidance lives on the `mobile` branch.
 - `docs/LOCAL_DATABASE.md` - cross-platform local PostgreSQL setup for Windows, macOS, and Linux.
 - `docs/STORAGE.md` - DigitalOcean Spaces, CDN, uploads, and image/media storage rules.
+- `docs/N8N.md` - isolated local n8n workflow automation setup and integration boundaries.
 - `docs/YANDEX_CLOUD.md` - optional Yandex Cloud deployment path when the user explicitly chooses it.
 
 ## Choosing `webapp` vs `website`
@@ -170,11 +174,7 @@ bun run dev:website
 
 Website-only setups can skip backend/PostgreSQL. A webapp-only project can skip it only after replacing or removing the included auth golden path; the committed webapp's register/login/session journey intentionally requires the backend.
 
-Create `webapp/.env` when the browser client should use a non-default API URL:
-
-```bash
-VITE_API_URL=http://localhost:3000
-```
+Local webapp defaults to same-origin `/api` via the Vite proxy (`webapp/.env` with empty `VITE_API_URL`). That keeps auth cookies working on both `localhost` and `127.0.0.1`. Only set a concrete `VITE_API_URL` when you intentionally call the backend directly on the same hostname as the page.
 
 Test runners use the separate Docker Compose `postgres_test` service and the `TEST_DATABASE_URL` shape from `backend/.env.example`. Webapp Playwright E2E starts `postgres_test`, applies migrations to `web_app_demo_test`, runs the browser flow, and tears down its test database volume by default.
 

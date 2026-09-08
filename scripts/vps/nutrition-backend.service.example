@@ -1,0 +1,15 @@
+[Unit]
+Description=24nutrition API
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/nutrition-app/backend
+EnvironmentFile=/opt/nutrition-app/backend/.env
+ExecStart=/root/.bun/bin/bun src/index.ts
+Restart=on-failure
+RestartSec=3
+# One process owns the Telegram poller. Do not start a second replica with the same bot token.
+
+[Install]
+WantedBy=multi-user.target

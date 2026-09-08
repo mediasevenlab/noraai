@@ -58,6 +58,38 @@ test('account mutations reject oversized bodies before authentication', async ()
     .toBe(413)
 })
 
+test('meal writes keep the larger photo body limit', async () => {
+  const app = createApp({
+    env: { ...env, AUTH_BODY_LIMIT_BYTES: 32 },
+    prisma: {} as DbClient,
+  })
+  const request = (path: string) => app.request(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note: 'x'.repeat(64) }),
+  })
+
+  expect((await request('/api/users/me/meals')).status).toBe(401)
+  expect((await request('/api/mentor/users/0196f6f8-6600-7000-8000-000000000001/meals')).status)
+    .toBe(401)
+})
+
+test('meal writes are not capped by the auth login budget', async () => {
+  const app = createApp({
+    env: { ...env, AUTH_RATE_LIMIT_MAX: 1 },
+    prisma: {} as DbClient,
+  })
+  const request = () => app.request('/api/users/me/meals', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  })
+
+  expect((await request()).status).toBe(401)
+  expect((await request()).status).toBe(401)
+  expect((await request()).status).toBe(401)
+})
+
 test('account mutations share bounded write-rate protection', async () => {
   const app = createApp({
     env: { ...env, AUTH_RATE_LIMIT_MAX: 1 },
@@ -86,10 +118,18 @@ test('OpenAPI documents account mutation ingress failures', async () => {
       securitySchemes?: Record<string, unknown>
     }
     paths: Record<string, {
+      delete?: {
+        responses: Record<string, unknown>
+        security?: Array<Record<string, unknown>>
+      }
       get?: {
         security?: Array<Record<string, unknown>>
       }
       patch?: {
+        responses: Record<string, unknown>
+        security?: Array<Record<string, unknown>>
+      }
+      post?: {
         responses: Record<string, unknown>
         security?: Array<Record<string, unknown>>
       }
@@ -110,13 +150,22 @@ test('OpenAPI documents account mutation ingress failures', async () => {
   expect(document.paths['/api/admin/users']?.get?.security).toEqual([
     { BearerAuth: [] },
   ])
+  expect(document.paths['/api/mentor/users']?.get?.security).toEqual([
+    { BearerAuth: [] },
+  ])
   expect(document.paths['/api/users/me']?.patch?.responses).toHaveProperty('413')
+  expect(document.paths['/api/users/me']?.patch?.responses).toHaveProperty('409')
   expect(document.paths['/api/users/me']?.patch?.responses).toHaveProperty('429')
   expect(document.paths['/api/admin/users/{userId}/role']?.patch?.responses)
     .toHaveProperty('413')
   expect(document.paths['/api/admin/users/{userId}/role']?.patch?.responses)
     .toHaveProperty('429')
   expect(document.paths['/api/admin/users/{userId}/role']?.patch?.security).toEqual([
+    { BearerAuth: [] },
+  ])
+  expect(document.paths['/api/admin/users/{userId}']?.delete?.responses)
+    .toHaveProperty('409')
+  expect(document.paths['/api/admin/users/{userId}']?.delete?.security).toEqual([
     { BearerAuth: [] },
   ])
 })

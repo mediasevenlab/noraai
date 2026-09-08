@@ -1,4 +1,10 @@
 import {
+  defaultNicknameForEmail,
+  defaultRoleForEmail,
+  isDefaultUserEmail,
+} from '@web-app-demo/contracts'
+
+import {
   acquireUserAuthenticationAuthorityLock,
   type DbClient,
   userAuthenticationSessionTransactionOptions,
@@ -13,17 +19,145 @@ export function createPrismaAuthRepository(db: DbClient): AuthRepository {
       return db.user.findUnique({ where: { email } })
     },
 
+    findMentorByIdentifier(identifier) {
+      return db.user.findFirst({
+        where: {
+          role: 'mentor',
+          ...(isPublicId(identifier)
+            ? { publicId: Number(identifier) }
+            : isUuid(identifier)
+              ? { id: identifier }
+              : { nickname: identifier }),
+        },
+        select: {
+          id: true,
+          publicId: true,
+          displayName: true,
+          nickname: true,
+        },
+      })
+    },
+
+    findReferrerByCode(code) {
+      return db.user.findUnique({
+        where: {
+          ...(isPublicId(code)
+            ? { publicId: Number(code) }
+            : { nickname: code }),
+          role: { in: ['user', 'mentor'] },
+        },
+        select: {
+          id: true,
+          publicId: true,
+          displayName: true,
+          nickname: true,
+          role: true,
+        },
+      })
+    },
+
     async createPasswordUserWithSession(input) {
       try {
         return await db.$transaction(async (tx) => {
+          const referrer = input.user.role === 'user' && input.user.referralCode
+            ? await tx.user.findUnique({
+                where: {
+                  ...(isPublicId(input.user.referralCode)
+                    ? { publicId: Number(input.user.referralCode) }
+                    : { nickname: input.user.referralCode }),
+                  role: { in: ['user', 'mentor'] },
+                },
+                select: { id: true, role: true },
+              })
+            : null
+          if (input.user.role === 'user' && input.user.referralCode && !referrer) {
+            throw new AuthFailure(
+              'referrer_not_found',
+              'Referral link is no longer valid',
+            )
+          }
+          const requestedMentor = input.user.role === 'user'
+            && input.user.mentorIdentifier
+            && input.user.email !== 'user@nora.com'
+            ? await tx.user.findFirst({
+                where: {
+                  role: 'mentor',
+                  ...(isPublicId(input.user.mentorIdentifier)
+                    ? { publicId: Number(input.user.mentorIdentifier) }
+                    : isUuid(input.user.mentorIdentifier)
+                      ? { id: input.user.mentorIdentifier }
+                      : { nickname: input.user.mentorIdentifier }),
+                },
+                select: { id: true },
+              })
+            : null
+          if (
+            input.user.role === 'user'
+            && input.user.mentorIdentifier
+            && input.user.email !== 'user@nora.com'
+            && !requestedMentor
+          ) {
+            throw new AuthFailure(
+              'mentor_not_found',
+              'Selected mentor is no longer available',
+            )
+          }
+          const referralMentor = input.user.role === 'user'
+            && referrer?.role === 'mentor'
+            ? referrer
+            : null
+          if (
+            requestedMentor
+            && referralMentor
+            && requestedMentor.id !== referralMentor.id
+          ) {
+            throw new AuthFailure(
+              'mentor_not_found',
+              'The referral mentor does not match the selected mentor',
+            )
+          }
+          const mentorToAttach = referralMentor ?? requestedMentor
           const user = await tx.user.create({
             data: {
               email: input.user.email,
               passwordHash: input.user.passwordHash,
               displayName: input.user.displayName,
-              role: 'user',
+              nickname: defaultNicknameForEmail(input.user.email),
+              role: input.user.email === 'mentor@nora.com'
+                ? defaultRoleForEmail(input.user.email)
+                : input.user.role,
+              referredByUserId: input.user.role === 'user' && referrer?.role === 'user'
+                ? referrer.id
+                : undefined,
             },
           })
+          if (isDefaultUserEmail(input.user.email)) {
+            const [mentor, mentee] = await Promise.all([
+              tx.user.findUnique({
+                where: { email: 'mentor@nora.com' },
+                select: { id: true, role: true },
+              }),
+              tx.user.findUnique({
+                where: { email: 'user@nora.com' },
+                select: { id: true, role: true },
+              }),
+            ])
+            if (mentor?.role === 'mentor' && mentee?.role === 'user') {
+              await tx.mentorAssignment.upsert({
+                where: { menteeId: mentee.id },
+                create: { mentorId: mentor.id, menteeId: mentee.id },
+                update: { mentorId: mentor.id },
+              })
+            }
+          }
+          if (mentorToAttach && input.user.email !== 'user@nora.com') {
+            await tx.mentorAssignment.create({
+              data: {
+                mentorId: mentorToAttach.id,
+                menteeId: user.id,
+              },
+            })
+          }
           const session = await tx.authSession.create({
             data: {
               userId: user.id,
@@ -285,4 +419,12 @@ export function createPrismaAuthRepository(db: DbClient): AuthRepository {
 
 function isUniqueConstraintError(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
+function isPublicId(value: string) {
+  return /^\d{1,10}$/.test(value) && Number(value) <= 2_147_483_647
 }

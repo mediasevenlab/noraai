@@ -19,7 +19,7 @@ describe('administrator seed command', () => {
     ]
 
     for (const credentials of credentialCases) {
-      const result = spawnSync('bun', [scriptPath], {
+      const result = spawnSync(process.execPath, [scriptPath], {
         env: {
           ...process.env,
           ADMIN_SEED_EMAIL: undefined,

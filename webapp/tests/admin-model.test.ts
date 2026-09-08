@@ -3,6 +3,7 @@ import { expect, test } from 'bun:test'
 import {
   adminUsersPagination,
   adminUsersViewState,
+  canDeleteAdminUser,
   roleMutationFeedback,
 } from '../src/features/admin/model'
 
@@ -39,4 +40,19 @@ test('role mutation exposes explicit error and success feedback', () => {
   expect(roleMutationFeedback({ isError: true, isSuccess: false })).toBe('error')
   expect(roleMutationFeedback({ isError: false, isSuccess: true })).toBe('success')
   expect(roleMutationFeedback({ isError: false, isSuccess: false })).toBeNull()
+})
+
+test('administrator cannot delete the current account', () => {
+  expect(canDeleteAdminUser('admin-1', {
+    id: 'admin-1',
+    email: 'other-admin@example.com',
+  })).toBe(false)
+  expect(canDeleteAdminUser('admin-1', {
+    id: 'user-1',
+    email: 'user@example.com',
+  })).toBe(true)
+  expect(canDeleteAdminUser('admin-1', {
+    id: 'default-user',
+    email: 'user@nora.com',
+  })).toBe(false)
 })

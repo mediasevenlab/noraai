@@ -1,5 +1,4 @@
-import type { IconSvgElement } from '@hugeicons/react'
-import { HugeiconsIcon } from '@hugeicons/react'
+import type { LucideIcon } from 'lucide-react'
 
 import {
   SidebarGroup,
@@ -9,42 +8,57 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
-import { Typography } from '@/components/typography'
 import type { WorkspaceRoutePath } from '@/features/navigation'
 import { DashboardLink } from './DashboardLink'
 
 export type DashboardNavigationItem = {
-  icon: IconSvgElement
+  disabled?: boolean
+  icon: LucideIcon
   isActive: boolean
   label: string
   to: WorkspaceRoutePath
 }
 
 export function NavMain({
+  label,
   items,
+  navigationLabel = 'Основная навигация',
 }: {
+  label?: string
   items: ReadonlyArray<DashboardNavigationItem>
+  navigationLabel?: string
 }) {
   return (
-    <nav aria-label="Primary navigation">
-      <SidebarGroup>
-        <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+    <nav aria-label={navigationLabel}>
+      <SidebarGroup className={label ? undefined : 'py-0'}>
+        {label ? <SidebarGroupLabel>{label}</SidebarGroupLabel> : null}
         <SidebarGroupContent>
           <SidebarMenu>
             {items.map((item) => (
               <SidebarMenuItem key={item.to}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={item.isActive}
-                  tooltip={item.label}
-                >
-                  <DashboardLink to={item.to}>
-                    <HugeiconsIcon icon={item.icon} strokeWidth={2} />
-                    <Typography asChild variant="control">
-                      <span>{item.label}</span>
-                    </Typography>
-                  </DashboardLink>
-                </SidebarMenuButton>
+                {item.disabled ? (
+                  <SidebarMenuButton
+                    aria-disabled
+                    disabled
+                    tooltip={item.label}
+                  >
+                    <item.icon />
+                    <span className="truncate group-data-[collapsible=icon]:hidden">
+                      {item.label}
+                    </span>
+                  </SidebarMenuButton>
+                ) : (
+                  <SidebarMenuButton
+                    isActive={item.isActive}
+                    render={<DashboardLink to={item.to} />}
+                    tooltip={item.label}
+                  >
+                    <item.icon />
+                    <span className="truncate group-data-[collapsible=icon]:hidden">
+                      {item.label}
+                    </span>
+                  </SidebarMenuButton>
+                )}
               </SidebarMenuItem>
             ))}
           </SidebarMenu>

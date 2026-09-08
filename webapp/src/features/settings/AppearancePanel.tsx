@@ -1,13 +1,6 @@
 import { useTheme } from 'next-themes'
+import { MonitorIcon, MoonIcon, SunIcon } from 'lucide-react'
 
-import {
-  Moon02Icon,
-  Sun01Icon,
-  ComputerIcon,
-} from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
-
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import {
   Field,
   FieldDescription,
@@ -20,58 +13,75 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Typography } from '@/components/typography'
 
 const themes = ['system', 'light', 'dark'] as const
 type Theme = typeof themes[number]
 
 const themeIcons = {
-  system: ComputerIcon,
-  light: Sun01Icon,
-  dark: Moon02Icon,
+  system: MonitorIcon,
+  light: SunIcon,
+  dark: MoonIcon,
 } as const
+
+const themeLabels: Record<Theme, string> = {
+  system: 'Системная',
+  light: 'Светлая',
+  dark: 'Тёмная',
+}
 
 export function AppearancePanel() {
   const { theme = 'system', setTheme } = useTheme()
   const selectedTheme = isTheme(theme) ? theme : 'system'
 
   return (
-    <Card>
-      <CardHeader>
-        <Typography as="h2" variant="h6">
-          Appearance
-        </Typography>
-        <CardDescription>
-          Follow your device preference or keep a consistent light or dark theme.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="flex flex-col overflow-hidden rounded-[var(--nora-radius-lg)] bg-[var(--dash-card-bg,var(--nora-panel))] shadow-[inset_0_0_0_1px_var(--dash-card-ring,var(--nora-border))]">
+      <div className="border-b border-[var(--nora-divider)] p-3.5">
+        <h2 className="text-[13px] font-semibold text-[var(--nora-text)]">
+          Внешний вид
+        </h2>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--nora-text-tertiary)]">
+          Следуйте настройкам устройства или зафиксируйте светлую или тёмную тему.
+        </p>
+      </div>
+
+      <div className="grid gap-3.5 p-3.5">
         <Field>
-          <FieldLabel htmlFor="appearance-theme">Theme</FieldLabel>
+          <FieldLabel
+            className="font-normal text-[var(--nora-text-secondary)]"
+            htmlFor="appearance-theme"
+          >
+            Тема
+          </FieldLabel>
           <Select
             onValueChange={(value) => {
-              if (isTheme(value)) setTheme(value)
+              if (value !== null && isTheme(value)) setTheme(value)
             }}
             value={selectedTheme}
           >
-            <SelectTrigger className="w-full sm:w-52" id="appearance-theme">
+            <SelectTrigger
+              className="w-full font-normal sm:w-52"
+              id="appearance-theme"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {themes.map((item) => (
-                <SelectItem className="capitalize" key={item} value={item}>
-                  <HugeiconsIcon aria-hidden icon={themeIcons[item]} strokeWidth={2} />
-                  {item}
-                </SelectItem>
-              ))}
+              {themes.map((item) => {
+                const Icon = themeIcons[item]
+                return (
+                  <SelectItem key={item} value={item}>
+                    <Icon aria-hidden />
+                    {themeLabels[item]}
+                  </SelectItem>
+                )
+              })}
             </SelectContent>
           </Select>
-          <FieldDescription>
-            Changes are saved in this browser and applied immediately.
+          <FieldDescription className="font-normal">
+            Изменения сохраняются в этом браузере и применяются сразу.
           </FieldDescription>
         </Field>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

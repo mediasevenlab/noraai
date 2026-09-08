@@ -11,6 +11,8 @@ import type {
   RegisterRequest,
 } from '@web-app-demo/contracts'
 
+import { initDiarySkeletonForNewUser } from '@/features/diary'
+
 import type { AuthApi } from './api'
 
 export const sessionQueryKeys = {
@@ -48,6 +50,9 @@ export function useRegisterMutation({ api, setAccessToken }: AuthMutationOptions
     onSuccess: (transition) => {
       if (!api.isSessionEpochCurrent(transition.sessionEpoch)) return
       applyAuthenticatedSession(queryClient, setAccessToken, transition.data)
+      if (transition.data.user.role === 'user') {
+        initDiarySkeletonForNewUser(transition.data.user.id)
+      }
     },
   })
 }

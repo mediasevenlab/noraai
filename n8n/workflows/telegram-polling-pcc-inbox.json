@@ -1,0 +1,898 @@
+{
+  "updatedAt": "2026-07-24T06:25:10.592Z",
+  "createdAt": "2026-07-24T06:25:10.592Z",
+  "id": "uoyf4C6X30fcz44P",
+  "name": "Telegram Polling → PCC Inbox",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 3
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -480,
+        -240
+      ],
+      "id": "20fb82e3-edf9-4a9b-a970-722349e46065",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://api.telegram.org/bot{{TELEGRAM_BOT_TOKEN}}/getUpdates",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "offset",
+              "value": "={{ Number($json.offset) }}"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -48,
+        -240
+      ],
+      "id": "8b86a01b-2417-4a51-a0a7-d90d105f9496",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\n\n// Берём актуальный offset из узла Read Telegram Offset\nconst savedOffset = Number(\n  $('Read Telegram Offset').first().json.offset\n);\n\nif (\n  !response.ok ||\n  !Array.isArray(response.result) ||\n  response.result.length === 0\n) {\n  return [];\n}\n\n// Оставляем только сообщения, которые не старше сохранённого offset\nconst validUpdates = response.result\n  .filter(item => Number(item.update_id) >= savedOffset)\n  .sort((a, b) => Number(a.update_id) - Number(b.update_id));\n\nif (validUpdates.length === 0) {\n  return [];\n}\n\n// Берём самое раннее новое сообщение\nconst update = validUpdates[0];\n\nif (!update.message) {\n  return [];\n}\n\nconst message = update.message;\n\nlet contentType = 'unknown';\nlet content = '';\nlet voiceFileId = null;\nlet voiceDuration = null;\nlet voiceMimeType = null;\n\nif (message.text) {\n  contentType = 'text';\n  content = message.text;\n}\n\nif (message.voice) {\n  contentType = 'voice';\n  content = '';\n  voiceFileId = message.voice.file_id;\n  voiceDuration = message.voice.duration;\n  voiceMimeType = message.voice.mime_type || 'audio/ogg';\n}\n\nreturn [\n  {\n    json: {\n      update_id: update.update_id,\n      next_offset: update.update_id + 1,\n\n      chat_id: message.chat.id,\n      user_id: message.from.id,\n      username: message.from.username || null,\n      first_name: message.from.first_name || null,\n\n      content_type: contentType,\n      content,\n\n      voice_file_id: voiceFileId,\n      voice_duration: voiceDuration,\n      voice_mime_type: voiceMimeType,\n\n      date: message.date\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        -240
+      ],
+      "id": "c5bf3150-14dd-4f47-8ef3-18261d02b050",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bec7aff4-3bcd-4323-a162-114762fd37ee",
+              "name": "source",
+              "value": "telegram",
+              "type": "string"
+            },
+            {
+              "id": "b222b8db-a0d5-496c-8133-ae2ddcd64cf7",
+              "name": "status",
+              "value": "new",
+              "type": "string"
+            },
+            {
+              "id": "4c77ce7d-8d5f-4326-b43a-00e31b7bfdf0",
+              "name": "target",
+              "value": "inbox",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        752,
+        80
+      ],
+      "id": "2ddf8449-2e75-4502-866a-dff0a12d8362",
+      "name": "Prepare PCC Message"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\n\nconst statePath = '/data/state/telegram-state.json';\n\nlet state = { offset: 0 };\n\nif (fs.existsSync(statePath)) {\n  state = JSON.parse(fs.readFileSync(statePath, 'utf8'));\n}\n\nreturn [\n  {\n    json: {\n      offset: state.offset || 0\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -240
+      ],
+      "id": "d415f876-116f-42f1-9f03-edc07929ff19",
+      "name": "Read Telegram Offset"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\n\nconst data = $input.first().json;\n\nconst statePath = '/data/state/telegram-state.json';\n\nconst state = {\n  offset: data.next_offset\n};\n\nfs.writeFileSync(statePath, JSON.stringify(state, null, 2), 'utf8');\n\nreturn [\n  {\n    json: {\n      ...data,\n      offset_saved: true,\n      saved_offset: data.next_offset\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        96
+      ],
+      "id": "44c19a4d-b53f-4206-9f2d-86b707025c90",
+      "name": "Save Telegram Offset"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5",
+          "mode": "list",
+          "cachedResultName": "GPT-5"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=={{ $json.system_prompt }}"
+            },
+            {
+              "content": "=={{ $json.user_prompt }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1056,
+        352
+      ],
+      "id": "5c9834f3-eb27-4e78-978f-959f73ba3dda",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "IGbIfeHWU2s0zCbK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst system_prompt = `\nYou are the AI Brain of the Personal Command Center (PCC).\n\nYour task is to analyze incoming user messages and return ONLY valid JSON.\n\nDo not explain.\nDo not use markdown.\nDo not answer conversationally.\n\nReturn JSON using this schema:\n\n{\n  \"type\": \"note|task|project|calendar_event|idea|purchase|question|journal|reference|unknown\",\n  \"destination\": \"inbox|projects|knowledge|journal|calendar|tasks|shopping|archive\",\n  \"title\": \"\",\n  \"summary\": \"\",\n  \"content\": \"\",\n  \"priority\": \"low|normal|high\",\n  \"tags\": [],\n  \"entities\": [],\n  \"datetime\": null,\n  \"confidence\": 0.0\n  \"duration_minutes\": null,\n\"all_day\": false,\n\"recurrence\": null\n}\n\nRules:\n- content must contain the original user message.\n- title must be short.\n- summary must be one sentence.\n- datetime must be ISO 8601 if date/time is present, otherwise null.\n- confidence must be between 0 and 1.\n- Return only valid JSON.\n- Use \"calendar_event\" when the message describes a meeting, appointment, reminder or any event that should appear in a calendar. Always fill datetime if it can be determined.\n- duration_minutes: event duration in minutes, or null if not specified.\n- all_day: true for birthdays, anniversaries, holidays, and events without a specific time.\n- recurrence: RFC 5545 RRULE string beginning with \"RRULE:\", or null for a one-time event.\n- Do not include DTSTART or DTEND inside recurrence.\n- For weekdays use BYDAY=MO,TU,WE,TH,FR.\n- If the recurrence has an end date, include UNTIL.\n`;\n\nconst user_prompt = String(data.content || '').replace(/^=/, '').trim();\n\nreturn [\n  {\n    json: {\n      ...data,\n      system_prompt,\n      user_prompt\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        352
+      ],
+      "id": "ef01f5d9-d14b-4968-8dc1-8a49dab200b8",
+      "name": "Build AI Prompt"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst aiText = data.output[0].content[0].text;\nconst ai = JSON.parse(aiText);\n\nreturn [\n  {\n    json: {\n      ...data,\n\n      ai_type: ai.type,\n      ai_destination: ai.destination,\n      ai_title: ai.title,\n      ai_summary: ai.summary,\n      ai_content: ai.content,\n      ai_priority: ai.priority,\n      ai_tags: ai.tags,\n      ai_entities: ai.entities,\n      ai_datetime: ai.datetime,\n      ai_confidence: ai.confidence,\n\n      ai_duration_minutes: ai.duration_minutes,\n      ai_all_day: ai.all_day,\n      ai_recurrence: ai.recurrence\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        352
+      ],
+      "id": "2c0dc557-7932-4b4c-ad15-8656c71c62dc",
+      "name": "Parse AI Response"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1504,
+        96
+      ],
+      "id": "e3c641a4-df4b-4386-bc18-79daaf288b2e",
+      "name": "Merge AI Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst allowedTypes = [\n  'note',\n  'task',\n  'project',\n  'calendar_event',\n  'idea',\n  'purchase',\n  'question',\n  'journal',\n  'reference',\n  'unknown'\n];\n\nconst allowedDestinations = [\n  'inbox',\n  'projects',\n  'knowledge',\n  'journal',\n  'calendar',\n  'tasks',\n  'shopping',\n  'archive'\n];\n\nfunction normalizeString(value, fallback = '') {\n  return String(value || fallback).trim();\n}\n\nfunction normalizeArray(value) {\n  if (!Array.isArray(value)) return [];\n\n  return [...new Set(\n    value\n      .map(item => String(item || '').trim().toLowerCase())\n      .filter(Boolean)\n  )];\n}\n\nfunction normalizeRecurrence(value) {\n  if (\n    typeof value !== 'string' ||\n    !value.trim().startsWith('RRULE:')\n  ) {\n    return null;\n  }\n\n  let recurrence = value.trim();\n\n  recurrence = recurrence.replace(\n    /UNTIL=(\\d{8})T(\\d{6})(?!Z)/,\n    (match, datePart, timePart) => {\n      const localUntil = DateTime.fromFormat(\n        `${datePart}T${timePart}`,\n        \"yyyyMMdd'T'HHmmss\",\n        {\n          zone: 'Asia/Novosibirsk'\n        }\n      );\n\n      if (!localUntil.isValid) {\n        return match;\n      }\n\n      return `UNTIL=${localUntil\n        .toUTC()\n        .toFormat(\"yyyyMMdd'T'HHmmss'Z'\")}`;\n    }\n  );\n\n  return recurrence;\n}\n\nconst aiType = allowedTypes.includes(data.ai_type)\n  ? data.ai_type\n  : 'unknown';\n\nconst aiDestination = allowedDestinations.includes(data.ai_destination)\n  ? data.ai_destination\n  : 'inbox';\n\nconst aiTitle = normalizeString(data.ai_title, 'Untitled');\nconst aiSummary = normalizeString(data.ai_summary, aiTitle);\n\nconst aiContent = normalizeString(\n  data.ai_content || data.content,\n  ''\n)\n  .replace(/^=/, '')\n  .trim();\n\nconst aiPriority = ['low', 'normal', 'high'].includes(data.ai_priority)\n  ? data.ai_priority\n  : 'normal';\n\nconst aiConfidence = Number(data.ai_confidence);\n\nconst normalizedConfidence =\n  Number.isFinite(aiConfidence)\n    ? Math.min(Math.max(aiConfidence, 0), 1)\n    : 0;\n\nconst durationValue = Number(data.ai_duration_minutes);\n\nconst normalizedDurationMinutes =\n  Number.isFinite(durationValue) && durationValue > 0\n    ? Math.round(durationValue)\n    : null;\n\nconst normalizedAllDay =\n  data.ai_all_day === true ||\n  String(data.ai_all_day).toLowerCase() === 'true';\n\nconst normalizedRecurrence =\n  normalizeRecurrence(data.ai_recurrence);\n\nreturn [\n  {\n    json: {\n      ...data,\n\n      ai_type: aiType,\n      ai_destination: aiDestination,\n      ai_title: aiTitle,\n      ai_summary: aiSummary,\n      ai_content: aiContent,\n      ai_priority: aiPriority,\n      ai_tags: normalizeArray(data.ai_tags),\n      ai_entities: normalizeArray(data.ai_entities),\n      ai_datetime: data.ai_datetime || null,\n      ai_confidence: normalizedConfidence,\n\n      ai_duration_minutes: normalizedDurationMinutes,\n      ai_all_day: normalizedAllDay,\n      ai_recurrence: normalizedRecurrence,\n\n      normalized: true\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        96
+      ],
+      "id": "2df04475-d512-4caa-a38a-0a302b861164",
+      "name": "Normalize AI Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst routes = {\n  purchase: {\n    system: 'obsidian',\n    folder: '00 Inbox/Shopping'\n  },\n\n  task: {\n    system: 'obsidian',\n    folder: '00 Inbox/Tasks'\n  },\n\n  idea: {\n    system: 'obsidian',\n    folder: '00 Inbox/Ideas'\n  },\n\n  knowledge: {\n    system: 'obsidian',\n    folder: '04 Knowledge'\n  },\n\n  journal: {\n    system: 'obsidian',\n    folder: '05 Journal'\n  },\n\n  project: {\n    system: 'obsidian',\n    folder: '02 Projects'\n  },\n\n  calendar_event: {\n  system: 'obsidian',\n  folder: '00 Inbox/Calendar'\n  },\n\n  note: {\n    system: 'obsidian',\n    folder: '00 Inbox'\n  },\n\n  question: {\n    system: 'obsidian',\n    folder: '00 Inbox'\n  },\n\n  reference: {\n    system: 'obsidian',\n    folder: '04 Knowledge'\n  },\n\n  unknown: {\n    system: 'obsidian',\n    folder: '00 Inbox'\n  }\n};\n\nconst route = routes[data.ai_type] || routes.unknown;\n\nreturn [\n  {\n    json: {\n      ...data,\n      target_system: route.system,\n      target_folder: route.folder,\n      routed: true\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        96
+      ],
+      "id": "ebb76798-1e5a-4ff8-bd3f-5f039969b70e",
+      "name": "Router"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.target_system }}",
+                    "rightValue": "obsidian",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "1763d9b5-aef4-472f-9234-5b1619bfed42"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "obsidian"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1952,
+        96
+      ],
+      "id": "bc2c5609-e128-4fb9-b7dd-5f64295c8f3d",
+      "name": "Dispatcher"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\n\nconst data = $input.first().json;\n\nconst source = data.source || 'telegram';\nconst content = String(data.content || data.ai_content || '').replace(/^=/, '').trim();\n\nconst safeTitle = String(data.ai_title || 'Untitled')\n  .replace(/[\\\\/:*?\"<>|]/g, '')\n  .slice(0, 80);\n\nconst filePath = `/data/obsidian/${data.target_folder}/tg-${data.update_id}-${safeTitle}.md`;\n\nconst tagsYaml = Array.isArray(data.ai_tags)\n  ? data.ai_tags.map(tag => `  - ${tag}`).join('\\n')\n  : '';\n\nconst entitiesYaml = Array.isArray(data.ai_entities)\n  ? data.ai_entities.map(entity => `  - ${entity}`).join('\\n')\n  : '';\n\nconst markdown = `---\nid: tg-${data.update_id}\nsource: ${source}\ntype: ${data.ai_type}\ndestination: ${data.ai_destination}\npriority: ${data.ai_priority}\ncreated: ${new Date(data.date * 1000).toISOString()}\nconfidence: ${data.ai_confidence}\nstatus: new\n\ntags:\n${tagsYaml}\n\nentities:\n${entitiesYaml}\n---\n\n# ${data.ai_title}\n\n## Summary\n\n${data.ai_summary}\n\n---\n\n## Original Message\n\n${content}\n\n---\n\n## Metadata\n\n- User: ${data.first_name}\n- Username: ${data.username}\n- Chat ID: ${data.chat_id}\n- Update ID: ${data.update_id}\n`;\n\n\nreturn [{\n    json:{\n        ...data,\n        file_path:filePath,\n        markdown\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2448,
+        96
+      ],
+      "id": "742c9511-cc0a-4c13-924c-d0ca244e27ea",
+      "name": "Prepare Markdown"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\n\nconst data = $input.first().json;\n\nfs.writeFileSync(\n    data.file_path,\n    data.markdown,\n    'utf8'\n);\n\nreturn [{\n    json: {\n        ...data,\n        saved_to_obsidian: true\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2608,
+        96
+      ],
+      "id": "aea99ae8-5237-4cf3-92f5-b9c66ff60899",
+      "name": "Write Markdown"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "34ee76cc-685a-4635-979b-231edfc5ca57",
+              "leftValue": "={{ $json.content_type }}",
+              "rightValue": "voice",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        288,
+        -240
+      ],
+      "id": "5af538b7-4c09-427e-843f-02a934187d5d",
+      "name": "IF Content Type"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{TELEGRAM_BOT_TOKEN}}/getFile",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "file_id",
+              "value": "={{ $json.voice_file_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        560,
+        -432
+      ],
+      "id": "9fb8e5d5-e24d-49ba-b97c-be6407738798",
+      "name": "Get Telegram File Info"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/file/bot{{TELEGRAM_BOT_TOKEN}}/{{ $json.result.file_path }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        768,
+        -432
+      ],
+      "id": "dc8aa63a-9a0a-4954-ac6e-607248fbd263",
+      "name": "Download Voice File"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {
+          "language": "ru"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        976,
+        -432
+      ],
+      "id": "21ec8e6b-8731-45cf-b16e-6302c3aef473",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "openAiApi": {
+          "id": "IGbIfeHWU2s0zCbK",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1248,
+        -240
+      ],
+      "id": "44b7944f-c385-48a6-b15d-8bd74987d242",
+      "name": "Merge Voice Transcription"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e5e7237c-c293-487c-ab3e-9a78d98da859",
+              "name": "content",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "fdb72a99-354c-45e7-8bdd-37103c1e8804",
+              "name": "transcribed",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "632a38c2-75c5-4f12-a213-4a973fc9e6d0",
+              "name": "transcription_text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1488,
+        -192
+      ],
+      "id": "2d2e0826-d5d1-40b0-bebc-a02e4046e024",
+      "name": "Set Voice Content"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3b3e0bfb-6d6a-4fbd-a6d5-99b92795e26d",
+              "leftValue": "={{ $json.ai_type }}",
+              "rightValue": "calendar_event",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2192,
+        -112
+      ],
+      "id": "674fe24f-e555-4ecb-8997-5db45a146828",
+      "name": "IF Calendar Event"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "rezanovdv@gmail.com",
+          "mode": "list"
+        },
+        "start": "={{ $json.ai_datetime }}",
+        "end": "={{\nDateTime\n.fromISO($json.ai_datetime)\n.plus({\nminutes: $json.ai_duration_minutes ?? 60\n})\n.toISO()\n}}",
+        "additionalFields": {
+          "allday": "={{ $json.ai_all_day }}",
+          "description": "={{ $json.ai_summary }}",
+          "summary": "={{ $json.ai_title }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        2688,
+        -112
+      ],
+      "id": "dd8c45c8-cfac-45fa-961b-a3ee65002338",
+      "name": "Create Calendar Event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "lmxouqk1CazZz7lV",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8657e821-3603-4c1e-a6d8-22b42218c54e",
+              "leftValue": "={{ $json.ai_recurrence }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2432,
+        -144
+      ],
+      "id": "fbd71049-2d0b-455d-b9c5-7e3c8d2183a5",
+      "name": "IF Recurring Event"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n({\n  summary: $json.ai_title,\n  description: $json.ai_summary,\n\n  start: $json.ai_all_day\n    ? {\n        date: DateTime\n          .fromISO($json.ai_datetime)\n          .toISODate()\n      }\n    : {\n        dateTime: DateTime\n          .fromISO($json.ai_datetime, { zone: 'Asia/Novosibirsk' })\n          .toISO(),\n        timeZone: 'Asia/Novosibirsk'\n      },\n\n  end: $json.ai_all_day\n    ? {\n        date: DateTime\n          .fromISO($json.ai_datetime)\n          .plus({ days: 1 })\n          .toISODate()\n      }\n    : {\n        dateTime: DateTime\n          .fromISO($json.ai_datetime, { zone: 'Asia/Novosibirsk' })\n          .plus({ minutes: $json.ai_duration_minutes ?? 60 })\n          .toISO(),\n        timeZone: 'Asia/Novosibirsk'\n      },\n\n  recurrence: [\n    $json.ai_recurrence\n  ]\n})\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2640,
+        -336
+      ],
+      "id": "8a5eac5d-3d2e-4dd1-97b2-8f00786565cf",
+      "name": "Create Recurring Calendar Event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "lmxouqk1CazZz7lV",
+          "name": "Google Calendar account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Telegram Offset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "IF Content Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare PCC Message": {
+      "main": [
+        [
+          {
+            "node": "Build AI Prompt",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge AI Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Telegram Offset": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build AI Prompt": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Merge AI Result",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge AI Result": {
+      "main": [
+        [
+          {
+            "node": "Normalize AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize AI Response": {
+      "main": [
+        [
+          {
+            "node": "Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router": {
+      "main": [
+        [
+          {
+            "node": "Dispatcher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatcher": {
+      "main": [
+        [
+          {
+            "node": "IF Calendar Event",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Markdown": {
+      "main": [
+        [
+          {
+            "node": "Write Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Markdown": {
+      "main": [
+        [
+          {
+            "node": "Save Telegram Offset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Content Type": {
+      "main": [
+        [
+          {
+            "node": "Get Telegram File Info",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Voice Transcription",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare PCC Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Telegram File Info": {
+      "main": [
+        [
+          {
+            "node": "Download Voice File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Voice File": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "Merge Voice Transcription",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Voice Transcription": {
+      "main": [
+        [
+          {
+            "node": "Set Voice Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Voice Content": {
+      "main": [
+        [
+          {
+            "node": "Prepare PCC Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Calendar Event": {
+      "main": [
+        [
+          {
+            "node": "IF Recurring Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "IF Recurring Event": {
+      "main": [
+        [
+          {
+            "node": "Create Recurring Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Novosibirsk",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "97c87803c3f52f30b4e4fa1cea54ec5f3a481a4f5d5427b7365f75d01408cf00"
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "3387e8bd-0cdc-4211-a086-838559cbc9d0",
+  "activeVersionId": null,
+  "versionCounter": 1,
+  "triggerCount": 0,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-07-24T06:25:10.609Z",
+      "createdAt": "2026-07-24T06:25:10.609Z",
+      "role": "workflow:owner",
+      "workflowId": "uoyf4C6X30fcz44P",
+      "projectId": "nWYPNiZqJ7E0yUch",
+      "project": {
+        "updatedAt": "2026-07-24T04:59:32.078Z",
+        "createdAt": "2026-07-24T04:57:30.275Z",
+        "id": "nWYPNiZqJ7E0yUch",
+        "name": "IGOR IVLEV <mediasevenlab@yandex.ru>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "7a78cc43-fbde-44c8-8e60-d0443106ad8e"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

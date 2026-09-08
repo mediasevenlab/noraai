@@ -1,12 +1,31 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { StrictMode } from 'react'
+import { flushSync } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 
+import { applyHybridRuntimeFlags } from '@/components/modal-android'
+import { CardRadiusSync } from '@/components/card-radius-store'
+import { CardShadowSync } from '@/components/card-shadow-store'
+import { PlannedCoverBlurSync } from '@/components/planned-cover-blur-store'
+import { PlannedCoverWashSync } from '@/components/planned-cover-wash-store'
+import { ModalMotionSync } from '@/components/modal-motion-store'
+import { ModalOverlaySync } from '@/components/modal-overlay-store'
+import { NoraSchemeSync } from '@/components/theme-provider'
+import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/features/auth'
+import { attachHybridHaptics } from '@/platform/hybrid-haptics'
+import { attachHybridPress } from '@/platform/hybrid-press'
+import { dismissAppBootSplash } from '@/platform/app-boot-splash'
 import App from './App'
 import './index.css'
+
+applyHybridRuntimeFlags(document.documentElement, {
+  userAgent: navigator.userAgent,
+})
+attachHybridHaptics(document)
+attachHybridPress(document)
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,21 +36,35 @@ const queryClient = new QueryClient({
   },
 })
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          storageKey="web_app_demo_theme"
-        >
-          <AuthProvider>
-            <App />
-          </AuthProvider>
-        </ThemeProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </StrictMode>,
-)
+const root = createRoot(document.getElementById('root')!)
+flushSync(() => {
+  root.render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            disableTransitionOnChange
+            enableSystem
+            storageKey="web_app_demo_theme"
+          >
+            <NoraSchemeSync />
+            <ModalMotionSync />
+            <ModalOverlaySync />
+            <CardRadiusSync />
+            <CardShadowSync />
+            <PlannedCoverWashSync />
+            <PlannedCoverBlurSync />
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+            <Toaster />
+          </ThemeProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </StrictMode>,
+  )
+})
+
+window.setTimeout(() => dismissAppBootSplash(), 8_000)

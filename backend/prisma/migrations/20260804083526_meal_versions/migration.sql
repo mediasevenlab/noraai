@@ -1,0 +1,3 @@
+-- The meals table is created by 20260804090000_meals.
+-- This migration deliberately remains a no-op so a clean migration history
+-- never attempts to alter a relation before it exists.

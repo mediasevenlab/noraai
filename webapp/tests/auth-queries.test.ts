@@ -11,9 +11,14 @@ import {
 
 const user = {
   id: 'user_1',
+  publicId: 101,
   email: 'user@example.com',
   displayName: null,
+  nickname: null,
+  telegramUsername: null,
+    telegramPhone: null,
   role: 'user',
+  questionnaireCompleted: true,
   createdAt: '2026-05-11T00:00:00.000Z',
 }
 

@@ -1,0 +1,865 @@
+import { readFileSync } from 'node:fs'
+
+import { describe, expect, test } from 'bun:test'
+
+import {
+  calorieBalanceTone,
+  RATION_DIARY_DONE_MARK,
+  RATION_DIARY_SOURCE_MARK,
+  rationPlanAssumption,
+  readSkippedPlanMealIds,
+  type MealEntry,
+  weekPlanAssumption,
+  writeSkippedPlanMealIds,
+} from '../src/features/diary'
+import { SAMPLE_RATIONS } from './sample-ration'
+import { allPlanOptions, appendAuthoredPlan, createAuthoredPlan, readAuthoredPlans, removeAuthoredPlan, weekPlanOptions } from '../src/features/mentor'
+import { visiblePlanCards, partitionPlanCards } from '../src/features/plans/PlanToolbar'
+import {
+  planShoppingDayOptions,
+  planShoppingItems,
+  planShoppingItemsForDay,
+} from '../src/features/plans/plan-shopping'
+import { readSelectedPlanId, readSelectedPlanIds, writeSelectedPlanId, writeSelectedPlanIds } from '../src/features/plans/saved-plans'
+import {
+  averageMealsPerDayLabel,
+  buildCurrentWeekPlan,
+  buildWeekPlan,
+  buildWeekPlanFromRation,
+  CURRENT_WEEK_PLAN_TITLE,
+  currentWeekPlanId,
+  defaultPlanDayKey,
+  formatPlanActiveRange,
+  planDayTabParts,
+  WEEK_PLAN_CARD_SLOTS,
+  type WeekPlan,
+} from '../src/features/plans/week-plan'
+
+const now = new Date(2026, 8, 1)
+
+function mealOn(day: Date, patch: Partial<MealEntry> & Pick<MealEntry, 'id' | 'title'>): MealEntry {
+  return {
+    ingredients: 'яйца',
+    category: 'Завтрак',
+    meal: 'Завтрак',
+    at: new Date(day.getFullYear(), day.getMonth(), day.getDate(), 9).toISOString(),
+    kcal: 300,
+    protein: 20,
+    fat: 10,
+    carbs: 15,
+    image: '/rations/ration-01.jpg',
+    fromApi: true,
+    assumptions: [RATION_DIARY_SOURCE_MARK],
+    ...patch,
+  }
+}
+
+describe('current week plan', () => {
+  test('keeps a stable week id and one empty card slot when nothing is planned', () => {
+    const plan = buildCurrentWeekPlan({ meals: [], rations: SAMPLE_RATIONS, now })
+    expect(plan.id).toBe(currentWeekPlanId(now))
+    expect(plan.title).toBe(CURRENT_WEEK_PLAN_TITLE)
+    expect(plan.days).toEqual([])
+    expect(plan.kcal).toBe(0)
+    expect(plan.mealsCount).toBe(0)
+    expect(WEEK_PLAN_CARD_SLOTS).toBe(1)
+    expect(plan.cardDays).toHaveLength(WEEK_PLAN_CARD_SLOTS)
+    expect(plan.cardDays.map((day) => day.short)).toEqual(['День 1'])
+    expect(plan.cardDays.every((day) => !day.filled)).toBe(true)
+    expect(plan.cardDays.every((day) => day.kcal === 0 && day.mealsCount === 0)).toBe(true)
+    expect(weekPlanOptions(now)[0]).toEqual({
+      id: currentWeekPlanId(now),
+      title: CURRENT_WEEK_PLAN_TITLE,
+    })
+  })
+
+  test('average meals per day uses Russian plural forms', () => {
+    expect(averageMealsPerDayLabel(0, 0)).toBe('0 приёмов в день')
+    expect(averageMealsPerDayLabel(1, 1)).toBe('1 приём в день')
+    expect(averageMealsPerDayLabel(3, 1)).toBe('3 приёма в день')
+    expect(averageMealsPerDayLabel(21, 7)).toBe('3 приёма в день')
+    expect(averageMealsPerDayLabel(15, 4)).toBe('4 приёма в день')
+    expect(averageMealsPerDayLabel(13, 5)).toBe('3 приёма в день')
+  })
+
+  test('selected plan badge shows the active date range', () => {
+    expect(formatPlanActiveRange(new Date(2026, 8, 7), 9)).toBe('07.09 - 15.09')
+    expect(formatPlanActiveRange(new Date(2026, 8, 7), 1)).toBe('07.09 - 07.09')
+    expect(formatPlanActiveRange(new Date(2026, 8, 28), 6)).toBe('28.09 - 03.10')
+    expect(formatPlanActiveRange(new Date(2026, 8, 7), 0)).toBe('07.09 - 07.09')
+  })
+
+  test('collects ration days added this week and ignores meals outside it', () => {
+    const monday = new Date(2026, 7, 31)
+    const tuesday = new Date(2026, 8, 1)
+    const previousMonday = new Date(2026, 7, 24)
+    const first = SAMPLE_RATIONS[0]!
+    const second = SAMPLE_RATIONS[1]!
+    const plan = buildCurrentWeekPlan({
+      now,
+      rations: SAMPLE_RATIONS,
+      meals: [
+        mealOn(monday, {
+          id: 'm-mon',
+          title: first.meals[0]!.title,
+          assumptions: [RATION_DIARY_SOURCE_MARK, rationPlanAssumption(first.id)],
+        }),
+        mealOn(tuesday, {
+          id: 'm-tue',
+          title: second.meals[0]!.title,
+          kcal: 400,
+          assumptions: [RATION_DIARY_SOURCE_MARK, rationPlanAssumption(second.id)],
+        }),
+        mealOn(previousMonday, {
+          id: 'm-old',
+          title: first.meals[0]!.title,
+          assumptions: [RATION_DIARY_SOURCE_MARK, rationPlanAssumption(first.id)],
+        }),
+      ],
+    })
+    expect(plan.days.map((day) => day.short)).toEqual(['День 1', 'День 2'])
+    expect(plan.days[0]?.ration?.id).toBe(first.id)
+    expect(plan.days[1]?.ration?.id).toBe(second.id)
+    expect(plan.days[0]?.meals).toHaveLength(1)
+    expect(plan.coverImage).toBe('/rations/ration-01.jpg')
+    expect(plan.kcal).toBe(Math.round((first.kcal + second.kcal) / 2))
+    expect(plan.mealsCount).toBe(2)
+    expect(plan.cardDays).toHaveLength(1)
+    expect(plan.cardDays[0]?.filled).toBe(true)
+    expect(plan.cardDays[0]?.ration?.id).toBe(first.id)
+  })
+
+  test('fills an empty weekday from last week’s pending template', () => {
+    const previousTuesday = new Date(2026, 7, 25)
+    const first = SAMPLE_RATIONS[0]!
+    const plan = buildCurrentWeekPlan({
+      now,
+      rations: SAMPLE_RATIONS,
+      meals: [
+        mealOn(previousTuesday, {
+          id: 'm-last-tue',
+          title: first.meals[0]!.title,
+          assumptions: [
+            RATION_DIARY_SOURCE_MARK,
+            rationPlanAssumption(first.id),
+            weekPlanAssumption('week:2026-08-24'),
+          ],
+        }),
+      ],
+    })
+    expect(plan.days[0]?.filled).toBe(true)
+    expect(plan.days[0]?.short).toBe('День 2')
+    expect(plan.days[0]?.meals.map((meal) => meal.id)).toEqual(['m-last-tue'])
+    expect(plan.cardDays[0]?.filled).toBe(false)
+  })
+
+  test('hides a meal detached from the weekly plan', () => {
+    const tuesday = new Date(2026, 8, 1)
+    const first = SAMPLE_RATIONS[0]!
+    const plan = buildCurrentWeekPlan({
+      detachedIds: new Set(['m-tue']),
+      now,
+      rations: SAMPLE_RATIONS,
+      meals: [
+        mealOn(tuesday, {
+          id: 'm-tue',
+          title: first.meals[0]!.title,
+          assumptions: [RATION_DIARY_SOURCE_MARK, rationPlanAssumption(first.id)],
+        }),
+      ],
+    })
+    expect(plan.days).toEqual([])
+    expect(plan.cardDays[0]?.filled).toBe(false)
+    expect(plan.cardDays[0]?.meals).toEqual([])
+  })
+
+  test('keeps Thursday in the plan even when the list card only shows one day', () => {
+    const thursday = new Date(2026, 8, 3)
+    const ration = SAMPLE_RATIONS[0]!
+    const plan = buildCurrentWeekPlan({
+      now,
+      rations: SAMPLE_RATIONS,
+      meals: [
+        mealOn(thursday, {
+          id: 'm-thu',
+          title: ration.meals[0]!.title,
+          assumptions: [RATION_DIARY_SOURCE_MARK, rationPlanAssumption(ration.id)],
+        }),
+      ],
+    })
+    expect(plan.cardDays.map((day) => day.short)).toEqual(['День 1'])
+    expect(plan.cardDays.map((day) => day.filled)).toEqual([false])
+    expect(plan.mealsCount).toBe(1)
+    expect(plan.days.map((day) => day.short)).toEqual(['День 4'])
+    expect(plan.days[0]?.meals[0]?.title).toBe(ration.meals[0]!.title)
+  })
+
+  test('marks a day done only when every planned meal on that day is completed', () => {
+    const monday = new Date(2026, 7, 31)
+    const ration = SAMPLE_RATIONS[0]!
+    const pending = buildCurrentWeekPlan({
+      now,
+      rations: SAMPLE_RATIONS,
+      meals: [
+        mealOn(monday, {
+          id: 'm1',
+          title: ration.meals[0]!.title,
+          assumptions: [RATION_DIARY_SOURCE_MARK, rationPlanAssumption(ration.id)],
+        }),
+        mealOn(monday, {
+          id: 'm2',
+          title: ration.meals[1]?.title ?? 'Обед',
+          meal: 'Обед',
+          assumptions: [RATION_DIARY_SOURCE_MARK, rationPlanAssumption(ration.id)],
+        }),
+      ],
+    })
+    expect(pending.days[0]?.done).toBe(false)
+    const done = buildCurrentWeekPlan({
+      now,
+      rations: SAMPLE_RATIONS,
+      completedIds: new Set(['m1', 'm2']),
+      meals: pending.days[0]
+        ? [
+            mealOn(monday, {
+              id: 'm1',
+              title: ration.meals[0]!.title,
+              assumptions: [RATION_DIARY_SOURCE_MARK, rationPlanAssumption(ration.id)],
+            }),
+            mealOn(monday, {
+              id: 'm2',
+              title: ration.meals[1]?.title ?? 'Обед',
+              meal: 'Обед',
+              assumptions: [
+                RATION_DIARY_SOURCE_MARK,
+                RATION_DIARY_DONE_MARK,
+                rationPlanAssumption(ration.id),
+              ],
+            }),
+          ]
+        : [],
+    })
+    expect(done.days[0]?.done).toBe(true)
+  })
+
+  test('keeps a mentor ration that is not in the ready-made catalog', () => {
+    const monday = new Date(2026, 7, 31)
+    const plan = buildCurrentWeekPlan({
+      now,
+      rations: SAMPLE_RATIONS,
+      meals: [
+        mealOn(monday, {
+          id: 'mentor-meal',
+          title: 'День от наставника',
+          assumptions: [RATION_DIARY_SOURCE_MARK, rationPlanAssumption('mentor-fav-day')],
+        }),
+      ],
+    })
+    expect(plan.days).toHaveLength(1)
+    expect(plan.days[0]?.ration?.id).toBe('mentor-fav-day')
+    expect(plan.days[0]?.ration?.title).toBe('День от наставника')
+    expect(plan.days[0]?.mealsCount).toBe(1)
+    expect(plan.cardDays[0]?.filled).toBe(true)
+    expect(plan.cardDays).toHaveLength(1)
+  })
+})
+
+test('authored plans keep their own meals and cover', () => {
+  const monday = new Date(2026, 7, 31)
+  const ration = SAMPLE_RATIONS[0]!
+  const weekId = currentWeekPlanId(now)
+  const customId = 'plan_custom-office'
+  const meals = [
+    mealOn(monday, {
+      id: 'week-meal',
+      title: ration.meals[0]!.title,
+      assumptions: [RATION_DIARY_SOURCE_MARK, rationPlanAssumption(ration.id), `План:${weekId}`],
+    }),
+    mealOn(monday, {
+      id: 'custom-meal',
+      title: 'Офисный обед',
+      assumptions: [RATION_DIARY_SOURCE_MARK, rationPlanAssumption(ration.id), `План:${customId}`],
+    }),
+  ]
+  const custom = buildWeekPlan({
+    coverImage: '/plans/office.jpg',
+    meals,
+    now,
+    planId: customId,
+    rations: SAMPLE_RATIONS,
+    title: 'Офис без срывов',
+  })
+  expect(custom.title).toBe('Офис без срывов')
+  expect(custom.coverImage).toBe('/rations/ration-01.jpg')
+  expect(custom.days[0]?.meals.map((meal) => meal.id)).toEqual(['custom-meal'])
+  const week = buildCurrentWeekPlan({ meals, now, rations: SAMPLE_RATIONS })
+  expect(week.days[0]?.meals.map((meal) => meal.id)).toEqual(['week-meal'])
+})
+
+test('week plan card paints a plan summary plaque and a taller preview', () => {
+  const source = readFileSync(new URL('../src/features/plans/WeekPlanCard.tsx', import.meta.url), 'utf8')
+  const page = readFileSync(new URL('../src/features/plans/pages.tsx', import.meta.url), 'utf8')
+  expect(source).toContain('PlanSummaryPlaque')
+  expect(source).toContain('daysCountLabel(plan.days.length)')
+  expect(source).toContain('{plan.kcal} ккал')
+  expect(source).toContain('mealsCountAria(plan.mealsCount)')
+  expect(source).toContain('{plan.mealsCount}')
+  expect(source).toContain('data-plan-summary=""')
+  expect(source).toContain('ListIcon')
+  expect(source).toContain('CircleCheckIcon')
+  expect(source).not.toContain('<CheckIcon')
+  expect(source).toContain('nora-tint-dimmed')
+  expect(source).toContain("fromMentor={fromMentor}")
+  expect(source).not.toContain("selected={selected}")
+  expect(source).toContain('bg-[var(--nora-inset)]')
+  expect(source).toContain('px-2')
+  expect(source).toContain('gap-2')
+  expect(source).not.toContain('plan.cardDays.map')
+  expect(source).not.toContain('{day.kcal} ккал')
+  expect(source).not.toContain("selected && 'scheme-editor-dark'")
+  expect(source).not.toContain("data-selected={selected ? '' : undefined}")
+  const css = readFileSync(new URL('../src/styles/card-hover.css', import.meta.url), 'utf8')
+  expect(css).not.toContain("[data-slot='meal-card'][data-selected]")
+  expect(css).not.toContain('--meal-card-fill: #2C2C2E')
+  expect(css).not.toContain('--nora-panel: #2C2C2E')
+  expect(source).toContain("selected ? 'Выбран' : 'Выбрать'")
+  expect(source).toContain('CircleCheckIcon')
+  expect(source).toContain("variant={selected ? 'primary' : 'default'}")
+  expect(source).toContain('!selected && productCardFooterCtaClass')
+  expect(source).toContain('!bg-[var(--nora-tint)] !text-white')
+  expect(source).not.toContain('Выбрать план')
+  expect(source).not.toContain('План выбран')
+  expect(source).toContain('{plan.title}')
+  expect(source).not.toContain('{plan.description}')
+  expect(source).not.toContain('whitespace-pre-line')
+  expect(source).toContain('averageMealsPerDayLabel(plan.mealsCount, plan.days.length)')
+  expect(source).not.toContain('Текущий план')
+  expect(source).toContain('{activeRange}')
+  expect(source).toContain("'md:hidden'")
+  expect(source).toContain('max-md:hidden')
+  expect(source).toContain('productCardGoalAnchorClass')
+  expect(source).toContain('fromMentor')
+  expect(source).toContain('ProductCardOriginBadge')
+  expect(source).toContain('origin="mentor-rations"')
+  expect(source).toContain('bg-[var(--nora-success)] text-white')
+  expect(page).toContain('fromMentor={isAssignedPlanId(plan.id)}')
+  expect(page).toContain('formatPlanActiveRange(')
+  expect(page).toContain('description: ration.description')
+  expect(page).toContain('description: catalog.description')
+  expect(page).toContain('plan?.description.trim()')
+  expect(page).toContain('showHeaderOnMobile')
+  const coverBadge = source.slice(
+    source.indexOf('productCardGoalAnchorClass'),
+    source.indexOf('absolute inset-x-0 bottom-0'),
+  )
+  expect(coverBadge).toContain('{plan.kcal} ккал')
+  expect(coverBadge).toContain('{activeRange}')
+  expect(coverBadge).not.toContain('Текущий план')
+  expect(coverBadge).toContain('md:hidden')
+  expect(coverBadge).not.toContain('{plan.days.length}')
+  const coverCopy = source.slice(
+    source.indexOf('absolute inset-x-0 bottom-0'),
+    source.indexOf('{onDelete ?'),
+  )
+  expect(coverCopy).toContain('{plan.title}')
+  expect(coverCopy).not.toContain('{plan.description}')
+  expect(coverCopy).not.toContain('PLAN_COVER_FADE_BLUR_CLASS')
+  expect(coverCopy).not.toContain('backdrop-blur-[16px]')
+  expect(coverCopy).toContain('bg-gradient-to-t from-black/62 to-transparent')
+  expect(source).not.toContain('PLAN_COVER_FADE_BLUR_CLASS')
+  expect(coverCopy).toContain('averageMealsPerDayLabel(plan.mealsCount, plan.days.length)')
+  expect(coverCopy).not.toContain('daysCountLabel(plan.days.length)')
+  expect(coverCopy).not.toContain('mealsCountLabel(plan.mealsCount)')
+  expect(coverCopy).not.toContain('{plan.kcal} ккал')
+  expect(source).toContain('WEEK_PLAN_CARD_SLOTS')
+  expect(source).toContain('h-[204px]')
+  expect(source).toContain('md:h-[224px]')
+  expect(source).not.toContain('aspect-[4/3]')
+  expect(source).not.toContain('max-h-[108px]')
+  expect(page).toContain('useSyncedPlanLibrary(')
+  expect(page).toContain('persist(')
+  expect(page).toContain('canReorder={!isAssignedPlanId(plan.id)}')
+  const savedPlans = readFileSync(
+    new URL('../src/features/plans/saved-plans.ts', import.meta.url),
+    'utf8',
+  )
+  expect(savedPlans).toContain('clearSkippedPlanMealIds(')
+  expect(source).toContain('productCardFooterCtaClass')
+  expect(source).toContain("variant={selected ? 'primary' : 'default'}")
+  expect(source).toContain('ShoppingBagIcon')
+  const shopping = readFileSync(
+    new URL('../src/features/plans/PlanShoppingDialog.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(shopping).toContain('rounded-[16px] bg-[var(--nora-inset)]')
+  expect(shopping).toContain('ShoppingBagIcon')
+  expect(shopping).toContain('Куплено')
+  expect(shopping).toContain('productSheetOverlayChipClass')
+  expect(shopping).toContain('data-plan-shopping-day=""')
+  expect(shopping).toContain('planShoppingDayOptions(days.length)')
+  expect(shopping).toContain('NoraSelect')
+  expect(shopping).toContain('Все дни')
+  const startDialog = readFileSync(
+    new URL('../src/features/plans/PlanStartDialog.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(startDialog).toContain('rounded-[16px] bg-[var(--nora-inset)]')
+  expect(startDialog).toContain('CalendarDaysIcon')
+  expect(startDialog).toContain('data-plan-start-calendar=""')
+  expect(startDialog).toContain('[--cell-size:2.5rem]')
+  expect(startDialog).toContain('text-[var(--nora-text-tertiary)]')
+  expect(startDialog).not.toContain('text-[13px] font-light leading-5 text-[var(--nora-text-secondary)]')
+  expect(source).toContain('h-10 min-h-10')
+  expect(source).toContain('aria-label="Удалить"')
+  expect(source).toContain('Trash2Icon')
+  expect(source).toContain('onDelete')
+  expect(source).toContain('sm:group-hover:opacity-100')
+  expect(page).toContain('selectedPlanIds.has(plan.id)')
+  expect(page).toContain('isAuthoredPlanId(plan.id) ? () => deletePlan(plan.id)')
+  expect(page).toContain('withoutAuthoredPlan(')
+  expect(page).toContain('RationEditorDialog')
+  expect(page).toContain('mode="plan"')
+  expect(page).not.toContain('CreatePlanDialog')
+  expect(page).toContain('PlanToolbar')
+  const toolbar = readFileSync(new URL('../src/features/plans/PlanToolbar.tsx', import.meta.url), 'utf8')
+  expect(toolbar).toContain('ListIcon')
+  expect(toolbar).not.toContain('PlusIcon')
+  expect(toolbar).toContain('PlanGroupPlaque')
+  expect(toolbar).toContain('PLAN_GROUP_PLAQUE_TONE')
+  expect(toolbar).toContain('bg-[var(--nora-tint)] text-white')
+  expect(toolbar).toContain('bg-[#16A34A] text-white')
+  expect(toolbar).not.toContain('nora-tint-dimmed')
+  expect(toolbar).not.toContain('nora-badge-green-bg')
+  expect(toolbar).toContain('UserIcon')
+  expect(toolbar).toContain('GraduationCapIcon')
+  expect(page).toContain('onTabChange={setTab}')
+  expect(page).toContain('Пока нет избранных планов')
+  expect(page).toContain('visiblePlanCards(')
+  expect(page).toContain('PlanGroupPlaque')
+  expect(page).toContain('label="Мои"')
+  expect(page).toContain('tone="mine"')
+  expect(page).toContain('label="Наставник"')
+  expect(page).toContain('tone="mentor"')
+  expect(page).toContain('label="Наставник"')
+  expect(page).toContain('partitionPlanCards(')
+  expect(page).toContain('PlanStartDialog')
+  expect(page).toContain('void selectPlan(plan.id)')
+  expect(page).toContain('Добавить в мои')
+  expect(page).toContain('addCatalogToMine')
+  expect(page).toContain('PLAN_CATALOG')
+  expect(page).toContain('canCreate={canCreate}')
+  expect(page).toContain("library !== 'catalog'")
+  expect(page).toContain('PLAN_MOBILE_DOCK_ACTION_ID')
+  expect(page).toContain('ListIcon')
+  expect(page).toContain('MOBILE_DOCK_FAB_ICON_ACTIVE_CLASS')
+  expect(page).toContain('buildWeekPlanFromCatalog')
+  expect(page).toContain('planToolbarPillClass')
+  expect(page).toContain('size-9 shrink-0 justify-center p-0')
+  expect(page).toContain('aria-label="Назад"')
+  expect(page).toContain('ArrowLeftIcon')
+  expect(page).toContain('onOpenPlan')
+  expect(page).toContain('showMobileBackDock')
+  expect(page).toContain('MOBILE_DOCK_FAB_CLASS')
+  expect(page).toContain('createPortal')
+  expect(page).toContain('PLAN_MOBILE_DOCK_EXTRA_ID')
+  expect(page).toContain("cloned ? 'Открыть в «Мои»' : 'Добавить'")
+  expect(page).toContain('max-md:hidden')
+  expect(page).not.toContain(`{catalogView ? (
+            <section className="flex flex-col">`)
+  expect(page).toContain('catalogCloneErrorMessage')
+  expect(page).not.toContain('planToolbarIconButtonClass')
+  expect(page).toContain('productFeedToolbarRowClass')
+  expect(page).not.toContain("variant={cloned ? 'default' : 'primary'}")
+})
+
+test('plan favorites tab keeps only bookmarked cards', () => {
+  const week: WeekPlan = {
+    id: 'week:1',
+    title: 'План на неделю',
+    kcal: 0,
+    coverImage: '',
+    cardDays: [],
+    days: [],
+    mealsCount: 0,
+    goal: null,
+  }
+  const mine: WeekPlan = { ...week, id: 'mine_1', title: 'Мой', goal: 'Похудение' }
+  const saved = new Set(['mine_1'])
+  expect(visiblePlanCards([week, mine], '', saved, 'Избранное').map((plan) => plan.id)).toEqual([
+    'mine_1',
+  ])
+  expect(visiblePlanCards([week, mine], 'мой', saved, 'Все').map((plan) => plan.id)).toEqual([
+    'mine_1',
+  ])
+})
+
+test('plan toolbar filters catalog apart from own and mentor cards', () => {
+  const week: WeekPlan = {
+    id: 'week:1',
+    title: 'План на неделю',
+    kcal: 0,
+    coverImage: '',
+    cardDays: [],
+    days: [],
+    mealsCount: 0,
+    goal: null,
+  }
+  const mine: WeekPlan = { ...week, id: 'plan_office', title: 'Офис', goal: 'Похудение' }
+  const catalog: WeekPlan = { ...week, id: 'catalog_loss', title: 'Минус', goal: 'Похудение' }
+  const mentor: WeekPlan = {
+    ...week,
+    id: '3f1c0a1e-6b2d-4c8a-9e11-aaaaaaaaaaaa',
+    title: 'От наставника',
+    goal: 'Набор',
+  }
+  const all = [week, mine, catalog, mentor]
+  expect(visiblePlanCards(all, '', new Set(), 'Все', 'mine').map((plan) => plan.id)).toEqual([
+    'week:1',
+    'plan_office',
+    mentor.id,
+  ])
+  expect(visiblePlanCards(all, '', new Set(), 'Все', 'mentor').map((plan) => plan.id)).toEqual([
+    'week:1',
+    'plan_office',
+    mentor.id,
+  ])
+  expect(visiblePlanCards(all, '', new Set(), 'Все', 'catalog').map((plan) => plan.id)).toEqual([
+    'catalog_loss',
+  ])
+})
+
+test('a ration-backed plan exposes meal cards on day 1', () => {
+  const ration = SAMPLE_RATIONS[0]!
+  const plan = buildWeekPlanFromRation({
+    coverImage: ration.image,
+    planId: 'plan-mentor-1',
+    ration,
+    title: 'План наставника',
+  })
+  expect(plan.days).toHaveLength(1)
+  expect(plan.days[0]?.short).toBe('День 1')
+  expect(plan.days[0]?.meals.map((meal) => meal.title)).toEqual(
+    ration.meals.map((meal) => meal.title),
+  )
+  expect(plan.days[0]?.meals.every((meal) => meal.fromApi !== true)).toBe(true)
+})
+
+test('plan day kcal follows the diary calorie balance tones', () => {
+  expect(calorieBalanceTone(1606, 1800)).toBe('yellow')
+  expect(calorieBalanceTone(2140, 1800)).toBe('red')
+  expect(calorieBalanceTone(1800, 1800)).toBe('green')
+})
+
+test('mobile plan day tabs show ordinal day number and open on day 1', () => {
+  expect(
+    planDayTabParts({
+      short: 'День 4',
+      label: 'День 4',
+    }),
+  ).toEqual({ ordinal: 4, label: 'День 4' })
+  expect(planDayTabParts({ short: 'Слот', label: 'План' }, 2)).toEqual({
+    ordinal: 3,
+    label: 'День 3',
+  })
+  expect(
+    defaultPlanDayKey(
+      [{ dayKey: '2026-09-01' }, { dayKey: '2026-09-03' }],
+      new Date(2026, 8, 3),
+    ),
+  ).toBe('2026-09-01')
+  expect(
+    defaultPlanDayKey([{ dayKey: '2026-09-01' }], new Date(2026, 8, 3)),
+  ).toBe('2026-09-01')
+  expect(defaultPlanDayKey([])).toBeNull()
+})
+
+test('current plan lays meals under a diary-sized day badge', () => {
+  const source = readFileSync(
+    new URL('../src/features/plans/CurrentPlanMeals.tsx', import.meta.url),
+    'utf8',
+  )
+    expect(source).toContain('{day.short}')
+    expect(source).toContain('{day.kcal} ккал')
+    expect(source).toContain('mealsCountLabel(day.mealsCount)')
+    expect(source).toContain('UtensilsIcon')
+    expect(source).toContain("'ml-auto'")
+    expect(source).toContain('calorieBalanceTone(day.kcal, dailyCalories)')
+    expect(source).toContain('CALORIE_BALANCE_CHIP_CLASS')
+    expect(source).toContain('ZapIcon')
+    expect(source).toContain('role="tablist"')
+    expect(source).toContain('md:hidden')
+    expect(source).toContain('hidden flex-col gap-6 md:flex')
+    expect(source).toContain('PLAN_DAY_TAB_SLOTS')
+    expect(source).toContain('placeholderCount')
+    expect(source).toContain('PLAN_DAY_TAB_PLACEHOLDER_CLASS')
+    expect(source).toContain('bg-[var(--nora-inset)]')
+    expect(source).toContain('bg-[color-mix(in_srgb,var(--nora-inset)_46%,var(--nora-panel))]')
+    expect(source).not.toContain('shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-text)_5%,transparent)]')
+    expect(source).not.toContain('PLAN_DAY_TAB_PLATE_CLASS')
+    expect(source).toContain('rounded-full')
+    expect(source).not.toContain('CheckIcon')
+    expect(source).toContain('PLAN_DAY_TAB_SELECTED_CLASS')
+    expect(source).toContain('bg-[#2C2C2E]')
+    expect(source).toContain('text-[#888888]')
+    expect(source).toContain('bg-[var(--nora-tint)] text-white')
+    expect(source).toContain('выполнен')
+    expect(source).toContain('{parts.ordinal}')
+    expect(source).toContain('defaultPlanDayKey(')
+    expect(source.slice(source.indexOf('{day.short}'), source.indexOf('{day.kcal}'))).toContain('</div>')
+    expect(source).toContain("quiet: true")
+    expect(source).toContain("id: 'favorite-added'")
+    expect(source).toContain("id: 'favorite-removed'")
+    expect(source).toContain('reconcileLocalFavoriteIds(')
+    expect(source).not.toContain('stampStyle=')
+    expect(source).not.toContain('feedDayHeading')
+    expect(source).toContain('PlanMealGrid')
+    expect(source).toContain('canReorder')
+    expect(source).toContain('data-plan-day-tab')
+    expect(source).toContain('Переместить')
+    expect(source).toContain('ArrowLeftRightIcon')
+    expect(source).toContain('XIcon')
+    expect(source).toContain('orderBadge')
+    expect(source).toContain('showPlanState={false}')
+    expect(source).toContain('isRationPlanDone(')
+    expect(source).toContain('onDetachPlanMeal')
+    expect(source).toContain('Убрано из плана')
+    expect(source).not.toContain('allowCompletePlan')
+    expect(source).not.toContain('onCompletePlan')
+    expect(source).toContain('PLAN_DAY_BADGE_CLASS')
+  expect(source).toContain('h-7 min-h-7 max-h-7')
+  expect(source).toContain('readOnly')
+  expect(source).toContain('catalogFavoriteCreateDraft')
+  expect(source).not.toContain('hideFooterShare={readOnly}')
+  expect(source).toContain('mealCanShareToFeed')
+  expect(source).toContain('useUserFavoritesQuery(')
+  expect(source).not.toContain("id: 'favorites-load-failed'")
+})
+
+test('mentor plan cards open a day view instead of the create modal', () => {
+  const page = readFileSync(
+    new URL('../src/features/plans/MentorPlansPage.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(page).toContain("to: '/mentor/plans/$planId'")
+  expect(page).toContain('emptyRationDraft')
+  expect(page).toContain('<CurrentPlanMeals')
+  expect(page).toContain('readOnly')
+  expect(page).not.toContain('setDraft(rationToDraft')
+})
+
+test('mentee assigned plans drill into meal cards by day', () => {
+  const mentee = readFileSync(
+    new URL('../src/features/plans/MenteeAssignedPlans.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(mentee).toContain('usePlanAssignmentQuery')
+  expect(mentee).toContain('<CurrentPlanMeals')
+  expect(mentee).toContain('readOnly')
+  expect(mentee).toContain('К планам')
+})
+
+test('plan shopping lists unique groceries from every planned meal', () => {
+  const monday = new Date(2026, 7, 31)
+  const items = planShoppingItems([
+    mealOn(monday, {
+      id: 'shop-1',
+      title: 'Омлет',
+      ingredients: 'яйца, хлеб',
+      assumptions: [RATION_DIARY_SOURCE_MARK],
+    }),
+    mealOn(monday, {
+      id: 'shop-2',
+      title: 'Суп',
+      ingredients: 'хлеб, морковь',
+      assumptions: [RATION_DIARY_SOURCE_MARK],
+    }),
+  ])
+  expect(items.map((item) => item.label)).toEqual(['яйца', 'хлеб', 'морковь'])
+})
+
+test('plan shopping can list groceries for one plan day', () => {
+  const monday = new Date(2026, 7, 31)
+  const tuesday = new Date(2026, 8, 1)
+  const days = [
+    {
+      meals: [
+        mealOn(monday, {
+          id: 'd1',
+          title: 'Омлет',
+          ingredients: 'яйца, хлеб',
+          assumptions: [RATION_DIARY_SOURCE_MARK],
+        }),
+      ],
+    },
+    {
+      meals: [
+        mealOn(tuesday, {
+          id: 'd2',
+          title: 'Суп',
+          ingredients: 'хлеб, морковь',
+          assumptions: [RATION_DIARY_SOURCE_MARK],
+        }),
+      ],
+    },
+  ]
+  expect(planShoppingDayOptions(2).map((item) => item.label)).toEqual([
+    'Все дни',
+    '1 день',
+    '2 день',
+  ])
+  expect(planShoppingItemsForDay(days, 'all').map((item) => item.label)).toEqual([
+    'яйца',
+    'хлеб',
+    'морковь',
+  ])
+  expect(planShoppingItemsForDay(days, '1').map((item) => item.label)).toEqual(['яйца', 'хлеб'])
+  expect(planShoppingItemsForDay(days, '2').map((item) => item.label)).toEqual(['хлеб', 'морковь'])
+})
+
+test('plan list splits own cards from mentor cards', () => {
+  const week: WeekPlan = {
+    id: 'week:1',
+    title: 'План на неделю',
+    kcal: 0,
+    coverImage: '',
+    cardDays: [],
+    days: [],
+    mealsCount: 0,
+    goal: null,
+  }
+  const mine: WeekPlan = { ...week, id: 'plan_office', title: 'Офис', goal: 'Похудение' }
+  const mentor: WeekPlan = {
+    ...week,
+    id: '3f1c0a1e-6b2d-4c8a-9e11-aaaaaaaaaaaa',
+    title: 'От наставника',
+    goal: 'Набор',
+  }
+  expect(partitionPlanCards([week, mine, mentor])).toEqual({
+    mine: [week, mine],
+    mentor: [mentor],
+  })
+})
+
+test('selecting plans keeps every active plan id', () => {
+  const memory = new Map<string, string>()
+  const originalStorage = globalThis.localStorage
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        memory.set(key, value)
+      },
+      removeItem: (key: string) => {
+        memory.delete(key)
+      },
+    },
+  })
+  try {
+    const scope = { userId: 'user-1', email: 'plan@example.com' }
+    writeSelectedPlanIds(scope, new Set(['week:2026-08-31']))
+    expect(readSelectedPlanId(scope)).toBe('week:2026-08-31')
+    writeSelectedPlanIds(scope, new Set(['week:2026-08-31', 'plan_office']))
+    expect([...readSelectedPlanIds(scope)]).toEqual(['week:2026-08-31', 'plan_office'])
+    writeSelectedPlanId(scope, 'week:2026-09-07')
+    expect(readSelectedPlanId(scope)).toBe('week:2026-09-07')
+    expect(readSelectedPlanIds(scope).size).toBe(1)
+    writeSelectedPlanId(scope, null)
+    expect(readSelectedPlanId(scope)).toBe(null)
+    expect(readSelectedPlanIds(scope).size).toBe(0)
+  } finally {
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: originalStorage,
+    })
+  }
+})
+
+test('selecting a plan restores skipped pending diary cards', () => {
+  const memory = new Map<string, string>()
+  const originalStorage = globalThis.localStorage
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        memory.set(key, value)
+      },
+      removeItem: (key: string) => {
+        memory.delete(key)
+      },
+    },
+  })
+  try {
+    const scope = { userId: 'user-1', email: 'plan@example.com' }
+    writeSkippedPlanMealIds(scope, new Set(['kefir-apple']))
+    expect(readSkippedPlanMealIds(scope).has('kefir-apple')).toBe(true)
+    writeSelectedPlanId(scope, null)
+    expect(readSkippedPlanMealIds(scope).has('kefir-apple')).toBe(true)
+    writeSelectedPlanId(scope, 'week:2026-08-31')
+    expect(readSkippedPlanMealIds(scope).size).toBe(0)
+  } finally {
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: originalStorage,
+    })
+  }
+})
+
+test('authored plans persist and join the ration picker options', () => {
+  const memory = new Map<string, string>()
+  const originalStorage = globalThis.localStorage
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        memory.set(key, value)
+      },
+      removeItem: (key: string) => {
+        memory.delete(key)
+      },
+    },
+  })
+  try {
+    const scope = { userId: 'user-1', email: 'plan@example.com' }
+    expect(createAuthoredPlan({ title: '   ', coverImage: '' })).toBe(null)
+    const created = createAuthoredPlan({
+      title: 'Офис',
+      coverImage: '/cover.jpg',
+      id: 'plan_fixed-office',
+      goal: 'Похудение',
+    })
+    expect(created?.id).toBe('plan_fixed-office')
+    expect(created?.goal).toBe('Похудение')
+    expect(created?.description).toBe('')
+    const withCopy = createAuthoredPlan({
+      title: 'Офис',
+      coverImage: '/cover.jpg',
+      description: '  День в офисе.\nБез срывов к вечеру.  ',
+    })
+    expect(withCopy?.description).toBe('День в офисе.\nБез срывов к вечеру.')
+    appendAuthoredPlan(scope, created!)
+    expect(readAuthoredPlans(scope).map((plan) => plan.title)).toEqual(['Офис'])
+    expect(readAuthoredPlans(scope)[0]?.goal).toBe('Похудение')
+    const cloned = createAuthoredPlan({
+      title: 'Минус без голода',
+      coverImage: '/rations/ration-08.jpg',
+      sourceCatalogId: 'catalog_loss',
+    })
+    expect(cloned?.sourceCatalogId).toBe('catalog_loss')
+    appendAuthoredPlan(scope, cloned!)
+    expect(readAuthoredPlans(scope)[0]?.sourceCatalogId).toBe('catalog_loss')
+    const options = allPlanOptions(scope, now)
+    expect(options[0]).toEqual(weekPlanOptions(now)[0])
+    expect(options.some((plan) => plan.id === created?.id && plan.title === 'Офис')).toBe(true)
+    expect(removeAuthoredPlan(scope, created!.id).map((plan) => plan.id)).not.toContain(created!.id)
+    expect(readAuthoredPlans(scope)[0]?.sourceCatalogId).toBe('catalog_loss')
+    expect(removeAuthoredPlan(scope, cloned!.id)).toEqual([])
+  } finally {
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: originalStorage,
+    })
+  }
+})

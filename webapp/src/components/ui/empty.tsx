@@ -2,12 +2,13 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/** Nora empty: shopping plaque — 32px icon badge, 15/500 title, 12/300 description. */
 function Empty({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="empty"
       className={cn(
-        "flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-lg border-dashed p-12 text-center text-balance",
+        "ios-glass-glare-soft flex w-full min-w-0 items-center gap-2.5 rounded-[14px] bg-[var(--nora-input-bg)]/72 px-2.5 py-2 font-[family-name:var(--nora-font)] text-[var(--nora-text-secondary)] backdrop-blur-[16px]",
         className
       )}
       {...props}
@@ -19,19 +20,19 @@ function EmptyHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="empty-header"
-      className={cn("flex max-w-sm flex-col items-center gap-2", className)}
+      className={cn("flex min-w-0 flex-1 flex-col items-start text-left", className)}
       {...props}
     />
   )
 }
 
 const emptyMediaVariants = cva(
-  "mb-2 flex shrink-0 items-center justify-center [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "ios-glass-glare-soft inline-flex size-8 shrink-0 items-center justify-center rounded-full border-0 bg-[var(--nora-panel)]/80 text-[var(--nora-text)] backdrop-blur-[8px] [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
-        default: "bg-transparent",
-        icon: "flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground [&_svg:not([class*='size-'])]:size-6",
+        default: "",
+        icon: "",
       },
     },
     defaultVariants: {
@@ -60,7 +61,7 @@ function EmptyTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="empty-title"
       className={cn(
-        "font-heading text-lg font-medium tracking-tight",
+        "text-[15px] font-medium leading-6 tracking-normal text-[var(--nora-text)]",
         className
       )}
       {...props}
@@ -73,7 +74,7 @@ function EmptyDescription({ className, ...props }: React.ComponentProps<"p">) {
     <div
       data-slot="empty-description"
       className={cn(
-        "text-sm/relaxed text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
+        "text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)] [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-[var(--nora-tint)]",
         className
       )}
       {...props}
@@ -85,10 +86,7 @@ function EmptyContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="empty-content"
-      className={cn(
-        "flex w-full max-w-sm min-w-0 flex-col items-center gap-4 text-sm text-balance",
-        className
-      )}
+      className={cn("shrink-0 [&_button]:rounded-full", className)}
       {...props}
     />
   )

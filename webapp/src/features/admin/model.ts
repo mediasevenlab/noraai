@@ -1,4 +1,7 @@
-import { ADMIN_USERS_MAX_PAGE } from '@web-app-demo/contracts'
+import {
+  ADMIN_USERS_MAX_PAGE,
+  isDefaultUserEmail,
+} from '@web-app-demo/contracts'
 
 type AdminUsersQueryState = {
   isError: boolean
@@ -47,4 +50,11 @@ export function roleMutationFeedback({
   if (isError) return 'error'
   if (isSuccess) return 'success'
   return null
+}
+
+export function canDeleteAdminUser(
+  currentUserId: string,
+  target: { id: string; email: string },
+) {
+  return currentUserId !== target.id && !isDefaultUserEmail(target.email)
 }

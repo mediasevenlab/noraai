@@ -5,6 +5,7 @@ import {
   lazyRouteComponent,
 } from '@tanstack/react-router'
 
+import { parseReferralSearchParam } from './features/auth'
 import { RootLayout } from './root-layout'
 
 const rootRoute = createRootRoute({
@@ -16,6 +17,7 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   validateSearch: (search: Record<string, unknown>) => ({
+    ref: parseReferralSearchParam(search.ref),
     returnTo: typeof search.returnTo === 'string' ? search.returnTo : undefined,
   }),
   component: lazyRouteComponent(() => import('./pages'), 'HomePage'),
@@ -31,7 +33,10 @@ const loginRoute = createRoute({
 const signupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/signup',
-  validateSearch: returnToSearch,
+  validateSearch: (search: Record<string, unknown>) => ({
+    ...returnToSearch(search),
+    ref: parseReferralSearchParam(search.ref),
+  }),
   component: lazyRouteComponent(() => import('./pages'), 'SignupPage'),
 })
 
@@ -59,6 +64,86 @@ const userHomeRoute = createRoute({
   component: lazyRouteComponent(() => import('./pages'), 'UserHomePage'),
 })
 
+const userDiaryRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/diary',
+  component: lazyRouteComponent(() => import('./pages'), 'UserDiaryNewsPage'),
+})
+
+const userDiaryNewsLegacyRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/diary/news',
+  component: lazyRouteComponent(() => import('./pages'), 'UserHomePage'),
+})
+
+const userFeedRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/feed',
+  component: lazyRouteComponent(() => import('./pages'), 'UserFeedPage'),
+})
+
+const userRationsRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/rations',
+  component: lazyRouteComponent(() => import('./pages'), 'UserRationsPage'),
+})
+
+const userMentorRationsRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/mentor-rations',
+  component: lazyRouteComponent(() => import('./pages'), 'UserMentorRationsPage'),
+})
+
+const userMyRationsRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/my-rations',
+  component: lazyRouteComponent(() => import('./pages'), 'UserMyRationsPage'),
+})
+
+const userPlanRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/plan',
+  component: lazyRouteComponent(() => import('./pages'), 'UserPlanPage'),
+})
+
+const userGeneralRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/general',
+  validateSearch: (search: Record<string, unknown>) => ({
+    view: search.view === 'plan' ? ('plan' as const) : ('diary' as const),
+    planId: typeof search.planId === 'string' && search.planId.trim() ? search.planId : undefined,
+    library:
+      search.library === 'catalog' || search.library === 'mentor' || search.library === 'mine'
+        ? (search.library as 'mine' | 'mentor' | 'catalog')
+        : undefined,
+  }),
+  component: lazyRouteComponent(() => import('./pages'), 'UserGeneralPage'),
+})
+
+const userPlanCurrentRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/plan/current',
+  component: lazyRouteComponent(() => import('./pages'), 'UserPlanCurrentPage'),
+})
+
+const userPlanDetailRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/plan/$planId',
+  component: lazyRouteComponent(() => import('./pages'), 'UserPlanDetailPage'),
+})
+
+const userSavedRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/saved',
+  component: lazyRouteComponent(() => import('./pages'), 'UserSavedPage'),
+})
+
+const userOnboardingRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/onboarding',
+  component: lazyRouteComponent(() => import('./pages'), 'UserOnboardingPage'),
+})
+
 const userProfileRoute = createRoute({
   getParentRoute: () => userWorkspaceRoute,
   path: '/app/profile',
@@ -71,6 +156,18 @@ const userSettingsRoute = createRoute({
   component: lazyRouteComponent(() => import('./pages'), 'UserSettingsPage'),
 })
 
+const userReferralsRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/referrals',
+  component: lazyRouteComponent(() => import('./pages'), 'UserReferralsPage'),
+})
+
+const userPaymentsRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/payments',
+  component: lazyRouteComponent(() => import('./pages'), 'UserPaymentsPage'),
+})
+
 const adminWorkspaceRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'adminWorkspace',
@@ -80,7 +177,19 @@ const adminWorkspaceRoute = createRoute({
 const adminDashboardRoute = createRoute({
   getParentRoute: () => adminWorkspaceRoute,
   path: '/admin',
-  component: lazyRouteComponent(() => import('./pages'), 'AdminDashboardPage'),
+  component: lazyRouteComponent(() => import('./pages'), 'AdminHomeRedirectPage'),
+})
+
+const adminDemoLegacyRoute = createRoute({
+  getParentRoute: () => adminWorkspaceRoute,
+  path: '/admin/demo/$pageId',
+  component: lazyRouteComponent(() => import('./pages'), 'AdminHomeRedirectPage'),
+})
+
+const adminProfileRoute = createRoute({
+  getParentRoute: () => adminWorkspaceRoute,
+  path: '/admin/profile',
+  component: lazyRouteComponent(() => import('./pages'), 'AdminProfilePage'),
 })
 
 const adminUsersRoute = createRoute({
@@ -95,6 +204,114 @@ const adminSettingsRoute = createRoute({
   component: lazyRouteComponent(() => import('./pages'), 'AdminSettingsPage'),
 })
 
+const adminDesignSystemRoute = createRoute({
+  getParentRoute: () => adminWorkspaceRoute,
+  path: '/admin/ds/$pageId',
+  component: lazyRouteComponent(() => import('./pages'), 'AdminDesignSystemPage'),
+})
+
+const adminComponentsIndexRoute = createRoute({
+  getParentRoute: () => adminWorkspaceRoute,
+  path: '/admin/components',
+  component: lazyRouteComponent(() => import('./pages'), 'AdminComponentsIndexPage'),
+})
+
+const adminComponentDetailRoute = createRoute({
+  getParentRoute: () => adminWorkspaceRoute,
+  path: '/admin/components/$componentId',
+  component: lazyRouteComponent(() => import('./pages'), 'AdminComponentDetailPage'),
+})
+
+const adminBlocksIndexRoute = createRoute({
+  getParentRoute: () => adminWorkspaceRoute,
+  path: '/admin/blocks',
+  component: lazyRouteComponent(() => import('./pages'), 'AdminBlocksIndexPage'),
+})
+
+const adminBlockDetailRoute = createRoute({
+  getParentRoute: () => adminWorkspaceRoute,
+  path: '/admin/blocks/$blockId',
+  component: lazyRouteComponent(() => import('./pages'), 'AdminBlockDetailPage'),
+})
+
+const adminStackRoute = createRoute({
+  getParentRoute: () => adminWorkspaceRoute,
+  path: '/admin/stack',
+  component: lazyRouteComponent(() => import('./pages'), 'AdminStackPage'),
+})
+
+const adminStepsRoute = createRoute({
+  getParentRoute: () => adminWorkspaceRoute,
+  path: '/admin/steps',
+  component: lazyRouteComponent(() => import('./pages'), 'AdminStepsPage'),
+})
+
+const mentorWorkspaceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: 'mentorWorkspace',
+  component: lazyRouteComponent(() => import('./pages'), 'MentorWorkspaceLayout'),
+})
+
+const mentorHomeRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor',
+  component: lazyRouteComponent(() => import('./pages'), 'MentorHomePage'),
+})
+
+const mentorProfileRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor/profile',
+  component: lazyRouteComponent(() => import('./pages'), 'MentorProfilePage'),
+})
+
+const mentorUsersRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor/users',
+  component: lazyRouteComponent(() => import('./pages'), 'MentorUsersPage'),
+})
+
+const mentorMenteeRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor/users/$userId',
+  component: lazyRouteComponent(() => import('./pages'), 'MentorMenteePage'),
+})
+
+const mentorSettingsRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor/settings',
+  component: lazyRouteComponent(() => import('./pages'), 'MentorSettingsPage'),
+})
+
+const mentorPaymentsRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor/payments',
+  component: lazyRouteComponent(() => import('./pages'), 'MentorPaymentsPage'),
+})
+
+const mentorMealPlanRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor/meal-plan',
+  component: lazyRouteComponent(() => import('./pages'), 'MentorMealPlanPage'),
+})
+
+const mentorAssignedRationsRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor/mentor-rations',
+  component: lazyRouteComponent(() => import('./pages'), 'MentorAssignedRationsPage'),
+})
+
+const mentorPlansRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor/plans',
+  component: lazyRouteComponent(() => import('./pages'), 'MentorPlansWorkspacePage'),
+})
+
+const mentorPlanDetailRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor/plans/$planId',
+  component: lazyRouteComponent(() => import('./pages'), 'MentorPlanDetailWorkspacePage'),
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -103,13 +320,48 @@ const routeTree = rootRoute.addChildren([
   resetPasswordRoute,
   userWorkspaceRoute.addChildren([
     userHomeRoute,
+    userDiaryRoute,
+    userDiaryNewsLegacyRoute,
+    userFeedRoute,
+    userRationsRoute,
+    userMentorRationsRoute,
+    userMyRationsRoute,
+    userPlanRoute,
+    userGeneralRoute,
+    userPlanCurrentRoute,
+    userPlanDetailRoute,
+    userSavedRoute,
+    userOnboardingRoute,
     userProfileRoute,
     userSettingsRoute,
+    userReferralsRoute,
+    userPaymentsRoute,
   ]),
   adminWorkspaceRoute.addChildren([
     adminDashboardRoute,
+    adminDemoLegacyRoute,
+    adminProfileRoute,
     adminUsersRoute,
     adminSettingsRoute,
+    adminDesignSystemRoute,
+    adminComponentsIndexRoute,
+    adminComponentDetailRoute,
+    adminBlocksIndexRoute,
+    adminBlockDetailRoute,
+    adminStackRoute,
+    adminStepsRoute,
+  ]),
+  mentorWorkspaceRoute.addChildren([
+    mentorHomeRoute,
+    mentorProfileRoute,
+    mentorUsersRoute,
+    mentorMenteeRoute,
+    mentorSettingsRoute,
+    mentorPaymentsRoute,
+    mentorMealPlanRoute,
+    mentorAssignedRationsRoute,
+    mentorPlansRoute,
+    mentorPlanDetailRoute,
   ]),
 ])
 

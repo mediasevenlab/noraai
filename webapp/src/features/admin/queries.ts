@@ -2,7 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { AdminUsersQuery, UserRole } from '@web-app-demo/contracts'
 
 import { useAuth } from '@/features/auth'
-import { getAdminDashboard, getAdminUsers, updateAdminUserRole } from './api'
+import {
+  deleteAdminUser,
+  getAdminDashboard,
+  getAdminUsers,
+  updateAdminUserRole,
+} from './api'
 
 const adminQueryKeys = {
   all: ['session', 'admin'] as const,
@@ -32,6 +37,21 @@ export function useUpdateAdminUserRoleMutation() {
   return useMutation({
     mutationFn: ({ role, userId }: { role: UserRole; userId: string }) =>
       updateAdminUserRole(auth.transport, userId, { role }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard() }),
+        queryClient.invalidateQueries({ queryKey: [...adminQueryKeys.all, 'users'] }),
+      ])
+    },
+  })
+}
+
+export function useDeleteAdminUserMutation() {
+  const auth = useAuth()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId }: { userId: string }) =>
+      deleteAdminUser(auth.transport, userId),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: adminQueryKeys.dashboard() }),

@@ -3,7 +3,11 @@ import type {
   AdminUsersQuery,
   UserRole,
 } from '@web-app-demo/contracts'
-import { ADMIN_USERS_MAX_PAGE } from '@web-app-demo/contracts'
+import {
+  ADMIN_USERS_MAX_PAGE,
+  isDefaultUserEmail,
+  questionnaireAnswersSchema,
+} from '@web-app-demo/contracts'
 
 import {
   acquireUserAuthenticationAuthorityLock,
@@ -11,18 +15,34 @@ import {
   type DbClient,
   userAuthorityTransitionTransactionOptions,
 } from '../../../db'
+import { Prisma } from '../../../generated/prisma/client'
 import type {
   AdminDashboardReader,
   AdminUsersReader,
+  CurrentUserMentorReader,
+  MentorUsersManager,
   ProfileWriter,
+  QuestionnaireStore,
+  MentorPlansStore,
+  PlanAssignmentsStore,
+  UserFavoritesStore,
+  UserPlanLibraryStore,
+  UserMentorConnector,
+  UserDeleter,
   UserRoleUpdater,
+  UserReferralsReader,
 } from '../application/ports'
 import { UsersFailure } from '../domain/errors'
+import { uuidMealIds } from '../domain/favorite-meal-ids'
 
 const userSummarySelect = {
   id: true,
+  publicId: true,
   email: true,
   displayName: true,
+  nickname: true,
+  telegramUsername: true,
+  telegramPhone: true,
   role: true,
   createdAt: true,
 } as const
@@ -31,16 +51,283 @@ type UsersRepository =
   & ProfileWriter
   & AdminDashboardReader
   & AdminUsersReader
+  & CurrentUserMentorReader
+  & MentorUsersManager
+  & UserMentorConnector
+  & UserDeleter
   & UserRoleUpdater
+  & UserReferralsReader
+  & QuestionnaireStore
+  & PlanAssignmentsStore
+  & UserFavoritesStore
+  & UserPlanLibraryStore
+  & MentorPlansStore
 
 export function createPrismaUsersRepository(db: DbClient): UsersRepository {
   return {
-    updateProfile(userId, displayName) {
-      return db.user.update({
-        where: { id: userId },
-        data: { displayName },
-        select: userSummarySelect,
+    async getPlanAssignment(userId) {
+      const assignment = await db.planAssignment.findUnique({ where: { userId } })
+      if (!assignment) return null
+      return {
+        planIds: Array.isArray(assignment.planIds)
+          ? assignment.planIds.filter((id): id is string => typeof id === 'string')
+          : [],
+        updatedAt: assignment.updatedAt,
+      }
+    },
+    async putPlanAssignment(input) {
+      const assignment = await db.planAssignment.upsert({
+        where: { userId: input.userId },
+        create: {
+          userId: input.userId,
+          planIds: input.planIds,
+          updatedById: input.mentorUserId,
+        },
+        update: {
+          planIds: input.planIds,
+          updatedById: input.mentorUserId,
+        },
       })
+      return { planIds: input.planIds, updatedAt: assignment.updatedAt }
+    },
+    async getFavorites(userId) {
+      const row = await db.userSavedItems.findUnique({ where: { userId } })
+      if (!row) return null
+      return {
+        mealIds: stringIds(row.mealIds),
+        updatedAt: row.updatedAt,
+      }
+    },
+    async putFavorites(input) {
+      const row = await db.userSavedItems.upsert({
+        where: { userId: input.userId },
+        create: {
+          userId: input.userId,
+          mealIds: input.mealIds,
+        },
+        update: {
+          mealIds: input.mealIds,
+        },
+      })
+      return {
+        mealIds: input.mealIds,
+        updatedAt: row.updatedAt,
+      }
+    },
+    async getPlanLibrary(userId) {
+      const row = await db.userPlanLibrary.findUnique({ where: { userId } })
+      if (!row) return null
+      return {
+        authoredPlans: row.authoredPlans,
+        savedPlanIds: row.savedPlanIds,
+        selectedPlanIds: row.selectedPlanIds,
+        planStarts: row.planStarts,
+        updatedAt: row.updatedAt,
+      }
+    },
+    async putPlanLibrary(input) {
+      const row = await db.userPlanLibrary.upsert({
+        where: { userId: input.userId },
+        create: {
+          userId: input.userId,
+          authoredPlans: input.authoredPlans as Prisma.InputJsonValue,
+          savedPlanIds: input.savedPlanIds as Prisma.InputJsonValue,
+          selectedPlanIds: input.selectedPlanIds as Prisma.InputJsonValue,
+          planStarts: input.planStarts as Prisma.InputJsonValue,
+        },
+        update: {
+          authoredPlans: input.authoredPlans as Prisma.InputJsonValue,
+          savedPlanIds: input.savedPlanIds as Prisma.InputJsonValue,
+          selectedPlanIds: input.selectedPlanIds as Prisma.InputJsonValue,
+          planStarts: input.planStarts as Prisma.InputJsonValue,
+        },
+      })
+      return {
+        authoredPlans: input.authoredPlans,
+        savedPlanIds: input.savedPlanIds,
+        selectedPlanIds: input.selectedPlanIds,
+        planStarts: input.planStarts,
+        updatedAt: row.updatedAt,
+      }
+    },
+    async filterOwnedMealIds(userId, mealIds) {
+      const lookupIds = uuidMealIds(mealIds)
+      if (lookupIds.length === 0) return []
+      const rows = await db.meal.findMany({
+        where: { userId, id: { in: lookupIds } },
+        select: { id: true },
+      })
+      const owned = new Set(rows.map((row) => row.id))
+      return lookupIds.filter((id) => owned.has(id))
+    },
+    async listMentorPlans(mentorId) {
+      return db.mentorPlan.findMany({
+        where: { mentorId },
+        orderBy: { updatedAt: 'desc' },
+      })
+    },
+    async getMentorPlan(mentorId, planId) {
+      return db.mentorPlan.findFirst({
+        where: { id: planId, mentorId },
+      })
+    },
+    async listPlansByIds(ids) {
+      if (ids.length === 0) return []
+      return db.mentorPlan.findMany({
+        where: { id: { in: ids } },
+      })
+    },
+    async createMentorPlan(input) {
+      return db.mentorPlan.create({
+        data: {
+          mentorId: input.mentorId,
+          title: input.title,
+          description: input.description,
+          goal: input.goal,
+          source: input.source,
+          image: input.image,
+          days: input.days,
+          mealsPerDay: input.mealsPerDay,
+          meals: input.meals as Prisma.InputJsonValue,
+          kcal: input.kcal,
+          protein: input.protein,
+          fat: input.fat,
+          carbs: input.carbs,
+        },
+      })
+    },
+    async updateMentorPlan(input) {
+      const existing = await db.mentorPlan.findFirst({
+        where: { id: input.planId, mentorId: input.mentorId },
+        select: { id: true },
+      })
+      if (!existing) {
+        throw new UsersFailure('not_found', 'Plan not found')
+      }
+      return db.mentorPlan.update({
+        where: { id: input.planId },
+        data: {
+          title: input.title,
+          description: input.description,
+          goal: input.goal,
+          source: input.source,
+          image: input.image,
+          days: input.days,
+          mealsPerDay: input.mealsPerDay,
+          meals: input.meals as Prisma.InputJsonValue,
+          kcal: input.kcal,
+          protein: input.protein,
+          fat: input.fat,
+          carbs: input.carbs,
+        },
+      })
+    },
+    async deleteMentorPlan(mentorId, planId) {
+      const existing = await db.mentorPlan.findFirst({
+        where: { id: planId, mentorId },
+        select: { id: true },
+      })
+      if (!existing) {
+        throw new UsersFailure('not_found', 'Plan not found')
+      }
+      await db.mentorPlan.delete({ where: { id: planId } })
+    },
+    async getQuestionnaire(userId) {
+      const row = await db.userQuestionnaireProfile.findUnique({
+        where: { userId },
+        select: {
+          answers: true,
+          version: true,
+          completedAt: true,
+        },
+      })
+      if (!row) return null
+      return {
+        answers: questionnaireAnswersSchema.parse(row.answers),
+        version: row.version,
+        completedAt: row.completedAt,
+      }
+    },
+
+    async upsertQuestionnaire(userId, answers, completedAt) {
+      const row = await db.userQuestionnaireProfile.upsert({
+        where: { userId },
+        create: {
+          userId,
+          answers,
+          completedAt,
+          version: 1,
+        },
+        update: {
+          answers,
+          completedAt,
+          version: { increment: 1 },
+        },
+        select: {
+          answers: true,
+          version: true,
+          completedAt: true,
+        },
+      })
+      return {
+        answers: questionnaireAnswersSchema.parse(row.answers),
+        version: row.version,
+        completedAt: row.completedAt,
+      }
+    },
+
+    async hasCompletedQuestionnaire(userId) {
+      const row = await db.userQuestionnaireProfile.findUnique({
+        where: { userId },
+        select: { completedAt: true },
+      })
+      return row?.completedAt != null
+    },
+
+    async updateProfile(userId, input) {
+      try {
+        if (input.nickname !== undefined) {
+          const user = await db.user.findUnique({
+            where: { id: userId },
+            select: { email: true },
+          })
+          if (user && isDefaultUserEmail(user.email)) {
+            throw new UsersFailure(
+              'nickname_locked',
+              'The nickname of a default user cannot be changed',
+            )
+          }
+        }
+        const data = {
+          ...input,
+          ...(input.telegramUsername === null && input.telegramPhone === null
+            ? { telegramChatId: null }
+            : {}),
+        }
+        return await db.user.update({
+          where: { id: userId },
+          data,
+          select: userSummarySelect,
+        })
+      } catch (error) {
+        if (isUniqueConstraintError(error)) {
+          const targets = uniqueConstraintTargets(error)
+          if (targets.some((target) => target.includes('telegram_phone') || target.includes('telegramPhone'))) {
+            throw new UsersFailure(
+              'telegram_phone_taken',
+              'This Telegram phone is already taken',
+            )
+          }
+          if (targets.some((target) => target.includes('telegram'))) {
+            throw new UsersFailure(
+              'telegram_username_taken',
+              'This Telegram username is already taken',
+            )
+          }
+          throw new UsersFailure('nickname_taken', 'This nickname is already taken')
+        }
+        throw error
+      }
     },
 
     async dashboard(createdAfter) {
@@ -58,6 +345,8 @@ export function createPrismaUsersRepository(db: DbClient): UsersRepository {
             OR: [
               { email: { contains: q, mode: 'insensitive' as const } },
               { displayName: { contains: q, mode: 'insensitive' as const } },
+              { nickname: { contains: q, mode: 'insensitive' as const } },
+              ...(isPublicId(q) ? [{ publicId: Number(q) }] : []),
             ],
           }
         : {}
@@ -77,6 +366,161 @@ export function createPrismaUsersRepository(db: DbClient): UsersRepository {
         pageSize,
         total,
         hasNext: page < ADMIN_USERS_MAX_PAGE && page * pageSize < total,
+      }
+    },
+
+    async getCurrentUserMentor(userId) {
+      await assertUser(db, userId)
+      const assignment = await db.mentorAssignment.findUnique({
+        where: { menteeId: userId },
+        select: { mentor: { select: userSummarySelect } },
+      })
+      return assignment ? toAdminUserSummary(assignment.mentor) : null
+    },
+
+    async listUserReferrals(userId, { page, pageSize, q }) {
+      await assertUser(db, userId)
+      const where = {
+        referredByUserId: userId,
+        ...(q
+          ? {
+              OR: [
+                { email: { contains: q, mode: 'insensitive' as const } },
+                { displayName: { contains: q, mode: 'insensitive' as const } },
+                { nickname: { contains: q, mode: 'insensitive' as const } },
+                ...(isPublicId(q) ? [{ publicId: Number(q) }] : []),
+              ],
+            }
+          : {}),
+      }
+      const [total, users] = await db.$transaction([
+        db.user.count({ where }),
+        db.user.findMany({
+          where,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+          select: userSummarySelect,
+        }),
+      ])
+      return {
+        items: users.map(toAdminUserSummary),
+        page,
+        pageSize,
+        total,
+        hasNext: page < ADMIN_USERS_MAX_PAGE && page * pageSize < total,
+      }
+    },
+
+    async listMentorUsers(mentorUserId, { page, pageSize, q }) {
+      await assertMentor(db, mentorUserId)
+      const where = {
+        mentorId: mentorUserId,
+        ...(q
+          ? {
+              mentee: {
+                OR: [
+                  { email: { contains: q, mode: 'insensitive' as const } },
+                  { displayName: { contains: q, mode: 'insensitive' as const } },
+                  { nickname: { contains: q, mode: 'insensitive' as const } },
+                  ...(isPublicId(q) ? [{ publicId: Number(q) }] : []),
+                  ...(isUuid(q) ? [{ id: q }] : []),
+                ],
+              },
+            }
+          : {}),
+      }
+      const [total, assignments] = await db.$transaction([
+        db.mentorAssignment.count({ where }),
+        db.mentorAssignment.findMany({
+          where,
+          orderBy: [{ createdAt: 'desc' }, { menteeId: 'desc' }],
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+          select: {
+            mentee: { select: userSummarySelect },
+          },
+        }),
+      ])
+      return {
+        items: assignments.map(({ mentee }) => toAdminUserSummary(mentee)),
+        page,
+        pageSize,
+        total,
+        hasNext: page < ADMIN_USERS_MAX_PAGE && page * pageSize < total,
+      }
+    },
+
+    async connectCurrentUserToMentor(userId, mentorIdentifier) {
+      try {
+        return await db.$transaction(async (tx) => {
+          await acquireUserRoleMutationLock(tx)
+          const user = await tx.user.findUnique({
+            where: { id: userId },
+            select: userSummarySelect,
+          })
+          if (!user || user.role !== 'user') {
+            throw new UsersFailure('forbidden', 'Only users can connect to a mentor')
+          }
+          const mentor = await findUserByIdentifier(tx, mentorIdentifier)
+          if (!mentor || mentor.role !== 'mentor') {
+            throw new UsersFailure('not_found', 'Mentor not found')
+          }
+          const assignment = await tx.mentorAssignment.findUnique({
+            where: { menteeId: userId },
+            select: { mentorId: true },
+          })
+          if (assignment) {
+            throw new UsersFailure(
+              'mentor_conflict',
+              assignment.mentorId === mentor.id
+                ? 'You are already connected to this mentor'
+                : 'You are already connected to another mentor',
+            )
+          }
+          await tx.mentorAssignment.create({
+            data: { mentorId: mentor.id, menteeId: userId },
+          })
+          return toAdminUserSummary(mentor)
+        })
+      } catch (error) {
+        if (isUniqueConstraintError(error)) {
+          throw new UsersFailure(
+            'mentor_conflict',
+            'You are already connected to another mentor',
+          )
+        }
+        throw error
+      }
+    },
+
+    async detachMentorUser(mentorUserId, menteeUserId) {
+      return db.$transaction(async (tx) => {
+        await acquireUserRoleMutationLock(tx)
+        await assertMentor(tx, mentorUserId)
+        const assignment = await tx.mentorAssignment.findUnique({
+          where: { menteeId: menteeUserId },
+          select: {
+            mentorId: true,
+            mentee: { select: userSummarySelect },
+          },
+        })
+        if (!assignment || assignment.mentorId !== mentorUserId) {
+          throw new UsersFailure('not_found', 'Connected user not found')
+        }
+        await tx.mentorAssignment.delete({ where: { menteeId: menteeUserId } })
+        return toAdminUserSummary(assignment.mentee)
+      })
+    },
+
+    async requireAssignedMentee(mentorUserId, menteeUserId) {
+      await assertMentor(db, mentorUserId)
+      const assignment = await db.mentorAssignment.findUnique({
+        where: { menteeId: menteeUserId },
+        select: { mentorId: true },
+      })
+      if (!assignment || assignment.mentorId !== mentorUserId) {
+        throw new UsersFailure('not_found', 'Connected user not found')
       }
     },
 
@@ -107,11 +551,22 @@ export function createPrismaUsersRepository(db: DbClient): UsersRepository {
           throw new UsersFailure('role_conflict', 'You cannot remove your own administrator role')
         }
 
-        if (target.role === 'admin' && input.role === 'user') {
+        if (target.role === 'admin' && input.role !== 'admin') {
           const adminCount = await tx.user.count({ where: { role: 'admin' } })
           if (adminCount <= 1) {
             throw new UsersFailure('role_conflict', 'At least one administrator must remain')
           }
+        }
+
+        if (input.role !== 'mentor') {
+          await tx.mentorAssignment.deleteMany({
+            where: { mentorId: target.id },
+          })
+        }
+        if (input.role !== 'user') {
+          await tx.mentorAssignment.deleteMany({
+            where: { menteeId: target.id },
+          })
         }
 
         const updated = await tx.user.update({
@@ -130,21 +585,124 @@ export function createPrismaUsersRepository(db: DbClient): UsersRepository {
         return toAdminUserSummary(updated)
       }, userAuthorityTransitionTransactionOptions)
     },
+
+    deleteUser(input) {
+      return db.$transaction(async (tx) => {
+        await acquireUserRoleMutationLock(tx)
+        await acquireUserAuthenticationAuthorityLock(tx, input.targetUserId)
+
+        const actor = await tx.user.findUnique({
+          where: { id: input.actorUserId },
+          select: { id: true, role: true },
+        })
+        if (actor?.role !== 'admin') {
+          throw new UsersFailure('forbidden', 'Administrator access is required')
+        }
+
+        const target = await tx.user.findUnique({
+          where: { id: input.targetUserId },
+          select: userSummarySelect,
+        })
+        if (!target) {
+          throw new UsersFailure('not_found', 'User not found')
+        }
+        if (isDefaultUserEmail(target.email)) {
+          throw new UsersFailure('delete_conflict', 'Default users cannot be deleted')
+        }
+        if (target.id === actor.id) {
+          throw new UsersFailure('delete_conflict', 'You cannot delete your own account')
+        }
+        if (target.role === 'admin') {
+          const adminCount = await tx.user.count({ where: { role: 'admin' } })
+          if (adminCount <= 1) {
+            throw new UsersFailure('delete_conflict', 'At least one administrator must remain')
+          }
+        }
+
+        const deleted = await tx.user.delete({
+          where: { id: target.id },
+          select: userSummarySelect,
+        })
+        return toAdminUserSummary(deleted)
+      }, userAuthorityTransitionTransactionOptions)
+    },
   }
 }
 
 function toAdminUserSummary(user: {
   id: string
+  publicId: number
   email: string
   displayName: string | null
+  nickname: string | null
   role: UserRole
   createdAt: Date
 }): AdminUserSummary {
   return {
     id: user.id,
+    publicId: user.publicId,
     email: user.email,
     displayName: user.displayName,
+    nickname: user.nickname,
     role: user.role,
     createdAt: user.createdAt.toISOString(),
   }
+}
+
+function isUniqueConstraintError(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
+}
+
+function uniqueConstraintTargets(error: unknown): string[] {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return []
+  const target = error.meta?.target
+  if (Array.isArray(target)) return target.map(String)
+  if (typeof target === 'string') return [target]
+  return []
+}
+
+type UserLookupClient = Pick<DbClient, 'user'>
+
+async function assertMentor(client: UserLookupClient, userId: string) {
+  const actor = await client.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  })
+  if (actor?.role !== 'mentor') {
+    throw new UsersFailure('forbidden', 'Mentor access is required')
+  }
+}
+
+async function assertUser(client: UserLookupClient, userId: string) {
+  const actor = await client.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  })
+  if (actor?.role !== 'user') {
+    throw new UsersFailure('forbidden', 'User access is required')
+  }
+}
+
+function findUserByIdentifier(client: UserLookupClient, identifier: string) {
+  return client.user.findUnique({
+    where: isPublicId(identifier)
+      ? { publicId: Number(identifier) }
+      : isUuid(identifier)
+        ? { id: identifier }
+        : { nickname: identifier },
+    select: userSummarySelect,
+  })
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
+function isPublicId(value: string) {
+  return /^\d{1,10}$/.test(value) && Number(value) <= 2_147_483_647
+}
+
+function stringIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((id): id is string => typeof id === 'string' && id.length > 0)
 }

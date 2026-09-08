@@ -2,6 +2,7 @@ import {
   adminDashboardResponseSchema,
   adminUsersQuerySchema,
   adminUsersResponseSchema,
+  deleteAdminUserResponseSchema,
   updateUserRoleRequestSchema,
   updateUserRoleResponseSchema,
   type AdminUsersQuery,
@@ -39,5 +40,16 @@ export function updateAdminUserRole(
       method: 'PATCH',
       body: updateUserRoleRequestSchema.parse(input),
     },
+  )
+}
+
+export function deleteAdminUser(
+  transport: AuthenticatedTransport,
+  userId: string,
+) {
+  return transport.request(
+    `/api/admin/users/${encodeURIComponent(userId)}`,
+    deleteAdminUserResponseSchema,
+    { method: 'DELETE' },
   )
 }

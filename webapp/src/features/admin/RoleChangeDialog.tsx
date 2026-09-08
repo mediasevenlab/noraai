@@ -12,6 +12,12 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 
+const roleLabels: Record<UserRole, string> = {
+  admin: 'администратором',
+  mentor: 'наставником',
+  user: 'пользователем',
+}
+
 export function RoleChangeDialog({
   error,
   isPending,
@@ -37,23 +43,23 @@ export function RoleChangeDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Change user role?</AlertDialogTitle>
+          <AlertDialogTitle>Изменить роль пользователя?</AlertDialogTitle>
           <AlertDialogDescription>
             {pendingChange
-              ? `${pendingChange.user.email} will become ${pendingChange.role}. Their active sessions will be revoked.`
+              ? `${pendingChange.user.email} станет ${roleLabels[pendingChange.role]}. Активные сессии будут отозваны.`
               : ''}
           </AlertDialogDescription>
         </AlertDialogHeader>
         {error && (
           <Alert variant="destructive">
-            <AlertTitle>Role was not changed</AlertTitle>
+            <AlertTitle>Роль не изменена</AlertTitle>
             <AlertDescription>{error.message}</AlertDescription>
           </Alert>
         )}
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>Отмена</AlertDialogCancel>
           <Button disabled={isPending} onClick={onConfirm}>
-            {isPending ? 'Changing…' : 'Change role'}
+            {isPending ? 'Изменяем…' : 'Изменить роль'}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

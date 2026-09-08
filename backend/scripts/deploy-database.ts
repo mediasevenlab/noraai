@@ -9,9 +9,22 @@ import {
   bootstrapAdmin,
   parseAdminSeedConfig,
 } from '../src/modules/users/infrastructure/admin-bootstrap'
+import {
+  backfillUserQuestionnaires,
+  type QuestionnaireBackfillResult,
+} from '../src/modules/users'
+import {
+  backfillMealClientKeys,
+  backfillMealVersions,
+  type MealClientKeyBackfillResult,
+  type MealVersionsBackfillResult,
+} from '../src/modules/meals'
 
 type DatabaseDeployDependencies = {
   assertAdmin(db: DbClient): Promise<void>
+  backfillMealClientKeys(db: DbClient): Promise<MealClientKeyBackfillResult>
+  backfillMealVersions(db: DbClient): Promise<MealVersionsBackfillResult>
+  backfillQuestionnaires(db: DbClient): Promise<QuestionnaireBackfillResult>
   bootstrap(
     db: DbClient,
     config: ReturnType<typeof parseAdminSeedConfig>,
@@ -26,11 +39,14 @@ type DatabaseDeployDependencies = {
 
 const defaultDependencies: DatabaseDeployDependencies = {
   assertAdmin: assertLoginCapableAdmin,
+  backfillMealClientKeys,
+  backfillMealVersions,
+  backfillQuestionnaires: backfillUserQuestionnaires,
   bootstrap: bootstrapAdmin,
   createDatabase: createPrisma,
   log: console.log,
   migrate(databaseUrl, source) {
-    const migration = spawnSync('bun', ['run', 'prisma:deploy'], {
+    const migration = spawnSync(process.execPath, ['run', 'prisma:deploy'], {
       cwd: resolve(import.meta.dirname, '..'),
       env: {
         ...process.env,
@@ -55,9 +71,19 @@ export async function deployDatabase(
 
   const prisma = dependencies.createDatabase(config.databaseUrl)
   try {
+    const mealClientKeys = await dependencies.backfillMealClientKeys(prisma)
+    dependencies.log(`Meal clientKey backfill: migrated=${mealClientKeys.migrated}`)
+    const mealVersions = await dependencies.backfillMealVersions(prisma)
+    dependencies.log(
+      `Meal versions backfill: scanned=${mealVersions.scanned} updated=${mealVersions.updated}`,
+    )
     if (config.seed !== null) {
       await dependencies.bootstrap(prisma, config.seed)
     }
+    const backfill = await dependencies.backfillQuestionnaires(prisma)
+    dependencies.log(
+      `Questionnaire backfill: scanned=${backfill.scanned} created=${backfill.created} skipped=${backfill.skipped}`,
+    )
     await dependencies.assertAdmin(prisma)
   } finally {
     await prisma.$disconnect()

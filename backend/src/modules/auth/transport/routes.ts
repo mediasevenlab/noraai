@@ -10,6 +10,10 @@ import {
   passwordResetRequestResponseSchema,
   passwordResetRequestSchema,
   registerRequestSchema,
+  registrationMentorLookupQuerySchema,
+  registrationMentorLookupResponseSchema,
+  referralLookupQuerySchema,
+  referralLookupResponseSchema,
   tokenAuthResponseSchema,
   tokenLogoutRequestSchema,
   tokenRefreshRequestSchema,
@@ -76,6 +80,46 @@ const authWriteErrorResponses = {
   413: { content: errorResponseContent, description: 'Request body is too large' },
   429: { content: errorResponseContent, description: 'Too many authentication requests' },
 }
+
+const mentorLookupRoute = createRoute({
+  method: 'get',
+  path: '/mentor-lookup',
+  request: {
+    query: registrationMentorLookupQuerySchema,
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: registrationMentorLookupResponseSchema,
+        },
+      },
+      description: 'Exact mentor lookup for registration',
+    },
+    400: { content: errorResponseContent, description: 'Invalid identifier' },
+    429: { content: errorResponseContent, description: 'Too many requests' },
+  },
+})
+
+const referralLookupRoute = createRoute({
+  method: 'get',
+  path: '/referral-lookup',
+  request: {
+    query: referralLookupQuerySchema,
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: referralLookupResponseSchema,
+        },
+      },
+      description: 'Exact referral owner lookup',
+    },
+    400: { content: errorResponseContent, description: 'Invalid referral code' },
+    429: { content: errorResponseContent, description: 'Too many requests' },
+  },
+})
 
 const cookieRegisterRoute = createRoute({
   method: 'post',
@@ -333,6 +377,19 @@ export function createAuthRoutes({ env, requireAuth, service }: CreateAuthRoutes
   const routes = new OpenAPIHono<AuthHttpEnv>({ defaultHook: validationErrorHook })
   const protectedRoutes = new OpenAPIHono<AuthHttpEnv>({
     defaultHook: validationErrorHook,
+  })
+
+  routes.openapi(mentorLookupRoute, async (c) => {
+    return c.json(
+      await service.lookupRegistrationMentor(c.req.valid('query').identifier),
+      200,
+    )
+  })
+  routes.openapi(referralLookupRoute, async (c) => {
+    return c.json(
+      await service.lookupReferrer(c.req.valid('query').code),
+      200,
+    )
   })
 
   routes.openapi(cookieRegisterRoute, async (c) => {

@@ -71,25 +71,12 @@
 - Do not add empty layers, generic/base repositories, CQRS, event sourcing, or state-machine libraries without a concrete product need.
 - Do not move business rules into routes, screens, providers, or UI primitives to avoid defining the owning application/domain boundary.
 
-## Bootstrap-Only Instructions
-
-<!-- BOOTSTRAP_ONLY_START -->
-This block exists only for fresh installs from the template. If this repository has not been initialized for a real project yet:
-
-- Read `README.md`, especially `Agent Repo Download Instructions`, before setup or feature work.
-- Follow that README section for product intake, active/deferred surfaces, repository remote handling, Docker/PostgreSQL setup, deployment scope, Expo/EAS owner setup, and mobile Maestro dev-client setup when mobile E2E is active.
-- Record durable project choices in README files and docs, not in `AGENTS.md` or `CLAUDE.md`.
-- After first-run setup is complete, delete this entire `Bootstrap-Only Instructions` block from both `AGENTS.md` and `CLAUDE.md`.
-<!-- BOOTSTRAP_ONLY_END -->
-
 ## Git And Remote Policy
 
 - Inspect `git remote -v` before any branch, commit, push, or PR workflow.
-- Work on `master` unless explicitly told otherwise. Do not create, switch to, or suggest new branches without request.
-- Treat this repository as a template for a new project by default, not as a pull request source for the template.
-- If `origin` points to the template repository and the user has not explicitly said they are contributing to the template, remove it with `git remote remove origin`.
-- Add the user's own GitHub repository as `origin` only when the user provides a URL or asks to create/publish the project.
-- If no destination is chosen, leave the project without `origin` and report that publishing is not configured.
+- This checkout is the 24nutrition product (`https://24nutrition.site`). Do not treat it as a fresh template install.
+- Do not create, switch to, or suggest new branches without request. Stay on the current working branch.
+- Do not add, remove, or change `origin` unless the user provides a destination URL and explicitly asks to change remotes.
 - Do not push, open PRs, or configure deployment from the template remote by accident.
 
 ## Task Modes
@@ -191,6 +178,7 @@ This block exists only for fresh installs from the template. If this repository 
 - Update README/docs when a change materially affects architecture, setup, operations, contracts, user flows, or important engineering decisions.
 - Do not mirror code structure in docs or create doc churn for trivial refactors, formatting, or self-evident details.
 - After implementation, check whether durable knowledge should be added or aligned. If relevant doc drift remains out of scope, call it out.
+- For a user-visible capability or new product surface, append a version to the admin **Разработка** log (`webapp/src/features/steps/model.ts`) per [docs/PRODUCT_VERSIONS.md](docs/PRODUCT_VERSIONS.md). Do not bump for styling, bug fixes, refactors, or chrome-only tweaks. Never rewrite past steps or jump to `v1.0` unless asked.
 
 ## Deployment And Storage
 
@@ -233,6 +221,7 @@ This block exists only for fresh installs from the template. If this repository 
 - `Primary signal status`: met, not met, or partially validated.
 - `Secondary signal status`: exact checks run and what they showed.
 - Say whether docs were updated, not needed, or still need alignment.
+- Say whether **Разработка** (`/admin/steps`) was version-bumped, left unchanged, or still needs a step.
 - Call out remaining risks, missing coverage, failed checks, migrations, rollout notes, or follow-up work when relevant.
 - Include a concise suggested commit message when the change is ready.
 - For `Direct` or read-only `Review` tasks, compress the report to the relevant fields only.

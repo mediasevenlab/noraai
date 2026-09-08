@@ -11,6 +11,15 @@ afterEach(() => {
   globalThis.fetch = originalFetch
 })
 
+function requestPath(input: RequestInfo | URL) {
+  const value = String(input)
+  try {
+    return new URL(value).pathname
+  } catch {
+    return value.split('?')[0] ?? value
+  }
+}
+
 test('AuthApi refreshes and retries authenticated requests with the new access token', async () => {
   const expiredAccessToken = accessTokenFor('user_1', 'expired')
   const freshAccessToken = accessTokenFor('user_1', 'fresh')
@@ -19,7 +28,7 @@ test('AuthApi refreshes and retries authenticated requests with the new access t
 
   globalThis.fetch = async (input, init) => {
     const url = String(input)
-    const path = new URL(url).pathname
+    const path = requestPath(url)
     const headers = new Headers(init?.headers)
     calls.push({ path, authorization: headers.get('Authorization') })
 
@@ -38,9 +47,14 @@ test('AuthApi refreshes and retries authenticated requests with the new access t
         {
           user: {
             id: 'user_1',
+            publicId: 101,
             email: 'user@example.com',
             displayName: null,
+            nickname: null,
+            telegramUsername: null,
+    telegramPhone: null,
             role: 'user',
+            questionnaireCompleted: true,
             createdAt: '2026-05-11T00:00:00.000Z',
           },
         },
@@ -75,7 +89,7 @@ test('AuthApi shares one refresh across concurrent unauthorized requests', async
 
   globalThis.fetch = async (input, init) => {
     const url = String(input)
-    const path = new URL(url).pathname
+    const path = requestPath(url)
     const headers = new Headers(init?.headers)
     const authorization = headers.get('Authorization')
     calls.push({ path, authorization, credentials: init?.credentials })
@@ -90,9 +104,14 @@ test('AuthApi shares one refresh across concurrent unauthorized requests', async
         {
           user: {
             id: 'user_1',
+            publicId: 101,
             email: 'user@example.com',
             displayName: null,
+            nickname: null,
+            telegramUsername: null,
+    telegramPhone: null,
             role: 'user',
+            questionnaireCompleted: true,
             createdAt: '2026-05-11T00:00:00.000Z',
           },
         },
@@ -134,7 +153,7 @@ test('AuthApi clears only local session state when refresh is unauthorized', asy
 
   globalThis.fetch = async (input, init) => {
     const url = String(input)
-    const path = new URL(url).pathname
+    const path = requestPath(url)
     const headers = new Headers(init?.headers)
     calls.push({ path, authorization: headers.get('Authorization') })
 
@@ -177,7 +196,7 @@ test('AuthApi preserves the session when refresh fails transiently', async () =>
   let authExpiredCalls = 0
 
   globalThis.fetch = async (input) => {
-    const path = new URL(String(input)).pathname
+    const path = requestPath(input)
 
     if (path === '/api/auth/me') {
       return json({ error: { code: 'UNAUTHORIZED', message: 'Expired access token' } }, 401)
@@ -223,7 +242,7 @@ test('AuthApi never refreshes an old request after another session epoch wins', 
 
   publishBrowserSessionState('authenticated')
   globalThis.fetch = async (input) => {
-    const path = new URL(String(input)).pathname
+    const path = requestPath(input)
     calls.push(path)
     return json({ error: { code: 'UNAUTHORIZED', message: 'Expired access token' } }, 401)
   }
@@ -245,7 +264,7 @@ test('a late refresh 401 cannot clear a newer browser session epoch', async () =
   publishBrowserSessionState('authenticated')
 
   globalThis.fetch = async (input) => {
-    const path = new URL(String(input)).pathname
+    const path = requestPath(input)
     calls.push(path)
     if (path === '/api/auth/refresh') {
       await refreshCanFinish
@@ -283,16 +302,21 @@ test('AuthApi discards a successful response from an older browser session epoch
   publishBrowserSessionState('authenticated')
 
   globalThis.fetch = async (input) => {
-    const path = new URL(String(input)).pathname
+    const path = requestPath(input)
     calls.push(path)
     await requestCanFinish
     return json(
       {
         user: {
           id: 'account-a',
+          publicId: 101,
           email: 'account-a@example.com',
           displayName: null,
+          nickname: null,
+          telegramUsername: null,
+    telegramPhone: null,
           role: 'user',
+          questionnaireCompleted: true,
           createdAt: '2026-05-11T00:00:00.000Z',
         },
       },
@@ -312,6 +336,88 @@ test('AuthApi discards a successful response from an older browser session epoch
   await expect(request).rejects.toThrow('Browser auth session changed')
 })
 
+test('AuthApi keeps serving the same tab after login publishes a new session epoch', async () => {
+  const accessToken = accessTokenFor('account-a', 'current')
+  let storedAccessToken: string | null = null
+  const calls: string[] = []
+  publishBrowserSessionState('cleared')
+
+  globalThis.fetch = async (input) => {
+    const path = requestPath(input)
+    calls.push(path)
+
+    if (path === '/api/auth/login') {
+      return json(
+        {
+          accessToken,
+          user: {
+            id: 'account-a',
+            publicId: 101,
+            email: 'account-a@example.com',
+            displayName: null,
+            nickname: null,
+            telegramUsername: null,
+    telegramPhone: null,
+            role: 'user',
+            questionnaireCompleted: true,
+            createdAt: '2026-05-11T00:00:00.000Z',
+          },
+        },
+        200,
+      )
+    }
+
+    if (path === '/api/auth/me') {
+      return json(
+        {
+          user: {
+            id: 'account-a',
+            publicId: 101,
+            email: 'account-a@example.com',
+            displayName: null,
+            nickname: null,
+            telegramUsername: null,
+    telegramPhone: null,
+            role: 'user',
+            questionnaireCompleted: true,
+            createdAt: '2026-05-11T00:00:00.000Z',
+          },
+        },
+        200,
+      )
+    }
+
+    if (path === '/api/auth/logout') {
+      return new Response(null, { status: 204 })
+    }
+
+    return json({ error: { code: 'NOT_FOUND', message: 'Unexpected request' } }, 404)
+  }
+
+  const client = new AuthApi({
+    getAccessToken: () => storedAccessToken,
+    setAccessToken: (nextAccessToken) => {
+      storedAccessToken = nextAccessToken
+    },
+  })
+
+  const transition = await client.login({
+    email: 'account-a@example.com',
+    password: 'password123',
+  })
+  storedAccessToken = transition.data.accessToken
+
+  await expect(client.me()).resolves.toMatchObject({
+    user: { email: 'account-a@example.com' },
+  })
+  await expect(client.logout()).resolves.toMatchObject({
+    data: undefined,
+    sessionEpoch: expect.any(String),
+  })
+  expect(storedAccessToken).toBeNull()
+  expect(calls).toEqual(['/api/auth/login', '/api/auth/me', '/api/auth/logout'])
+})
+
 test('AuthApi never retries an authenticated request as a different principal', async () => {
   const accountAAccessToken = accessTokenFor('account-a', 'expired')
   const accountBAccessToken = accessTokenFor('account-b', 'fresh')
@@ -321,7 +427,7 @@ test('AuthApi never retries an authenticated request as a different principal', 
   publishBrowserSessionState('authenticated')
 
   globalThis.fetch = async (input) => {
-    const path = new URL(String(input)).pathname
+    const path = requestPath(input)
     calls.push(path)
     if (path === '/api/auth/refresh') {
       return json({ accessToken: accountBAccessToken }, 200)
@@ -347,7 +453,7 @@ test('AuthApi never retries an authenticated request as a different principal', 
 
 test('AuthApi preserves backend error status, code, and message', async () => {
   globalThis.fetch = async (input) => {
-    const path = new URL(String(input)).pathname
+    const path = requestPath(input)
 
     if (path === '/api/auth/register') {
       return json(
@@ -386,13 +492,13 @@ test('AuthApi submits password reset requests and clears session state after con
   let accessToken: string | null = 'existing-access-token'
 
   globalThis.fetch = async (input, init) => {
-    const path = new URL(String(input)).pathname
+    const path = requestPath(input)
     calls.push({
       path,
       body: init?.body ? JSON.parse(String(init.body)) : undefined,
     })
     if (path === '/api/auth/password-reset/request') {
-      return json({ accepted: true }, 202)
+      return json({ accepted: true, delivery: 'queued' }, 202)
     }
     if (path === '/api/auth/password-reset/confirm') {
       return new Response(null, { status: 204 })
@@ -409,7 +515,7 @@ test('AuthApi submits password reset requests and clears session state after con
 
   await expect(
     client.requestPasswordReset({ email: ' USER@Example.COM ' }),
-  ).resolves.toEqual({ accepted: true })
+  ).resolves.toEqual({ accepted: true, delivery: 'queued' })
   await expect(
     client.confirmPasswordReset({
       token: 't'.repeat(43),
@@ -435,7 +541,7 @@ test('AuthApi clearSession does not revoke a possibly newer shared browser cooki
   const calls: Array<{ path: string; method: string | undefined }> = []
 
   globalThis.fetch = async (input, init) => {
-    const path = new URL(String(input)).pathname
+    const path = requestPath(input)
     calls.push({ path, method: init?.method })
 
     return json({ error: { code: 'NOT_FOUND', message: 'Unexpected request' } }, 404)

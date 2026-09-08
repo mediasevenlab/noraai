@@ -16,6 +16,19 @@ export type AccessTokenPayload = {
 
 export type AuthRepository = {
   findUserByEmail(email: string): Promise<AuthUserRecord | null>
+  findMentorByIdentifier(identifier: string): Promise<{
+    id: string
+    publicId: number
+    displayName: string | null
+    nickname: string | null
+  } | null>
+  findReferrerByCode(code: string): Promise<{
+    id: string
+    publicId: number
+    displayName: string | null
+    nickname: string | null
+    role: 'user' | 'mentor' | 'admin'
+  } | null>
   createPasswordUserWithSession(input: {
     user: RegisterPayload & { passwordHash: string }
     session: {
@@ -111,6 +124,7 @@ export type PasswordResetTaskDeferrer = TaskDeferrer
 
 export const passwordResetAccepted = {
   accepted: true,
+  delivery: 'unavailable',
 } satisfies PasswordResetRequestResponse
 
 export type RefreshTokens = {

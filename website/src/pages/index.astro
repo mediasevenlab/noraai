@@ -1,33 +1,42 @@
 ---
-import CtaSection from '@/components/landing/CtaSection.astro'
-import FeatureGrid from '@/components/landing/FeatureGrid.astro'
-import HeroSection from '@/components/landing/HeroSection.astro'
-import ProcessSection from '@/components/landing/ProcessSection.astro'
-import ProofSection from '@/components/landing/ProofSection.astro'
+import BenefitsSection from '@/components/landing/BenefitsSection.astro'
+import DarkCtaSection from '@/components/landing/DarkCtaSection.astro'
+import FaqSection from '@/components/landing/FaqSection.astro'
+import FeatureShowcase from '@/components/landing/FeatureShowcase.astro'
+import MosaicShowcase from '@/components/landing/MosaicShowcase.astro'
 import SiteFooter from '@/components/landing/SiteFooter.astro'
 import SiteHeader from '@/components/landing/SiteHeader.astro'
+import TestimonialsSection from '@/components/landing/TestimonialsSection.astro'
+import WhyChooseSection from '@/components/landing/WhyChooseSection.astro'
 import BaseLayout from '@/layouts/BaseLayout.astro'
 
-const title = 'Northstar — чистый старт для сильного продукта'
+const title = '24nutrition — дневник питания и планы'
 const description =
-  'Модульный шаблон публичного сайта на Astro, Tailwind CSS и shadcn/ui: быстрый, адаптивный и готовый к развитию.'
+  'Ведите дневник питания, собирайте недельные планы и работайте с наставником в 24nutrition. Войдите или зарегистрируйтесь, чтобы открыть приложение.'
 const publicWebsiteUrl = import.meta.env.PUBLIC_WEBSITE_URL
-const publicWebappUrl = import.meta.env.PUBLIC_WEBAPP_URL
+const publicWebappUrl = (import.meta.env.PUBLIC_WEBAPP_URL ?? '').replace(/\/$/, '')
 const canonicalUrl = publicWebsiteUrl
   ? new URL(Astro.url.pathname, publicWebsiteUrl).toString()
   : undefined
-const primaryHref = publicWebappUrl ?? '#features'
-const primaryLabel = publicWebappUrl ? 'Открыть приложение' : 'Посмотреть возможности'
+
+function webappHref(path: `/${string}`) {
+  return `${publicWebappUrl}${path}`
+}
+
+const loginHref = webappHref('/login')
+const signupHref = webappHref('/signup')
 ---
 
 <BaseLayout canonicalUrl={canonicalUrl} description={description} title={title}>
-  <SiteHeader primaryHref={primaryHref} primaryLabel={primaryLabel} />
+  <SiteHeader loginHref={loginHref} signupHref={signupHref} />
   <main id="main-content">
-    <HeroSection primaryHref={primaryHref} primaryLabel={primaryLabel} />
-    <FeatureGrid />
-    <ProcessSection />
-    <ProofSection />
-    <CtaSection primaryHref={primaryHref} primaryLabel={primaryLabel} />
+    <MosaicShowcase />
+    <WhyChooseSection href={signupHref} />
+    <BenefitsSection signupHref={signupHref} />
+    <FeatureShowcase />
+    <TestimonialsSection />
+    <FaqSection />
+    <DarkCtaSection loginHref={loginHref} signupHref={signupHref} />
   </main>
-  <SiteFooter />
+  <SiteFooter loginHref={loginHref} signupHref={signupHref} />
 </BaseLayout>

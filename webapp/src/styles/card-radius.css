@@ -1,0 +1,83 @@
+:root {
+  --meal-card-radius: 16px;
+  --meal-card-preview-radius: 12px;
+}
+
+[data-slot='meal-card'],
+[data-slot='meal-card-skeleton'] {
+  border-radius: var(--meal-card-radius);
+}
+
+[data-slot='meal-card-preview'] {
+  overflow: hidden;
+  border-radius: var(--meal-card-preview-radius);
+}
+
+/* Cover media inherits preview radius; badges keep their own rounding. */
+[data-slot='meal-card-preview'] > [data-slot='meal-cover'],
+[data-slot='meal-card-preview'] > img,
+[data-slot='meal-card-preview'] > picture,
+[data-slot='meal-card-preview'] > video {
+  border-radius: inherit;
+}
+
+html[data-card-radius='8'] {
+  --meal-card-radius: 8px;
+  --meal-card-preview-radius: 4px;
+}
+
+html[data-card-radius='10'] {
+  --meal-card-radius: 10px;
+  --meal-card-preview-radius: 6px;
+}
+
+html[data-card-radius='12'] {
+  --meal-card-radius: 12px;
+  --meal-card-preview-radius: 8px;
+}
+
+html[data-card-radius='14'] {
+  --meal-card-radius: 14px;
+  --meal-card-preview-radius: 10px;
+}
+
+html[data-card-radius='16'] {
+  --meal-card-radius: 16px;
+  --meal-card-preview-radius: 12px;
+}
+
+html[data-card-radius='18'] {
+  --meal-card-radius: 18px;
+  --meal-card-preview-radius: 14px;
+}
+
+html[data-card-radius='20'] {
+  --meal-card-radius: 20px;
+  --meal-card-preview-radius: 16px;
+}
+
+html[data-card-radius='22'] {
+  --meal-card-radius: 22px;
+  --meal-card-preview-radius: 18px;
+}
+
+html[data-card-radius='24'] {
+  --meal-card-radius: 24px;
+  --meal-card-preview-radius: 20px;
+}
+
+html[data-card-radius='28'] {
+  --meal-card-radius: 28px;
+  --meal-card-preview-radius: 24px;
+}
+
+@media (max-width: 767px) {
+  [data-slot='meal-card'],
+  [data-slot='meal-card-skeleton'] {
+    border-radius: max(14px, calc(var(--meal-card-radius) + 2px));
+  }
+
+  [data-slot='meal-card-preview'] {
+    border-radius: max(10px, calc(var(--meal-card-preview-radius) + 2px));
+  }
+}

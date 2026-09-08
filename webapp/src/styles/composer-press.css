@@ -1,0 +1,169 @@
+.composer-press-surface.meal-composer-field {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 28%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--nora-text) 5%, transparent),
+    0 8px 24px color-mix(in srgb, var(--nora-text) 14%, transparent);
+  transition:
+    box-shadow 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.composer-press-surface.meal-composer-field[data-focused] {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 36%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--nora-text) 10%, transparent),
+    0 14px 36px color-mix(in srgb, var(--nora-text) 24%, transparent);
+}
+
+.scheme-editor-dark .composer-press-surface.meal-composer-field,
+[data-scheme='editor-dark'] .composer-press-surface.meal-composer-field {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 10%, transparent),
+    0 0 0 1px color-mix(in srgb, white 7%, transparent),
+    0 8px 24px rgba(0, 0, 0, 0.44);
+}
+
+.scheme-editor-dark .composer-press-surface.meal-composer-field[data-focused],
+[data-scheme='editor-dark'] .composer-press-surface.meal-composer-field[data-focused] {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+    0 0 0 1px color-mix(in srgb, white 12%, transparent),
+    0 16px 40px rgba(0, 0, 0, 0.58);
+}
+
+.composer-press-surface {
+  --press-x: 50%;
+  --press-y: 50%;
+  isolation: isolate;
+  transform: scale(1);
+  transform-origin: center center;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.composer-press-surface[data-pressed] {
+  transform: scale(1.02);
+}
+
+.composer-press-glow {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  opacity: 0;
+  background: radial-gradient(
+    168px circle at var(--press-x) var(--press-y),
+    color-mix(in srgb, var(--nora-text) 10%, transparent) 0%,
+    color-mix(in srgb, var(--nora-text) 5%, transparent) 38%,
+    transparent 72%
+  );
+  mix-blend-mode: multiply;
+  transform: scale(0.62);
+  transform-origin: var(--press-x) var(--press-y);
+  transition:
+    opacity 140ms ease-out,
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.composer-press-surface[data-pressed] > .composer-press-glow {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.dark .composer-press-glow {
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    168px circle at var(--press-x) var(--press-y),
+    color-mix(in srgb, white 46%, transparent) 0%,
+    color-mix(in srgb, white 16%, transparent) 40%,
+    transparent 72%
+  );
+}
+
+.composer-press-surface > :not(.composer-press-glow) {
+  position: relative;
+  z-index: 1;
+}
+
+.nora-press-grow,
+.composer-press-surface :is(button, [role="button"]),
+.diary-toolbar-press :is(button, [role="button"]) {
+  touch-action: manipulation;
+  transform: scale(1);
+  transition-property: transform, opacity, color, background-color, box-shadow;
+  transition-duration: 140ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nora-press-grow:active:not(:disabled):not([aria-disabled='true']),
+.composer-press-surface :is(button, [role="button"]):active:not(:disabled):not([aria-disabled='true']),
+.diary-toolbar-press :is(button, [role="button"]):active:not(:disabled) {
+  transform: scale(1.08);
+}
+
+.composer-press-surface :is(button, [role="button"])[data-demo-pressed],
+.nora-press-grow[data-demo-pressed] {
+  transform: scale(1.08);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer-press-surface,
+  .composer-press-glow {
+    transition: none;
+  }
+
+  .composer-press-surface[data-pressed] {
+    transform: none;
+  }
+
+  .composer-press-surface :is(button, [role="button"]):active:not(:disabled),
+  .composer-press-surface :is(button, [role="button"])[data-demo-pressed],
+  .diary-toolbar-press :is(button, [role="button"]):active:not(:disabled),
+  .nora-press-grow:active:not(:disabled),
+  .nora-press-grow[data-demo-pressed] {
+    transform: none;
+  }
+}
+
+/*
+  Android WebView applies :active after it decides the gesture is not a scroll.
+  That makes the 140ms scale start late and feel like a freeze. Hybrid uses an
+  immediate data-hybrid-pressed mark from pointerdown instead, and skips the
+  compositor-heavy composer glow.
+*/
+html:is([data-hybrid], [data-android]) .composer-press-surface,
+html:is([data-hybrid], [data-android]) .composer-press-glow {
+  transition: none;
+}
+
+html:is([data-hybrid], [data-android]) .composer-press-surface,
+html:is([data-hybrid], [data-android]) .composer-press-surface[data-pressed] {
+  transform: none;
+}
+
+html:is([data-hybrid], [data-android]) .composer-press-glow {
+  display: none;
+}
+
+html:is([data-hybrid], [data-android]) .nora-press-grow,
+html:is([data-hybrid], [data-android]) .composer-press-surface :is(button, [role="button"]),
+html:is([data-hybrid], [data-android]) .diary-toolbar-press :is(button, [role="button"]) {
+  transition: none;
+  transform: none;
+}
+
+html:is([data-hybrid], [data-android]) .nora-press-grow:active:not(:disabled):not([aria-disabled='true']),
+html:is([data-hybrid], [data-android]) .composer-press-surface :is(button, [role="button"]):active:not(:disabled):not([aria-disabled='true']),
+html:is([data-hybrid], [data-android]) .diary-toolbar-press :is(button, [role="button"]):active:not(:disabled) {
+  transform: none;
+}
+
+html:is([data-hybrid], [data-android]) .nora-press-grow[data-hybrid-pressed]:not(:disabled):not([aria-disabled='true']),
+html:is([data-hybrid], [data-android]) .composer-press-surface :is(button, [role="button"])[data-hybrid-pressed]:not(:disabled):not([aria-disabled='true']),
+html:is([data-hybrid], [data-android]) .diary-toolbar-press :is(button, [role="button"])[data-hybrid-pressed]:not(:disabled) {
+  transform: none;
+  opacity: 0.72;
+}

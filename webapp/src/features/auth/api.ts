@@ -9,6 +9,10 @@ import {
   passwordResetRequestResponseSchema,
   passwordResetRequestSchema,
   registerRequestSchema,
+  registrationMentorLookupQuerySchema,
+  registrationMentorLookupResponseSchema,
+  referralLookupQuerySchema,
+  referralLookupResponseSchema,
   type CookieAuthResponse,
   type CookieRefreshResponse,
   type LoginRequest,
@@ -17,6 +21,10 @@ import {
   type PasswordResetRequest,
   type PasswordResetRequestResponse,
   type RegisterRequest,
+  type RegistrationMentorLookupQuery,
+  type RegistrationMentorLookupResponse,
+  type ReferralLookupQuery,
+  type ReferralLookupResponse,
 } from '@web-app-demo/contracts'
 import type { z } from 'zod'
 import { ApiRequestError, HttpClient, type HttpRequestOptions } from '@/platform/api'
@@ -48,7 +56,7 @@ export class AuthApi {
   private readonly options: AuthApiOptions
   private readonly http: HttpClient
   private readonly authCoordinator: BrowserAuthCoordinator
-  private readonly sessionEpoch: string
+  private sessionEpoch: string
   private refreshInFlight: {
     epoch: string
     promise: Promise<CookieRefreshResponse>
@@ -68,9 +76,33 @@ export class AuthApi {
         method: 'POST',
         body: payload,
       })
-      const sessionEvent = publishBrowserSessionState('authenticated')
-      return { data, sessionEpoch: sessionEvent.epoch }
+      return { data, sessionEpoch: this.adoptPublishedSession('authenticated') }
     })
+  }
+
+  lookupRegistrationMentor(
+    input: RegistrationMentorLookupQuery,
+  ): Promise<RegistrationMentorLookupResponse> {
+    let query: RegistrationMentorLookupQuery
+    try {
+      query = registrationMentorLookupQuerySchema.parse(input)
+    } catch (error) {
+      return Promise.reject(error)
+    }
+    const search = new URLSearchParams({ identifier: query.identifier })
+    return this.http.request(
+      `/api/auth/mentor-lookup?${search}`,
+      registrationMentorLookupResponseSchema,
+    )
+  }
+
+  lookupReferrer(input: ReferralLookupQuery): Promise<ReferralLookupResponse> {
+    const query = referralLookupQuerySchema.parse(input)
+    const search = new URLSearchParams({ code: query.code })
+    return this.http.request(
+      `/api/auth/referral-lookup?${search}`,
+      referralLookupResponseSchema,
+    )
   }
 
   login(input: LoginRequest): Promise<BrowserSessionTransition<CookieAuthResponse>> {
@@ -80,8 +112,7 @@ export class AuthApi {
         method: 'POST',
         body: payload,
       })
-      const sessionEvent = publishBrowserSessionState('authenticated')
-      return { data, sessionEpoch: sessionEvent.epoch }
+      return { data, sessionEpoch: this.adoptPublishedSession('authenticated') }
     })
   }
 
@@ -105,9 +136,8 @@ export class AuthApi {
         method: 'POST',
         body: payload,
       })
-      const sessionEvent = publishBrowserSessionState('cleared')
       this.options.setAccessToken(null)
-      return { data: undefined, sessionEpoch: sessionEvent.epoch }
+      return { data: undefined, sessionEpoch: this.adoptPublishedSession('cleared') }
     })
   }
 
@@ -153,9 +183,8 @@ export class AuthApi {
         method: 'POST',
         body: payload,
       })
-      const sessionEvent = publishBrowserSessionState('cleared')
       this.options.setAccessToken(null)
-      return { data: undefined, sessionEpoch: sessionEvent.epoch }
+      return { data: undefined, sessionEpoch: this.adoptPublishedSession('cleared') }
     })
   }
 
@@ -221,10 +250,16 @@ export class AuthApi {
   private async expireSessionWithinMutation(expectedEpoch: string) {
     if (!this.isSessionEpochCurrent(expectedEpoch)) return false
 
-    publishBrowserSessionState('cleared')
+    this.adoptPublishedSession('cleared')
     this.options.setAccessToken(null)
     await this.options.onAuthExpired?.()
     return true
+  }
+
+  private adoptPublishedSession(state: 'authenticated' | 'cleared') {
+    const sessionEvent = publishBrowserSessionState(state)
+    this.sessionEpoch = sessionEvent.epoch
+    return sessionEvent.epoch
   }
 }
 

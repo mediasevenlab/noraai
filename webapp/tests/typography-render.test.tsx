@@ -28,7 +28,7 @@ test('official shadcn controls render without project Typography wrappers', () =
   )
 
   expect(markup).toContain('data-slot="input"')
-  expect(markup).toContain('rounded-md')
+  expect(markup).toContain('rounded-[var(--nora-radius-md,8px)]')
   expect(markup).toContain('data-slot="button"')
   expect(markup).not.toContain('data-slot="typography"')
 })

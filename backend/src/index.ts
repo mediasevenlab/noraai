@@ -7,6 +7,7 @@ const app = createApp({
   backgroundTasks: runtime.backgroundTasks,
   env: runtime.env,
   prisma: runtime.prisma,
+  startMealsPoller: true,
 })
 
 const server = Bun.serve({
@@ -15,6 +16,12 @@ const server = Bun.serve({
 })
 
 console.log(`Backend listening on ${server.url}`)
+if (runtime.env.TELEGRAM_MEALS_BOT_TOKEN) {
+  console.log('Telegram meals poller enabled')
+}
+if (runtime.env.TELEGRAM_NOTIFY_BOT_TOKEN) {
+  console.log('Telegram notify poller enabled')
+}
 
 let shuttingDown = false
 
@@ -23,6 +30,7 @@ async function shutdown(signal: string) {
   shuttingDown = true
 
   console.log(`Backend received ${signal}; shutting down`)
+  await app.dispose()
   await shutdownBackend(
     server,
     runtime,

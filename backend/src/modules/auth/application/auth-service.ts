@@ -65,6 +65,22 @@ export class AuthService {
     return this.sessionResponse(user, session.id, refreshToken)
   }
 
+  async lookupRegistrationMentor(identifier: string) {
+    const mentor = await this.dependencies.repository.findMentorByIdentifier(identifier)
+    return {
+      found: mentor !== null,
+      mentor,
+    }
+  }
+
+  async lookupReferrer(code: string) {
+    const referrer = await this.dependencies.repository.findReferrerByCode(code)
+    return {
+      found: referrer !== null,
+      referrer,
+    }
+  }
+
   async login(input: LoginRequest, metadata: SessionMetadata) {
     const user = await this.dependencies.repository.findUserByEmail(input.email)
     if (!user?.passwordHash) {
@@ -87,10 +103,12 @@ export class AuthService {
 
   async requestPasswordReset(input: PasswordResetRequest) {
     const { backgroundTasks, passwordResetNotifier } = this.dependencies
-    if (!passwordResetNotifier.configured) return { accepted: true as const }
+    if (!passwordResetNotifier.configured) {
+      return { accepted: true as const, delivery: 'unavailable' as const }
+    }
 
     backgroundTasks.defer((signal) => this.deliverPasswordReset(input, signal))
-    return { accepted: true as const }
+    return { accepted: true as const, delivery: 'queued' as const }
   }
 
   private async deliverPasswordReset(input: PasswordResetRequest, signal: AbortSignal) {
@@ -271,7 +289,7 @@ export class AuthService {
       now,
       createdAfter: this.sessionAbsoluteNotBefore(now),
     })
-    if (!session) {
+    if (!session?.user) {
       throw new AuthFailure('session_invalid', 'Session is invalid or expired')
     }
 

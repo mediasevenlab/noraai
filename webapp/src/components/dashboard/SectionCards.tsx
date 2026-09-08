@@ -1,6 +1,4 @@
-import type { IconSvgElement } from '@hugeicons/react'
-import { HugeiconsIcon } from '@hugeicons/react'
-
+import type { LucideIcon } from 'lucide-react'
 import {
   Card,
   CardAction,
@@ -13,7 +11,7 @@ import { Typography } from '@/components/typography'
 
 export type SectionMetric = {
   description?: string
-  icon?: IconSvgElement
+  icon?: LucideIcon
   label: string
   value: number | string
 }
@@ -35,7 +33,7 @@ export function SectionCards({
                   aria-hidden="true"
                   className="flex size-8 items-center justify-center rounded-lg border bg-background/70 text-muted-foreground"
                 >
-                  <HugeiconsIcon icon={item.icon} strokeWidth={2} />
+                  <item.icon />
                 </span>
               </CardAction>
             )}

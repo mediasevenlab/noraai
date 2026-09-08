@@ -1,0 +1,11 @@
+---
+import WhyChooseSectionReact from './WhyChooseSection.tsx'
+
+interface Props {
+  href: string
+}
+
+const { href } = Astro.props
+---
+
+<WhyChooseSectionReact client:visible href={href} />

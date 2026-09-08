@@ -1,52 +1,62 @@
-import type { Page } from '@playwright/test'
-import { e2ePassword, expect, test, uniqueEmail } from '../helpers/test'
+import {
+  completeUserQuestionnaire,
+  e2ePassword,
+  expect,
+  goToWorkspaceFromAccountMenu,
+  logoutFromAccountMenu,
+  openSidebarAccountMenu,
+  test,
+  uniqueEmail,
+  waitForGuestAuthForm,
+} from '../helpers/test'
+
 
 test('registers, restores the session, opens protected UI, and logs out', async ({ page }) => {
   const email = uniqueEmail()
   const displayName = 'Web E2E User'
 
   await page.goto('/signup')
+  await waitForGuestAuthForm(page, 'Создание аккаунта')
 
   await expect(page.getByRole('main')).toHaveCount(1)
-  await expect(page.getByRole('heading', { level: 1, name: 'Create your account' })).toBeVisible()
-  const signupPassword = page.getByLabel('Password', { exact: true })
+  const signupPassword = page.getByLabel('Пароль', { exact: true })
   const signupPasswordDescriptions = await signupPassword.getAttribute('aria-describedby')
   expect(signupPasswordDescriptions).toBeTruthy()
   const [signupPasswordRequirementId] = signupPasswordDescriptions!.split(/\s+/)
   await expect(page.locator(`[id="${signupPasswordRequirementId}"]`)).toHaveText(
-    'Must be at least 8 characters long.',
+    'Минимум 8 символов',
   )
-  await page.getByRole('button', { name: 'Create Account' }).click()
-  await expect(page.getByText('Invalid email address')).toBeVisible()
-  await expect(page.getByText('Password must be at least 8 characters')).toBeVisible()
+  await page.getByRole('button', { name: 'Зарегистрироваться' }).click()
+  await expect(page.getByText('Введите корректный адрес электронной почты.')).toBeVisible()
+  await expect(page.getByText('Пароль должен содержать от 8 до 128 символов.')).toBeVisible()
 
-  await page.getByLabel('Full Name').fill('A')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(e2ePassword)
-  await page.getByLabel('Confirm Password').fill(e2ePassword)
-  await page.getByRole('link', { name: 'Sign in' }).click()
-  await expect(page.getByLabel('Full Name')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Login' })).toBeEnabled()
+  await page.getByLabel('Имя').fill('A')
+  await page.getByLabel('Электронная почта').fill(email)
+  await page.getByLabel('Пароль', { exact: true }).fill(e2ePassword)
+  await page.getByLabel('Подтвердите пароль').fill(e2ePassword)
+  await page.getByRole('link', { name: 'Войти' }).click()
+  await expect(page.getByLabel('Имя')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Войти' })).toBeEnabled()
 
-  await page.getByRole('link', { name: 'Sign up' }).click()
-  await page.getByLabel('Full Name').fill(displayName)
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(e2ePassword)
-  await page.getByLabel('Confirm Password').fill(e2ePassword)
-  await page.getByRole('button', { name: 'Create Account' }).click()
-
-  await expect(page).toHaveURL(/\/app$/)
+  await page.getByRole('link', { name: 'Зарегистрироваться' }).click()
+  await page.getByLabel('Имя').fill(displayName)
+  await page.getByLabel('Электронная почта').fill(email)
+  await page.getByLabel('Пароль', { exact: true }).fill(e2ePassword)
+  await page.getByLabel('Подтвердите пароль').fill(e2ePassword)
+  await page.getByRole('button', { name: 'Зарегистрироваться' }).click()
+  await completeUserQuestionnaire(page)
   await expect(page.getByRole('main')).toHaveCount(1)
-  await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible()
-  await expect(page.getByRole('heading', { level: 1, name: `Welcome, ${displayName}` })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Home' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Profile' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Dashboard' })).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'Users' })).toHaveCount(0)
-  await expect(page.getByRole('main').getByText(email, { exact: true })).toBeVisible()
-  await expect(page.getByRole('main').getByText('Subscription', { exact: true })).toBeVisible()
-  await expect(page.getByRole('main').getByText('Not configured', { exact: true })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Питание' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Мой дневник' })).toHaveCount(0)
+  await expect(page.getByRole('navigation', { name: 'Общее' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Общее' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Общее' })).toBeVisible()
+  await openSidebarAccountMenu(page)
+  await expect(page.getByRole('menuitem', { name: 'Профиль' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Настройки' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('link', { name: 'Дашборд' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Пользователи' })).toHaveCount(0)
   await expect
     .poll(async () =>
       (await page.context().cookies()).some(
@@ -67,23 +77,27 @@ test('registers, restores the session, opens protected UI, and logs out', async 
 
   await expect((await refreshAfterReload).status()).toBe(200)
   await expect((await meAfterReload).status()).toBe(200)
-  await expect(page.getByRole('heading', { name: `Welcome, ${displayName}` })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Общее' })).toBeVisible()
 
-  await page.getByRole('link', { name: 'Profile' }).click()
-  await expect(page.getByLabel('Email')).toHaveAttribute('readonly', '')
-  await page.getByLabel('Display name').fill(' A ')
-  await expect(page.getByText('Display name must be at least 2 characters.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Save profile' })).toBeDisabled()
-  await page.getByLabel('Display name').fill('  Updated Web User  ')
-  await page.getByRole('button', { name: 'Save profile' }).click()
-  await expect(page.getByText('Profile saved')).toBeVisible()
-  await expect(page.getByLabel('Display name')).toHaveValue('Updated Web User')
+  await goToWorkspaceFromAccountMenu(page, 'Профиль')
+  await expect(page).toHaveURL(/\/app\/profile$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Профиль' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Базовые данные' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Редактировать' })).toBeVisible()
+
+  await goToWorkspaceFromAccountMenu(page, 'Настройки')
+  await expect(page.getByLabel('Отображаемое имя')).toHaveValue(displayName)
+  await page.getByLabel('Отображаемое имя').fill(' A ')
+  await expect(page.getByText('Имя должно содержать не меньше 2 символов.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Сохранить профиль' })).toBeDisabled()
+  await page.getByLabel('Отображаемое имя').fill('  Updated Web User  ')
+  await page.getByRole('button', { name: 'Сохранить профиль' }).click()
+  await expect(page.getByText('Профиль сохранён')).toBeVisible()
+  await expect(page.getByLabel('Отображаемое имя')).toHaveValue('Updated Web User')
   await page.reload()
-  await expect(page.getByLabel('Display name')).toHaveValue('Updated Web User')
+  await expect(page.getByLabel('Отображаемое имя')).toHaveValue('Updated Web User')
 
-  await page.getByRole('link', { name: 'Settings' }).click()
-  await page.getByLabel('Theme').click()
-  await page.getByRole('option', { name: 'Dark' }).click()
+  await page.getByRole('button', { name: 'Переключить на тёмную тему' }).click()
   await expect(page.locator('html')).toHaveClass(/dark/)
   await page.reload()
   await expect(page.locator('html')).toHaveClass(/dark/)
@@ -100,132 +114,65 @@ test('registers, restores the session, opens protected UI, and logs out', async 
       }),
     })
   })
-  await page.getByRole('button', { name: 'Logout' }).click()
-  await expect(page.getByRole('alert')).toContainText('Your session is still active')
-  await expect(page.getByRole('button', { name: 'Logout' })).toBeEnabled()
+  await logoutFromAccountMenu(page)
+  await expect(page.getByText('Не удалось выйти. Попробуйте ещё раз.')).toBeVisible()
   await page.unroute('**/api/auth/logout')
 
-  await page.getByRole('button', { name: 'Logout' }).click()
-  await expect(page.getByRole('button', { name: 'Login' })).toBeVisible()
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(e2ePassword)
-  await page.getByRole('button', { name: 'Login' }).click()
+  await logoutFromAccountMenu(page)
+  await expect(page.getByRole('button', { name: 'Войти' })).toBeVisible()
+  await page.getByLabel('Электронная почта').fill(email)
+  await page.getByLabel('Пароль', { exact: true }).fill(e2ePassword)
+  await page.getByRole('button', { name: 'Войти' }).click()
   await expect(page).toHaveURL(/\/app\/settings$/)
   await expect(page.locator('html')).toHaveClass(/dark/)
 
-  await page.getByRole('link', { name: 'Profile' }).click()
+  await goToWorkspaceFromAccountMenu(page, 'Профиль')
 
   await logoutFromAccountMenu(page)
-  await expect(page.getByRole('button', { name: 'Login' })).toBeVisible()
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill('wrong-password')
-  await page.getByRole('button', { name: 'Login' }).click()
-  await expect(page.getByText('Invalid email or password')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Войти' })).toBeVisible()
+  await page.getByLabel('Электронная почта').fill(email)
+  await page.getByLabel('Пароль', { exact: true }).fill('wrong-password')
+  await page.getByRole('button', { name: 'Войти' }).click()
+  await expect(page.getByText('Неверный email или пароль.')).toBeVisible()
 
-  await page.getByLabel('Password', { exact: true }).fill(e2ePassword)
-  await page.getByRole('button', { name: 'Login' }).click()
+  await page.getByLabel('Пароль', { exact: true }).fill(e2ePassword)
+  await page.getByRole('button', { name: 'Войти' }).click()
   await expect(page).toHaveURL(/\/app\/profile$/)
-  await expect(page.getByLabel('Display name')).toHaveValue('Updated Web User')
 })
 
-test('shows generic forgot-password success and handles an invalid reset link', async ({ page }) => {
+test('hides password reset until email delivery is configured', async ({ page }) => {
   await page.goto('/login')
-  await page.getByRole('link', { name: 'Forgot your password?' }).click()
-  await expect(page).toHaveURL(/\/forgot-password$/)
+  await waitForGuestAuthForm(page, 'Вход в аккаунт')
+  await expect(page.getByRole('link', { name: 'Забыли пароль?' })).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Send reset instructions' }).click()
-  await expect(page.getByText('Invalid email address')).toBeVisible()
-  await page.getByLabel('Email').fill(uniqueEmail('unknown-reset'))
-  await page.getByRole('button', { name: 'Send reset instructions' }).click()
-  await expect(page.getByRole('alert')).toContainText(
-    'If an account exists for that address, reset instructions are on the way.',
-  )
+  await page.goto('/forgot-password')
+  await expect(page).toHaveURL(/\/login/)
 
   await page.goto('/reset-password#token=truncated')
-  await expect(page.getByRole('alert')).toContainText(
-    'This password reset link is invalid or incomplete.',
-  )
-  await expect(page.getByRole('button', { name: 'Update password' })).toBeDisabled()
-
-  await page.goto(`/reset-password#token=${'t'.repeat(43)}`)
-  await expect(page).toHaveURL(/\/reset-password$/)
-  const resetPassword = page.getByLabel('New Password')
-  const resetPasswordDescriptions = await resetPassword.getAttribute('aria-describedby')
-  expect(resetPasswordDescriptions).toBeTruthy()
-  const [resetPasswordRequirementId] = resetPasswordDescriptions!.split(/\s+/)
-  await expect(page.locator(`[id="${resetPasswordRequirementId}"]`)).toHaveText(
-    'Must be at least 8 characters long.',
-  )
-  await page.getByLabel('New Password').fill('new-password-123')
-  await page.getByLabel('Confirm Password').fill('different-password-123')
-  await page.getByRole('button', { name: 'Update password' }).click()
-  await expect(page.getByText('Passwords do not match')).toBeVisible()
-
-  await page.route('**/api/auth/password-reset/confirm', async (route) => {
-    await route.fulfill({
-      status: 400,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        error: {
-          code: 'AUTH_PASSWORD_RESET_INVALID',
-          message: 'Password reset link is invalid or expired',
-        },
-      }),
-    })
-  })
-  await page.getByLabel('Confirm Password').fill('new-password-123')
-  await page.getByRole('button', { name: 'Update password' }).click()
-  await expect(page.getByRole('alert')).toContainText(
-    'Password reset link is invalid or expired',
-  )
-})
-
-test('allows an authenticated browser to complete a password reset and clears local auth', async ({ page }) => {
-  const email = uniqueEmail('authenticated-reset')
-  await page.goto('/signup')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(e2ePassword)
-  await page.getByLabel('Confirm Password').fill(e2ePassword)
-  await page.getByRole('button', { name: 'Create Account' }).click()
-  await expect(page).toHaveURL(/\/app$/)
-
-  await page.route('**/api/auth/password-reset/confirm', async (route) => {
-    await route.fulfill({ status: 204 })
-  })
-  await page.goto(`/reset-password#token=${'t'.repeat(43)}`)
-
-  await expect(page).toHaveURL(/\/reset-password$/)
-  await expect(page.getByRole('heading', { name: 'Choose a new password' })).toBeVisible()
-  await page.getByLabel('New Password').fill('new-password-123')
-  await page.getByLabel('Confirm Password').fill('new-password-123')
-  await page.getByRole('button', { name: 'Update password' }).click()
-  await expect(page.getByRole('alert')).toContainText('Password updated')
-
-  await page.getByRole('link', { name: 'Back to login' }).click()
-  await expect(page).toHaveURL(/\/login$/)
-  await expect(page.getByRole('button', { name: 'Login' })).toBeVisible()
+  await expect(page).toHaveURL(/\/login/)
 })
 
 test('keeps one logical browser session active across concurrent tabs', async ({ page }) => {
   const email = uniqueEmail('web-e2e-tabs')
 
   await page.goto('/signup')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(e2ePassword)
-  await page.getByLabel('Confirm Password').fill(e2ePassword)
-  await page.getByRole('button', { name: 'Create Account' }).click()
-  await expect(page).toHaveURL(/\/app$/)
+  await waitForGuestAuthForm(page, 'Создание аккаунта')
+  await page.getByLabel('Электронная почта').fill(email)
+  await page.getByLabel('Пароль', { exact: true }).fill(e2ePassword)
+  await page.getByLabel('Подтвердите пароль').fill(e2ePassword)
+  await page.getByRole('button', { name: 'Зарегистрироваться' }).click()
+  await completeUserQuestionnaire(page)
 
   const secondPage = await page.context().newPage()
   await secondPage.goto('/')
-  await expect(secondPage).toHaveURL(/\/app$/)
+  await expect(secondPage).toHaveURL(/\/app\/general/)
 
   await Promise.all([page.reload(), secondPage.reload()])
 
-  await expect(page).toHaveURL(/\/app$/)
-  await expect(secondPage).toHaveURL(/\/app$/)
-  await expect(page.getByRole('heading', { name: `Welcome, ${email}` })).toBeVisible()
-  await expect(secondPage.getByRole('heading', { name: `Welcome, ${email}` })).toBeVisible()
+  await expect(page).toHaveURL(/\/app\/general/)
+  await expect(secondPage).toHaveURL(/\/app\/general/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Общее' })).toBeVisible()
+  await expect(secondPage.getByRole('heading', { level: 1, name: 'Общее' })).toBeVisible()
 
   await page.route('**/api/auth/logout', async (route) => {
     await route.fulfill({
@@ -235,26 +182,27 @@ test('keeps one logical browser session active across concurrent tabs', async ({
     })
   })
   await logoutFromAccountMenu(page)
-  await expect(page.getByRole('alert')).toContainText('Logout failed')
+  await expect(page.getByText('Не удалось выйти. Попробуйте ещё раз.')).toBeVisible()
 
   await logoutFromAccountMenu(secondPage)
-  await expect(secondPage.getByRole('button', { name: 'Login' })).toBeVisible()
-  await expect(page.getByRole('alert')).toHaveCount(0)
+  await expect(secondPage.getByRole('button', { name: 'Войти' })).toBeVisible()
+  await expect(page.getByText('Не удалось выйти. Попробуйте ещё раз.')).toHaveCount(0)
 })
 
 test('remote logout recovers a tab from a transient bootstrap error', async ({ page }) => {
   const email = uniqueEmail('web-e2e-bootstrap-logout')
 
   await page.goto('/signup')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(e2ePassword)
-  await page.getByLabel('Confirm Password').fill(e2ePassword)
-  await page.getByRole('button', { name: 'Create Account' }).click()
-  await expect(page).toHaveURL(/\/app$/)
+  await waitForGuestAuthForm(page, 'Создание аккаунта')
+  await page.getByLabel('Электронная почта').fill(email)
+  await page.getByLabel('Пароль', { exact: true }).fill(e2ePassword)
+  await page.getByLabel('Подтвердите пароль').fill(e2ePassword)
+  await page.getByRole('button', { name: 'Зарегистрироваться' }).click()
+  await completeUserQuestionnaire(page)
 
   const healthyPage = await page.context().newPage()
   await healthyPage.goto('/')
-  await expect(healthyPage).toHaveURL(/\/app$/)
+  await expect(healthyPage).toHaveURL(/\/app\/general/)
 
   await page.route('**/api/auth/refresh', async (route) => {
     await route.fulfill({
@@ -266,10 +214,10 @@ test('remote logout recovers a tab from a transient bootstrap error', async ({ p
     })
   })
   await page.reload()
-  await expect(page.getByText('Session check is temporarily unavailable')).toBeVisible()
+  await expect(page.getByText('Проверка сессии временно недоступна')).toBeVisible()
 
   await logoutFromAccountMenu(healthyPage)
-  await expect(page.getByRole('button', { name: 'Login' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Войти' })).toBeVisible()
 })
 
 test('unknown routes wait for session recovery before choosing their return destination', async ({
@@ -277,11 +225,12 @@ test('unknown routes wait for session recovery before choosing their return dest
 }) => {
   const email = uniqueEmail('web-e2e-not-found')
   await page.goto('/signup')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(e2ePassword)
-  await page.getByLabel('Confirm Password').fill(e2ePassword)
-  await page.getByRole('button', { name: 'Create Account' }).click()
-  await expect(page).toHaveURL(/\/app$/)
+  await waitForGuestAuthForm(page, 'Создание аккаунта')
+  await page.getByLabel('Электронная почта').fill(email)
+  await page.getByLabel('Пароль', { exact: true }).fill(e2ePassword)
+  await page.getByLabel('Подтвердите пароль').fill(e2ePassword)
+  await page.getByRole('button', { name: 'Зарегистрироваться' }).click()
+  await completeUserQuestionnaire(page)
 
   let failRefresh = true
   await page.route('**/api/auth/refresh', async (route) => {
@@ -300,12 +249,14 @@ test('unknown routes wait for session recovery before choosing their return dest
   })
 
   await page.goto('/missing-page')
-  await expect(page.getByText('Session check is temporarily unavailable')).toBeVisible()
-  await page.getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByText('Проверка сессии временно недоступна')).toBeVisible()
+  await page.getByRole('button', { name: 'Повторить' }).click()
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Page not found' })).toBeVisible()
-  await page.getByRole('link', { name: 'Return to workspace' }).click()
-  await expect(page).toHaveURL(/\/app$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Страница не найдена' })).toBeVisible()
+  await page.getByRole('button', { name: 'Вернуться в кабинет' }).click()
+  await expect(page).toHaveURL(/\/app\/general/)
+  await page.goto('/app/diary/news')
+  await expect(page).toHaveURL(/\/app\/general/)
 })
 
 test('concurrent account changes converge every tab on the winning cookie session', async ({ page }) => {
@@ -314,20 +265,37 @@ test('concurrent account changes converge every tab on the winning cookie sessio
   const secondPage = await page.context().newPage()
 
   await Promise.all([page.goto('/signup'), secondPage.goto('/signup')])
-  await page.getByLabel('Email').fill(firstEmail)
-  await page.getByLabel('Password', { exact: true }).fill(e2ePassword)
-  await page.getByLabel('Confirm Password').fill(e2ePassword)
-  await secondPage.getByLabel('Email').fill(secondEmail)
-  await secondPage.getByLabel('Password', { exact: true }).fill(e2ePassword)
-  await secondPage.getByLabel('Confirm Password').fill(e2ePassword)
+  await Promise.all([
+    waitForGuestAuthForm(page, 'Создание аккаунта'),
+    waitForGuestAuthForm(secondPage, 'Создание аккаунта'),
+  ])
+  await page.getByLabel('Электронная почта').fill(firstEmail)
+  await page.getByLabel('Пароль', { exact: true }).fill(e2ePassword)
+  await page.getByLabel('Подтвердите пароль').fill(e2ePassword)
+  await secondPage.getByLabel('Электронная почта').fill(secondEmail)
+  await secondPage.getByLabel('Пароль', { exact: true }).fill(e2ePassword)
+  await secondPage.getByLabel('Подтвердите пароль').fill(e2ePassword)
 
   await Promise.all([
-    page.getByRole('button', { name: 'Create Account' }).click(),
-    secondPage.getByRole('button', { name: 'Create Account' }).click(),
+    page.getByRole('button', { name: 'Зарегистрироваться' }).click(),
+    secondPage.getByRole('button', { name: 'Зарегистрироваться' }).click(),
   ])
 
-  await expect(page).toHaveURL(/\/app$/)
-  await expect(secondPage).toHaveURL(/\/app$/)
+  // Both tabs share a cookie jar. Re-navigate before onboarding so the UI is
+  // bootstrapped for the winning session instead of a stale registration response.
+  await page.goto('/app/onboarding')
+  if ((await page.url()).includes('/app/onboarding')) {
+    await completeUserQuestionnaire(page)
+  }
+  await secondPage.goto('/app/diary')
+  if ((await secondPage.url()).includes('/app/onboarding')) {
+    await completeUserQuestionnaire(secondPage)
+  }
+  // Cookie changes are not an observable cross-tab event; a navigation forces
+  // the first tab to re-bootstrap against the winning shared cookie session.
+  await page.goto('/app/diary')
+  await expect(page).toHaveURL(/\/app\/general/)
+  await expect(secondPage).toHaveURL(/\/app\/general/)
   let winningEmail = ''
   await expect
     .poll(async () => {
@@ -342,8 +310,3 @@ test('concurrent account changes converge every tab on the winning cookie sessio
     })
     .not.toBe('')
 })
-
-async function logoutFromAccountMenu(page: Page) {
-  await page.getByRole('button', { name: 'Open account menu' }).click()
-  await page.getByRole('menuitem', { name: 'Log out' }).click()
-}

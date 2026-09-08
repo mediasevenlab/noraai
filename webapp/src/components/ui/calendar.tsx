@@ -1,5 +1,3 @@
-"use client"
-
 import * as React from "react"
 import {
   DayPicker,
@@ -10,9 +8,87 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { ArrowLeftIcon, ArrowRightIcon, ArrowDownIcon } from "@hugeicons/core-free-icons"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "lucide-react"
 
+type CaptionDropdownProps = {
+  options?: { value: number; label: string; disabled: boolean }[]
+  value?: string | number | readonly string[]
+  onChange?: React.ChangeEventHandler<HTMLSelectElement>
+  disabled?: boolean
+  "aria-label"?: string
+  className?: string
+}
+
+/** Month/year: Nora Select вместо нативного OS-select. */
+function CalendarCaptionDropdown({
+  options,
+  value,
+  onChange,
+  disabled,
+  "aria-label": ariaLabel,
+  className,
+}: CaptionDropdownProps) {
+  const stringValue = value == null ? undefined : String(value)
+
+  return (
+    <Select
+      value={stringValue}
+      disabled={disabled}
+      onValueChange={(next) => {
+        if (next == null || !onChange) return
+        onChange({
+          target: { value: next },
+        } as React.ChangeEvent<HTMLSelectElement>)
+      }}
+    >
+      <SelectTrigger
+        size="sm"
+        aria-label={ariaLabel}
+        className={cn(
+          "h-[var(--nora-control-h-sm)] min-h-[var(--nora-control-h-sm)] gap-1 px-1.5",
+          "bg-[var(--nora-input-bg)] text-[var(--nora-text)] shadow-none",
+          "focus-visible:shadow-[var(--nora-shadow-focus)]",
+          className
+        )}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent
+        align="center"
+        alignItemWithTrigger={false}
+        sideOffset={4}
+        className={cn(
+          "z-[60] w-max max-h-56 min-w-[var(--anchor-width)] overflow-y-auto border-0 p-1",
+          "rounded-[var(--nora-radius-menu,16px)] bg-[var(--nora-popover)] text-[var(--nora-text)]",
+          "shadow-[var(--nora-shadow-popover)] ring-1 ring-[var(--nora-border)]"
+        )}
+      >
+        {options?.map((option) => (
+          <SelectItem
+            key={option.value}
+            value={String(option.value)}
+            disabled={option.disabled}
+            className="h-[var(--nora-control-h-sm)] rounded-[var(--nora-radius-menu-item,12px)] text-xs text-[var(--nora-text-secondary)] data-highlighted:text-[var(--nora-text)]"
+          >
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+/**
+ * Calendar (DayPicker) под Nora UI:
+ * плотность контролов 22–26px, tint selection, Nora Select для caption.
+ */
 function Calendar({
   className,
   classNames,
@@ -31,8 +107,12 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      weekStartsOn={1}
       className={cn(
-        "group/calendar bg-background p-3 [--cell-radius:var(--radius-md)] [--cell-size:--spacing(8)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
+        "group/calendar bg-[var(--nora-panel)] p-2.5",
+        "font-[family-name:var(--nora-font)] text-xs font-medium text-[var(--nora-text)]",
+        "[--cell-radius:var(--nora-radius-md)] [--cell-size:26px]",
+        "in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className
@@ -41,28 +121,28 @@ function Calendar({
       locale={locale}
       formatters={{
         formatMonthDropdown: (date) =>
-          date.toLocaleString(locale?.code, { month: "short" }),
+          date.toLocaleString(locale?.code ?? "en-US", { month: "short" }),
         ...formatters,
       }}
       classNames={{
         root: cn("w-fit", defaultClassNames.root),
         months: cn(
-          "relative flex flex-col gap-4 md:flex-row",
+          "relative flex flex-col gap-3 md:flex-row md:gap-4",
           defaultClassNames.months
         ),
-        month: cn("flex w-full flex-col gap-4", defaultClassNames.month),
+        month: cn("flex w-full flex-col gap-2", defaultClassNames.month),
         nav: cn(
           "absolute inset-x-0 top-0 flex w-full items-center justify-between gap-1",
           defaultClassNames.nav
         ),
         button_previous: cn(
-          buttonVariants({ variant: buttonVariant }),
-          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
+          buttonVariants({ variant: buttonVariant, size: "icon-xs" }),
+          "size-(--cell-size) p-0 select-none text-[var(--nora-text-secondary)] aria-disabled:opacity-50",
           defaultClassNames.button_previous
         ),
         button_next: cn(
-          buttonVariants({ variant: buttonVariant }),
-          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
+          buttonVariants({ variant: buttonVariant, size: "icon-xs" }),
+          "size-(--cell-size) p-0 select-none text-[var(--nora-text-secondary)] aria-disabled:opacity-50",
           defaultClassNames.button_next
         ),
         month_caption: cn(
@@ -70,65 +150,59 @@ function Calendar({
           defaultClassNames.month_caption
         ),
         dropdowns: cn(
-          "flex h-(--cell-size) w-full items-center justify-center gap-1.5 text-sm font-medium",
+          "flex h-(--cell-size) w-full items-center justify-center gap-1 text-xs font-medium",
           defaultClassNames.dropdowns
         ),
-        dropdown_root: cn(
-          "relative rounded-(--cell-radius)",
-          defaultClassNames.dropdown_root
-        ),
-        dropdown: cn(
-          "absolute inset-0 bg-popover opacity-0",
-          defaultClassNames.dropdown
-        ),
+        dropdown_root: cn("relative", defaultClassNames.dropdown_root),
+        dropdown: cn("sr-only", defaultClassNames.dropdown),
         caption_label: cn(
-          "font-medium select-none",
+          "font-medium select-none text-[var(--nora-text)]",
           captionLayout === "label"
-            ? "text-sm"
-            : "flex items-center gap-1 rounded-(--cell-radius) text-sm [&>svg]:size-3.5 [&>svg]:text-muted-foreground",
+            ? "text-xs"
+            : "flex items-center gap-1 text-xs [&>svg]:size-3 [&>svg]:text-[var(--nora-text-tertiary)]",
           defaultClassNames.caption_label
         ),
         month_grid: cn("w-full border-collapse", defaultClassNames.month_grid),
         weekdays: cn("flex", defaultClassNames.weekdays),
         weekday: cn(
-          "flex-1 rounded-(--cell-radius) text-[0.8rem] font-normal text-muted-foreground select-none",
+          "flex-1 rounded-(--cell-radius) text-[10px] font-medium text-[var(--nora-text-tertiary)] select-none",
           defaultClassNames.weekday
         ),
-        week: cn("mt-2 flex w-full", defaultClassNames.week),
+        week: cn("mt-1 flex w-full", defaultClassNames.week),
         week_number_header: cn(
           "w-(--cell-size) select-none",
           defaultClassNames.week_number_header
         ),
         week_number: cn(
-          "text-[0.8rem] text-muted-foreground select-none",
+          "text-[10px] text-[var(--nora-text-secondary)] select-none",
           defaultClassNames.week_number
         ),
         day: cn(
-          "group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-r-(--cell-radius)",
+          "group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-e-(--cell-radius)",
           props.showWeekNumber
-            ? "[&:nth-child(2)[data-selected=true]_button]:rounded-l-(--cell-radius)"
-            : "[&:first-child[data-selected=true]_button]:rounded-l-(--cell-radius)",
+            ? "[&:nth-child(2)[data-selected=true]_button]:rounded-s-(--cell-radius)"
+            : "[&:first-child[data-selected=true]_button]:rounded-s-(--cell-radius)",
           defaultClassNames.day
         ),
         range_start: cn(
-          "relative isolate z-0 rounded-l-(--cell-radius) bg-muted after:absolute after:inset-y-0 after:right-0 after:w-4 after:bg-muted",
+          "relative isolate z-0 rounded-s-(--cell-radius) bg-[var(--nora-tint-dimmed)] after:absolute after:inset-y-0 after:end-0 after:w-3 after:bg-[var(--nora-tint-dimmed)]",
           defaultClassNames.range_start
         ),
         range_middle: cn("rounded-none", defaultClassNames.range_middle),
         range_end: cn(
-          "relative isolate z-0 rounded-r-(--cell-radius) bg-muted after:absolute after:inset-y-0 after:left-0 after:w-4 after:bg-muted",
+          "relative isolate z-0 rounded-e-(--cell-radius) bg-[var(--nora-tint-dimmed)] after:absolute after:inset-y-0 after:start-0 after:w-3 after:bg-[var(--nora-tint-dimmed)]",
           defaultClassNames.range_end
         ),
         today: cn(
-          "rounded-(--cell-radius) bg-muted text-foreground data-[selected=true]:rounded-none",
+          "rounded-(--cell-radius) bg-[var(--nora-inset)] text-[var(--nora-text)] data-[selected=true]:rounded-none",
           defaultClassNames.today
         ),
         outside: cn(
-          "text-muted-foreground aria-selected:text-muted-foreground",
+          "text-[var(--nora-text-dimmed)] aria-selected:text-[var(--nora-text-dimmed)]",
           defaultClassNames.outside
         ),
         disabled: cn(
-          "text-muted-foreground opacity-50",
+          "text-[var(--nora-text-dimmed)] opacity-50",
           defaultClassNames.disabled
         ),
         hidden: cn("invisible", defaultClassNames.hidden),
@@ -148,20 +222,21 @@ function Calendar({
         Chevron: ({ className, orientation, ...props }) => {
           if (orientation === "left") {
             return (
-              <HugeiconsIcon icon={ArrowLeftIcon} strokeWidth={2} className={cn("size-4", className)} {...props} />
+              <ChevronLeftIcon className={cn("size-3.5", className)} {...props} />
             )
           }
 
           if (orientation === "right") {
             return (
-              <HugeiconsIcon icon={ArrowRightIcon} strokeWidth={2} className={cn("size-4", className)} {...props} />
+              <ChevronRightIcon className={cn("size-3.5", className)} {...props} />
             )
           }
 
           return (
-            <HugeiconsIcon icon={ArrowDownIcon} strokeWidth={2} className={cn("size-4", className)} {...props} />
+            <ChevronDownIcon className={cn("size-3", className)} {...props} />
           )
         },
+        Dropdown: CalendarCaptionDropdown,
         DayButton: ({ ...props }) => (
           <CalendarDayButton locale={locale} {...props} />
         ),
@@ -211,7 +286,15 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-ring/50 data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-muted data-[range-middle=true]:text-foreground data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-l-(--cell-radius) data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground dark:hover:text-foreground [&>span]:text-xs [&>span]:opacity-70",
+        "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-0.5 border-0 leading-none font-normal",
+        "rounded-(--cell-radius) text-xs text-[var(--nora-text)]",
+        "hover:bg-[var(--nora-row-hover)] hover:text-[var(--nora-text)]",
+        "group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:shadow-[var(--nora-shadow-focus)]",
+        "data-[selected-single=true]:bg-[var(--nora-tint)] data-[selected-single=true]:text-[var(--nora-on-accent)] data-[selected-single=true]:hover:bg-[var(--nora-tint-dark)] data-[selected-single=true]:hover:text-[var(--nora-on-accent)]",
+        "data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-s-(--cell-radius) data-[range-start=true]:bg-[var(--nora-tint)] data-[range-start=true]:text-[var(--nora-on-accent)]",
+        "data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-e-(--cell-radius) data-[range-end=true]:bg-[var(--nora-tint)] data-[range-end=true]:text-[var(--nora-on-accent)]",
+        "data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-[var(--nora-tint-dimmed)] data-[range-middle=true]:text-[var(--nora-text)]",
+        "[&>span]:text-[9px] [&>span]:font-medium [&>span]:opacity-70",
         defaultClassNames.day,
         className
       )}

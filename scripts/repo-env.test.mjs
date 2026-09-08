@@ -53,13 +53,14 @@ test('documented manual Compose commands load the backend-owned env file', async
   for (const documentationPath of documentationPaths) {
     const documentation = await readFile(resolve(repositoryRoot, documentationPath), 'utf8')
 
-    for (const [lineIndex, line] of documentation.split('\n').entries()) {
+    for (const [lineIndex, line] of documentation.split(/\r?\n/).entries()) {
+      const command = line.trimEnd()
       if (
-        line.startsWith('docker compose ') &&
-        line !== 'docker compose version' &&
-        !line.startsWith('docker compose --env-file backend/.env ')
+        command.startsWith('docker compose ') &&
+        command !== 'docker compose version' &&
+        !command.startsWith('docker compose --env-file backend/.env ')
       ) {
-        commandsMissingBackendEnv.push(`${documentationPath}:${lineIndex + 1}: ${line}`)
+        commandsMissingBackendEnv.push(`${documentationPath}:${lineIndex + 1}: ${command}`)
       }
     }
   }

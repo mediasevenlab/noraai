@@ -1,32 +1,91 @@
 import {
-  DashboardSquare01Icon,
-  Home01Icon,
-  Settings01Icon,
-  UserGroupIcon,
+  CalendarRangeIcon,
+  ClipboardListIcon,
+  Columns2Icon,
+  HomeIcon,
+  ImagesIcon,
+  LayoutGridIcon,
+  NewspaperIcon,
+  PlusIcon,
+  SettingsIcon,
   UserIcon,
-} from '@hugeicons/core-free-icons'
-import { useLocation } from '@tanstack/react-router'
+  UsersIcon,
+  WalletIcon,
+} from 'lucide-react'
+import { useLocation, useNavigate } from '@tanstack/react-router'
 import type { UserDto } from '@web-app-demo/contracts'
 import type { PropsWithChildren } from 'react'
+
+import { useDismissAppBootSplash } from '@/platform/app-boot-splash'
 
 import {
   AppSidebar,
   type DashboardNavigationItem,
+  MobileNavFab,
   SiteHeader,
 } from '@/components/dashboard'
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { SidebarInset, SidebarProvider, SidebarSeparator } from '@/components/ui/sidebar'
+import { useSidebarPromoCards } from '@/components/sidebar-promo-store'
 import {
   homePathForRole,
+  isMentorPlanPath,
+  isUserPlanPath,
+  navigationItemMatchingPath,
   navigationItemsForRole,
+  primaryNavigationItemsForRole,
+  secondaryNavigationItemsForRole,
+  userGeneralSearch,
 } from '@/features/navigation'
+import { requestAddMeal } from '@/features/diary'
+import {
+  MentorMealPlanNavigation,
+  MentorMenteeNavigation,
+  MentorMenteesBanner,
+} from '@/features/mentor'
+import { UserAppNavigation, UserMentorBanner } from '@/features/users'
+import {
+  AdminDesignSystemNavigation,
+  DS_BASE_PATH,
+  dsPageTitle,
+} from '@/features/design-system'
+import {
+  AdminBlocksNavigation,
+  BLOCKS_BASE_PATH,
+  blockPageTitle,
+} from '@/features/blocks'
+import {
+  AdminComponentsNavigation,
+  COMP_BASE_PATH,
+  componentPageTitle,
+} from '@/features/components'
+import {
+  AdminStackNavigation,
+  STACK_BASE_PATH,
+} from '@/features/stack'
+import { STEPS_BASE_PATH } from '@/features/steps'
 
 const iconsByPath = {
-  '/app': Home01Icon,
+  '/app': HomeIcon,
+  '/app/diary': NewspaperIcon,
+  '/app/feed': ImagesIcon,
+  '/app/plan': CalendarRangeIcon,
+  '/app/general': Columns2Icon,
+  '/app/plan/current': CalendarRangeIcon,
+  '/app/onboarding': ClipboardListIcon,
   '/app/profile': UserIcon,
-  '/app/settings': Settings01Icon,
-  '/admin': DashboardSquare01Icon,
-  '/admin/users': UserGroupIcon,
-  '/admin/settings': Settings01Icon,
+  '/app/referrals': UsersIcon,
+  '/app/settings': SettingsIcon,
+  '/app/payments': WalletIcon,
+  '/admin': UsersIcon,
+  '/admin/profile': UserIcon,
+  '/admin/users': UsersIcon,
+  '/admin/settings': SettingsIcon,
+  '/mentor': HomeIcon,
+  '/mentor/plans': CalendarRangeIcon,
+  '/mentor/profile': UserIcon,
+  '/mentor/users': UsersIcon,
+  '/mentor/settings': SettingsIcon,
+  '/mentor/payments': WalletIcon,
 } as const
 
 function getSidebarDefaultOpen() {
@@ -46,33 +105,179 @@ export function WorkspaceShell({
   onLogout: () => Promise<void>
   user: UserDto
 }>) {
+  useDismissAppBootSplash()
   const pathname = useLocation({ select: (location) => location.pathname })
+  const navigate = useNavigate()
+  const showSidebarPromoCards = useSidebarPromoCards()
   const navigationItems = navigationItemsForRole(user.role)
-  const activeItem = navigationItems.find((item) => item.to === pathname)
+  const activeItem = navigationItemMatchingPath(user.role, pathname)
+  const headerCrumbs = pathname.startsWith(DS_BASE_PATH)
+    ? [
+        'Дизайн-система',
+        dsPageTitle(pathname.slice(DS_BASE_PATH.length + 1)),
+      ] as const
+    : pathname === COMP_BASE_PATH
+      ? (['Компоненты'] as const)
+      : pathname.startsWith(`${COMP_BASE_PATH}/`)
+        ? [
+            'Компоненты',
+            componentPageTitle(pathname.slice(COMP_BASE_PATH.length + 1)),
+          ] as const
+        : pathname === BLOCKS_BASE_PATH
+          ? (['Блоки'] as const)
+          : pathname.startsWith(`${BLOCKS_BASE_PATH}/`)
+            ? [
+                'Блоки',
+                blockPageTitle(pathname.slice(BLOCKS_BASE_PATH.length + 1)),
+              ] as const
+            : pathname === STACK_BASE_PATH
+              ? (['Стек'] as const)
+              : pathname === STEPS_BASE_PATH
+                ? (['Разработка'] as const)
+                : ([activeItem?.label ?? 'Главная'] as const)
   const homePath = homePathForRole(user.role)
-  const settingsPath = user.role === 'admin' ? '/admin/settings' : '/app/settings'
-  const items: ReadonlyArray<DashboardNavigationItem> = navigationItems.map((item) => ({
+  const navigationLocked = user.role === 'user' && !user.questionnaireCompleted
+  const toDashboardItems = (
+    items: ReadonlyArray<{
+      disabled?: boolean
+      label: string
+      to: typeof navigationItems[number]['to']
+    }>,
+  ): ReadonlyArray<DashboardNavigationItem> => items.map((item) => ({
     ...item,
+    disabled: navigationLocked || item.disabled,
     icon: iconsByPath[item.to],
-    isActive: item.to === pathname,
+    isActive:
+      !navigationLocked &&
+      !item.disabled &&
+      (item.to === '/app/general'
+        ? pathname === '/app/general' || isUserPlanPath(pathname) || pathname.startsWith('/app/diary')
+        : item.to === '/mentor/plans'
+          ? isMentorPlanPath(pathname)
+          : item.to === pathname),
   }))
+  const primaryItems = toDashboardItems(primaryNavigationItemsForRole(user.role))
+  const secondaryItems = toDashboardItems(secondaryNavigationItemsForRole(user.role))
+  const mobileNavItems = [
+    ...navigationItems
+      .filter((item) => {
+        if (item.to === '/app/payments' || item.to === '/mentor/payments') return false
+        return true
+      })
+      .map((item) => ({
+        disabled: navigationLocked || item.disabled,
+        icon: iconsByPath[item.to],
+        label: item.label,
+        to: item.to,
+      })),
+    ...(user.role === 'user' && !navigationLocked
+      ? [
+          {
+            icon: LayoutGridIcon,
+            label: 'Каталог',
+            onSelect: () => {
+              void navigate({
+                search: userGeneralSearch('plan', undefined, 'catalog'),
+                to: '/app/general',
+              })
+            },
+            to: '/app/general' as const,
+          },
+          {
+          accent: true,
+          icon: PlusIcon,
+          label: 'Добавить',
+          onSelect: () => {
+            if (!requestAddMeal()) {
+              void navigate({ search: userGeneralSearch(), to: '/app/general' })
+            }
+          },
+          to: '/app/general' as const,
+        },
+        ]
+      : []),
+  ]
 
   return (
-    <SidebarProvider defaultOpen={getSidebarDefaultOpen()}>
+    <SidebarProvider
+      className="h-svh overflow-hidden"
+      defaultOpen={getSidebarDefaultOpen()}
+    >
       <AppSidebar
-        accountPath={user.role === 'user' ? '/app/profile' : undefined}
+        additionalNavigation={
+          user.role === 'admin'
+            ? (
+                <>
+                  <AdminDesignSystemNavigation />
+                  <SidebarSeparator />
+                  <AdminComponentsNavigation />
+                  <SidebarSeparator />
+                  <AdminBlocksNavigation />
+                  <SidebarSeparator />
+                  <AdminStackNavigation />
+                </>
+              )
+            : user.role === 'mentor'
+              ? (
+                  <>
+                    <SidebarSeparator />
+                    <MentorMenteeNavigation />
+                    <SidebarSeparator />
+                    <MentorMealPlanNavigation />
+                  </>
+                )
+              : (
+                  <UserAppNavigation disabled={navigationLocked} />
+                )
+        }
+        filterNavigationBySearch={user.role !== 'mentor'}
+        footerExtra={
+          navigationLocked || !showSidebarPromoCards
+            ? null
+            : user.role === 'user'
+              ? (
+                  <UserMentorBanner />
+                )
+              : user.role === 'mentor'
+                ? (
+                    <MentorMenteesBanner />
+                  )
+                : null
+        }
         homePath={homePath}
-        items={items}
+        navigationLocked={navigationLocked}
         onLogout={onLogout}
-        settingsPath={settingsPath}
+        primaryItems={primaryItems}
+        primaryLabel={user.role === 'mentor' ? 'Обзор' : undefined}
+        secondaryItems={secondaryItems}
         user={user}
-        workspaceLabel={user.role === 'admin' ? 'Admin workspace' : 'User workspace'}
+        workspaceLabel={user.role === 'admin'
+          ? 'Администратор'
+          : user.role === 'mentor'
+            ? 'Наставник'
+            : 'Пользователь'}
       />
-      <SidebarInset>
+      <SidebarInset className="min-h-0 overflow-hidden">
         <SiteHeader
-          title={activeItem?.label ?? (user.role === 'admin' ? 'Dashboard' : 'Home')}
+          crumbs={headerCrumbs}
+          onLogout={onLogout}
+          user={user}
+          workspaceItems={navigationLocked ? [] : secondaryItems}
         />
-        <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto max-md:[-ms-overflow-style:none] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden">
+          {children}
+        </div>
+        <MobileNavFab
+          items={mobileNavItems}
+          navigationLocked={navigationLocked}
+          onLogout={onLogout}
+          user={user}
+          workspaceLabel={user.role === 'admin'
+            ? 'Администратор'
+            : user.role === 'mentor'
+              ? 'Наставник'
+              : 'Пользователь'}
+        />
       </SidebarInset>
     </SidebarProvider>
   )

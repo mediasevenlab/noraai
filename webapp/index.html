@@ -1,13 +1,107 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru" translate="no" class="notranslate scheme-editor-light light-palette-default light-text-default">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>web_frontend</title>
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#fbfbfa" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="24nutrition" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="google" content="notranslate" />
+    <meta http-equiv="Content-Language" content="ru" />
+    <title>24nutrition</title>
+    <style>
+      html, body { margin: 0; background: #fbfbfa; }
+      html.dark, html.scheme-editor-dark { background: #111111; }
+      #app-boot {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483646;
+        display: grid;
+        place-items: center;
+        background: #fbfbfa;
+      }
+      html.dark #app-boot,
+      html.scheme-editor-dark #app-boot { background: #111111; }
+      #app-boot[hidden] { display: none !important; }
+      #app-boot .mark {
+        width: 56px;
+        height: 54px;
+        animation: app-boot-pulse 900ms ease-in-out infinite;
+      }
+      @keyframes app-boot-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.42; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #app-boot .mark { animation: none; }
+      }
+    </style>
+    <script>
+      // Mark Android / Capacitor before first paint so safe-area CSS applies.
+      (function () {
+        try {
+          var root = document.documentElement
+          var ua = navigator.userAgent || ''
+          if (/Android/i.test(ua)) root.setAttribute('data-android', '')
+          var cap = window.Capacitor
+          var native = cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform()
+          if (native || /; wv\)/i.test(ua)) {
+            root.setAttribute('data-hybrid', '')
+          }
+        } catch (_) {
+          /* ignore */
+        }
+      })()
+    </script>
+    <script>
+      // Apply saved theme before paint so --nora-* resolve without a flash.
+      (function () {
+        try {
+          var stored = localStorage.getItem('web_app_demo_theme')
+          var dark =
+            stored === 'dark' ||
+            (stored !== 'light' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          var root = document.documentElement
+          var classes = root.classList
+          classes.remove(
+            'dark',
+            'scheme-editor-dark',
+            'scheme-editor-light',
+            'scheme-marketing',
+            'light-palette-default',
+            'light-text-default',
+          )
+          if (dark) {
+            classes.add('dark', 'scheme-editor-dark')
+          } else {
+            classes.add(
+              'scheme-editor-light',
+              'light-palette-default',
+              'light-text-default',
+            )
+          }
+          var themeMeta = document.querySelector('meta[name="theme-color"]')
+          if (themeMeta) themeMeta.setAttribute('content', dark ? '#111111' : '#fbfbfa')
+        } catch (_) {
+          /* ignore */
+        }
+      })()
+    </script>
   </head>
-  <body>
+  <body class="notranslate" translate="no">
     <div id="root"></div>
+    <div id="app-boot" aria-hidden="true">
+      <img class="mark" src="/favicon.svg" alt="" width="56" height="54" />
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

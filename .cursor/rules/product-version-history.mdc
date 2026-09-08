@@ -1,0 +1,16 @@
+---
+description: Record significant product work in admin Разработка and bump the app version.
+alwaysApply: true
+---
+
+# Product version history
+
+After a **user-visible capability** or **new product surface** ships, append a version to `webapp/src/features/steps/model.ts` (`STEP_ITEMS`). That list is the 24nutrition version log shown at `/admin/steps`. Follow [docs/PRODUCT_VERSIONS.md](docs/PRODUCT_VERSIONS.md).
+
+**Bump (next `v0.x`, one entry per effort):** new journey/role/workspace, diary/rations/payments/onboarding going live or changing in a way users would name, a felt integration (Telegram, Gemini/n8n), a new client shell.
+
+**Do not bump:** styling, copy, bug fixes, refactors, tests, docs, performance, internal hardening, chrome-only sidebar tweaks.
+
+Never rewrite past steps. Never jump to `v1.0` unless the user asks. Do not use npm `package.json` as the product version. `STEPS_META.currentVersion` must stay derived from the last `STEP_ITEMS` entry.
+
+In the completion report, either name the new current version or say the log was left unchanged.

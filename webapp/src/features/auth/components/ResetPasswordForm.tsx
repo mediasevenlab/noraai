@@ -3,16 +3,23 @@ import { Link } from '@tanstack/react-router'
 import { passwordResetConfirmRequestSchema } from '@web-app-demo/contracts'
 import { useId, useState } from 'react'
 
-import { Typography } from '@/components/typography'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { Field, FieldDescription, FieldError, FieldGroup } from '@/components/ui/field'
 import { ApiRequestError } from '@/platform/api'
 import { useAuth } from '../use-auth'
+import { AuthFloatingInput } from './AuthFloatingInput'
+import { authSubmitClassName } from './auth-control-styles'
 import { FormAlert } from './form-errors'
 import type { FieldErrors } from './form-model'
-import { clearFieldError, errorId, hasErrors, toFieldErrors } from './form-validation'
+import {
+  clearFieldError,
+  errorId,
+  hasErrors,
+  toRussianAuthFieldErrors,
+} from './form-validation'
+
+const invalidResetLinkMessage = 'Ссылка для сброса пароля недействительна или неполная.'
 
 export function ResetPasswordForm({ token }: { token: string }) {
   const auth = useAuth()
@@ -24,7 +31,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
   const confirmPasswordErrorId = useId()
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [formError, setFormError] = useState<string | null>(
-    tokenIsValid ? null : 'This password reset link is invalid or incomplete.',
+    tokenIsValid ? null : invalidResetLinkMessage,
   )
   const [completed, setCompleted] = useState(false)
   const form = useForm({
@@ -36,9 +43,9 @@ export function ResetPasswordForm({ token }: { token: string }) {
         token,
         password: value.password,
       })
-      const nextErrors = result.success ? {} : toFieldErrors(result.error.issues)
+      const nextErrors = result.success ? {} : toRussianAuthFieldErrors(result.error.issues)
       if (value.password !== value.confirmPassword) {
-        nextErrors.confirmPassword = [{ message: 'Passwords do not match' }]
+        nextErrors.confirmPassword = [{ message: 'Пароли не совпадают.' }]
       }
       if (!result.success || hasErrors(nextErrors.confirmPassword)) {
         setFieldErrors(nextErrors)
@@ -53,7 +60,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
         setFormError(
           caughtError instanceof ApiRequestError
             ? caughtError.message
-            : 'Unable to reset your password',
+            : 'Не удалось сбросить пароль.',
         )
       }
     },
@@ -61,103 +68,114 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   return (
     <form
-      className="flex flex-col gap-6"
+      className="flex flex-col gap-8 font-[family-name:var(--nora-font)]"
       onSubmit={(event) => {
         event.preventDefault()
         void form.handleSubmit()
       }}
     >
-      <FieldGroup>
-        <div className="flex flex-col items-center gap-1 text-center">
-          <Typography as="h1" variant="h3" balance>
-            Choose a new password
-          </Typography>
-          <Typography variant="bodySm" tone="muted" balance>
-            Your new password will sign out every existing session
-          </Typography>
+      <FieldGroup className="mt-0 gap-5">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <h1 className="font-heading text-[20px] leading-[1.3] font-semibold tracking-[-0.01em] text-[var(--nora-text)] text-balance">
+            Новый пароль
+          </h1>
+          <p className="text-[13px] leading-relaxed font-normal text-[var(--nora-text-secondary)] text-balance">
+            Новый пароль завершит все активные сессии
+          </p>
         </div>
 
         {completed ? (
           <Alert>
-            <AlertTitle>Password updated</AlertTitle>
-            <AlertDescription>You can now sign in with your new password.</AlertDescription>
+            <AlertTitle>Пароль обновлён</AlertTitle>
+            <AlertDescription>Теперь можно войти с новым паролем.</AlertDescription>
           </Alert>
         ) : (
           <>
-            <form.Field name="password" children={(field) => (
-              <Field data-invalid={hasErrors(fieldErrors.password)}>
-                <FieldLabel htmlFor={passwordId}>New Password</FieldLabel>
-                <Input
-                  aria-describedby={[
-                    passwordDescriptionId,
-                    errorId(fieldErrors.password, passwordErrorId),
-                  ].filter(Boolean).join(' ')}
-                  aria-invalid={hasErrors(fieldErrors.password)}
-                  autoComplete="new-password"
-                  className="bg-background"
-                  id={passwordId}
-                  name={field.name}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value)
-                    clearFieldError('password', setFieldErrors)
-                    clearFieldError('confirmPassword', setFieldErrors)
-                    setFormError(
-                      tokenIsValid ? null : 'This password reset link is invalid or incomplete.',
-                    )
-                  }}
-                  type="password"
-                  value={field.state.value}
-                />
-                <FieldDescription id={passwordDescriptionId}>
-                  Must be at least 8 characters long.
-                </FieldDescription>
-                <FieldError id={passwordErrorId} errors={fieldErrors.password} />
-              </Field>
-            )} />
+            <form.Field
+              name="password"
+              children={(field) => (
+                <Field className="gap-2" data-invalid={hasErrors(fieldErrors.password)}>
+                  <AuthFloatingInput
+                    aria-describedby={[
+                      passwordDescriptionId,
+                      errorId(fieldErrors.password, passwordErrorId),
+                    ].filter(Boolean).join(' ')}
+                    aria-invalid={hasErrors(fieldErrors.password)}
+                    autoComplete="new-password"
+                    id={passwordId}
+                    label="Новый пароль"
+                    name={field.name}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value)
+                      clearFieldError('password', setFieldErrors)
+                      clearFieldError('confirmPassword', setFieldErrors)
+                      setFormError(tokenIsValid ? null : invalidResetLinkMessage)
+                    }}
+                    type="password"
+                    value={field.state.value}
+                  />
+                  <FieldDescription id={passwordDescriptionId}>
+                    Минимум 8 символов.
+                  </FieldDescription>
+                  <FieldError id={passwordErrorId} errors={fieldErrors.password} />
+                </Field>
+              )}
+            />
 
-            <form.Field name="confirmPassword" children={(field) => (
-              <Field data-invalid={hasErrors(fieldErrors.confirmPassword)}>
-                <FieldLabel htmlFor={confirmPasswordId}>Confirm Password</FieldLabel>
-                <Input
-                  aria-describedby={errorId(fieldErrors.confirmPassword, confirmPasswordErrorId)}
-                  aria-invalid={hasErrors(fieldErrors.confirmPassword)}
-                  autoComplete="new-password"
-                  className="bg-background"
-                  id={confirmPasswordId}
-                  name={field.name}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => {
-                    field.handleChange(event.target.value)
-                    clearFieldError('confirmPassword', setFieldErrors)
-                    setFormError(
-                      tokenIsValid ? null : 'This password reset link is invalid or incomplete.',
-                    )
-                  }}
-                  type="password"
-                  value={field.state.value}
-                />
-                <FieldError id={confirmPasswordErrorId} errors={fieldErrors.confirmPassword} />
-              </Field>
-            )} />
+            <form.Field
+              name="confirmPassword"
+              children={(field) => (
+                <Field className="gap-2" data-invalid={hasErrors(fieldErrors.confirmPassword)}>
+                  <AuthFloatingInput
+                    aria-describedby={errorId(fieldErrors.confirmPassword, confirmPasswordErrorId)}
+                    aria-invalid={hasErrors(fieldErrors.confirmPassword)}
+                    autoComplete="new-password"
+                    id={confirmPasswordId}
+                    label="Подтвердите пароль"
+                    name={field.name}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value)
+                      clearFieldError('confirmPassword', setFieldErrors)
+                      setFormError(tokenIsValid ? null : invalidResetLinkMessage)
+                    }}
+                    type="password"
+                    value={field.state.value}
+                  />
+                  <FieldError id={confirmPasswordErrorId} errors={fieldErrors.confirmPassword} />
+                </Field>
+              )}
+            />
 
-            <FormAlert message={formError} title="Password reset failed" />
+            <FormAlert message={formError} title="Не удалось сбросить пароль" />
 
             <Field>
-              <form.Subscribe selector={(state) => state.isSubmitting} children={(isSubmitting) => (
-                <Button disabled={isSubmitting || !tokenIsValid} type="submit">
-                  {isSubmitting ? 'Updating password…' : 'Update password'}
-                </Button>
-              )} />
+              <form.Subscribe
+                selector={(state) => state.isSubmitting}
+                children={(isSubmitting) => (
+                  <Button
+                    className={authSubmitClassName}
+                    disabled={isSubmitting || !tokenIsValid}
+                    type="submit"
+                  >
+                    {isSubmitting ? 'Сохраняем…' : 'Сохранить пароль'}
+                  </Button>
+                )}
+              />
             </Field>
           </>
         )}
 
-        <Typography align="center" variant="bodySm">
-          <Link className="underline underline-offset-4" search={{ returnTo: undefined }} to="/login">
-            Back to login
+        <FieldDescription className="text-center text-xs font-normal">
+          <Link
+            className="font-medium text-[var(--nora-text)] underline-offset-4 hover:underline"
+            search={{ returnTo: undefined }}
+            to="/login"
+          >
+            Вернуться ко входу
           </Link>
-        </Typography>
+        </FieldDescription>
       </FieldGroup>
     </form>
   )

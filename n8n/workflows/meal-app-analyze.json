@@ -1,0 +1,160 @@
+{
+  "updatedAt": "2026-08-19T03:00:00.000Z",
+  "createdAt": "2026-08-19T03:00:00.000Z",
+  "id": "MealAppComposer001",
+  "name": "Дневник питания: приложение → карточка",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Дневник питания (приложение)\nРаспознавание приёма пищи из модалки **Добавить** в webapp.\n\n**Путь:** webapp (сессия) → `POST /api/users/me/meals/composer` → этот webhook → `POST /api/internal/meals-gemini` на `host.docker.internal:3000` → JSON карточки → backend сохраняет приём.\n\nTelegram-бот остаётся на webhook `meal-diary-analyze`. Этот workflow — отдельный канал для UI.\n\nЕсли n8n недоступен, backend делает fallback: сначала `N8N_MEAL_WEBHOOK_URL`, затем Gemini напрямую.",
+        "height": 320,
+        "width": 420,
+        "color": 5
+      },
+      "id": "app-meal-note-overview",
+      "name": "Note: обзор",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-420, -60]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meal-app-analyze",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "app-meal-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "meal-app-analyze",
+      "notes": "JSON: images[{base64,mime}] или imageBase64; note?; audioBase64?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = items[0].json || {};\nconst body = j.body || j;\nlet images = Array.isArray(body.images) ? body.images.filter((x) => x && x.base64) : [];\nif (!images.length && body.imageBase64) {\n  images = [{ base64: body.imageBase64, mime: body.imageMime || 'image/jpeg' }];\n}\nif (!images.length) throw new Error('images or imageBase64 required');\nreturn [{\n  json: {\n    images,\n    imageBase64: images[0].base64,\n    imageMime: images[0].mime || 'image/jpeg',\n    note: body.note || '',\n    audioBase64: body.audioBase64 || '',\n    audioMime: body.audioMime || 'audio/webm',\n    host: 'http://host.docker.internal:3000',\n    serviceToken: $env.INTERNAL_SERVICE_TOKEN || $env.GEMINI_PROXY_TOKEN || '',\n  }\n}];"
+      },
+      "id": "app-meal-prepare",
+      "name": "Подготовить вход",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.host }}/api/internal/meals-gemini",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.serviceToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ images: $json.images, imageBase64: $json.imageBase64, imageMime: $json.imageMime, note: $json.note, audioBase64: $json.audioBase64 || undefined, audioMime: $json.audioMime }) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "app-meal-gemini",
+      "name": "Gemini meal на хосте",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const res = items[0].json;\nif (res.ok && res.meal) {\n  return [{ json: { ok: true, meal: res.meal, model: res.model, via: 'n8n->host-app-meal-gemini' } }];\n}\nreturn [{ json: { ok: false, error: res.error || JSON.stringify(res).slice(0,400) } }];"
+      },
+      "id": "app-meal-assemble",
+      "name": "Собрать ответ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "app-meal-respond",
+      "name": "Ответ",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1020, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Подготовить вход",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Подготовить вход": {
+      "main": [
+        [
+          {
+            "node": "Gemini meal на хосте",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini meal на хосте": {
+      "main": [
+        [
+          {
+            "node": "Собрать ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Собрать ответ": {
+      "main": [
+        [
+          {
+            "node": "Ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "c8f3d2b1-5e29-4d9f-a022-mealappcmp001",
+  "activeVersionId": "c8f3d2b1-5e29-4d9f-a022-mealappcmp001",
+  "versionCounter": 1,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": []
+}

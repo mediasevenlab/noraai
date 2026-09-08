@@ -42,9 +42,14 @@ function createProtectedTestApp() {
 
     return {
       id: 'user-1',
+      publicId: 101,
       email: 'user@example.com',
       displayName: null,
+      nickname: null,
+      telegramUsername: null,
+    telegramPhone: null,
       role: 'user',
+      questionnaireCompleted: false,
       createdAt: '2026-01-01T00:00:00.000Z',
       sessionId: 'session-1',
     }

@@ -1,64 +1,253 @@
 ---
-import { Menu, X } from 'lucide-react'
-
-import { buttonVariants } from '@/components/ui/button'
-import BrandMark from './BrandMark.astro'
+import { ArrowUpRight, GalleryVerticalEnd, Menu, Moon, Sun, X } from 'lucide-react'
 
 interface Props {
-  primaryHref: string
-  primaryLabel: string
+  loginHref: string
+  signupHref: string
 }
 
-const { primaryHref, primaryLabel } = Astro.props
+const { loginHref, signupHref } = Astro.props
 const navigation = [
   { href: '#features', label: 'Возможности' },
-  { href: '#process', label: 'Как это работает' },
-  { href: '#results', label: 'Результаты' },
+  { href: '#testimonials', label: 'Отзывы' },
+  { href: '#faq', label: 'FAQ' },
+  { href: '#cta', label: 'Старт' },
 ]
 ---
 
-<header class="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur-xl">
-  <div class="site-container flex h-16 items-center justify-between gap-6">
-    <a class="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href="#top">
-      <BrandMark />
-    </a>
-
-    <nav class="hidden items-center gap-7 md:flex" aria-label="Основная навигация">
-      {navigation.map((item) => (
-        <a
-          class="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          href={item.href}
-        >
-          {item.label}
+<header class="landing-header pointer-events-none fixed inset-x-0 top-0 z-[100] isolate">
+  <div class="landing-header-inner pointer-events-auto">
+    <div class="landing-nav" data-scrolled="false" id="landing-nav">
+      <div class="landing-nav-start">
+        <a class="landing-nav-brand" href="#top" aria-label="24nutrition">
+          <span class="landing-nav-brand-mark" aria-hidden="true">
+            <GalleryVerticalEnd className="landing-nav-brand-icon" />
+          </span>
+          <span class="landing-nav-brand-text">
+            <span class="landing-nav-collapse-inner">Nutrition</span>
+          </span>
         </a>
-      ))}
-    </nav>
+      </div>
 
-    <div class="hidden md:block">
-      <a class={buttonVariants({ size: 'sm' })} href={primaryHref}>{primaryLabel}</a>
-    </div>
-
-    <details class="group relative md:hidden">
-      <summary
-        class="grid size-10 cursor-pointer list-none place-items-center rounded-md border bg-background text-foreground shadow-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden"
-        aria-label="Открыть меню"
-      >
-        <Menu className="size-5 group-open:hidden" aria-hidden="true" />
-        <X className="hidden size-5 group-open:block" aria-hidden="true" />
-      </summary>
-      <nav
-        class="absolute right-0 mt-3 flex w-72 flex-col gap-1 rounded-xl border bg-background p-2 shadow-xl"
-        aria-label="Мобильная навигация"
-      >
+      <nav class="landing-nav-links" aria-label="Основная навигация">
         {navigation.map((item) => (
-          <a class="rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-muted" href={item.href}>
+          <a class="landing-nav-link" href={item.href}>
             {item.label}
           </a>
         ))}
-        <a class={buttonVariants({ className: 'mt-2 w-full', size: 'sm' })} href={primaryHref}>
-          {primaryLabel}
-        </a>
       </nav>
-    </details>
+
+      <div class="landing-nav-end">
+        <div class="landing-nav-actions">
+          <button
+            type="button"
+            class="landing-nav-theme"
+            data-landing-theme-toggle
+            aria-label="Переключить тему"
+          >
+            <Sun aria-hidden="true" className="landing-nav-theme-icon landing-nav-theme-icon--sun" />
+            <Moon aria-hidden="true" className="landing-nav-theme-icon landing-nav-theme-icon--moon" />
+          </button>
+          <a class="landing-nav-login" href={loginHref}>
+            <span class="landing-nav-collapse-inner">Войти</span>
+          </a>
+          <a class="landing-nav-cta" href={signupHref} aria-label="Регистрация">
+            <span class="landing-nav-cta-label">
+              <span class="landing-nav-collapse-inner">
+                <span class="landing-nav-cta-label-track">
+                  <span>Регистрация</span>
+                  <span aria-hidden="true">Регистрация</span>
+                </span>
+              </span>
+            </span>
+            <ArrowUpRight aria-hidden="true" className="landing-nav-cta-icon" />
+          </a>
+        </div>
+
+        <details class="landing-nav-mobile">
+          <summary class="landing-nav-mobile-toggle" aria-label="Открыть меню">
+            <Menu className="landing-nav-mobile-icon landing-nav-mobile-icon--closed" aria-hidden="true" />
+            <X className="landing-nav-mobile-icon landing-nav-mobile-icon--open" aria-hidden="true" />
+          </summary>
+          <nav class="landing-nav-mobile-panel" aria-label="Мобильная навигация">
+            {navigation.map((item) => (
+              <a href={item.href}>{item.label}</a>
+            ))}
+            <button type="button" data-landing-theme-toggle>
+              Сменить тему
+            </button>
+            <a href={loginHref}>Войти</a>
+            <a class="landing-nav-mobile-cta" href={signupHref}>
+              Регистрация
+              <ArrowUpRight aria-hidden="true" className="size-3.5" />
+            </a>
+          </nav>
+        </details>
+      </div>
+    </div>
   </div>
 </header>
+
+<script>
+  const THEME_KEY = 'web_app_demo_theme'
+  const COMPACT_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
+  const COMPACT_MS = 420
+  const COMPACT_TOP_PX = 96
+
+  function resolvedTheme() {
+    const stored = localStorage.getItem(THEME_KEY)
+    if (stored === 'light' || stored === 'dark') return stored
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+
+  function applyTheme(theme: 'light' | 'dark') {
+    const root = document.documentElement
+    const isDark = theme === 'dark'
+    root.classList.toggle('dark', isDark)
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', isDark ? '#111111' : '#ffffff')
+    for (const button of document.querySelectorAll<HTMLElement>('[data-landing-theme-toggle]')) {
+      button.setAttribute(
+        'aria-label',
+        isDark ? 'Переключить на светлую тему' : 'Переключить на тёмную тему',
+      )
+    }
+  }
+
+  function toggleTheme() {
+    const next = resolvedTheme() === 'dark' ? 'light' : 'dark'
+    localStorage.setItem(THEME_KEY, next)
+    applyTheme(next)
+  }
+
+  function initLandingTheme() {
+    applyTheme(resolvedTheme())
+    for (const button of document.querySelectorAll<HTMLElement>('[data-landing-theme-toggle]')) {
+      if (button.dataset.themeBound === 'true') continue
+      button.dataset.themeBound = 'true'
+      button.addEventListener('click', toggleTheme)
+    }
+  }
+
+  function initLandingNav() {
+    const nav = document.getElementById('landing-nav')
+    if (!nav || nav.dataset.navBound === 'true') return
+    nav.dataset.navBound = 'true'
+
+    let scrolled = nav.dataset.scrolled === 'true'
+    let ticking = false
+    let endHandler: ((event: TransitionEvent) => void) | null = null
+
+    const reduceMotion = () =>
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    const measureTrigger = () => {
+      const trigger =
+        document.querySelector('[data-landing-nav-compact-trigger]') ||
+        document.getElementById('top')
+      if (!trigger) return window.scrollY > window.innerHeight * 0.55
+      // Compact after the first block leaves the top area.
+      return trigger.getBoundingClientRect().bottom <= COMPACT_TOP_PX + 24
+    }
+
+    const measureTargetWidth = (next: boolean) => {
+      const host = nav.parentElement
+      if (!host) return nav.getBoundingClientRect().width
+
+      const clone = nav.cloneNode(true) as HTMLElement
+      clone.id = ''
+      clone.dataset.navBound = 'true'
+      clone.dataset.scrolled = next ? 'true' : 'false'
+      clone.classList.add('is-measuring')
+      clone.setAttribute('aria-hidden', 'true')
+      clone.style.cssText = [
+        'position:absolute',
+        'left:0',
+        'top:0',
+        'visibility:hidden',
+        'pointer-events:none',
+        'transition:none',
+        next ? 'width:max-content' : 'width:100%',
+      ].join(';')
+
+      host.appendChild(clone)
+      const width = clone.getBoundingClientRect().width
+      clone.remove()
+      return width
+    }
+
+    const clearWidthLock = () => {
+      nav.style.width = ''
+      nav.style.transition = ''
+    }
+
+    const stopWidthTransition = () => {
+      if (endHandler) {
+        nav.removeEventListener('transitionend', endHandler)
+        endHandler = null
+      }
+    }
+
+    const animateWidth = (next: boolean) => {
+      stopWidthTransition()
+
+      if (reduceMotion()) {
+        clearWidthLock()
+        nav.dataset.scrolled = next ? 'true' : 'false'
+        return
+      }
+
+      const from = nav.getBoundingClientRect().width
+      const to = measureTargetWidth(next)
+
+      nav.style.transition = 'none'
+      nav.style.width = `${from}px`
+      nav.dataset.scrolled = next ? 'true' : 'false'
+      void nav.offsetWidth
+
+      if (Math.abs(from - to) < 1) {
+        clearWidthLock()
+        return
+      }
+
+      nav.style.transition = `width ${COMPACT_MS}ms ${COMPACT_EASE}`
+      nav.style.width = `${to}px`
+
+      endHandler = (event: TransitionEvent) => {
+        if (event.target !== nav || event.propertyName !== 'width') return
+        stopWidthTransition()
+        clearWidthLock()
+      }
+      nav.addEventListener('transitionend', endHandler)
+    }
+
+    const apply = (next: boolean) => {
+      if (next === scrolled) return
+      scrolled = next
+      animateWidth(next)
+    }
+
+    const update = () => {
+      apply(measureTrigger())
+      ticking = false
+    }
+
+    const onScroll = () => {
+      if (ticking) return
+      ticking = true
+      window.requestAnimationFrame(update)
+    }
+
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll, { passive: true })
+  }
+
+  function initLandingChrome() {
+    initLandingTheme()
+    initLandingNav()
+  }
+
+  initLandingChrome()
+  document.addEventListener('astro:page-load', initLandingChrome)
+</script>

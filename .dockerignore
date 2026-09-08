@@ -8,6 +8,8 @@ coverage
 .scratch
 .env
 .env.*
+**/.env
+**/.env.*
 webapp/e2e/.artifacts
 mobile/.maestro/reports
 *.log

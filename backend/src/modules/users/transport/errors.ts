@@ -10,6 +10,9 @@ export function toUsersAppError(error: unknown) {
   if (error.kind === 'not_found') {
     return new AppError(404, 'NOT_FOUND', error.message)
   }
+  if (error.kind === 'invalid') {
+    return new AppError(400, 'VALIDATION_ERROR', error.message)
+  }
   return new AppError(409, 'CONFLICT', error.message)
 }
 

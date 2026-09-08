@@ -1,4 +1,6 @@
 import { spawnSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import {
   composeEnv,
   composeProjectName,
@@ -9,6 +11,7 @@ import {
 } from './env'
 
 const composeArgs = ['compose', '-p', composeProjectName]
+const bunCommand = resolveBunCommand()
 
 function run(command: string, args: string[], env: NodeJS.ProcessEnv = process.env) {
   const result = spawnSync(command, args, {
@@ -22,8 +25,22 @@ function run(command: string, args: string[], env: NodeJS.ProcessEnv = process.e
   }
 }
 
+function resolveBunCommand() {
+  if (process.platform !== 'win32') return 'bun'
+
+  const candidates = [
+    process.env.BUN_INSTALL
+      ? resolve(process.env.BUN_INSTALL, 'bin', 'bun.exe')
+      : null,
+    process.env.APPDATA
+      ? resolve(process.env.APPDATA, 'npm', 'node_modules', 'bun', 'bin', 'bun.exe')
+      : null,
+  ]
+  return candidates.find((candidate) => candidate && existsSync(candidate)) ?? 'bun'
+}
+
 async function waitForComposePostgres(service: string, database: string, env: NodeJS.ProcessEnv) {
-  for (let attempt = 1; attempt <= 30; attempt += 1) {
+  for (let attempt = 1; attempt <= 60; attempt += 1) {
     const result = spawnSync(
       'docker',
       [...composeArgs, 'exec', '-T', service, 'pg_isready', '-U', 'superuser', '-d', database],
@@ -63,12 +80,13 @@ export default async function globalSetup() {
   })
 
   if (process.env.E2E_SKIP_DOCKER !== '1') {
+    run('docker', [...composeArgs, 'down', '--volumes', '--remove-orphans'], env)
     run('docker', [...composeArgs, 'up', '-d', 'postgres_test'], env)
     await waitForComposePostgres('postgres_test', 'web_app_demo_test', env)
   }
 
-  run('bun', ['run', '--cwd', 'backend', 'prisma:deploy'], env)
-  run('bun', ['run', '--cwd', 'backend', 'prisma:seed'], {
+  run(bunCommand, ['run', '--cwd', 'backend', 'prisma:deploy'], env)
+  run(bunCommand, ['run', '--cwd', 'backend', 'prisma:seed'], {
     ...env,
     ADMIN_SEED_EMAIL: e2eAdminEmail,
     ADMIN_SEED_PASSWORD: e2eAdminPassword,

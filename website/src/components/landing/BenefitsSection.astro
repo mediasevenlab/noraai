@@ -1,0 +1,11 @@
+---
+import BenefitsSectionReact from './BenefitsSection.tsx'
+
+interface Props {
+  signupHref: string
+}
+
+const { signupHref } = Astro.props
+---
+
+<BenefitsSectionReact client:visible signupHref={signupHref} />

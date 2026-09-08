@@ -7,6 +7,12 @@ export function toAuthAppError(error: unknown) {
   if (error.kind === 'email_already_exists') {
     return new AppError(409, 'CONFLICT', error.message)
   }
+  if (error.kind === 'mentor_not_found') {
+    return new AppError(409, 'AUTH_MENTOR_NOT_FOUND', error.message)
+  }
+  if (error.kind === 'referrer_not_found') {
+    return new AppError(409, 'AUTH_REFERRER_NOT_FOUND', error.message)
+  }
 
   if (error.kind === 'password_reset_invalid') {
     return new AppError(400, 'AUTH_PASSWORD_RESET_INVALID', error.message)

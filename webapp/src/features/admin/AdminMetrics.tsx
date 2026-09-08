@@ -1,8 +1,8 @@
 import {
-  UserAdd01Icon,
-  UserGroupIcon,
-  UserShield01Icon,
-} from '@hugeicons/core-free-icons'
+  UserPlusIcon,
+  UsersIcon,
+  ShieldUserIcon,
+} from 'lucide-react'
 
 import { SectionCards } from '@/components/dashboard'
 import {
@@ -51,19 +51,19 @@ export function AdminMetrics() {
       items={[
         {
           description: 'All registered accounts.',
-          icon: UserGroupIcon,
+          icon: UsersIcon,
           label: 'Total users',
           value: query.data.totalUsers.toLocaleString(),
         },
         {
           description: 'Accounts with administrator access.',
-          icon: UserShield01Icon,
+          icon: ShieldUserIcon,
           label: 'Administrators',
           value: query.data.totalAdmins.toLocaleString(),
         },
         {
           description: 'Accounts created during the last seven days.',
-          icon: UserAdd01Icon,
+          icon: UserPlusIcon,
           label: 'New in 7 days',
           value: query.data.newUsersLast7Days.toLocaleString(),
         },

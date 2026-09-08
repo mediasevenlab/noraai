@@ -5,18 +5,27 @@ import { AuthService } from './auth-service'
 
 const user = {
   id: 'user-1',
+  publicId: 101,
   email: 'user@example.com',
   passwordHash: 'password-hash',
   displayName: null,
+  nickname: null,
+  telegramUsername: null,
+  telegramPhone: null,
   role: 'user' as const,
   createdAt: new Date('2026-01-01T00:00:00.000Z'),
 }
 
 const projectUser: ProjectUser = async (record) => ({
   id: record.id,
+  publicId: record.publicId,
   email: record.email,
   displayName: record.displayName,
+  nickname: record.nickname,
+  telegramUsername: record.telegramUsername,
+  telegramPhone: record.telegramPhone,
   role: record.role,
+  questionnaireCompleted: record.role !== 'user',
   createdAt: record.createdAt.toISOString(),
 })
 
@@ -74,9 +83,14 @@ test('verifies an unchanged password before opening the session transaction', as
     },
     projectUser: async (record) => ({
       id: record.id,
+      publicId: record.publicId,
       email: record.email,
       displayName: record.displayName,
+      nickname: record.nickname,
+      telegramUsername: record.telegramUsername,
+      telegramPhone: record.telegramPhone,
       role: record.role,
+      questionnaireCompleted: record.role !== 'user',
       createdAt: record.createdAt.toISOString(),
     }),
     refreshReuseGraceSeconds: 10,
@@ -106,6 +120,8 @@ test('refresh keeps the logical session id stable while rotating its credential'
   const repository = {
     ...unusedPasswordResetRepository,
     findUserByEmail: async () => null,
+    findMentorByIdentifier: async () => null,
+    findReferrerByCode: async () => null,
     createPasswordUserWithSession: async () => ({ user, session: { id: 'session-created' } }),
     createSession: async () => ({ user, session: { id: 'session-created' } }),
     findActiveRefreshSession: async (input) => {
@@ -141,9 +157,14 @@ test('refresh keeps the logical session id stable while rotating its credential'
     },
     projectUser: async (record) => ({
       id: record.id,
+      publicId: record.publicId,
       email: record.email,
       displayName: record.displayName,
+      nickname: record.nickname,
+      telegramUsername: record.telegramUsername,
+      telegramPhone: record.telegramPhone,
       role: record.role,
+      questionnaireCompleted: record.role !== 'user',
       createdAt: record.createdAt.toISOString(),
     }),
     refreshTokenTtlDays: 30,
@@ -190,9 +211,14 @@ test('refresh revokes the logical session when a previous credential is reused a
     passwords: { hash: async () => 'hash', verify: async () => true },
     projectUser: async () => ({
       id: user.id,
+      publicId: user.publicId,
       email: user.email,
       displayName: null,
+      nickname: null,
+      telegramUsername: null,
+  telegramPhone: null,
       role: user.role,
+      questionnaireCompleted: user.role !== 'user',
       createdAt: user.createdAt.toISOString(),
     }),
     refreshReuseGraceSeconds: 10,
@@ -243,9 +269,14 @@ test('refresh returns the winning successor when another request wins the rotati
     passwords: { hash: async () => 'hash', verify: async () => true },
     projectUser: async () => ({
       id: user.id,
+      publicId: user.publicId,
       email: user.email,
       displayName: null,
+      nickname: null,
+      telegramUsername: null,
+  telegramPhone: null,
       role: user.role,
+      questionnaireCompleted: user.role !== 'user',
       createdAt: user.createdAt.toISOString(),
     }),
     refreshReuseGraceSeconds: 10,
@@ -302,6 +333,7 @@ test('password reset request stays generic and creates nothing while delivery is
 
   await expect(service.requestPasswordReset({ email: user.email })).resolves.toEqual({
     accepted: true,
+    delivery: 'unavailable',
   })
   expect(repositoryCalls).toBe(0)
 })
@@ -360,6 +392,7 @@ test('password reset request reports delivery failure after invalidating its tok
 
   await expect(service.requestPasswordReset({ email: user.email })).resolves.toEqual({
     accepted: true,
+    delivery: 'queued',
   })
   expect(stored).toEqual([])
   expect(deferredTasks).toHaveLength(1)

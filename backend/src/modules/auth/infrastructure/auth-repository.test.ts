@@ -12,9 +12,13 @@ test('creates a password user and initial session inside one database transactio
         operations.push('user')
         return {
           id: 'user-1',
+          publicId: 101,
           email: 'user@example.com',
           passwordHash: 'password-hash',
           displayName: null,
+          nickname: null,
+          telegramUsername: null,
+    telegramPhone: null,
           role: 'user' as const,
           createdAt,
           updatedAt: createdAt,
@@ -38,6 +42,7 @@ test('creates a password user and initial session inside one database transactio
       password: 'password123',
       passwordHash: 'password-hash',
       displayName: undefined,
+      role: 'user',
     },
     session: {
       refreshTokenHash: 'refresh-hash',

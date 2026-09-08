@@ -1,9 +1,9 @@
 import type { UserDto } from '@web-app-demo/contracts'
 
-import { PageContainer, PageHeader } from '@/components/PageLayout'
+import { NoraPageHeader, PageContainer, PageHeader } from '@/components/PageLayout'
 import { AppearancePanel } from '@/features/settings'
-import { ProfilePanel } from '@/features/users'
 import { AdminMetrics } from './AdminMetrics'
+import { NicknamePanel } from '@/features/users'
 import { UserDirectory } from './UserDirectory'
 
 export function AdminDashboard() {
@@ -21,9 +21,12 @@ export function AdminDashboard() {
 export function AdminUsers({ currentUser }: { currentUser: UserDto }) {
   return (
     <PageContainer>
-      <PageHeader
-        description="Find accounts and manage access without exposing credential data."
-        title="Users"
+      <NoraPageHeader
+        badge="Пользователи"
+        description="Находите аккаунты и управляйте доступом без раскрытия учётных данных."
+        showBrand
+        title="Пользователи"
+        titleSize="display"
       />
       <UserDirectory currentUser={currentUser} />
     </PageContainer>
@@ -33,12 +36,15 @@ export function AdminUsers({ currentUser }: { currentUser: UserDto }) {
 export function AdminSettings({ user }: { user: UserDto }) {
   return (
     <PageContainer>
-      <PageHeader
-        description="Manage your administrator identity and workspace appearance."
-        title="Settings"
+      <NoraPageHeader
+        badge="Настройки"
+        description="Управляйте идентичностью администратора и внешним видом рабочей области."
+        showBrand
+        title="Настройки"
+        titleSize="display"
       />
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <ProfilePanel user={user} />
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <NicknamePanel user={user} />
         <AppearancePanel />
       </div>
     </PageContainer>

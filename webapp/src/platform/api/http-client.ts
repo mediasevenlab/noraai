@@ -1,7 +1,14 @@
 import { apiErrorSchema } from '@web-app-demo/contracts'
 import type { z } from 'zod'
 
-const defaultApiBaseUrl = (import.meta.env?.VITE_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+/**
+ * Empty VITE_API_URL → same-origin `/api/*` (Vite/dev proxy or reverse proxy).
+ * Unset in unit tests keeps an absolute localhost default for mocked fetch URLs.
+ */
+const configuredApiUrl = import.meta.env?.VITE_API_URL
+const defaultApiBaseUrl = (
+  configuredApiUrl === undefined ? 'http://localhost:3000' : configuredApiUrl
+).replace(/\/$/, '')
 
 export type HttpRequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'

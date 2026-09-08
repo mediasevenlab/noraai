@@ -1,0 +1,22 @@
+{
+  "name": "@nutrition-nora/hybrid",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "sync": "cap sync android",
+    "open:android": "cap open android",
+    "apk": "cap sync android && bun run apk:assemble",
+    "apk:assemble": "cd android && gradlew.bat assembleDebug"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/camera": "^8.0.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/haptics": "^8.0.0",
+    "@capacitor/local-notifications": "^8.3.1"
+  }
+}

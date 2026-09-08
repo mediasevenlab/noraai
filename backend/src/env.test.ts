@@ -21,6 +21,12 @@ describe('loadEnv', () => {
     expect(env.SPACES_UPLOAD_URL_TTL_SECONDS).toBe(900)
     expect(env.SPACES_DOWNLOAD_URL_TTL_SECONDS).toBe(300)
     expect(env.SPACES_PUBLIC_CACHE_CONTROL).toBe('public, max-age=31536000, immutable')
+    expect(env.AUTH_RATE_LIMIT_MAX).toBe(60)
+    expect(env.INTERNAL_RATE_LIMIT_MAX).toBe(120)
+    expect(env.INTERNAL_RATE_LIMIT_WINDOW_SECONDS).toBe(60)
+    expect(env.N8N_TRANSCRIBE_WEBHOOK_URL).toBeUndefined()
+    expect(env.N8N_MENTOR_NOTIFY_WEBHOOK_URL).toBeUndefined()
+    expect(env.TELEGRAM_NOTIFY_BOT_TOKEN).toBeUndefined()
   })
 
   test('requires complete DigitalOcean Spaces configuration when storage is enabled', () => {

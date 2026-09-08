@@ -1,0 +1,300 @@
+import { describe, expect, test } from 'bun:test'
+
+import {
+  ASSIGNED_AUTHORED_RATIONS_STORAGE_PREFIX,
+  AUTHORED_RATIONS_STORAGE_PREFIX,
+  assignedAuthoredRationState,
+  assignedAuthoredRationsStorageKey,
+  assignAuthoredRationToUser,
+  draftRationTotals,
+  emptyRationDraft,
+  finalizeRationDraft,
+  menteePickerInitials,
+  menteePickerLabel,
+  mergeAssignedRations,
+  rationsForSectionTab,
+  nextUnusedMealSlot,
+  MENTOR_RATION_SOURCE,
+  rationCardOrigin,
+  parseAuthoredRations,
+  parseMacroField,
+  addDraftLine,
+  draftLineItems,
+  ensureTestAuthoredRations,
+  joinDraftLines,
+  moveDraftLine,
+  previewRationFromDraft,
+  rationToDraft,
+  readAssignedAuthoredRations,
+  removeDraftLine,
+  reorderMealDrafts,
+  setDraftLine,
+  RATION_MEAL_SLOTS,
+  splitIngredientLines,
+  splitStepLines,
+  testAuthoredRations,
+} from '../src/features/mentor/authored-rations'
+import type { RationEntry } from '../src/features/mentor/rations-catalog'
+
+const sample: RationEntry = {
+  id: 'mentor-sample',
+  title: 'Белковый день',
+  description: 'Курица и рыба',
+  goal: 'Набор',
+  days: 1,
+  kcal: 700,
+  protein: 70,
+  fat: 20,
+  carbs: 40,
+  mealsPerDay: 2,
+  image: '/rations/ration-01.jpg',
+  source: MENTOR_RATION_SOURCE,
+  meals: [
+    {
+      slot: 'Завтрак',
+      title: 'Омлет',
+      ingredients: 'яйца, шпинат',
+      steps: ['Взбейте яйца', 'Обжарьте'],
+      image: '/rations/ration-01.jpg',
+      kcal: 300,
+      protein: 25,
+      fat: 18,
+      carbs: 5,
+    },
+    {
+      slot: 'Обед',
+      title: 'Курица',
+      ingredients: 'филе, рис',
+      steps: ['Запеките филе'],
+      image: '',
+      kcal: 400,
+      protein: 45,
+      fat: 2,
+      carbs: 35,
+    },
+  ],
+}
+
+describe('mentor authored rations', () => {
+  test('card origin follows catalog vs mentor authorship', () => {
+    expect(rationCardOrigin({ id: 'ration-01', source: 'ScanFood.AI, меню на 1400 ккал' })).toBe(
+      'rations',
+    )
+    expect(rationCardOrigin({ id: 'mentor-ab12-day', source: MENTOR_RATION_SOURCE })).toBe(
+      'mentor-rations',
+    )
+    expect(rationCardOrigin({ id: 'mentor-test-light-day', source: 'Силовой день' })).toBe(
+      'mentor-rations',
+    )
+  })
+
+  test('new draft starts with one breakfast and no title', () => {
+    const draft = emptyRationDraft()
+    expect(draft.title).toBe('')
+    expect(draft.goal).toBe('Похудение')
+    expect(draft.meals).toHaveLength(1)
+    expect(draft.meals[0]?.slot).toBe('Завтрак')
+    expect(draftRationTotals(draft)).toEqual({ kcal: 0, protein: 0, fat: 0, carbs: 0 })
+  })
+
+  test('reorderMealDrafts places a meal where another plaque sits', () => {
+    const meals = [
+      { key: 'breakfast', slot: 'Завтрак' },
+      { key: 'lunch', slot: 'Обед' },
+      { key: 'dinner', slot: 'Ужин' },
+    ]
+    expect(reorderMealDrafts(meals, 'breakfast', 'dinner').map((meal) => meal.key)).toEqual([
+      'lunch',
+      'dinner',
+      'breakfast',
+    ])
+    expect(reorderMealDrafts(meals, 'dinner', 'breakfast').map((meal) => meal.key)).toEqual([
+      'dinner',
+      'breakfast',
+      'lunch',
+    ])
+    expect(reorderMealDrafts(meals, 'lunch', 'lunch')).toEqual(meals)
+    expect(reorderMealDrafts(meals, 'missing', 'lunch')).toEqual(meals)
+    expect(reorderMealDrafts(meals, 'lunch', 'missing')).toEqual(meals)
+  })
+
+  test('next unused slot follows breakfast, lunch, snack, dinner', () => {
+    expect(nextUnusedMealSlot([{ slot: 'Завтрак' }])).toBe('Обед')
+    expect(nextUnusedMealSlot([{ slot: 'Завтрак' }, { slot: 'Обед' }])).toBe('Перекус')
+    expect(nextUnusedMealSlot([{ slot: 'Завтрак' }, { slot: 'Обед' }, { slot: 'Перекус' }])).toBe(
+      'Ужин',
+    )
+    expect(nextUnusedMealSlot(RATION_MEAL_SLOTS.map((slot) => ({ slot })))).toBe('Перекус')
+  })
+
+  test('draft line items start as one empty row and grow one by one', () => {
+    expect(draftLineItems('')).toEqual([''])
+    expect(draftLineItems('яйца\nшпинат')).toEqual(['яйца', 'шпинат'])
+    expect(addDraftLine(['яйца'])).toEqual(['яйца', ''])
+    expect(addDraftLine(['яйца', 'тост'], 0)).toEqual(['яйца', '', 'тост'])
+    expect(setDraftLine(['', 'шпинат'], 0, 'яйца')).toEqual(['яйца', 'шпинат'])
+    expect(removeDraftLine(['яйца'], 0)).toEqual([''])
+    expect(removeDraftLine(['яйца', 'шпинат'], 0)).toEqual(['шпинат'])
+    expect(moveDraftLine(['яйца', 'шпинат', 'тост'], 0, 1)).toEqual(['шпинат', 'яйца', 'тост'])
+    expect(moveDraftLine(['яйца', 'шпинат'], 0, -1)).toEqual(['яйца', 'шпинат'])
+    expect(joinDraftLines(['яйца', 'шпинат'])).toBe('яйца\nшпинат')
+  })
+
+  test('parses ingredients, numbered steps and decimal macros', () => {
+    expect(splitIngredientLines('яйца; шпинат\nтост, ')).toEqual(['яйца', 'шпинат', 'тост'])
+    expect(splitStepLines('1. Взбейте яйца\n\n2) Обжарьте\n')).toEqual(['Взбейте яйца', 'Обжарьте'])
+    expect(parseMacroField('12,5')).toBe(12.5)
+    expect(parseMacroField('-3')).toBe(0)
+  })
+
+  test('preview and finalize ignore unnamed meals and sum macros', () => {
+    const draft = emptyRationDraft()
+    draft.title = 'Лёгкий день'
+    draft.meals[0]!.title = 'Овсянка'
+    draft.meals[0]!.kcal = '320'
+    draft.meals[0]!.protein = '12'
+    draft.meals[0]!.fat = '8'
+    draft.meals[0]!.carbs = '48'
+    draft.meals[0]!.ingredients = 'хлопья\nмолоко'
+    draft.meals[0]!.stepsText = '1. Залейте хлопья\nВарите 5 минут'
+    draft.meals.push({ ...draft.meals[0]!, key: 'unnamed', title: '' })
+    const preview = previewRationFromDraft(draft)
+    expect(preview.title).toBe('Лёгкий день')
+    expect(preview.meals).toHaveLength(1)
+    expect(preview.kcal).toBe(320)
+    expect(preview.source).toBe(MENTOR_RATION_SOURCE)
+
+    const saved = finalizeRationDraft(draft, 'mentor-user-1')
+    expect(saved.ok).toBe(true)
+    if (!saved.ok) return
+    expect(saved.ration.meals[0]?.ingredients).toBe('хлопья, молоко')
+    expect(saved.ration.meals[0]?.steps).toEqual(['Залейте хлопья', 'Варите 5 минут'])
+    expect(saved.ration.id.startsWith('mentor-')).toBe(true)
+    expect(saved.ration.mealsPerDay).toBe(1)
+  })
+
+  test('refuses a ration without a title or named meal', () => {
+    const draft = emptyRationDraft()
+    expect(finalizeRationDraft(draft, 'u1')).toEqual({ ok: false, error: 'Назовите рацион' })
+    expect(finalizeRationDraft(draft, 'u1', { emptyTitleError: 'Назовите план' })).toEqual({
+      ok: false,
+      error: 'Назовите план',
+    })
+    draft.title = 'День'
+    expect(finalizeRationDraft(draft, 'u1')).toEqual({
+      ok: false,
+      error: 'Добавьте хотя бы один приём с названием',
+    })
+  })
+
+  test('round-trips a saved card and drops broken storage rows', () => {
+    const draft = rationToDraft(sample)
+    const saved = finalizeRationDraft(draft, 'u1')
+    expect(saved.ok).toBe(true)
+    if (!saved.ok) return
+    expect(saved.ration.id).toBe('mentor-sample')
+    expect(saved.ration.kcal).toBe(700)
+    expect(draft.meals[0]?.ingredients).toBe('яйца\nшпинат')
+    expect(draftLineItems(draft.meals[0]?.ingredients ?? '')).toEqual(['яйца', 'шпинат'])
+    expect(draftLineItems(draft.meals[0]?.stepsText ?? '')).toEqual(['Взбейте яйца', 'Обжарьте'])
+    expect(parseAuthoredRations([saved.ration, { id: 'x' }, null])).toEqual([saved.ration])
+    expect(AUTHORED_RATIONS_STORAGE_PREFIX).toBe('nora:mentor-authored-rations:v1:')
+  })
+
+  test('two test mentor cards cover a light day and a gain day', () => {
+    const cards = testAuthoredRations()
+    expect(cards).toHaveLength(2)
+    expect(cards.map((card) => card.title)).toEqual([
+      'Тестовый лёгкий день',
+      'Тестовый силовой день',
+    ])
+    expect(cards.every((card) => card.source === MENTOR_RATION_SOURCE)).toBe(true)
+    expect(cards[0]?.meals.length).toBeGreaterThanOrEqual(2)
+    expect(cards[1]?.meals.length).toBeGreaterThanOrEqual(2)
+    expect(cards.every((card) => card.kcal > 0 && card.meals[0]?.title)).toBe(true)
+    expect(ensureTestAuthoredRations('mentor-test-user').map((card) => card.id)).toEqual([
+      'mentor-test-light-day',
+      'mentor-test-gain-day',
+    ])
+  })
+
+  test('mentor can send an authored ration to a user once', () => {
+    const memory = new Map<string, string>()
+    const originalStorage = globalThis.localStorage
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => memory.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          memory.set(key, value)
+        },
+        removeItem: (key: string) => {
+          memory.delete(key)
+        },
+      },
+    })
+
+    try {
+      const userId = 'mentee-assign-test'
+      localStorage.removeItem(assignedAuthoredRationsStorageKey(userId))
+      const first = assignAuthoredRationToUser(userId, sample)
+      expect(first.kind).toBe('assigned')
+      expect(first.rations).toHaveLength(1)
+      expect(readAssignedAuthoredRations(userId)[0]?.title).toBe('Белковый день')
+      const second = assignAuthoredRationToUser(userId, { ...sample, title: 'Другое название' })
+      expect(second.kind).toBe('same')
+      expect(second.rations[0]?.title).toBe('Белковый день')
+      expect(assignedAuthoredRationState(first.rations, sample.id)).toBe('same')
+      expect(assignedAuthoredRationState([], sample.id)).toBe('free')
+      expect(menteePickerLabel({ displayName: 'Анна', nickname: 'anna', email: 'a@x.com' })).toBe(
+        'Анна',
+      )
+      expect(menteePickerLabel({ displayName: null, nickname: 'anna', email: 'a@x.com' })).toBe(
+        'anna',
+      )
+      expect(menteePickerInitials('Анна Петрова')).toBe('АП')
+      expect(menteePickerInitials('Игорь')).toBe('ИГ')
+      expect(
+        mergeAssignedRations([{ ...sample, id: 'catalog-1', title: 'Каталог' }], first.rations).map(
+          (ration) => ration.id,
+        ),
+      ).toEqual(['mentor-sample', 'catalog-1'])
+      const catalogOnly = [{ ...sample, id: 'catalog-1', title: 'Каталог' }]
+      expect(
+        rationsForSectionTab({
+          tab: 'Избранное',
+          libraryRations: catalogOnly,
+          catalog: catalogOnly,
+          authored: first.rations,
+          combineFavorites: true,
+        }).map((ration) => ration.id),
+      ).toEqual(['mentor-sample', 'catalog-1'])
+      expect(
+        rationsForSectionTab({
+          tab: 'Все',
+          libraryRations: catalogOnly,
+          catalog: catalogOnly,
+          authored: first.rations,
+          combineFavorites: true,
+        }).map((ration) => ration.id),
+      ).toEqual(['catalog-1'])
+      expect(
+        rationsForSectionTab({
+          tab: 'Избранное',
+          libraryRations: catalogOnly,
+          catalog: catalogOnly,
+          authored: first.rations,
+          combineFavorites: false,
+        }).map((ration) => ration.id),
+      ).toEqual(['catalog-1'])
+      expect(ASSIGNED_AUTHORED_RATIONS_STORAGE_PREFIX).toBe(
+        'nora:mentor-assigned-authored-rations:v1:',
+      )
+    } finally {
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: originalStorage,
+      })
+    }
+  })
+})

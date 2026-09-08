@@ -4,10 +4,33 @@ import {
   adminUsersQuerySchema,
   adminUsersResponseSchema,
   apiErrorSchema,
+  deleteAdminUserResponseSchema,
+  connectCurrentUserToMentorRequestSchema,
+  currentUserMentorResponseSchema,
+  deleteMentorPlanResponseSchema,
+  mentorPlanMutationResponseSchema,
+  mentorPlanParamsSchema,
+  mentorPlansResponseSchema,
+  mentorUserMutationResponseSchema,
+  mentorUsersQuerySchema,
+  mentorUsersResponseSchema,
+  planAssignmentSchema,
+  putPlanAssignmentRequestSchema,
+  putQuestionnaireRequestSchema,
+  putUserFavoritesRequestSchema,
+  putUserPlanLibraryRequestSchema,
+  questionnaireResponseSchema,
+  telegramLinkRequestSchema,
+  telegramLinkResponseSchema,
+  upsertMentorPlanRequestSchema,
+  userFavoritesSchema,
+  userPlanLibrarySchema,
   updateProfileRequestSchema,
   updateProfileResponseSchema,
   updateUserRoleRequestSchema,
   updateUserRoleResponseSchema,
+  userReferralsQuerySchema,
+  userReferralsResponseSchema,
 } from '@web-app-demo/contracts'
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
 import type { MiddlewareHandler } from 'hono'
@@ -45,8 +68,224 @@ const updateProfileRoute = createRoute({
     },
     400: { content: errorContent, description: 'Invalid payload' },
     401: { content: errorContent, description: 'Authentication required' },
+    409: { content: errorContent, description: 'Nickname already taken' },
     413: { content: errorContent, description: 'Request body is too large' },
     429: { content: errorContent, description: 'Too many requests' },
+  },
+})
+
+const getQuestionnaireRoute = createRoute({
+  method: 'get',
+  path: '/me/questionnaire',
+  security: bearerSecurity,
+  responses: {
+    200: {
+      content: { 'application/json': { schema: questionnaireResponseSchema } },
+      description: 'Current user questionnaire',
+    },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'User access required' },
+  },
+})
+
+const putQuestionnaireRoute = createRoute({
+  method: 'put',
+  path: '/me/questionnaire',
+  security: bearerSecurity,
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: putQuestionnaireRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: questionnaireResponseSchema } },
+      description: 'Saved current user questionnaire',
+    },
+    400: { content: errorContent, description: 'Invalid payload' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'User access required' },
+    413: { content: errorContent, description: 'Request body is too large' },
+    429: { content: errorContent, description: 'Too many requests' },
+  },
+})
+
+const connectCurrentUserToMentorRoute = createRoute({
+  method: 'post',
+  path: '/me/mentor',
+  security: bearerSecurity,
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: connectCurrentUserToMentorRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: mentorUserMutationResponseSchema } },
+      description: 'Connected current user to mentor',
+    },
+    400: { content: errorContent, description: 'Invalid identifier' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'User access required' },
+    404: { content: errorContent, description: 'Mentor not found' },
+    409: { content: errorContent, description: 'User is already connected' },
+    413: { content: errorContent, description: 'Request body is too large' },
+    429: { content: errorContent, description: 'Too many requests' },
+  },
+})
+
+const currentUserMentorRoute = createRoute({
+  method: 'get',
+  path: '/me/mentor',
+  security: bearerSecurity,
+  responses: {
+    200: {
+      content: { 'application/json': { schema: currentUserMentorResponseSchema } },
+      description: 'Current user mentor',
+    },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'User access required' },
+  },
+})
+
+const getCurrentUserFavoritesRoute = createRoute({
+  method: 'get',
+  path: '/me/favorites',
+  security: bearerSecurity,
+  responses: {
+    200: {
+      content: { 'application/json': { schema: userFavoritesSchema } },
+      description: 'Current user saved meals',
+    },
+    401: { content: errorContent, description: 'Authentication required' },
+  },
+})
+
+const putCurrentUserFavoritesRoute = createRoute({
+  method: 'put',
+  path: '/me/favorites',
+  security: bearerSecurity,
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: putUserFavoritesRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: userFavoritesSchema } },
+      description: 'Saved current user favorites',
+    },
+    400: { content: errorContent, description: 'Invalid payload' },
+    401: { content: errorContent, description: 'Authentication required' },
+    404: { content: errorContent, description: 'Favorites are unavailable' },
+    413: { content: errorContent, description: 'Request body is too large' },
+    429: { content: errorContent, description: 'Too many requests' },
+  },
+})
+
+const getCurrentUserPlanLibraryRoute = createRoute({
+  method: 'get',
+  path: '/me/plan-library',
+  security: bearerSecurity,
+  responses: {
+    200: {
+      content: { 'application/json': { schema: userPlanLibrarySchema } },
+      description: 'Current user authored plans, plan favorites and selection',
+    },
+    401: { content: errorContent, description: 'Authentication required' },
+  },
+})
+
+const putCurrentUserPlanLibraryRoute = createRoute({
+  method: 'put',
+  path: '/me/plan-library',
+  security: bearerSecurity,
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: putUserPlanLibraryRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: userPlanLibrarySchema } },
+      description: 'Saved current user plan library',
+    },
+    400: { content: errorContent, description: 'Invalid payload' },
+    401: { content: errorContent, description: 'Authentication required' },
+    404: { content: errorContent, description: 'Plan library is unavailable' },
+    413: { content: errorContent, description: 'Request body is too large' },
+    429: { content: errorContent, description: 'Too many requests' },
+  },
+})
+
+const telegramLinkRoute = createRoute({
+  method: 'post',
+  path: '/me/telegram-link',
+  security: bearerSecurity,
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: telegramLinkRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: telegramLinkResponseSchema } },
+      description: 'Started Telegram identity challenge',
+    },
+    400: { content: errorContent, description: 'Invalid payload' },
+    401: { content: errorContent, description: 'Authentication required' },
+    409: { content: errorContent, description: 'Telegram identity already taken' },
+    413: { content: errorContent, description: 'Request body is too large' },
+    429: { content: errorContent, description: 'Too many requests' },
+  },
+})
+
+const getCurrentUserPlansRoute = createRoute({
+  method: 'get',
+  path: '/me/plans',
+  security: bearerSecurity,
+  responses: {
+    200: {
+      content: { 'application/json': { schema: planAssignmentSchema } },
+      description: 'Assigned plans for the current user',
+    },
+    401: { content: errorContent, description: 'Authentication required' },
+  },
+})
+
+const userReferralsRoute = createRoute({
+  method: 'get',
+  path: '/me/referrals',
+  security: bearerSecurity,
+  request: { query: userReferralsQuerySchema },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: userReferralsResponseSchema } },
+      description: 'Direct referrals of current user',
+    },
+    400: { content: errorContent, description: 'Invalid query' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'User access required' },
   },
 })
 
@@ -111,19 +350,248 @@ const updateRoleRoute = createRoute({
   },
 })
 
+const deleteUserRoute = createRoute({
+  method: 'delete',
+  path: '/users/{userId}',
+  security: bearerSecurity,
+  request: {
+    params: adminUserParamsSchema,
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: deleteAdminUserResponseSchema } },
+      description: 'Deleted user',
+    },
+    400: { content: errorContent, description: 'Invalid user id' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Administrator access required' },
+    404: { content: errorContent, description: 'User not found' },
+    409: { content: errorContent, description: 'User deletion conflict' },
+    429: { content: errorContent, description: 'Too many requests' },
+  },
+})
+
+const listMentorUsersRoute = createRoute({
+  method: 'get',
+  path: '/users',
+  security: bearerSecurity,
+  request: { query: mentorUsersQuerySchema },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: mentorUsersResponseSchema } },
+      description: 'Users connected to the current mentor',
+    },
+    400: { content: errorContent, description: 'Invalid query' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Mentor access required' },
+  },
+})
+
+const detachMentorUserRoute = createRoute({
+  method: 'delete',
+  path: '/users/{userId}',
+  security: bearerSecurity,
+  request: { params: adminUserParamsSchema },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: mentorUserMutationResponseSchema } },
+      description: 'Disconnected user from current mentor',
+    },
+    400: { content: errorContent, description: 'Invalid user id' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Mentor access required' },
+    404: { content: errorContent, description: 'Connected user not found' },
+    429: { content: errorContent, description: 'Too many requests' },
+  },
+})
+
+const getMentorUserQuestionnaireRoute = createRoute({
+  method: 'get',
+  path: '/users/{userId}/questionnaire',
+  security: bearerSecurity,
+  request: { params: adminUserParamsSchema },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: questionnaireResponseSchema } },
+      description: 'Questionnaire for a connected mentee',
+    },
+    400: { content: errorContent, description: 'Invalid user id' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Mentor access required' },
+    404: { content: errorContent, description: 'Connected user not found' },
+  },
+})
+
+const putMentorUserQuestionnaireRoute = createRoute({
+  method: 'put',
+  path: '/users/{userId}/questionnaire',
+  security: bearerSecurity,
+  request: {
+    params: adminUserParamsSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: putQuestionnaireRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: questionnaireResponseSchema } },
+      description: 'Saved questionnaire for a connected mentee',
+    },
+    400: { content: errorContent, description: 'Invalid payload' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Mentor access required' },
+    404: { content: errorContent, description: 'Connected user not found' },
+    413: { content: errorContent, description: 'Request body is too large' },
+  },
+})
+
+const listMentorPlansRoute = createRoute({
+  method: 'get',
+  path: '/plans',
+  security: bearerSecurity,
+  responses: {
+    200: {
+      content: { 'application/json': { schema: mentorPlansResponseSchema } },
+      description: 'Authored plans of the current mentor',
+    },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Mentor access required' },
+  },
+})
+
+const createMentorPlanRoute = createRoute({
+  method: 'post',
+  path: '/plans',
+  security: bearerSecurity,
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: upsertMentorPlanRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: mentorPlanMutationResponseSchema } },
+      description: 'Created authored plan',
+    },
+    400: { content: errorContent, description: 'Invalid payload' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Mentor access required' },
+    413: { content: errorContent, description: 'Request body is too large' },
+  },
+})
+
+const updateMentorPlanRoute = createRoute({
+  method: 'put',
+  path: '/plans/{planId}',
+  security: bearerSecurity,
+  request: {
+    params: mentorPlanParamsSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: upsertMentorPlanRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: mentorPlanMutationResponseSchema } },
+      description: 'Updated authored plan',
+    },
+    400: { content: errorContent, description: 'Invalid payload' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Mentor access required' },
+    404: { content: errorContent, description: 'Plan not found' },
+    413: { content: errorContent, description: 'Request body is too large' },
+  },
+})
+
+const deleteMentorPlanRoute = createRoute({
+  method: 'delete',
+  path: '/plans/{planId}',
+  security: bearerSecurity,
+  request: { params: mentorPlanParamsSchema },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: deleteMentorPlanResponseSchema } },
+      description: 'Deleted authored plan',
+    },
+    400: { content: errorContent, description: 'Invalid plan id' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Mentor access required' },
+    404: { content: errorContent, description: 'Plan not found' },
+  },
+})
+
+const getMentorUserPlansRoute = createRoute({
+  method: 'get',
+  path: '/users/{userId}/plans',
+  security: bearerSecurity,
+  request: { params: adminUserParamsSchema },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: planAssignmentSchema } },
+      description: 'Assigned plans for a connected mentee',
+    },
+    400: { content: errorContent, description: 'Invalid user id' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Mentor access required' },
+    404: { content: errorContent, description: 'Connected user not found' },
+  },
+})
+
+const putMentorUserPlansRoute = createRoute({
+  method: 'put',
+  path: '/users/{userId}/plans',
+  security: bearerSecurity,
+  request: {
+    params: adminUserParamsSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: putPlanAssignmentRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: planAssignmentSchema } },
+      description: 'Saved assigned plans for a connected mentee',
+    },
+    400: { content: errorContent, description: 'Invalid payload' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Mentor access required' },
+    404: { content: errorContent, description: 'Connected user not found' },
+    413: { content: errorContent, description: 'Request body is too large' },
+  },
+})
+
 type CreateUsersRoutesOptions = {
   requireAdmin: MiddlewareHandler<AuthHttpEnv>
   requireAuth: MiddlewareHandler<AuthHttpEnv>
+  requireMentor: MiddlewareHandler<AuthHttpEnv>
   service: UsersService
 }
 
 export function createUsersRoutes({
   requireAdmin,
   requireAuth,
+  requireMentor,
   service,
 }: CreateUsersRoutesOptions) {
   const userRoutes = new OpenAPIHono<AuthHttpEnv>({ defaultHook: validationErrorHook })
   const adminRoutes = new OpenAPIHono<AuthHttpEnv>({ defaultHook: validationErrorHook })
+  const mentorRoutes = new OpenAPIHono<AuthHttpEnv>({ defaultHook: validationErrorHook })
 
   userRoutes.use('*', requireAuth)
   userRoutes.openapi(updateProfileRoute, async (c) => {
@@ -132,6 +600,79 @@ export function createUsersRoutes({
     )
     return c.json(result, 200)
   })
+  userRoutes.openapi(telegramLinkRoute, async (c) => {
+    return c.json(
+      await executeUsers(() =>
+        service.startTelegramLink(c.var.user, c.req.valid('json')),
+      ),
+      200,
+    )
+  })
+  userRoutes.openapi(getQuestionnaireRoute, async (c) => {
+    return c.json(
+      await executeUsers(() => service.getQuestionnaire(c.var.user)),
+      200,
+    )
+  })
+  userRoutes.openapi(putQuestionnaireRoute, async (c) => {
+    return c.json(
+      await executeUsers(() =>
+        service.putQuestionnaire(c.var.user, c.req.valid('json')),
+      ),
+      200,
+    )
+  })
+  userRoutes.openapi(connectCurrentUserToMentorRoute, async (c) => {
+    const result = await executeUsers(() =>
+      service.connectCurrentUserToMentor(c.var.user, c.req.valid('json')),
+    )
+    return c.json(result, 200)
+  })
+  userRoutes.openapi(currentUserMentorRoute, async (c) => {
+    return c.json(
+      await executeUsers(() => service.getCurrentUserMentor(c.var.user)),
+      200,
+    )
+  })
+  userRoutes.openapi(userReferralsRoute, async (c) => {
+    return c.json(
+      await executeUsers(() =>
+        service.listUserReferrals(c.var.user, c.req.valid('query')),
+      ),
+      200,
+    )
+  })
+  userRoutes.openapi(getCurrentUserFavoritesRoute, async (c) => {
+    return c.json(
+      await executeUsers(() => service.getCurrentUserFavorites(c.var.user)),
+      200,
+    )
+  })
+  userRoutes.openapi(putCurrentUserFavoritesRoute, async (c) => {
+    return c.json(
+      await executeUsers(() =>
+        service.putCurrentUserFavorites(c.var.user, c.req.valid('json')),
+      ),
+      200,
+    )
+  })
+  userRoutes.openapi(getCurrentUserPlanLibraryRoute, async (c) => {
+    return c.json(
+      await executeUsers(() => service.getCurrentUserPlanLibrary(c.var.user)),
+      200,
+    )
+  })
+  userRoutes.openapi(putCurrentUserPlanLibraryRoute, async (c) => {
+    return c.json(
+      await executeUsers(() =>
+        service.putCurrentUserPlanLibrary(c.var.user, c.req.valid('json')),
+      ),
+      200,
+    )
+  })
+  userRoutes.openapi(getCurrentUserPlansRoute, async (c) =>
+    c.json(await executeUsers(() => service.getCurrentUserPlans(c.var.user)), 200),
+  )
 
   adminRoutes.use('*', requireAuth)
   adminRoutes.use('*', requireAdmin)
@@ -149,6 +690,103 @@ export function createUsersRoutes({
     )
     return c.json(result, 200)
   })
+  adminRoutes.openapi(deleteUserRoute, async (c) => {
+    const result = await executeUsers(() =>
+      service.deleteUser(c.var.user, c.req.valid('param').userId),
+    )
+    return c.json(result, 200)
+  })
 
-  return { adminRoutes, userRoutes }
+  mentorRoutes.use('*', requireAuth)
+  mentorRoutes.use('*', requireMentor)
+  mentorRoutes.openapi(listMentorUsersRoute, async (c) => {
+    return c.json(
+      await executeUsers(() =>
+        service.listMentorUsers(c.var.user, c.req.valid('query')),
+      ),
+      200,
+    )
+  })
+  mentorRoutes.openapi(detachMentorUserRoute, async (c) => {
+    return c.json(
+      await executeUsers(() =>
+        service.detachMentorUser(c.var.user, c.req.valid('param').userId),
+      ),
+      200,
+    )
+  })
+  mentorRoutes.openapi(getMentorUserQuestionnaireRoute, async (c) => {
+    return c.json(
+      await executeUsers(() =>
+        service.getMentorUserQuestionnaire(
+          c.var.user,
+          c.req.valid('param').userId,
+        ),
+      ),
+      200,
+    )
+  })
+  mentorRoutes.openapi(putMentorUserQuestionnaireRoute, async (c) => {
+    return c.json(
+      await executeUsers(() =>
+        service.putMentorUserQuestionnaire(
+          c.var.user,
+          c.req.valid('param').userId,
+          c.req.valid('json'),
+        ),
+      ),
+      200,
+    )
+  })
+  mentorRoutes.openapi(listMentorPlansRoute, async (c) =>
+    c.json(await executeUsers(() => service.listMentorPlans(c.var.user)), 200),
+  )
+  mentorRoutes.openapi(createMentorPlanRoute, async (c) =>
+    c.json(
+      await executeUsers(() => service.createMentorPlan(c.var.user, c.req.valid('json'))),
+      200,
+    ),
+  )
+  mentorRoutes.openapi(updateMentorPlanRoute, async (c) =>
+    c.json(
+      await executeUsers(() =>
+        service.updateMentorPlan(
+          c.var.user,
+          c.req.valid('param').planId,
+          c.req.valid('json'),
+        ),
+      ),
+      200,
+    ),
+  )
+  mentorRoutes.openapi(deleteMentorPlanRoute, async (c) =>
+    c.json(
+      await executeUsers(() =>
+        service.deleteMentorPlan(c.var.user, c.req.valid('param').planId),
+      ),
+      200,
+    ),
+  )
+  mentorRoutes.openapi(getMentorUserPlansRoute, async (c) =>
+    c.json(
+      await executeUsers(() =>
+        service.getMentorUserPlans(c.var.user, c.req.valid('param').userId),
+      ),
+      200,
+    ),
+  )
+  mentorRoutes.openapi(putMentorUserPlansRoute, async (c) =>
+    c.json(
+      await executeUsers(() =>
+        service.putMentorUserPlans(
+          c.var.user,
+          c.req.valid('param').userId,
+          c.req.valid('json').planIds,
+        ),
+      ),
+      200,
+    ),
+  )
+
+  return { adminRoutes, mentorRoutes, userRoutes }
 }

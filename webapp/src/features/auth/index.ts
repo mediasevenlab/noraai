@@ -11,5 +11,6 @@ export {
 } from './password-reset-location'
 export { AuthProvider } from './provider'
 export { authQueryKeys } from './queries'
+export { parseReferralSearchParam } from './referral-search'
 export { useAuth } from './use-auth'
 export type { AuthContextValue } from './context'

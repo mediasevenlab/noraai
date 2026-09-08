@@ -1,32 +1,27 @@
 import {
-  Alert02Icon,
-  FileNotFoundIcon,
   ShieldUserIcon,
-} from '@hugeicons/core-free-icons'
-import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react'
+  TriangleAlertIcon,
+  FileQuestionIcon,
+  type LucideIcon,
+} from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import {
-  Empty,
-  EmptyContent,
-  EmptyHeader,
-  EmptyMedia,
-} from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
-import { Typography } from '@/components/typography'
+import { useDismissAppBootSplash } from '@/platform/app-boot-splash'
 
-type HomeDestination = '/login' | '/app' | '/admin'
+import type { WorkspaceRoutePath } from '@/features/navigation'
+
+type HomeDestination = '/login' | WorkspaceRoutePath
 
 export function SessionLoadingSection() {
   return (
     <RouteStateCard
-      description="Checking session..."
+      description="Проверяем сессию…"
       icon={ShieldUserIcon}
-      title="Loading workspace"
+      title="Загрузка рабочего пространства"
     >
       <Spinner />
     </RouteStateCard>
@@ -34,6 +29,7 @@ export function SessionLoadingSection() {
 }
 
 export function SessionErrorSection({ retry }: { retry: () => Promise<void> }) {
+  useDismissAppBootSplash()
   const [retryPending, setRetryPending] = useState(false)
 
   async function retrySession() {
@@ -50,36 +46,42 @@ export function SessionErrorSection({ retry }: { retry: () => Promise<void> }) {
   return (
     <RouteStateCard
       alert
-      description="Your session was not cleared. Check the connection and try again."
-      icon={Alert02Icon}
-      title="Session check is temporarily unavailable"
+      description="Не удалось проверить сессию. Проверьте соединение и попробуйте снова."
+      icon={TriangleAlertIcon}
+      title="Проверка сессии временно недоступна"
     >
       <Button
+        className="h-9 px-3 text-xs font-medium"
         disabled={retryPending}
         onClick={() => void retrySession()}
         type="button"
       >
-        {retryPending ? 'Trying again…' : 'Try again'}
+        {retryPending ? 'Повторяем…' : 'Повторить'}
       </Button>
     </RouteStateCard>
   )
 }
 
 export function NotFoundSection({ destination }: { destination: HomeDestination }) {
+  useDismissAppBootSplash()
   const authenticated = destination !== '/login'
 
   return (
     <RouteStateCard
-      description="The page you requested does not exist or may have moved."
-      icon={FileNotFoundIcon}
-      title="Page not found"
+      description="Запрошенная страница не существует или была перемещена."
+      icon={FileQuestionIcon}
+      title="Страница не найдена"
     >
-      <Button asChild>
-        {authenticated ? (
-          <Link to={destination}>Return to workspace</Link>
-        ) : (
-          <Link search={{ returnTo: undefined }} to="/login">Return to sign in</Link>
-        )}
+      <Button
+        className="h-9 px-3 text-xs font-medium"
+        nativeButton={false}
+        render={
+          authenticated
+            ? <Link to={destination} />
+            : <Link search={{ returnTo: undefined }} to="/login" />
+        }
+      >
+        {authenticated ? 'Вернуться в кабинет' : 'Вернуться ко входу'}
       </Button>
     </RouteStateCard>
   )
@@ -89,39 +91,37 @@ function RouteStateCard({
   alert = false,
   children,
   description,
-  icon,
+  icon: Icon,
   title,
 }: {
   alert?: boolean
   children: ReactNode
   description: string
-  icon: IconSvgElement
+  icon: LucideIcon
   title: string
 }) {
   return (
-    <main className="flex min-h-svh items-center justify-center bg-muted/30 p-5">
-      <Card className="w-full max-w-lg shadow-sm">
-        <CardContent>
-          <Empty
-            aria-live={alert ? 'assertive' : undefined}
-            className="border-0 p-4 sm:p-8"
-            role={alert ? 'alert' : undefined}
-          >
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <HugeiconsIcon aria-hidden icon={icon} strokeWidth={2} />
-              </EmptyMedia>
-              <Typography as="h1" variant="h4" balance>
-                {title}
-              </Typography>
-              <Typography variant="bodySm" tone="muted" align="center" pretty>
-                {description}
-              </Typography>
-            </EmptyHeader>
-            <EmptyContent>{children}</EmptyContent>
-          </Empty>
-        </CardContent>
-      </Card>
+    <main className="flex min-h-svh items-center justify-center bg-[var(--nora-canvas,#eeeeee)] p-5 font-[family-name:var(--nora-font)]">
+      <div
+        aria-live={alert ? 'assertive' : undefined}
+        className="flex w-full max-w-[22rem] flex-col items-center gap-5 rounded-[var(--nora-radius-lg,10px)] bg-[var(--nora-panel,#ffffff)] px-6 py-8 text-center shadow-[inset_0_0_0_1px_var(--nora-border,rgba(0,0,0,0.08))]"
+        role={alert ? 'alert' : undefined}
+      >
+        <Icon
+          aria-hidden
+          className="size-9 text-[var(--nora-text-dimmed)]"
+          strokeWidth={1.5}
+        />
+        <div className="flex max-w-[18rem] flex-col items-center gap-2">
+          <h1 className="font-heading text-[20px] leading-[1.3] font-semibold tracking-[-0.01em] text-[var(--nora-text)] text-balance">
+            {title}
+          </h1>
+          <p className="text-[13px] leading-relaxed font-normal text-[var(--nora-text-secondary)] text-pretty">
+            {description}
+          </p>
+        </div>
+        <div className="flex w-full flex-col items-center">{children}</div>
+      </div>
     </main>
   )
 }

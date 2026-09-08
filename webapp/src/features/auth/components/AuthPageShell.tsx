@@ -1,35 +1,152 @@
-import { GalleryVerticalEndIcon } from '@hugeicons/core-free-icons'
-import { HugeiconsIcon } from '@hugeicons/react'
+import {
+  GalleryVerticalEndIcon,
+  MoonIcon,
+  SunIcon,
+} from 'lucide-react'
+import { useTheme } from 'next-themes'
 import { Link } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 
-import { Typography } from '@/components/typography'
+import {
+  authDemoSurfaceWindow,
+  authDemoTimelineGroups,
+  type AuthDemoSurface,
+} from '../auth-demo-timeline'
+import { AuthMealCarousel } from './AuthMealCarousel'
+import { useDismissAppBootSplash } from '@/platform/app-boot-splash'
+import {
+  AuthDemoPlaybackButtons,
+  AuthDemoPlaybackProvider,
+  AuthDemoPlaybackTransport,
+  authDemoKickCatchup,
+  authDemoReleaseSeek,
+  useAuthDemoPlayback,
+  useAuthDemoRemountHold,
+} from '@/features/diary'
 
-export function AuthPageShell({ children }: { children: ReactNode }) {
+import { Button } from '@/components/ui/button'
+import { SmokeBackground } from '@/components/ui/spooky-smoke-animation'
+import { cn } from '@/lib/utils'
+
+function AuthDemoStage({ surface }: { surface: AuthDemoSurface }) {
+  const playback = useAuthDemoPlayback()
+  const generation = playback?.generation ?? 0
+  const remountHold = useAuthDemoRemountHold()
+
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => {
+      authDemoKickCatchup()
+    })
+    return () => window.cancelAnimationFrame(id)
+  }, [generation])
+
+  useEffect(() => {
+    if (remountHold || generation === 0) return
+    let inner = 0
+    const outer = window.requestAnimationFrame(() => {
+      inner = window.requestAnimationFrame(() => {
+        authDemoReleaseSeek()
+      })
+    })
+    return () => {
+      window.cancelAnimationFrame(outer)
+      window.cancelAnimationFrame(inner)
+    }
+  }, [generation, remountHold])
+
   return (
-    <main className="grid min-h-svh lg:grid-cols-2">
-      <section className="flex flex-col gap-4 p-6 md:p-10">
-        <div className="flex justify-center gap-2 md:justify-start">
-          <Link className="flex items-center gap-2" search={{ returnTo: undefined }} to="/login">
-            <span className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <HugeiconsIcon aria-hidden icon={GalleryVerticalEndIcon} size={16} strokeWidth={2} />
+    <div className="relative h-full w-full">
+      <div
+        className={cn(
+          'absolute inset-0 flex h-full w-full justify-center',
+          remountHold && 'invisible',
+        )}
+      >
+        <AuthMealCarousel key={generation} surface={surface} />
+      </div>
+    </div>
+  )
+}
+
+function AuthThemeToggle({ className }: { className?: string }) {
+  const { resolvedTheme, setTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+
+  return (
+    <Button
+      aria-label={isDark ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
+      className={cn('size-7', className)}
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      size="icon"
+      type="button"
+      variant="ghost"
+    >
+      {isDark ? (
+        <SunIcon aria-hidden className="size-3.5" />
+      ) : (
+        <MoonIcon aria-hidden className="size-3.5" />
+      )}
+    </Button>
+  )
+}
+
+export function AuthPageShell({
+  children,
+  surface = 'login',
+}: {
+  children: ReactNode
+  surface?: AuthDemoSurface
+}) {
+  useDismissAppBootSplash()
+  const surfaceWindow = authDemoSurfaceWindow(surface)
+
+  return (
+    <main className="relative grid min-h-svh lg:grid-cols-2">
+      <section className="flex flex-col gap-6 p-6 md:p-10">
+        <div className="flex h-8 items-center justify-start gap-2">
+          <Link
+            className="flex items-center gap-2.5"
+            search={{ returnTo: undefined }}
+            to="/login"
+          >
+            <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <GalleryVerticalEndIcon aria-hidden className="size-4" />
             </span>
-            <Typography as="span" variant="control">
-              web_app_demo
-            </Typography>
+            <span className="font-[family-name:var(--nora-font)] text-sm font-medium tracking-tight text-[var(--nora-text)]">
+              Nutrition
+            </span>
           </Link>
         </div>
-        <div className="flex flex-1 items-center justify-center py-8">
-          <div className="w-full max-w-xs">{children}</div>
+        <div className="flex flex-1 items-center justify-center py-10">
+          <div className="w-full max-w-[22rem]">{children}</div>
         </div>
       </section>
-      <section aria-hidden className="relative hidden overflow-hidden bg-muted lg:block">
-        <img
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-          src="/auth-cover.svg"
-        />
-      </section>
+      <AuthDemoPlaybackProvider
+        endMs={surfaceWindow.endMs}
+        key={surface}
+        startMs={surfaceWindow.startMs}
+      >
+        <section className="relative hidden overflow-hidden bg-black lg:block">
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-black">
+            <SmokeBackground className="size-full" smokeColor="#FF0000" />
+          </div>
+          <div className="relative z-[1] flex h-full min-h-svh flex-col px-6 pb-16 pt-6 md:px-10 md:pb-20 md:pt-10">
+            <div className="flex min-h-0 flex-1 justify-center">
+              <AuthDemoStage surface={surface} />
+            </div>
+          </div>
+          <div className="absolute top-6 right-6 z-10 flex items-center gap-1.5 md:top-10 md:right-10">
+            <AuthDemoPlaybackTransport />
+            <AuthThemeToggle className="bg-[var(--nora-panel)]/80 shadow-[inset_0_0_0_1px_var(--nora-border,rgba(0,0,0,0.08))] backdrop-blur-sm hover:bg-[var(--nora-panel)]" />
+          </div>
+          <div className="absolute inset-x-6 bottom-6 z-10 md:inset-x-10 md:bottom-10">
+            <AuthDemoPlaybackButtons marks={authDemoTimelineGroups(surface)} />
+          </div>
+        </section>
+      </AuthDemoPlaybackProvider>
+      <div className="absolute top-6 right-6 z-10 md:top-10 md:right-10 lg:hidden">
+        <AuthThemeToggle />
+      </div>
     </main>
   )
 }

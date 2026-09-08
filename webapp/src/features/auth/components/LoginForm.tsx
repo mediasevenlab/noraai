@@ -3,15 +3,21 @@ import { Link } from '@tanstack/react-router'
 import { loginRequestSchema, type LoginRequest } from '@web-app-demo/contracts'
 import { useId, useState } from 'react'
 
-import { Typography } from '@/components/typography'
 import { Button } from '@/components/ui/button'
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { Field, FieldDescription, FieldError, FieldGroup } from '@/components/ui/field'
 import { ApiRequestError } from '@/platform/api'
 import { useAuth } from '../use-auth'
+import { AuthFloatingInput } from './AuthFloatingInput'
+import { AuthPasswordToggleButton } from './AuthPasswordToggleButton'
 import { FormAlert } from './form-errors'
 import type { FieldErrors } from './form-model'
-import { clearFieldError, errorId, hasErrors, toFieldErrors } from './form-validation'
+import { authSubmitClassName } from './auth-control-styles'
+import {
+  clearFieldError,
+  errorId,
+  hasErrors,
+  toRussianAuthFieldErrors,
+} from './form-validation'
 
 export function LoginForm({ returnTo }: { returnTo?: string }) {
   const auth = useAuth()
@@ -21,6 +27,7 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
   const passwordErrorId = useId()
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
+  const [passwordVisible, setPasswordVisible] = useState(false)
 
   const form = useForm({
     defaultValues: { email: '', password: '' },
@@ -28,7 +35,7 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
       setFormError(null)
       const result = loginRequestSchema.safeParse(value)
       if (!result.success) {
-        setFieldErrors(toFieldErrors(result.error.issues))
+        setFieldErrors(toRussianAuthFieldErrors(result.error.issues))
         return
       }
 
@@ -37,7 +44,9 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
         await auth.login(result.data as LoginRequest)
       } catch (caughtError) {
         setFormError(
-          caughtError instanceof ApiRequestError ? caughtError.message : 'Unexpected auth error',
+          caughtError instanceof ApiRequestError && caughtError.code === 'UNAUTHORIZED'
+            ? 'Неверный email или пароль.'
+            : 'Не удалось войти. Попробуйте ещё раз.',
         )
       }
     },
@@ -45,34 +54,34 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
 
   return (
     <form
-      className="flex flex-col gap-6"
+      className="flex flex-col gap-8 font-[family-name:var(--nora-font)]"
       onSubmit={(event) => {
         event.preventDefault()
         void form.handleSubmit()
       }}
     >
-      <FieldGroup>
-        <div className="flex flex-col items-center gap-1 text-center">
-          <Typography as="h1" variant="h3" balance>
-            Login to your account
-          </Typography>
-          <Typography variant="bodySm" tone="muted" balance>
-            Enter your email below to login to your account
-          </Typography>
+      <FieldGroup className="mt-0 gap-5">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <h1 className="font-heading text-[20px] leading-[1.3] font-semibold tracking-[-0.01em] text-[var(--nora-text)] text-balance">
+            Вход в аккаунт
+          </h1>
+          <p className="text-[13px] leading-relaxed font-normal text-[var(--nora-text-secondary)] text-balance">
+            Введите email и пароль, чтобы продолжить
+          </p>
         </div>
 
         <form.Field
           name="email"
           children={(field) => (
-            <Field data-invalid={hasErrors(fieldErrors.email)}>
-              <FieldLabel htmlFor={emailId}>Email</FieldLabel>
-              <Input
+            <Field className="gap-2" data-invalid={hasErrors(fieldErrors.email)}>
+              <AuthFloatingInput
                 aria-describedby={errorId(fieldErrors.email, emailErrorId)}
                 aria-invalid={hasErrors(fieldErrors.email)}
                 autoComplete="email"
-                className="bg-background"
+                hint="m@example.com"
                 id={emailId}
                 inputMode="email"
+                label="Электронная почта"
                 name={field.name}
                 onBlur={field.handleBlur}
                 onChange={(event) => {
@@ -80,7 +89,6 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
                   clearFieldError('email', setFieldErrors)
                   setFormError(null)
                 }}
-                placeholder="m@example.com"
                 type="email"
                 value={field.state.value}
               />
@@ -92,21 +100,19 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
         <form.Field
           name="password"
           children={(field) => (
-            <Field data-invalid={hasErrors(fieldErrors.password)}>
-              <div className="flex items-center">
-                <FieldLabel htmlFor={passwordId}>Password</FieldLabel>
-                <Typography asChild variant="bodySm">
-                  <Link className="ml-auto underline-offset-4 hover:underline" to="/forgot-password">
-                    Forgot your password?
-                  </Link>
-                </Typography>
-              </div>
-              <Input
+            <Field className="gap-2" data-invalid={hasErrors(fieldErrors.password)}>
+              <AuthFloatingInput
                 aria-describedby={errorId(fieldErrors.password, passwordErrorId)}
                 aria-invalid={hasErrors(fieldErrors.password)}
                 autoComplete="current-password"
-                className="bg-background"
+                endAdornment={
+                  <AuthPasswordToggleButton
+                    onToggle={() => setPasswordVisible((current) => !current)}
+                    visible={passwordVisible}
+                  />
+                }
                 id={passwordId}
+                label="Пароль"
                 name={field.name}
                 onBlur={field.handleBlur}
                 onChange={(event) => {
@@ -114,10 +120,12 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
                   clearFieldError('password', setFieldErrors)
                   setFormError(null)
                 }}
-                type="password"
+                type={passwordVisible ? 'text' : 'password'}
                 value={field.state.value}
               />
-              <FieldError id={passwordErrorId} errors={fieldErrors.password} />
+              <div className="flex items-start justify-between gap-2">
+                <FieldError id={passwordErrorId} errors={fieldErrors.password} />
+              </div>
             </Field>
           )}
         />
@@ -128,17 +136,25 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
           <form.Subscribe
             selector={(state) => state.isSubmitting}
             children={(isSubmitting) => (
-              <Button disabled={isSubmitting} type="submit">
-                {isSubmitting ? 'Signing in…' : 'Login'}
+              <Button
+                className={authSubmitClassName}
+                disabled={isSubmitting}
+                type="submit"
+              >
+                {isSubmitting ? 'Входим…' : 'Войти'}
               </Button>
             )}
           />
         </Field>
 
-        <FieldDescription className="text-center">
-          Don&apos;t have an account?{' '}
-          <Link search={{ returnTo }} to="/signup">
-            Sign up
+        <FieldDescription className="text-center text-xs font-normal">
+          Нет аккаунта?{' '}
+          <Link
+            className="font-medium text-[var(--nora-text)] underline-offset-4 hover:underline"
+            search={{ ref: undefined, returnTo }}
+            to="/signup"
+          >
+            Зарегистрироваться
           </Link>
         </FieldDescription>
       </FieldGroup>

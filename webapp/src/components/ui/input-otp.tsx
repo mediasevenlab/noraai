@@ -1,11 +1,8 @@
-"use client"
-
 import * as React from "react"
 import { OTPInput, OTPInputContext } from "input-otp"
+import { MinusIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { MinusSignIcon } from "@hugeicons/core-free-icons"
 
 function InputOTP({
   className,
@@ -18,7 +15,7 @@ function InputOTP({
     <OTPInput
       data-slot="input-otp"
       containerClassName={cn(
-        "cn-input-otp flex items-center has-disabled:opacity-50",
+        "cn-input-otp flex items-center gap-1.5 has-disabled:opacity-50",
         containerClassName
       )}
       spellCheck={false}
@@ -32,10 +29,7 @@ function InputOTPGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="input-otp-group"
-      className={cn(
-        "flex items-center rounded-md has-aria-invalid:border-destructive has-aria-invalid:ring-3 has-aria-invalid:ring-destructive/20 dark:has-aria-invalid:ring-destructive/40",
-        className
-      )}
+      className={cn("flex items-center gap-1.5", className)}
       {...props}
     />
   )
@@ -56,7 +50,9 @@ function InputOTPSlot({
       data-slot="input-otp-slot"
       data-active={isActive}
       className={cn(
-        "relative flex size-9 items-center justify-center border-y border-r border-input text-sm shadow-xs transition-all outline-none first:rounded-l-md first:border-l last:rounded-r-md aria-invalid:border-destructive data-[active=true]:z-10 data-[active=true]:border-ring data-[active=true]:ring-3 data-[active=true]:ring-ring/50 data-[active=true]:aria-invalid:border-destructive data-[active=true]:aria-invalid:ring-destructive/20 dark:bg-input/30 dark:data-[active=true]:aria-invalid:ring-destructive/40",
+        "relative flex h-[var(--nora-control-h,30px)] w-7 items-center justify-center rounded-[var(--nora-radius-md,8px)] border-0 bg-[var(--nora-input-bg)] font-[family-name:var(--nora-font)] text-xs font-medium text-[var(--nora-input-text)] transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)] outline-none",
+        "aria-invalid:shadow-[inset_0_0_0_1px_var(--nora-error)]",
+        "data-[active=true]:z-10 data-[active=true]:bg-[var(--nora-panel)] data-[active=true]:shadow-[var(--nora-shadow-focus)]",
         className
       )}
       {...props}
@@ -64,7 +60,7 @@ function InputOTPSlot({
       {char}
       {hasFakeCaret && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="h-4 w-px animate-caret-blink bg-foreground duration-1000" />
+          <div className="h-3.5 w-px animate-caret-blink bg-[var(--nora-text)] duration-1000" />
         </div>
       )}
     </div>
@@ -75,11 +71,11 @@ function InputOTPSeparator({ ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="input-otp-separator"
-      className="flex items-center [&_svg:not([class*='size-'])]:size-4"
       role="separator"
+      className="flex items-center text-[var(--nora-text-tertiary)] [&_svg:not([class*='size-'])]:size-3.5"
       {...props}
     >
-      <HugeiconsIcon icon={MinusSignIcon} strokeWidth={2} />
+      <MinusIcon />
     </div>
   )
 }

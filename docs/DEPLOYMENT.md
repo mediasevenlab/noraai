@@ -2,7 +2,9 @@
 
 Use this document only after the user has asked for deployment. Read the root [README.md](../README.md) and active surface READMEs first; they record the installed project's active surfaces, deferred surfaces, release targets, and validation scope.
 
-The default production path is DigitalOcean App Platform plus DigitalOcean Managed PostgreSQL. Do not ask the user to choose a cloud provider during first-run setup. Ask for product-facing release details instead:
+**Current production for 24nutrition is the VPS behind `https://24nutrition.site`.** Follow [VPS.md](VPS.md) for nginx, systemd, migrations, the single Telegram poller, health checks, and rollback by Git SHA. Run `bun scripts/vps/preflight.mjs` before any production update.
+
+DigitalOcean App Platform remains an optional alternate path. Do not treat DigitalOcean as the live source of truth for this product. If using that path, ask for product-facing release details:
 
 - which active surfaces should be released now: backend/API, webapp, website, or full-stack;
 - production domains/URLs for API, webapp, and website;
@@ -395,7 +397,8 @@ After deployment:
 - Broken browser auth CORS: production CORS must use exact HTTPS origins, not wildcard or empty values.
 - Webapp calling its own `/api/*`: missing `VITE_API_URL` at static build time makes the bundle use the wrong origin.
 - Stale remote build dependencies: `.bun-version` pins the Static Site build runtime and build commands run `bun install --frozen-lockfile` before `bun run build:*`.
-- Frozen backend install failures: `backend/Dockerfile` copies all workspace manifests before `bun install --frozen-lockfile`.
+- Frozen backend install failures: `backend/Dockerfile` copies the repository, then runs one sequential `bun install` (with a retry) before Prisma generate. Parallel install stages can hang extracting `@prisma/dev`.
+- Local secrets in the API image: `.dockerignore` must exclude nested `.env` files (`**/.env`). A root-only `.env` pattern does not stop `backend/.env` from being copied; `dotenv` would then load HTTP `WEBAPP_ORIGIN` into a production container.
 - Wrong App Platform port: backend specs set both `http_port: 8080` and `PORT=8080`.
 - Managed PostgreSQL TLS errors: `sslmode=require` URLs are normalized with `uselibpqcompat=true` for the Prisma PostgreSQL adapter.
 - Cross-origin cookie failures: production cookies use `Secure` and `SameSite=None`; webapp requests include credentials.

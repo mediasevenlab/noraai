@@ -1,0 +1,373 @@
+/* iOS sheet: panel slides up, presenting view recedes. */
+
+:root {
+  --modal-ease-enter: cubic-bezier(0.32, 0.72, 0, 1);
+  --modal-ease-exit: cubic-bezier(0.32, 0.72, 0, 1);
+  --modal-overlay-duration: 500ms;
+  --modal-panel-duration: 500ms;
+  --modal-out-duration: 420ms;
+  --modal-recess-scale: 0.92;
+  --modal-recess-radius: 12px;
+  --modal-sheet-inset: max(10px, var(--app-safe-top, env(safe-area-inset-top, 0px)));
+  --modal-sheet-radius: 28px;
+  --modal-overlay-bg: color-mix(in srgb, #0f172a 18%, transparent);
+  --modal-overlay-blur: 12px;
+  --modal-overlay-saturate: 140%;
+}
+
+html[data-modal-overlay='haze'] {
+  --modal-overlay-bg: rgb(0 0 0 / 0.16);
+  --modal-overlay-blur: 0px;
+  --modal-overlay-saturate: 100%;
+}
+html[data-modal-overlay='scrim'] {
+  --modal-overlay-bg: rgb(0 0 0 / 0.32);
+  --modal-overlay-blur: 0px;
+  --modal-overlay-saturate: 100%;
+}
+html[data-modal-overlay='dim'] {
+  --modal-overlay-bg: rgb(0 0 0 / 0.48);
+  --modal-overlay-blur: 0px;
+  --modal-overlay-saturate: 100%;
+}
+html[data-modal-overlay='ink'] {
+  --modal-overlay-bg: rgb(0 0 0 / 0.62);
+  --modal-overlay-blur: 0px;
+  --modal-overlay-saturate: 100%;
+}
+html[data-modal-overlay='veil'] {
+  --modal-overlay-bg: color-mix(in srgb, var(--nora-panel) 58%, transparent);
+  --modal-overlay-blur: 0px;
+  --modal-overlay-saturate: 100%;
+}
+html[data-modal-overlay='mist'] {
+  --modal-overlay-bg: rgb(0 0 0 / 0.14);
+  --modal-overlay-blur: 8px;
+  --modal-overlay-saturate: 140%;
+}
+html[data-modal-overlay='frost'] {
+  --modal-overlay-bg: rgb(0 0 0 / 0.22);
+  --modal-overlay-blur: 12px;
+  --modal-overlay-saturate: 160%;
+}
+html[data-modal-overlay='glass'] {
+  --modal-overlay-bg: color-mix(in srgb, var(--nora-panel) 28%, transparent);
+  --modal-overlay-blur: 16px;
+  --modal-overlay-saturate: 180%;
+}
+html[data-modal-overlay='matte'] {
+  --modal-overlay-bg: color-mix(in srgb, #000 42%, color-mix(in srgb, var(--nora-panel) 22%, transparent));
+  --modal-overlay-blur: 16px;
+  --modal-overlay-saturate: 100%;
+}
+html[data-modal-overlay='fog'] {
+  --modal-overlay-bg: rgb(0 0 0 / 0.18);
+  --modal-overlay-blur: 24px;
+  --modal-overlay-saturate: 120%;
+}
+html[data-modal-overlay='sheer'] {
+  --modal-overlay-bg: rgb(0 0 0 / 0.08);
+  --modal-overlay-blur: 0px;
+  --modal-overlay-saturate: 100%;
+}
+html[data-modal-overlay='paper'] {
+  --modal-overlay-bg: color-mix(in srgb, var(--nora-canvas) 72%, transparent);
+  --modal-overlay-blur: 0px;
+  --modal-overlay-saturate: 100%;
+}
+html[data-modal-overlay='silk'] {
+  --modal-overlay-bg: color-mix(in srgb, var(--nora-panel) 16%, transparent);
+  --modal-overlay-blur: 6px;
+  --modal-overlay-saturate: 130%;
+}
+html[data-modal-overlay='opal'] {
+  --modal-overlay-bg: color-mix(in srgb, var(--nora-panel) 40%, transparent);
+  --modal-overlay-blur: 10px;
+  --modal-overlay-saturate: 150%;
+}
+html[data-modal-overlay='crystal'] {
+  --modal-overlay-bg: color-mix(in srgb, var(--nora-panel) 12%, transparent);
+  --modal-overlay-blur: 20px;
+  --modal-overlay-saturate: 200%;
+}
+html[data-modal-overlay='linen'] {
+  --modal-overlay-bg: color-mix(in srgb, var(--nora-canvas) 48%, transparent);
+  --modal-overlay-blur: 14px;
+  --modal-overlay-saturate: 110%;
+}
+html[data-modal-overlay='smoke'] {
+  --modal-overlay-bg: rgb(0 0 0 / 0.26);
+  --modal-overlay-blur: 10px;
+  --modal-overlay-saturate: 100%;
+}
+html[data-modal-overlay='dusk'] {
+  --modal-overlay-bg: color-mix(in srgb, #0f172a 18%, transparent);
+  --modal-overlay-blur: 12px;
+  --modal-overlay-saturate: 140%;
+}
+html[data-modal-overlay='bloom'] {
+  --modal-overlay-bg: color-mix(in srgb, var(--nora-panel) 20%, rgb(255 255 255 / 0.08));
+  --modal-overlay-blur: 18px;
+  --modal-overlay-saturate: 220%;
+}
+html[data-modal-overlay='film'] {
+  --modal-overlay-bg: color-mix(in srgb, #111 12%, color-mix(in srgb, var(--nora-panel) 18%, transparent));
+  --modal-overlay-blur: 22px;
+  --modal-overlay-saturate: 90%;
+}
+
+html[data-modal-motion='near'] { --modal-recess-scale: 0.99; --modal-recess-radius: 6px; }
+html[data-modal-motion='hint'] { --modal-recess-scale: 0.97; --modal-recess-radius: 8px; }
+html[data-modal-motion='soft'] { --modal-recess-scale: 0.95; --modal-recess-radius: 10px; }
+html[data-modal-motion='mid'] { --modal-recess-scale: 0.93; --modal-recess-radius: 10px; }
+html[data-modal-motion='ios'] { --modal-recess-scale: 0.92; --modal-recess-radius: 12px; }
+html[data-modal-motion='clear'] { --modal-recess-scale: 0.90; --modal-recess-radius: 14px; }
+html[data-modal-motion='strong'] { --modal-recess-scale: 0.86; --modal-recess-radius: 16px; }
+html[data-modal-motion='deep'] { --modal-recess-scale: 0.82; --modal-recess-radius: 18px; }
+html[data-modal-motion='far'] { --modal-recess-scale: 0.76; --modal-recess-radius: 22px; }
+html[data-modal-motion='max'] { --modal-recess-scale: 0.70; --modal-recess-radius: 26px; }
+
+[data-slot='dialog-overlay'],
+[data-slot='alert-dialog-overlay'],
+[data-slot='sheet-overlay'],
+[data-slot='drawer-overlay'] {
+  background: var(--modal-overlay-bg);
+  backdrop-filter: blur(var(--modal-overlay-blur)) saturate(var(--modal-overlay-saturate));
+  -webkit-backdrop-filter: blur(var(--modal-overlay-blur)) saturate(var(--modal-overlay-saturate));
+  animation: modal-overlay-in var(--modal-overlay-duration) var(--modal-ease-enter) both;
+}
+
+/*
+  Android Chrome / WebView tiles backdrop-filter over sibling sheets and
+  loses layers when #root is scaled. Keep a flat scrim and skip the recess.
+*/
+html[data-android] {
+  --modal-overlay-blur: 0px;
+  --modal-overlay-saturate: 100%;
+  --modal-recess-scale: 1;
+  --modal-recess-radius: 0px;
+}
+
+html[data-android] [data-slot='dialog-overlay'],
+html[data-android] [data-slot='alert-dialog-overlay'],
+html[data-android] [data-slot='sheet-overlay'],
+html[data-android] [data-slot='drawer-overlay'] {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+html[data-android],
+html[data-android] * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+[data-slot='dialog-overlay'][data-ending-style],
+[data-slot='alert-dialog-overlay'][data-ending-style],
+[data-slot='sheet-overlay'][data-ending-style],
+[data-slot='drawer-overlay'][data-ending-style] {
+  animation: modal-overlay-out var(--modal-out-duration) var(--modal-ease-exit) both;
+}
+
+[data-slot='dialog-content'],
+[data-slot='alert-dialog-content'] {
+  transform-origin: center center;
+  animation: modal-recess-in var(--modal-panel-duration) var(--modal-ease-enter) both;
+}
+
+@media (min-width: 768px) {
+  [data-slot='dialog-content']:not([data-modal-frame]),
+  [data-slot='alert-dialog-content'] {
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+  }
+
+  [data-slot='dialog-content'][data-modal-frame] {
+    right: auto !important;
+    bottom: auto !important;
+  }
+}
+
+[data-slot='dialog-content'][data-ending-style],
+[data-slot='alert-dialog-content'][data-ending-style] {
+  animation: modal-recess-out var(--modal-out-duration) var(--modal-ease-exit) both;
+}
+
+@media (max-width: 767px) {
+  [data-slot='dialog-content'],
+  [data-slot='alert-dialog-content'],
+  [data-slot='sheet-content'][data-side='bottom'] {
+    top: auto !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: calc(100dvh - var(--modal-sheet-inset)) !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    border-radius: var(--modal-sheet-radius) var(--modal-sheet-radius) 0 0 !important;
+    corner-shape: squircle;
+    transform-origin: 50% 100%;
+    translate: 0 0;
+    animation: modal-sheet-in var(--modal-panel-duration) var(--modal-ease-enter) both;
+  }
+
+  [data-slot='dialog-content'][data-modal-frame] {
+    top: var(--modal-sheet-inset) !important;
+    height: calc(100dvh - var(--modal-sheet-inset)) !important;
+  }
+
+  [data-slot='dialog-content'][data-ending-style],
+  [data-slot='alert-dialog-content'][data-ending-style],
+  [data-slot='sheet-content'][data-side='bottom'][data-ending-style] {
+    animation: modal-sheet-out var(--modal-out-duration) var(--modal-ease-exit) both;
+  }
+
+  [data-slot='dialog-content']:not([data-modal-frame]),
+  [data-slot='alert-dialog-content'] {
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+html[data-modal-motion] #root {
+  min-height: 100dvh;
+  background: var(--nora-canvas, var(--background));
+  transform-origin: center top;
+  transition:
+    transform 500ms var(--modal-ease-enter),
+    border-radius 500ms var(--modal-ease-enter);
+}
+
+html[data-modal-motion]:has([data-slot='dialog-content']),
+html[data-modal-motion]:has([data-slot='alert-dialog-content']),
+html[data-modal-motion]:has([data-slot='sheet-content']) {
+  background: var(--nora-canvas, var(--background));
+  overflow: hidden;
+}
+
+html[data-modal-motion]:has([data-slot='dialog-content']) body,
+html[data-modal-motion]:has([data-slot='alert-dialog-content']) body,
+html[data-modal-motion]:has([data-slot='sheet-content']) body {
+  background: var(--nora-canvas, var(--background));
+  overflow: hidden;
+}
+
+html[data-modal-motion]:has([data-slot='dialog-content']:not([data-ending-style])) #root,
+html[data-modal-motion]:has([data-slot='alert-dialog-content']:not([data-ending-style])) #root,
+html[data-modal-motion]:has([data-slot='sheet-content']:not([data-ending-style])) #root {
+  transform: scale(var(--modal-recess-scale)) translateY(8px);
+  border-radius: var(--modal-recess-radius);
+  overflow: hidden;
+}
+
+html[data-android][data-modal-motion] #root {
+  transition: none;
+}
+
+html[data-android][data-modal-motion]:has([data-slot='dialog-content']:not([data-ending-style])) #root,
+html[data-android][data-modal-motion]:has([data-slot='alert-dialog-content']:not([data-ending-style])) #root,
+html[data-android][data-modal-motion]:has([data-slot='sheet-content']:not([data-ending-style])) #root {
+  transform: none !important;
+  border-radius: 0 !important;
+  overflow: visible;
+  corner-shape: initial;
+}
+
+/*
+  Android Chrome keeps `animation-fill-mode: both` sheets in their from-state
+  (off-screen / opacity 0) when the compositor drops frames. Skip motion.
+*/
+html[data-android] [data-slot='dialog-overlay'],
+html[data-android] [data-slot='alert-dialog-overlay'],
+html[data-android] [data-slot='sheet-overlay'],
+html[data-android] [data-slot='drawer-overlay'] {
+  animation: none !important;
+  transition: none !important;
+}
+
+html[data-android] [data-slot='dialog-content'],
+html[data-android] [data-slot='alert-dialog-content'],
+html[data-android] [data-slot='sheet-content'],
+html[data-android] [data-slot='drawer-popup'] {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
+  translate: none !important;
+  filter: none !important;
+  corner-shape: initial;
+}
+
+html[data-android] [data-slot='dialog-content'][data-starting-style],
+html[data-android] [data-slot='alert-dialog-content'][data-starting-style],
+html[data-android] [data-slot='sheet-content'][data-starting-style],
+html[data-android] [data-slot='drawer-popup'][data-starting-style] {
+  opacity: 1 !important;
+  transform: none !important;
+  translate: none !important;
+}
+
+@media (max-width: 767px) {
+  html[data-modal-motion]:not([data-android]):has([data-slot='dialog-content']:not([data-ending-style])) #root,
+  html[data-modal-motion]:not([data-android]):has([data-slot='alert-dialog-content']:not([data-ending-style])) #root,
+  html[data-modal-motion]:not([data-android]):has([data-slot='sheet-content']:not([data-ending-style])) #root {
+    border-radius: max(36px, var(--modal-recess-radius));
+    corner-shape: squircle;
+  }
+}
+
+html[data-modal-motion]:has([data-slot='dialog-content'][data-ending-style]) #root,
+html[data-modal-motion]:has([data-slot='alert-dialog-content'][data-ending-style]) #root,
+html[data-modal-motion]:has([data-slot='sheet-content'][data-ending-style]) #root {
+  transition-duration: 420ms;
+  transition-timing-function: var(--modal-ease-exit);
+}
+
+@keyframes modal-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes modal-recess-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.98); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes modal-recess-out {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(0.98); }
+}
+
+@keyframes modal-sheet-in {
+  from { transform: translateY(110%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes modal-sheet-out {
+  from { transform: translateY(0); }
+  to { transform: translateY(110%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot='dialog-overlay'],
+  [data-slot='alert-dialog-overlay'],
+  [data-slot='sheet-overlay'],
+  [data-slot='dialog-content'],
+  [data-slot='alert-dialog-content'],
+  [data-slot='sheet-content'] {
+    animation-duration: 1ms !important;
+  }
+
+  html[data-modal-motion] #root {
+    transition-duration: 1ms;
+  }
+}

@@ -1,6 +1,6 @@
 # Product Modules Architecture
 
-This repository defines a golden path for web and backend products: shared contracts, a modular-monolith backend, one CSR browser app (`webapp`), one Astro SSG/SSR site (`website`), and little custom infrastructure. The runnable mobile app lives on the `mobile` branch and extends this architecture only when mobile is active.
+This repository defines a golden path for web and backend products: shared contracts, a modular-monolith backend, one CSR browser app (`webapp`), one Astro SSG/SSR site (`website`), and little custom infrastructure. The runnable mobile app lives on the `mobile` branch and extends this architecture only when mobile is active. An optional `hybrid/` surface wraps the existing `webapp` in a Capacitor Android/iOS shell so the same site can be installed as an APK/IPA; it is not a replacement for the Expo `mobile` client.
 
 The approach is **progressive DDD-lite**. Product contexts get explicit ownership and dependency direction without forcing every context to have every layer. Add a `domain` directory only when the feature has real policies, calculations, or state transitions. Do not add empty layers, generic/base repositories, CQRS, event sourcing, or extra services as architecture decoration.
 
@@ -60,7 +60,8 @@ Valkey Pub/Sub is only a fanout mechanism. Keep durable chat messages, notificat
 
 Auth v1 is custom JWT-based auth:
 
-- Passwords use `Bun.password.hash/verify` with Argon2id.
+- Passwords use `Bun.password.hash/verify` with Argon2id. Shared contracts enforce an 8–128 character password.
+- Registration allows self-service `user` or `mentor` roles; `admin` is never self-assigned. Mentors and users may act as referral sources; admins cannot. A mentor referral code attaches a mentee assignment instead of a user-to-user referral edge.
 - Access tokens are short-lived JWTs signed and verified with `jose`.
 - Refresh tokens are opaque random tokens; only the current and immediately previous SHA-256 hashes are stored in PostgreSQL.
 - Browser routes under `/api/auth/*` keep the refresh token only in an HttpOnly cookie and never return it in JSON. Local HTTP uses `SameSite=Lax`; HTTPS production uses `Secure` and `SameSite=None` so browser auth works across separate webapp/API origins.
@@ -121,6 +122,14 @@ iOS/Android. Browser refresh credentials must never be persisted in
 `localStorage`, `sessionStorage`, AsyncStorage, or another JavaScript-readable
 store.
 Do not create a new form, query, auth, or API abstraction until the existing pattern stops solving the current problem.
+
+## Hybrid wrapper
+
+`hybrid/` is an optional Capacitor Android/iOS shell around the existing `webapp`. It lives on the `hybrid` git branch and is not a replacement for the Expo `mobile` client.
+
+The Android app is a true wrapper: it opens the live `webapp` at `https://24nutrition.site` fullscreen. Native capabilities such as local notifications, haptics, camera capture, and microphone access stay in the Capacitor shell. The webapp talks to them through the injected `Capacitor` global in `src/platform/hybrid-notifications.ts`, `src/platform/hybrid-haptics.ts`, and `src/platform/hybrid-camera.ts` and does not take a Capacitor production dependency. Because the live site is loaded from `https://24nutrition.site`, plugin JS packages are not bundled; helpers call `Capacitor.registerPlugin(...)` so the native bridge proxies `Camera`, `Haptics`, and `LocalNotifications`. In a browser the helpers no-op. Button and field presses use a light haptic; opening a meal or ration card, and the first letter of an assistant typewriter reply, use a medium haptic. Hybrid and Android Chrome skip delayed `:active` scale, SVG loader spin, and typewriter blur because those hitch on the Android compositor. Meal attach uses the native Camera plugin (`takePhoto` / `chooseFromGallery`) instead of a hidden file input, because WebView drops `capture` and Android 11+ needs an `IMAGE_CAPTURE` `<queries>` entry or capture falls back to the gallery. A new APK is required when a native plugin or Android permission is added.
+
+This path is for sideload APK/IPA experiments, not Play Store or App Store release. Remote Firebase/APNs push is out of scope here; the favorite-card test uses on-device local notifications.
 
 `website` is a separate Astro workspace for public SSG/SSR pages. Pages prerender to static HTML by default. Marketplace freshness should climb this ladder: SSG plus rebuild/redeploy for durable listing/category/content changes; cached on-demand/SSR routes with CDN headers such as `stale-while-revalidate` when freshness matters more than a full redeploy cycle; Astro server islands for non-SEO-critical dynamic or personalized fragments; uncached or personalized SSR only for request-specific pages such as live search, personalized public views, or inventory/price pages where stale HTML is unacceptable. On-demand/SSR routes and server islands both require an Astro adapter and a runtime-capable deployment; they do not work from a pure Static Site host or object-storage static website. Server islands on cached pages or rolling deploys require a stable secret `ASTRO_KEY` shared by build and runtime environments; never commit it, expose it as `PUBLIC_*`, or bake it into static output. Shared CDN caching is only for anonymous, public-equivalent HTML; auth-dependent or personalized responses must use `private`/`no-store` or a deliberate `Vary: Cookie`/`Authorization` strategy, and `ASTRO_KEY` is not a cache privacy boundary.
 

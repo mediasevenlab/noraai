@@ -2,7 +2,9 @@
 
 Use this document when a product needs uploads, images, media, generated files, or downloadable assets.
 
-The supported DigitalOcean-first storage path is:
+For live 24nutrition on the VPS, keep meal photos in S3-compatible object storage (`SPACES_*` / Spaces-compatible keys such as `meal-images/...`). The API disk is not the durable store: a systemd restart or host rebuild must not drop user photos. See [VPS.md](VPS.md).
+
+The supported DigitalOcean-first storage path (optional alternate cloud) is:
 
 - DigitalOcean Spaces Standard Storage for persistent objects.
 - Spaces CDN for public images, media, and downloads.
@@ -114,6 +116,14 @@ Default image strategy:
 - Store variants in Spaces with stable keys such as `images/<entity>/<id>/<variant>.webp`.
 - Serve public variants through Spaces CDN.
 - Keep original private if users should not download the raw upload.
+
+Meal photos follow that default without a separate image CDN:
+
+- On upload, the meals module writes a WebP `full` variant (max 1280px) and a sibling `card` thumbnail (max 480px) via `sharp`.
+- The signed meal image URL accepts `size=card|full`. Missing `size` serves the card. Gemini analysis still reads the stored full object.
+- Existing meals get a card on first `size=card` read (lazy generate and persist).
+- Catalog and diary demo photos keep their `.jpg` paths and ship sibling `.card.webp` / `.webp` files next to them. The webapp rewrites feed cards to the card variant.
+- Regenerate catalog variants with `bun run scripts/optimize-catalog-images.ts` from `backend/`.
 
 Use a library such as `sharp` only when implementing image processing for a product feature. Do not add image-processing dependencies or an image proxy just because uploads exist.
 

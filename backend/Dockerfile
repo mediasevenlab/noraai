@@ -7,26 +7,27 @@ WORKDIR /app
 # remain valid for both repository shapes.
 COPY . .
 
-RUN bun install --frozen-lockfile --filter @web-app-demo/backend
+# One sequential install: BuildKit otherwise races a full install and a production
+# install, and bun can hang for hours extracting @prisma/dev. Low network
+# concurrency plus one retry keeps Prisma's large tarball extract reliable.
+RUN bun install --frozen-lockfile --network-concurrency 1 --filter @web-app-demo/backend \
+  || bun install --frozen-lockfile --network-concurrency 1 --filter @web-app-demo/backend
 
 WORKDIR /app/backend
 
 RUN DATABASE_URL="postgresql://superuser:superpassword@localhost:5432/web_app_demo?schema=public" bun run prisma:generate
 
-FROM oven/bun:1.3.14 AS production-dependencies
-
+# Prune after generate so the runtime image does not ship the Prisma CLI.
 WORKDIR /app
 
-COPY . .
-
-RUN bun install --frozen-lockfile --production --filter @web-app-demo/backend
+RUN bun install --frozen-lockfile --production --network-concurrency 1 --filter @web-app-demo/backend
 
 FROM oven/bun:1.3.14 AS runtime
 
 WORKDIR /app
 
 COPY --from=build /app/package.json /app/bun.lock /app/bunfig.toml ./
-COPY --from=production-dependencies /app/node_modules ./node_modules
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/packages/contracts ./packages/contracts
 COPY --from=build /app/backend ./backend
 

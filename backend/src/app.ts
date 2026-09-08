@@ -1,4 +1,5 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
+import { bodyLimit } from 'hono/body-limit'
 import { cors } from 'hono/cors'
 import { secureHeaders } from 'hono/secure-headers'
 
@@ -7,15 +8,17 @@ import type { DbClient } from './db'
 import { disabledEmailDelivery, type EmailDelivery } from './email/service'
 import type { AppEnv } from './env'
 import { errorResponse, handleError, validationErrorHook } from './http/errors'
-import { createAuthSecurity } from './http/security'
+import { createAuthSecurity, createInternalRateLimit } from './http/security'
 import { createAuthModule, type AuthHttpEnv } from './modules/auth'
-import { createUsersModule } from './modules/users'
+import { createMealsModule } from './modules/meals'
+import { createQuestionnaireProjectUser, createTelegramLinkStore, createUsersModule } from './modules/users'
 
 type CreateAppOptions = {
   backgroundTasks?: TaskDeferrer
   emailDelivery?: EmailDelivery
   env: AppEnv
   prisma: DbClient
+  startMealsPoller?: boolean
 }
 
 export function createApp({
@@ -23,12 +26,35 @@ export function createApp({
   emailDelivery = disabledEmailDelivery,
   env,
   prisma,
+  startMealsPoller = false,
 }: CreateAppOptions) {
-  const auth = createAuthModule({ backgroundTasks, db: prisma, emailDelivery, env })
-  const users = createUsersModule({
+  const mealRequestBodyLimitBytes = 8 * 1024 * 1024
+  const auth = createAuthModule({
+    backgroundTasks,
     db: prisma,
+    emailDelivery,
+    env,
+    projectUser: createQuestionnaireProjectUser(prisma),
+  })
+  const telegramLinks = createTelegramLinkStore(prisma)
+  const meals = createMealsModule({
+    backgroundTasks,
+    completeTelegramLink: (code, proof, extras) => telegramLinks.complete(code, proof, extras),
+    db: prisma,
+    env,
+    requireAuth: auth.requireAuth,
+    requireMentor: auth.requireMentor,
+    startPoller: startMealsPoller,
+  })
+  const users = createUsersModule({
+    botUsername: env.TELEGRAM_MEALS_BOT_USERNAME,
+    notifyBotUsername: env.TELEGRAM_NOTIFY_BOT_USERNAME,
+    db: prisma,
+    mealMediaCleanup: meals.service,
     requireAdmin: auth.requireAdmin,
     requireAuth: auth.requireAuth,
+    requireMentor: auth.requireMentor,
+    telegramLinks,
   })
   const app = new OpenAPIHono<AuthHttpEnv>({
     defaultHook: validationErrorHook,
@@ -65,6 +91,7 @@ export function createApp({
   }
   for (const middleware of createAuthSecurity({
     bodyLimitBytes: env.AUTH_BODY_LIMIT_BYTES,
+    mealBodyLimitBytes: mealRequestBodyLimitBytes,
     rateLimitMax: env.AUTH_RATE_LIMIT_MAX,
     rateLimitWindowSeconds: env.AUTH_RATE_LIMIT_WINDOW_SECONDS,
     trustProxy: env.TRUST_PROXY,
@@ -73,6 +100,7 @@ export function createApp({
   })) {
     app.use('/api/users/*', middleware)
     app.use('/api/admin/*', middleware)
+    app.use('/api/mentor/*', middleware)
   }
   app.get('/', (c) => {
     return c.json({
@@ -104,7 +132,29 @@ export function createApp({
 
   app.route('/api/auth', auth.routes)
   app.route('/api/users', users.userRoutes)
+  app.route('/api/users', meals.userMealsRoutes)
   app.route('/api/admin', users.adminRoutes)
+  app.route('/api/mentor', users.mentorRoutes)
+  app.route('/api/mentor', meals.mentorMealsRoutes)
+  app.use(
+    '/api/internal/*',
+    bodyLimit({
+      maxSize: mealRequestBodyLimitBytes,
+      onError: (c) => c.json(errorResponse('PAYLOAD_TOO_LARGE', 'Request body is too large'), 413),
+    }),
+  )
+  app.use(
+    '/api/internal/*',
+    createInternalRateLimit({
+      rateLimitMax: env.INTERNAL_RATE_LIMIT_MAX,
+      rateLimitWindowSeconds: env.INTERNAL_RATE_LIMIT_WINDOW_SECONDS,
+      trustProxy: env.TRUST_PROXY,
+      trustedProxyClientIpHeader: env.TRUSTED_PROXY_CLIENT_IP_HEADER,
+      trustedProxyClientIpPosition: env.TRUSTED_PROXY_CLIENT_IP_POSITION,
+    }),
+  )
+  app.route('/api/internal', meals.internalRoutes)
+  app.route('/api/meals', meals.mealImageRoutes)
 
   app.doc('/openapi.json', {
     openapi: '3.0.0',
@@ -117,7 +167,9 @@ export function createApp({
   app.notFound((c) => c.json(errorResponse('NOT_FOUND', 'Route not found'), 404))
   app.onError(handleError)
 
-  return app
+  return Object.assign(app, {
+    dispose: meals.dispose,
+  })
 }
 
 export type AppType = ReturnType<typeof createApp>

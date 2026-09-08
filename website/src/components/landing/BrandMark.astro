@@ -1,17 +1,37 @@
 ---
+import { GalleryVerticalEnd } from 'lucide-react'
+
 interface Props {
   compact?: boolean
+  /** Light mark for dark floating nav. */
+  inverse?: boolean
 }
 
-const { compact = false } = Astro.props
+const { compact = false, inverse = false } = Astro.props
 ---
 
-<span class="inline-flex items-center gap-2.5" aria-label="Northstar">
+<span class="inline-flex items-center gap-2.5" aria-label="24nutrition">
   <span
-    class="grid size-8 place-items-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground shadow-sm"
+    class:list={[
+      'grid size-8 place-items-center rounded-lg',
+      inverse
+        ? 'bg-white text-neutral-950'
+        : 'bg-neutral-950 text-white dark:bg-white dark:text-neutral-950',
+    ]}
     aria-hidden="true"
   >
-    N
+    <GalleryVerticalEnd className="size-4" aria-hidden="true" />
   </span>
-  {!compact && <span class="font-heading text-base font-semibold tracking-tight">Northstar</span>}
+  {
+    !compact && (
+      <span
+        class:list={[
+          'font-heading text-base font-semibold tracking-tight',
+          inverse ? 'text-white' : 'text-foreground',
+        ]}
+      >
+        Nutrition
+      </span>
+    )
+  }
 </span>

@@ -1,19 +1,53 @@
 import { useForm } from '@tanstack/react-form'
 import { Link } from '@tanstack/react-router'
-import { registerRequestSchema, type RegisterRequest } from '@web-app-demo/contracts'
-import { useId, useState } from 'react'
+import {
+  CircleCheckIcon,
+  CircleXIcon,
+  GraduationCapIcon,
+  InfoIcon,
+  Loader2Icon,
+} from 'lucide-react'
+import {
+  registerRequestSchema,
+  registrationMentorIdentifierSchema,
+  type RegisterRequest,
+  type RegistrationRole,
+  type ReferralLookupResponse,
+} from '@web-app-demo/contracts'
+import { useEffect, useId, useState } from 'react'
 
-import { Typography } from '@/components/typography'
 import { Button } from '@/components/ui/button'
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { Field, FieldDescription, FieldError, FieldGroup } from '@/components/ui/field'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { ApiRequestError } from '@/platform/api'
+import { cn } from '@/lib/utils'
 import { useAuth } from '../use-auth'
+import { AuthFloatingInput } from './AuthFloatingInput'
+import { AuthPasswordToggleButton } from './AuthPasswordToggleButton'
+import { authSubmitClassName } from './auth-control-styles'
 import { FormAlert } from './form-errors'
 import type { FieldErrors } from './form-model'
-import { clearFieldError, errorId, hasErrors, toFieldErrors } from './form-validation'
+import {
+  clearFieldError,
+  errorId,
+  hasErrors,
+  toRussianAuthFieldErrors,
+} from './form-validation'
 
-export function RegisterForm({ returnTo }: { returnTo?: string }) {
+const registrationRoleOptions = [
+  { value: 'user', label: 'Пользователь' },
+  { value: 'mentor', label: 'Наставник' },
+] as const
+
+export function RegisterForm({
+  referralCode,
+  returnTo,
+  onRoleChange,
+}: {
+  referralCode?: string
+  returnTo?: string
+  onRoleChange?: (role: RegistrationRole) => void
+}) {
   const auth = useAuth()
   const displayNameId = useId()
   const displayNameErrorId = useId()
@@ -24,21 +58,115 @@ export function RegisterForm({ returnTo }: { returnTo?: string }) {
   const passwordErrorId = useId()
   const confirmPasswordId = useId()
   const confirmPasswordErrorId = useId()
+  const mentorIdentifierId = useId()
+  const roleFieldId = useId()
+  const [selectedRole, setSelectedRole] = useState<RegistrationRole>('user')
+  const [mentorLookupState, setMentorLookupState] = useState<
+    'idle' | 'checking' | 'found' | 'not_found' | 'error'
+  >('idle')
+  const [mentorIdentifier, setMentorIdentifier] = useState('')
+  const [referralState, setReferralState] = useState<
+    'idle' | 'checking' | 'found' | 'not_found'
+  >(referralCode ? 'checking' : 'idle')
+  const [referrer, setReferrer] = useState<ReferralLookupResponse['referrer']>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
+  const [passwordVisible, setPasswordVisible] = useState(false)
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false)
+
+  useEffect(() => {
+    onRoleChange?.(selectedRole)
+  }, [onRoleChange, selectedRole])
+
+  useEffect(() => {
+    if (!referralCode) return
+    let active = true
+    setReferralState('checking')
+    void auth.lookupReferrer(referralCode)
+      .then((result) => {
+        if (!active) return
+        setReferrer(result.referrer)
+        setReferralState(result.found ? 'found' : 'not_found')
+      })
+      .catch(() => {
+        if (active) setReferralState('not_found')
+      })
+    return () => {
+      active = false
+    }
+  }, [auth, referralCode])
+
+  useEffect(() => {
+    if (selectedRole !== 'user' || !referralCode) return
+    if (referrer?.role === 'mentor' || referralState === 'not_found') {
+      setMentorIdentifier(referralCode)
+    }
+  }, [referralCode, referralState, referrer?.role, selectedRole])
+
+  useEffect(() => {
+    const identifier = mentorIdentifier.trim()
+    if (selectedRole !== 'user' || identifier === '') {
+      setMentorLookupState('idle')
+      return
+    }
+    if (!registrationMentorIdentifierSchema.safeParse(identifier).success) {
+      setMentorLookupState('not_found')
+      return
+    }
+
+    let active = true
+    setMentorLookupState('checking')
+    const timer = window.setTimeout(() => {
+      void auth
+        .lookupRegistrationMentor(identifier)
+        .then((result) => {
+          if (active) setMentorLookupState(result.found ? 'found' : 'not_found')
+        })
+        .catch(() => {
+          if (active) setMentorLookupState('error')
+        })
+    }, 400)
+
+    return () => {
+      active = false
+      window.clearTimeout(timer)
+    }
+  }, [auth, mentorIdentifier, selectedRole])
 
   const form = useForm({
-    defaultValues: { displayName: '', email: '', password: '', confirmPassword: '' },
+    defaultValues: {
+      role: 'user' as RegistrationRole,
+      displayName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    },
     onSubmit: async ({ value }) => {
       setFormError(null)
       const result = registerRequestSchema.safeParse({
         displayName: value.displayName,
         email: value.email,
         password: value.password,
+        role: value.role,
+        mentorIdentifier: value.role === 'user' && mentorIdentifier.trim()
+          ? mentorIdentifier
+          : undefined,
+        referralCode:
+          value.role === 'user' && referralState === 'found'
+            ? referralCode
+            : undefined,
       })
-      const nextErrors = result.success ? {} : toFieldErrors(result.error.issues)
+      const nextErrors = result.success ? {} : toRussianAuthFieldErrors(result.error.issues)
       if (value.password !== value.confirmPassword) {
-        nextErrors.confirmPassword = [{ message: 'Passwords do not match' }]
+        nextErrors.confirmPassword = [{ message: 'Пароли не совпадают.' }]
+      }
+      if (
+        value.role === 'user'
+        && mentorIdentifier.trim()
+        && mentorLookupState !== 'found'
+      ) {
+        setFormError('Сначала укажите существующего наставника или оставьте поле пустым.')
+        return
       }
       if (!result.success || hasErrors(nextErrors.confirmPassword)) {
         setFieldErrors(nextErrors)
@@ -50,7 +178,13 @@ export function RegisterForm({ returnTo }: { returnTo?: string }) {
         await auth.register(result.data as RegisterRequest)
       } catch (caughtError) {
         setFormError(
-          caughtError instanceof ApiRequestError ? caughtError.message : 'Unexpected auth error',
+          caughtError instanceof ApiRequestError && caughtError.code === 'CONFLICT'
+            ? 'Пользователь с таким email уже существует.'
+            : caughtError instanceof ApiRequestError && caughtError.code === 'AUTH_MENTOR_NOT_FOUND'
+              ? 'Выбранный наставник больше недоступен.'
+              : caughtError instanceof ApiRequestError && caughtError.code === 'AUTH_REFERRER_NOT_FOUND'
+                ? 'Реферальная ссылка больше не действует.'
+            : 'Не удалось создать аккаунт. Попробуйте ещё раз.',
         )
       }
     },
@@ -58,140 +192,319 @@ export function RegisterForm({ returnTo }: { returnTo?: string }) {
 
   return (
     <form
-      className="flex flex-col gap-6"
+      className="flex flex-col gap-8 font-[family-name:var(--nora-font)]"
       onSubmit={(event) => {
         event.preventDefault()
         void form.handleSubmit()
       }}
     >
-      <FieldGroup>
-        <div className="flex flex-col items-center gap-1 text-center">
-          <Typography as="h1" variant="h3" balance>
-            Create your account
-          </Typography>
-          <Typography variant="bodySm" tone="muted" balance>
-            Fill in the form below to create your account
-          </Typography>
+      <FieldGroup className="mt-0 gap-5">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <h1 className="font-heading text-[20px] leading-[1.3] font-semibold tracking-[-0.01em] text-[var(--nora-text)] text-balance">
+            Создание аккаунта
+          </h1>
+          <p className="text-[13px] leading-relaxed font-normal text-[var(--nora-text-secondary)] text-balance">
+            Заполните форму, чтобы зарегистрироваться
+          </p>
         </div>
 
-        <form.Field name="displayName" children={(field) => (
-          <Field data-invalid={hasErrors(fieldErrors.displayName)}>
-            <FieldLabel htmlFor={displayNameId}>Full Name</FieldLabel>
-            <Input
-              aria-describedby={errorId(fieldErrors.displayName, displayNameErrorId)}
-              aria-invalid={hasErrors(fieldErrors.displayName)}
-              autoComplete="name"
-              className="bg-background"
-              id={displayNameId}
-              name={field.name}
-              onBlur={field.handleBlur}
-              onChange={(event) => {
-                field.handleChange(event.target.value)
-                clearFieldError('displayName', setFieldErrors)
-                setFormError(null)
-              }}
-              placeholder="John Doe"
-              type="text"
-              value={field.state.value}
-            />
-            <FieldError id={displayNameErrorId} errors={fieldErrors.displayName} />
-          </Field>
-        )} />
+        <div className="flex flex-col gap-5 mb-3">
+          <form.Field
+            name="role"
+            children={(field) => (
+              <Field className="gap-2">
+                <RadioGroup
+                  aria-label="Тип аккаунта"
+                  className="grid grid-cols-2 gap-2"
+                  onValueChange={(value) => {
+                    if (value === 'user' || value === 'mentor') {
+                      field.handleChange(value)
+                      setSelectedRole(value)
+                      setFormError(null)
+                    }
+                  }}
+                  value={field.state.value}
+                >
+                  {registrationRoleOptions.map((option) => {
+                    const id = `${roleFieldId}-${option.value}`
+                    return (
+                      <label
+                        className={cn(
+                          'box-border flex h-9 cursor-pointer items-center gap-2 rounded-[var(--nora-radius-md)] bg-[var(--nora-input-bg)] px-2.5',
+                          'font-[family-name:var(--nora-font)] text-xs font-medium text-[var(--nora-text)]',
+                          'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
+                          'has-focus-visible:shadow-[inset_0_0_0_1px_var(--nora-tint)]',
+                          'has-data-checked:bg-[var(--nora-tint-dimmed)] has-data-checked:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)]',
+                        )}
+                        htmlFor={id}
+                        key={option.value}
+                      >
+                        <RadioGroupItem id={id} value={option.value} />
+                        <span>{option.label}</span>
+                      </label>
+                    )
+                  })}
+                </RadioGroup>
+                <FieldDescription>Тип аккаунта</FieldDescription>
+              </Field>
+            )}
+          />
 
-        <form.Field name="email" children={(field) => (
-          <Field data-invalid={hasErrors(fieldErrors.email)}>
-            <FieldLabel htmlFor={emailId}>Email</FieldLabel>
-            <Input
-              aria-describedby={errorId(fieldErrors.email, emailErrorId)}
-              aria-invalid={hasErrors(fieldErrors.email)}
-              autoComplete="email"
-              className="bg-background"
-              id={emailId}
-              inputMode="email"
-              name={field.name}
-              onBlur={field.handleBlur}
-              onChange={(event) => {
-                field.handleChange(event.target.value)
-                clearFieldError('email', setFieldErrors)
-                setFormError(null)
-              }}
-              placeholder="m@example.com"
-              type="email"
-              value={field.state.value}
-            />
-            <FieldDescription>We&apos;ll use this to contact you.</FieldDescription>
-            <FieldError id={emailErrorId} errors={fieldErrors.email} />
-          </Field>
-        )} />
+          {selectedRole === 'user' && referralState === 'checking' && (
+            <p className="text-[11px] leading-relaxed font-normal text-[var(--nora-text-tertiary)]">
+              Проверяем реферальную ссылку…
+            </p>
+          )}
+          {selectedRole === 'user'
+            && referralState === 'found'
+            && referrer?.role === 'user' && (
+            <div
+              className="flex gap-2.5 rounded-[var(--nora-radius-lg)] bg-[var(--nora-tint-dimmed)] px-3 py-2.5"
+              role="status"
+            >
+              <InfoIcon
+                aria-hidden
+                className="mt-0.5 size-3.5 shrink-0 text-[var(--nora-tint)]"
+                strokeWidth={2}
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-[var(--nora-tint)]">
+                  Вас пригласил пользователь
+                </p>
+                <p className="mt-0.5 text-[11px] leading-relaxed font-normal text-[color-mix(in_srgb,var(--nora-tint)_72%,var(--nora-text))]">
+                  {referrer.displayName ?? referrer.nickname ?? `ID ${referrer.publicId}`}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
-        <form.Field name="password" children={(field) => (
-          <Field data-invalid={hasErrors(fieldErrors.password)}>
-            <FieldLabel htmlFor={passwordId}>Password</FieldLabel>
-            <Input
-              aria-describedby={[
-                passwordDescriptionId,
-                errorId(fieldErrors.password, passwordErrorId),
-              ].filter(Boolean).join(' ')}
-              aria-invalid={hasErrors(fieldErrors.password)}
-              autoComplete="new-password"
-              className="bg-background"
-              id={passwordId}
-              name={field.name}
-              onBlur={field.handleBlur}
+        {selectedRole === 'user' && (
+          <Field className="gap-2" data-invalid={mentorLookupState === 'not_found' || mentorLookupState === 'error'}>
+            <AuthFloatingInput
+              aria-invalid={mentorLookupState === 'not_found' || mentorLookupState === 'error'}
+              autoComplete="off"
+              endAdornment={
+                <span
+                  aria-hidden={mentorLookupState === 'idle'}
+                  aria-label={
+                    mentorLookupState === 'found'
+                      ? 'Наставник найден'
+                      : mentorLookupState === 'not_found' && mentorIdentifier.trim()
+                        ? 'Наставник не найден'
+                        : mentorLookupState === 'error' && mentorIdentifier.trim()
+                          ? 'Не удалось проверить наставника'
+                          : mentorLookupState === 'checking'
+                            ? 'Проверяем наставника'
+                            : undefined
+                  }
+                  className={cn(
+                    'pointer-events-none absolute inset-y-0 right-0 z-[2] flex w-9 items-center justify-center',
+                    mentorLookupState === 'found' && 'text-[var(--nora-success)]',
+                    mentorLookupState === 'not_found'
+                      && mentorIdentifier.trim()
+                      && 'text-[var(--nora-error)]',
+                    mentorLookupState === 'error'
+                      && mentorIdentifier.trim()
+                      && 'text-[var(--nora-error)]',
+                    mentorLookupState === 'checking' && 'text-[var(--nora-text-secondary)]',
+                    mentorLookupState === 'idle' && 'text-[var(--nora-text-tertiary)]',
+                  )}
+                >
+                  {mentorLookupState === 'found' ? (
+                    <CircleCheckIcon aria-hidden className="size-4" strokeWidth={2.25} />
+                  ) : (mentorLookupState === 'not_found' || mentorLookupState === 'error') && mentorIdentifier.trim() ? (
+                    <CircleXIcon aria-hidden className="size-4" strokeWidth={2.25} />
+                  ) : mentorLookupState === 'checking' ? (
+                    <Loader2Icon aria-hidden className="size-4 animate-spin" strokeWidth={2.25} />
+                  ) : (
+                    <GraduationCapIcon aria-hidden className="size-4" strokeWidth={2.25} />
+                  )}
+                </span>
+              }
+              hint="Необязательно"
+              id={mentorIdentifierId}
+              label="Никнейм или ID наставника"
               onChange={(event) => {
-                field.handleChange(event.target.value)
-                clearFieldError('password', setFieldErrors)
-                clearFieldError('confirmPassword', setFieldErrors)
+                setMentorIdentifier(event.target.value)
                 setFormError(null)
               }}
-              type="password"
-              value={field.state.value}
+              tone={
+                mentorLookupState === 'found'
+                  ? 'success'
+                  : mentorLookupState === 'not_found' && mentorIdentifier.trim()
+                    ? 'error'
+                    : mentorLookupState === 'error' && mentorIdentifier.trim()
+                      ? 'error'
+                      : 'default'
+              }
+              value={mentorIdentifier}
             />
-            <FieldDescription id={passwordDescriptionId}>
-              Must be at least 8 characters long.
-            </FieldDescription>
-            <FieldError id={passwordErrorId} errors={fieldErrors.password} />
+            {mentorLookupState === 'checking' && (
+              <FieldDescription>Проверяем наставника…</FieldDescription>
+            )}
+            {mentorLookupState === 'idle' && (
+              <FieldDescription>Можно выбрать позже</FieldDescription>
+            )}
+            {mentorLookupState === 'found' && (
+              <FieldDescription className="text-[var(--nora-success)]">
+                Наставник найден
+              </FieldDescription>
+            )}
+            {mentorLookupState === 'not_found' && mentorIdentifier.trim() && (
+              <FieldError>Такого пользователя не найдено.</FieldError>
+            )}
+            {mentorLookupState === 'error' && mentorIdentifier.trim() && (
+              <FieldError>Не удалось проверить наставника. Попробуйте ещё раз.</FieldError>
+            )}
           </Field>
-        )} />
+        )}
 
-        <form.Field name="confirmPassword" children={(field) => (
-          <Field data-invalid={hasErrors(fieldErrors.confirmPassword)}>
-            <FieldLabel htmlFor={confirmPasswordId}>Confirm Password</FieldLabel>
-            <Input
-              aria-describedby={errorId(fieldErrors.confirmPassword, confirmPasswordErrorId)}
-              aria-invalid={hasErrors(fieldErrors.confirmPassword)}
-              autoComplete="new-password"
-              className="bg-background"
-              id={confirmPasswordId}
-              name={field.name}
-              onBlur={field.handleBlur}
-              onChange={(event) => {
-                field.handleChange(event.target.value)
-                clearFieldError('confirmPassword', setFieldErrors)
-                setFormError(null)
-              }}
-              type="password"
-              value={field.state.value}
-            />
-            <FieldDescription>Please confirm your password.</FieldDescription>
-            <FieldError id={confirmPasswordErrorId} errors={fieldErrors.confirmPassword} />
-          </Field>
-        )} />
+        <form.Field
+          name="displayName"
+          children={(field) => (
+            <Field className="gap-2" data-invalid={hasErrors(fieldErrors.displayName)}>
+              <AuthFloatingInput
+                aria-describedby={errorId(fieldErrors.displayName, displayNameErrorId)}
+                aria-invalid={hasErrors(fieldErrors.displayName)}
+                autoComplete="name"
+                hint="Иван Иванов"
+                id={displayNameId}
+                label="Имя"
+                name={field.name}
+                onBlur={field.handleBlur}
+                onChange={(event) => {
+                  field.handleChange(event.target.value)
+                  clearFieldError('displayName', setFieldErrors)
+                  setFormError(null)
+                }}
+                type="text"
+                value={field.state.value}
+              />
+              <FieldError id={displayNameErrorId} errors={fieldErrors.displayName} />
+            </Field>
+          )}
+        />
+
+        <form.Field
+          name="email"
+          children={(field) => (
+            <Field className="gap-2" data-invalid={hasErrors(fieldErrors.email)}>
+              <AuthFloatingInput
+                aria-describedby={errorId(fieldErrors.email, emailErrorId)}
+                aria-invalid={hasErrors(fieldErrors.email)}
+                autoComplete="email"
+                hint="m@example.com"
+                id={emailId}
+                inputMode="email"
+                label="Электронная почта"
+                name={field.name}
+                onBlur={field.handleBlur}
+                onChange={(event) => {
+                  field.handleChange(event.target.value)
+                  clearFieldError('email', setFieldErrors)
+                  setFormError(null)
+                }}
+                type="email"
+                value={field.state.value}
+              />
+              <FieldDescription>Для связи с вами</FieldDescription>
+              <FieldError id={emailErrorId} errors={fieldErrors.email} />
+            </Field>
+          )}
+        />
+
+        <form.Field
+          name="password"
+          children={(field) => (
+            <Field className="gap-2" data-invalid={hasErrors(fieldErrors.password)}>
+              <AuthFloatingInput
+                aria-describedby={[
+                  passwordDescriptionId,
+                  errorId(fieldErrors.password, passwordErrorId),
+                ].filter(Boolean).join(' ')}
+                aria-invalid={hasErrors(fieldErrors.password)}
+                autoComplete="new-password"
+                endAdornment={
+                  <AuthPasswordToggleButton
+                    onToggle={() => setPasswordVisible((current) => !current)}
+                    visible={passwordVisible}
+                  />
+                }
+                id={passwordId}
+                label="Пароль"
+                name={field.name}
+                onBlur={field.handleBlur}
+                onChange={(event) => {
+                  field.handleChange(event.target.value)
+                  clearFieldError('password', setFieldErrors)
+                  clearFieldError('confirmPassword', setFieldErrors)
+                  setFormError(null)
+                }}
+                type={passwordVisible ? 'text' : 'password'}
+                value={field.state.value}
+              />
+              <FieldDescription id={passwordDescriptionId}>
+                Минимум 8 символов
+              </FieldDescription>
+              <FieldError id={passwordErrorId} errors={fieldErrors.password} />
+            </Field>
+          )}
+        />
+
+        <form.Field
+          name="confirmPassword"
+          children={(field) => (
+            <Field className="gap-2" data-invalid={hasErrors(fieldErrors.confirmPassword)}>
+              <AuthFloatingInput
+                aria-describedby={errorId(fieldErrors.confirmPassword, confirmPasswordErrorId)}
+                aria-invalid={hasErrors(fieldErrors.confirmPassword)}
+                autoComplete="new-password"
+                endAdornment={
+                  <AuthPasswordToggleButton
+                    onToggle={() => setConfirmPasswordVisible((current) => !current)}
+                    visible={confirmPasswordVisible}
+                  />
+                }
+                id={confirmPasswordId}
+                label="Подтвердите пароль"
+                name={field.name}
+                onBlur={field.handleBlur}
+                onChange={(event) => {
+                  field.handleChange(event.target.value)
+                  clearFieldError('confirmPassword', setFieldErrors)
+                  setFormError(null)
+                }}
+                type={confirmPasswordVisible ? 'text' : 'password'}
+                value={field.state.value}
+              />
+              <FieldDescription>Повторите пароль</FieldDescription>
+              <FieldError id={confirmPasswordErrorId} errors={fieldErrors.confirmPassword} />
+            </Field>
+          )}
+        />
 
         <FormAlert message={formError} />
 
         <Field>
-          <form.Subscribe selector={(state) => state.isSubmitting} children={(isSubmitting) => (
-            <Button disabled={isSubmitting} type="submit">
-              {isSubmitting ? 'Creating account…' : 'Create Account'}
-            </Button>
-          )} />
+          <form.Subscribe
+            selector={(state) => state.isSubmitting}
+            children={(isSubmitting) => (
+              <Button className={authSubmitClassName} disabled={isSubmitting} type="submit">
+                {isSubmitting ? 'Создаём аккаунт…' : 'Зарегистрироваться'}
+              </Button>
+            )}
+          />
         </Field>
 
-        <FieldDescription className="text-center">
-          Already have an account?{' '}
-          <Link search={{ returnTo }} to="/login">
-            Sign in
+        <FieldDescription className="text-center text-xs font-normal">
+          Уже есть аккаунт?{' '}
+          <Link
+            className="font-medium text-[var(--nora-text)] underline-offset-4 hover:underline"
+            search={{ returnTo }}
+            to="/login"
+          >
+            Войти
           </Link>
         </FieldDescription>
       </FieldGroup>

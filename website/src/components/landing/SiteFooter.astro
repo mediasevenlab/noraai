@@ -1,32 +1,136 @@
 ---
-import { Separator } from '@/components/ui/separator'
 import BrandMark from './BrandMark.astro'
 
+interface Props {
+  loginHref: string
+  signupHref: string
+}
+
+const { loginHref, signupHref } = Astro.props
 const year = new Date().getFullYear()
+
+const product = [
+  { href: '#features', label: 'Возможности' },
+  { href: '#benefits', label: 'Преимущества' },
+  { href: '#why', label: 'Почему мы' },
+  { href: '#cta', label: 'Старт' },
+]
+
+const community = [
+  { href: '#testimonials', label: 'Отзывы' },
+  { href: '#faq', label: 'FAQ' },
+  { href: '#cta', label: 'Начать сейчас' },
+]
+
+const account = [
+  { href: loginHref, label: 'Войти' },
+  { href: signupHref, label: 'Регистрация' },
+]
+
+const service = [
+  { href: '#features', label: 'Дневник' },
+  { href: '#benefits', label: 'Планы' },
+  { href: '#why', label: 'Наставник' },
+]
 ---
 
-<footer class="border-t bg-muted/25">
-  <div class="site-container py-10">
-    <div class="flex flex-col justify-between gap-8 md:flex-row md:items-start">
-      <div class="max-w-sm">
-        <a class="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" href="#top">
+<footer class="relative overflow-hidden border-t border-border/50 bg-muted">
+  <div
+    aria-hidden="true"
+    class="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-[radial-gradient(ellipse_at_bottom,color-mix(in_oklab,var(--primary)_16%,transparent),transparent_72%)]"
+  >
+  </div>
+
+  <div class="site-container relative py-12 sm:py-16 lg:py-20">
+    <div class="grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.85fr)] lg:gap-16">
+      <div class="max-w-sm space-y-4">
+        <a
+          class="inline-flex w-fit rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          href="#top"
+        >
           <BrandMark />
         </a>
-        <p class="mt-4 text-sm leading-6 text-muted-foreground">
-          Чистый шаблон публичного сайта для вашего следующего продукта.
+        <p class="text-sm leading-6 text-muted-foreground text-pretty">
+          Дневник питания, недельные планы и работа с наставником — всё в одном спокойном сервисе.
+        </p>
+        <p class="text-[13px] font-medium tracking-tight text-muted-foreground">
+          © {year} 24nutrition
         </p>
       </div>
-      <nav class="grid grid-cols-2 gap-x-10 gap-y-3 text-sm" aria-label="Навигация в подвале">
-        <a class="text-muted-foreground hover:text-foreground" href="#features">Возможности</a>
-        <a class="text-muted-foreground hover:text-foreground" href="#process">Процесс</a>
-        <a class="text-muted-foreground hover:text-foreground" href="#results">Результаты</a>
-        <a class="text-muted-foreground hover:text-foreground" href="#top">Наверх</a>
-      </nav>
+
+      <div class="grid grid-cols-2 gap-8 sm:grid-cols-4 sm:gap-6">
+        <div class="space-y-3">
+          <p class="text-[13px] font-medium tracking-tight text-foreground">Продукт</p>
+          <ul class="space-y-2.5 text-[13px] font-medium tracking-tight text-muted-foreground">
+            {
+              product.map((item) => (
+                <li>
+                  <a class="transition-colors hover:text-foreground" href={item.href}>
+                    {item.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+
+        <div class="space-y-3">
+          <p class="text-[13px] font-medium tracking-tight text-foreground">Сервис</p>
+          <ul class="space-y-2.5 text-[13px] font-medium tracking-tight text-muted-foreground">
+            {
+              service.map((item) => (
+                <li>
+                  <a class="transition-colors hover:text-foreground" href={item.href}>
+                    {item.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+
+        <div class="space-y-3">
+          <p class="text-[13px] font-medium tracking-tight text-foreground">Сообщество</p>
+          <ul class="space-y-2.5 text-[13px] font-medium tracking-tight text-muted-foreground">
+            {
+              community.map((item) => (
+                <li>
+                  <a class="transition-colors hover:text-foreground" href={item.href}>
+                    {item.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+
+        <div class="space-y-3">
+          <p class="text-[13px] font-medium tracking-tight text-foreground">Аккаунт</p>
+          <ul class="space-y-2.5 text-[13px] font-medium tracking-tight text-muted-foreground">
+            {
+              account.map((item) => (
+                <li>
+                  <a class="transition-colors hover:text-foreground" href={item.href}>
+                    {item.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </div>
     </div>
-    <Separator className="my-8" />
-    <div class="flex flex-col justify-between gap-3 text-xs text-muted-foreground sm:flex-row">
-      <p>© {year} Northstar. Шаблонный бренд.</p>
-      <p>Astro · Tailwind CSS · shadcn/ui</p>
+
+    <div class="mt-12 flex flex-col gap-3 border-t border-border/70 pt-6 text-[13px] font-medium tracking-tight text-muted-foreground sm:mt-16 sm:flex-row sm:items-center sm:justify-between">
+      <p>Дневник · Планы · Наставник</p>
+      <p>Сделано для спокойного контроля питания</p>
     </div>
+
+    <p
+      aria-hidden="true"
+      class="pointer-events-none mt-10 select-none overflow-hidden text-center font-heading text-[clamp(3.25rem,13vw,9.5rem)] leading-none font-semibold tracking-tighter text-foreground/[0.055] sm:mt-12"
+    >
+      24NUTRITION
+    </p>
   </div>
 </footer>

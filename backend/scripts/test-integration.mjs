@@ -67,14 +67,19 @@ if (process.env.TEST_SKIP_DOCKER !== '1') {
   await waitForComposePostgres('postgres_test', 'web_app_demo_test', env)
 }
 
-run('bun', ['run', 'prisma:generate'], { env })
-run('bun', ['run', 'prisma:deploy'], { env })
+run(process.execPath, ['run', 'prisma:generate'], { env })
+run(process.execPath, ['run', 'prisma:deploy'], { env })
 run(
-  'bun',
+  process.execPath,
   [
     'test',
+    '--max-concurrency',
+    '1',
     'src/modules/auth/auth.integration.test.ts',
+    'src/modules/users/infrastructure/telegram-link-store.integration.test.ts',
     'src/modules/users/users.integration.test.ts',
+    'src/modules/meals/infrastructure/meal-client-key-backfill.integration.test.ts',
+    'src/modules/meals/meals.integration.test.ts',
   ],
   { env },
 )
