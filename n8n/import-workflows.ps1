@@ -3,6 +3,7 @@
 #   .\n8n\import-workflows.ps1
 #
 # Requires the local n8n compose project to be running (docs/N8N.md).
+# Re-runs replace the committed workflow ids instead of creating duplicates.
 
 $ErrorActionPreference = "Stop"
 $Root = $PSScriptRoot
@@ -32,16 +33,48 @@ if ($running -notcontains $service) {
   Write-Error "Local n8n is not running. Start it with docs/N8N.md commands first."
 }
 
+function Invoke-N8n([string[]]$N8nArgs) {
+  docker compose -p $ComposeProject --env-file $EnvFile -f $ComposeFile exec -T $service n8n @N8nArgs
+}
+
 foreach ($file in $files) {
   $local = Join-Path $WorkflowsDir $file
   if (-not (Test-Path $local)) {
     Write-Error "Missing workflow file: $local"
   }
+  $workflow = Get-Content -Raw -Path $local | ConvertFrom-Json
+  $workflowId = [string]$workflow.id
+  if (-not $workflowId) {
+    Write-Error "Workflow JSON has no id: $local"
+  }
   $remote = "/tmp/$file"
   Write-Host "→ copy $file"
   docker compose -p $ComposeProject --env-file $EnvFile -f $ComposeFile cp $local "${service}:${remote}"
-  Write-Host "→ import $file"
-  docker compose -p $ComposeProject --env-file $EnvFile -f $ComposeFile exec -T $service n8n import:workflow --input=$remote
+
+  Write-Host "→ upsert $file ($workflowId)"
+  $overwriteFailed = $false
+  try {
+    Invoke-N8n @("import:workflow", "--input=$remote", "--overwrite")
+    if ($LASTEXITCODE -ne 0) { $overwriteFailed = $true }
+  } catch {
+    $overwriteFailed = $true
+  }
+
+  if ($overwriteFailed) {
+    Write-Host "  overwrite unavailable; delete $workflowId if present, then import"
+    $previousError = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+      Invoke-N8n @("delete:workflow", "--id=$workflowId") | Out-Null
+    } catch {
+      # Missing workflow or older n8n without delete:workflow — import anyway.
+    }
+    $ErrorActionPreference = $previousError
+    Invoke-N8n @("import:workflow", "--input=$remote")
+    if ($LASTEXITCODE -ne 0) {
+      Write-Error "Failed to import $file"
+    }
+  }
 }
 
 Write-Host ""

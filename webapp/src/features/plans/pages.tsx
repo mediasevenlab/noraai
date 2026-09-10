@@ -213,9 +213,9 @@ export function PlanPage({
       ? null
       : allCards.find((plan) => plan.id === startPickerPlanId) ?? null
 
-  async function stampRationOntoPlan(ration: RationEntry, planId: string) {
+  async function stampDaysOntoPlan(days: readonly RationEntry[], planId: string) {
     if (!auth.user || auth.user.role !== 'user') return
-    const createdMeals = await stampRationDaysOntoPlan(auth.transport, [ration], planId)
+    const createdMeals = await stampRationDaysOntoPlan(auth.transport, days, planId)
     queryClient.setQueryData<{ items: Array<(typeof createdMeals)[number]['meal']> }>(
       mealsQueryKeys.forSubject(auth.user.id),
       (previous) => {
@@ -224,6 +224,10 @@ export function PlanPage({
       },
     )
     await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.forSubject(auth.user.id) })
+  }
+
+  async function stampRationOntoPlan(ration: RationEntry, planId: string) {
+    await stampDaysOntoPlan([ration], planId)
   }
 
   async function addCatalogToMine(catalogId: string) {
@@ -317,10 +321,12 @@ export function PlanPage({
     setStartPickerPlanId(planId)
   }
 
-  async function saveCreatedPlan(ration: RationEntry) {
-    if (creating) return
+  async function saveCreatedPlan(days: readonly RationEntry[]) {
+    const ration = days[0]
+    if (!ration || creating) return
     const created = createAuthoredPlan({
-      coverImage: ration.image,
+      coverImage:
+        days.map((day) => day.image).find((image) => image.trim()) || ration.image,
       description: ration.description,
       goal: parsePlanGoal(ration.goal),
       id: ration.id,
@@ -329,7 +335,7 @@ export function PlanPage({
     if (!created) return
     setCreating(true)
     try {
-      await stampRationOntoPlan(ration, created.id)
+      await stampDaysOntoPlan(days, created.id)
       persist(withAuthoredPlan(snapshot, created))
       setCreateDraft(null)
       toast.success('План создан')
@@ -491,7 +497,10 @@ export function PlanPage({
           if (!open && !creating) setCreateDraft(null)
         }}
         onSave={(ration) => {
-          void saveCreatedPlan(ration)
+          void saveCreatedPlan([ration])
+        }}
+        onSaveDays={(days) => {
+          void saveCreatedPlan(days)
         }}
         open={createDraft != null}
         ownerId={savedScope.userId}

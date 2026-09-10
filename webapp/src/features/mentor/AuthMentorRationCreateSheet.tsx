@@ -13,7 +13,12 @@ import {
 } from 'lucide-react'
 
 import { NoraInput, NoraSelect, NoraTextarea } from '@/components/nora/primitives'
-import { ProductSheetTabFade, productSheetTabDockClass, productSheetTabTriggerClass } from '@/components/nora/product-sheet'
+import {
+  ProductSheetTabFade,
+  productCardFooterCtaClass,
+  productSheetTabDockClass,
+  productSheetTabTriggerDarkClass,
+} from '@/components/nora/product-sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { authDemoClear, authDemoIsSeeking, authDemoTimeout } from '@/features/diary'
 import { cn } from '@/lib/utils'
@@ -73,7 +78,8 @@ const SECTION_HEADING_CLASS =
 const ADD_MEAL_CLASS = cn(
   'nora-press-grow ios-glass-glare inline-flex h-8 min-h-8 max-h-8 shrink-0 items-center rounded-full border-0 px-3 py-0',
   'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-none tracking-normal',
-  'bg-[var(--nora-inset)] text-[var(--nora-text-secondary)] backdrop-blur-[16px]',
+  'backdrop-blur-[16px]',
+  productCardFooterCtaClass,
 )
 const COMPOSER_ACTION_CLASS = cn(
   'nora-press-grow ios-glass-glare-soft inline-flex h-8 min-h-8 max-h-8 shrink-0 items-center rounded-full border-0 px-3 py-0',
@@ -248,7 +254,6 @@ export function AuthMentorRationCreateSheet({
       for (const id of timers) authDemoClear(id)
     }
     // startMs is the landing offset on mount; do not restart when seek ends.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- startMs
   }, [onCompleteRef, play])
 
   const previewTitle = state.title.trim() || 'Новый рацион'
@@ -405,7 +410,7 @@ export function AuthMentorRationCreateSheet({
           <ProductSheetTabFade />
           <div className="min-w-0 overflow-x-auto overscroll-x-contain no-scrollbar">
             <TabsList className="h-8 gap-1.5 bg-transparent p-0">
-              <TabsTrigger className={productSheetTabTriggerClass} value="description">
+              <TabsTrigger className={productSheetTabTriggerDarkClass} value="description">
                 <FileTextIcon className="size-[15px]" strokeWidth={1.75} />
                 Описание
               </TabsTrigger>
@@ -413,7 +418,7 @@ export function AuthMentorRationCreateSheet({
                 const Icon = SLOT_ICONS[meal.slot]
                 return (
                   <TabsTrigger
-                    className={productSheetTabTriggerClass}
+                    className={productSheetTabTriggerDarkClass}
                     data-demo-pressed={
                       state.tabPressed && state.tab === index ? '' : undefined
                     }
@@ -450,7 +455,7 @@ function MealsHeading({
           data-mentor-create-focus={addPressed ? '' : undefined}
           type="button"
         >
-          Приём
+          Добавить приём
         </button>
         <button
           className={COMPOSER_ACTION_CLASS}

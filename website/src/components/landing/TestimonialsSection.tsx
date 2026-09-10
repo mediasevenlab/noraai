@@ -9,7 +9,7 @@ const TESTIMONIALS = [
     title: 'Наконец режим, которого хватает',
     quote:
       'Пробовала десятки приложений для питания, но только здесь дневник и планы ощущаются простыми. Онбординг и недельный план помогают держаться без перегруза.',
-    name: 'Sarah Chen',
+    name: 'Анна Соколова',
     role: 'Студентка',
     avatar: '/landing/appminimal/avatars/sarah.jpg',
     seed: 18,
@@ -18,7 +18,7 @@ const TESTIMONIALS = [
     title: 'Маленькие шаги — большой эффект',
     quote:
       'Приложение помогло понять привычки и улучшать рацион постепенно каждую неделю. Не резкие перемены, а устойчивый режим, который реально держится.',
-    name: 'Alex Johnson',
+    name: 'Алексей Иванов',
     role: 'Фитнес-энтузиаст',
     avatar: '/landing/appminimal/avatars/alex.jpg',
     seed: 32,
@@ -27,7 +27,7 @@ const TESTIMONIALS = [
     title: 'Удобно при плотном графике',
     quote:
       'Между работой и семьёй редко находилось время вести питание. Дневник и планы помогли выстроить режим без лишнего стресса.',
-    name: 'Jessica Martinez',
+    name: 'Елена Морозова',
     role: 'Проект-менеджер',
     avatar: '/landing/appminimal/avatars/jessica.jpg',
     seed: 47,
@@ -36,7 +36,7 @@ const TESTIMONIALS = [
     title: 'Привычки стали легче',
     quote:
       'Онбординг сразу понял цели и собрал план под мой ритм. Через пару недель я стабильнее следил за рационом и прогрессом.',
-    name: 'Michael Torres',
+    name: 'Михаил Орлов',
     role: 'Разработчик',
     avatar: '/landing/appminimal/avatars/michael.jpg',
     seed: 61,
@@ -45,7 +45,7 @@ const TESTIMONIALS = [
     title: 'Та мотивация, которой не хватало',
     quote:
       'Ежедневный прогресс держал в тонусе. Вместо идеала я сосредоточился на регулярности — и результат пришёл сам.',
-    name: 'Emily Parker',
+    name: 'Екатерина Волкова',
     role: 'Маркетолог',
     avatar: '/landing/appminimal/avatars/emily.jpg',
     seed: 74,
@@ -54,7 +54,7 @@ const TESTIMONIALS = [
     title: 'Просто, чисто и по делу',
     quote:
       'Большинство приложений перегружены. Здесь с первого дня понятно, что делать, и есть ровно то, что нужно для питания и планов.',
-    name: 'Daniel Kim',
+    name: 'Даниил Новиков',
     role: 'Продакт-дизайнер',
     avatar: '/landing/appminimal/avatars/daniel.jpg',
     seed: 89,

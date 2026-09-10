@@ -1,5 +1,7 @@
 import type { MentorRation, UpsertMentorRationRequest } from '@web-app-demo/contracts'
 
+import { PLAN_SLOT_COUNT } from '@/platform/plan-slots'
+
 import {
   rationDayTotals,
   type RationEntry,
@@ -235,10 +237,40 @@ export function mealDraftToMeal(draft: RationMealDraft): RationMeal {
   }
 }
 
+export function titledDraftMeals(meals: readonly RationMealDraft[]) {
+  return meals.map(mealDraftToMeal).filter((meal) => meal.title.length > 0)
+}
+
 export function draftMealsWithTitles(draft: RationDraft) {
-  return draft.meals
-    .map(mealDraftToMeal)
-    .filter((meal) => meal.title.length > 0)
+  return titledDraftMeals(draft.meals)
+}
+
+export const PLAN_DRAFT_MIN_DAYS = 1
+export const PLAN_DRAFT_MAX_DAYS = PLAN_SLOT_COUNT
+
+export function emptyPlanDayMeals(): RationMealDraft[] {
+  return [emptyMealDraft('Завтрак')]
+}
+
+export function addPlanDraftDay(days: readonly RationMealDraft[][]) {
+  if (days.length >= PLAN_DRAFT_MAX_DAYS) return days.map((day) => day.slice())
+  return [...days.map((day) => day.slice()), emptyPlanDayMeals()]
+}
+
+export function syncPlanDraftDay(
+  days: readonly RationMealDraft[][],
+  index: number,
+  meals: readonly RationMealDraft[],
+) {
+  return days.map((day, dayIndex) => (dayIndex === index ? meals.slice() : day.slice()))
+}
+
+export function trimTrailingEmptyPlanDays(days: readonly RationMealDraft[][]) {
+  const next = days.map((day) => day.slice())
+  while (next.length > PLAN_DRAFT_MIN_DAYS && titledDraftMeals(next[next.length - 1]!).length === 0) {
+    next.pop()
+  }
+  return next
 }
 
 export function draftRationTotals(draft: RationDraft) {
@@ -294,6 +326,44 @@ export function finalizeRationDraft(
       ...totals,
     },
   }
+}
+
+export function finalizePlanDaysDraft(
+  draft: Pick<RationDraft, 'id' | 'title' | 'description' | 'goal'>,
+  days: readonly RationMealDraft[][],
+  ownerId: string,
+  options?: { idPrefix?: string; source?: string; emptyTitleError?: string },
+): { ok: true; days: RationEntry[] } | { ok: false; error: string } {
+  const title = draft.title.trim()
+  if (!title) return { ok: false, error: options?.emptyTitleError ?? 'Назовите рацион' }
+  const trimmed = trimTrailingEmptyPlanDays(
+    days.length > 0 ? days : [emptyPlanDayMeals()],
+  )
+  const entries: RationEntry[] = []
+  for (let index = 0; index < trimmed.length; index += 1) {
+    const result = finalizeRationDraft(
+      {
+        id: draft.id,
+        title: draft.title,
+        description: draft.description,
+        goal: draft.goal,
+        meals: trimmed[index]!,
+      },
+      ownerId,
+      options,
+    )
+    if (!result.ok) {
+      if (result.error === 'Добавьте хотя бы один приём с названием') {
+        return { ok: false, error: `Добавьте приём в День ${index + 1}` }
+      }
+      return result
+    }
+    entries.push({
+      ...result.ration,
+      days: trimmed.length,
+    })
+  }
+  return { ok: true, days: entries }
 }
 
 export function rationToDraft(ration: RationEntry): RationDraft {

@@ -1,6 +1,6 @@
 # Testing
 
-The goal of this template's tests is to show future agents where behavior should be verified and how to keep E2E broad enough to protect valuable behavior without turning it into exhaustive matrices.
+The goal of these tests is to show where behavior should be verified and how to keep E2E broad enough to protect valuable behavior without turning it into exhaustive matrices.
 
 ## Pyramid
 
@@ -76,6 +76,10 @@ The webapp E2E flow:
 - starts Vite on `E2E_WEB_PORT`, which defaults to a repository-derived port;
 - stops its `postgres_test` compose project and removes the test volume after the run unless `E2E_KEEP_DOCKER=1` is set;
 - runs the user path: validation -> register -> `/app/general` -> refresh -> profile persistence -> logout/login safe return;
+- runs diary add-meal: register -> `/app/general` -> **Добавить** opens the meal composer;
+- runs plan select: register -> **Рационы** -> create a plan -> **Выбрать** -> confirm start date;
+- runs mentor assign: mentor signup -> linked user -> create plan -> **Отправить** -> user sees it under **Наставник**;
+- runs the administrator path: seeded login -> `/admin/users` directory -> cross-role redirects -> search/promotion -> target session revocation -> admin login;
 - runs the administrator path: seeded login -> `/admin/users` directory -> cross-role redirects -> search/promotion -> target session revocation -> admin login;
 - restores one logical browser session concurrently in two tabs, propagates confirmed logout and bootstrap-error recovery, and converges both tabs on the winning session after competing account changes.
 

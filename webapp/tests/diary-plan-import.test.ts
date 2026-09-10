@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
+  DIARY_NEW_PLAN_ID,
+  diaryCreatePlanFromMeals,
   diaryDefaultPlanId,
   diaryMealAlreadyInWeekPlan,
   diaryMealCanCopyToPlan,
@@ -8,12 +10,17 @@ import {
   diaryMealOnPlanDay,
   diaryMealsFreshForPlanDay,
   diaryMealStampOnDay,
+  diaryNewPlanDayCount,
+  diaryNewPlanDays,
+  diaryNewPlanTitle,
   diaryPlanCopiesOnDay,
   diaryPlanDayOccupancy,
   diaryPlanDraftClientKey,
+  diaryPlanPickerItems,
   diaryPlanSourceAssumption,
   diaryPlanSourceId,
   diaryWeekPlanOptions,
+  isDiaryNewPlanId,
 } from '../src/features/diary/diary-plan-import'
 import {
   currentWeekPlanStampId,
@@ -471,5 +478,34 @@ describe('diary meals copied into a weekly plan', () => {
     expect(diaryPlanCopiesOnDay(existing, originalId, wednesday, planId, 'week:2026-08-31')).toEqual(
       [],
     )
+  })
+
+  test('picker can start a new authored plan and stamp the meal into it', () => {
+    const items = diaryPlanPickerItems([{ id: 'plan_office', title: 'Офис без срывов' }])
+    expect(items[0]).toEqual({ value: DIARY_NEW_PLAN_ID, label: 'Новый план' })
+    expect(items[1]).toEqual({ value: 'plan_office', label: 'Офис без срывов' })
+    expect(isDiaryNewPlanId(DIARY_NEW_PLAN_ID)).toBe(true)
+    expect(isDiaryNewPlanId('plan_office')).toBe(false)
+    expect(diaryNewPlanTitle('  Офис  ', [SOURCE])).toBe('Офис')
+    expect(diaryNewPlanTitle('   ', [SOURCE])).toBe(SOURCE.title)
+    expect(diaryNewPlanTitle('', [])).toBe('')
+    expect(diaryCreatePlanFromMeals({ title: '   ' })).toBeNull()
+    const created = diaryCreatePlanFromMeals({
+      title: 'Офис без срывов',
+      description: '  Коротко, что в плане  ',
+      meals: [{ image: '/meals/turkey.jpg' }],
+    })
+    expect(created?.title).toBe('Офис без срывов')
+    expect(created?.description).toBe('Коротко, что в плане')
+    expect(created?.coverImage).toBe('/meals/turkey.jpg')
+    expect(created?.id.startsWith('plan_')).toBe(true)
+    expect(diaryNewPlanDayCount(0)).toBe(1)
+    expect(diaryNewPlanDayCount(Number.NaN)).toBe(1)
+    expect(diaryNewPlanDayCount(8)).toBe(7)
+    expect(diaryNewPlanDays(['a', 'b', 'c'], 1)).toEqual(['a'])
+    expect(diaryNewPlanDays(['a', 'b'], 5)).toEqual(['a', 'b'])
+    expect(
+      diaryPlanDayOccupancy([SOURCE], [], new Date(2026, 8, 8, 12), DIARY_NEW_PLAN_ID, 'week:2026-08-31'),
+    ).toEqual({ total: 1, already: 0, fresh: 1 })
   })
 })

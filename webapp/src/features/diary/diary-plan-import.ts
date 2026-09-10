@@ -4,7 +4,8 @@ import type {
   MealPortionItem,
 } from '@web-app-demo/contracts'
 
-import { planSlotIndex } from '@/platform/plan-slots'
+import { createAuthoredPlan, type AuthoredPlan } from '@/platform/authored-plans'
+import { PLAN_SLOT_COUNT, planSlotIndex } from '@/platform/plan-slots'
 
 import {
   currentWeekPlanStampId,
@@ -79,6 +80,63 @@ export function diaryDefaultPlanId(
 ) {
   if (selectedPlanId && options.some((plan) => plan.id === selectedPlanId)) return selectedPlanId
   return options[0]?.id ?? ''
+}
+
+/** Sentinel in the destination select — not a persisted plan id. */
+export const DIARY_NEW_PLAN_ID = 'new'
+
+export function isDiaryNewPlanId(planId: string) {
+  return planId === DIARY_NEW_PLAN_ID
+}
+
+export function diaryPlanPickerItems(plans: readonly DiaryWeekPlanOption[]) {
+  return [
+    { value: DIARY_NEW_PLAN_ID, label: 'Новый план' },
+    ...plans.map((plan) => ({ value: plan.id, label: plan.title })),
+  ]
+}
+
+export function diaryNewPlanTitle(
+  typed: string,
+  meals: readonly { title?: string }[],
+) {
+  const named = typed.trim()
+  if (named) return named
+  return meals.map((meal) => meal.title?.trim() ?? '').find(Boolean) ?? ''
+}
+
+export const DIARY_NEW_PLAN_MIN_DAYS = 1
+export const DIARY_NEW_PLAN_MAX_DAYS = PLAN_SLOT_COUNT
+
+export function diaryNewPlanDayCount(count: number) {
+  if (!Number.isFinite(count)) return DIARY_NEW_PLAN_MIN_DAYS
+  return Math.min(
+    DIARY_NEW_PLAN_MAX_DAYS,
+    Math.max(DIARY_NEW_PLAN_MIN_DAYS, Math.trunc(count)),
+  )
+}
+
+export function diaryNewPlanDays<T>(days: readonly T[], count: number) {
+  return days.slice(0, diaryNewPlanDayCount(count))
+}
+
+export function diaryCreatePlanFromMeals(input: {
+  title: string
+  description?: string
+  coverImage?: string
+  meals?: readonly { image?: string }[]
+}): AuthoredPlan | null {
+  const title = input.title.trim()
+  if (!title) return null
+  const coverImage =
+    input.coverImage?.trim() ||
+    input.meals?.map((meal) => meal.image?.trim() ?? '').find(Boolean) ||
+    ''
+  return createAuthoredPlan({
+    title,
+    coverImage,
+    description: input.description,
+  })
 }
 
 /** Pending planned cards stay in the diary; only eaten or own meals can be copied. */

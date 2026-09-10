@@ -45,7 +45,7 @@ import {
   readAssignedPlans,
 } from "@/platform/authored-plans";
 import { notifyHybridFavoriteAdded } from "@/platform/hybrid-notifications";
-import { readPlanLibrarySnapshot } from "@/platform/plan-library-local";
+import { readPlanLibrarySnapshot, withAuthoredPlan } from "@/platform/plan-library-local";
 import { mergeFavoriteIds, type SavedAccountScope } from "@/platform/saved-ids";
 import { cn } from "@/lib/utils";
 
@@ -84,6 +84,7 @@ import {
 } from "../ration-done";
 import { DiaryPlanDayPicker } from "../DiaryPlanDayPicker";
 import {
+  diaryCreatePlanFromMeals,
   diaryDefaultPlanId,
   diaryMealCanCopyToPlan,
   diaryMealCreatePlanDraft,
@@ -131,6 +132,7 @@ import {
   useUserFavoritesQuery,
   favoritesQueryKeys,
 } from "../queries";
+import { useSyncedPlanLibrary } from "../use-plan-library";
 import {
   formatCount,
   feedDayHeading,
@@ -165,7 +167,6 @@ import type { MealMacrosRevealState } from "../meal-card-reveal";
 
 type FeedTab = "Все" | "Избранное";
 const FEED_TABS = ["Все", "Избранное"] as const satisfies readonly FeedTab[];
-/** Week stats stay in the page; the toolbar trigger is hidden until the surface is ready. */
 const SHOW_DIARY_WEEK_ACTIVITY = false;
 
 const DIARY_PILL_TAB_CLASS =
@@ -501,6 +502,8 @@ export function NewsPage({
   const mealsQuery = useMealsQuery(subjectId);
   const favoritesQuery = useUserFavoritesQuery(isOwnAccount);
   const planLibraryQuery = usePlanLibraryQuery(isOwnAccount);
+  const { persist: persistPlanLibrary, snapshot: ownPlanLibrary } =
+    useSyncedPlanLibrary(isOwnAccount);
   const planLibrary = planLibraryQuery.data
     ? snapshotFromPlanLibrary(planLibraryQuery.data)
     : readPlanLibrarySnapshot(savedScope);
@@ -1278,7 +1281,6 @@ export function NewsPage({
   }, [onMealsViewed, openId, reportMealsViewed]);
 
   function diaryMealCard(meal: MealEntry, dayKey?: string) {
-    const favoritesTab = tab === "Избранное";
     const pickLocked =
       Boolean(pickingDayKey) &&
       pickingDayKey === dayKey &&
@@ -1291,7 +1293,7 @@ export function NewsPage({
         saved={saved.has(meal.id)}
         completedIds={completedIds}
         readOnly={readOnly}
-        showPlanState={!favoritesTab}
+        showPlanState
         picking={Boolean(pickingDayKey)}
         unread={Boolean(
           onMealsViewed &&
@@ -1390,7 +1392,7 @@ export function NewsPage({
                         aria-pressed={showWholePlan}
                         className={cn(
                           diaryToolbarPillClass,
-                          "nora-press-grow shrink-0 gap-1 px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-active:text-[var(--nora-text)] [&>svg]:size-4",
+                          "nora-press-grow shrink-0 gap-1 px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-active:text-[var(--nora-text)] [&>svg]:size-3.5",
                           searchOpen &&
                             "max-md:pointer-events-none max-md:max-w-0 max-md:overflow-hidden max-md:opacity-0",
                         )}
@@ -1678,9 +1680,7 @@ export function NewsPage({
                     images={openMealImages}
                     className={cn(
                       MEAL_DIALOG_COVER_CLASS,
-                      openMealPending &&
-                        tab !== "Избранное" &&
-                        RATION_PENDING_COVER_CLASS,
+                      openMealPending && RATION_PENDING_COVER_CLASS,
                     )}
                   />
                 }
@@ -1794,6 +1794,17 @@ export function NewsPage({
         items={planMeals}
         meal={planMeals[0] ?? null}
         meals={userMeals}
+        onCreatePlan={async ({ title, coverImage, description }) => {
+          const created = diaryCreatePlanFromMeals({
+            coverImage,
+            description,
+            meals: planMeals,
+            title,
+          });
+          if (!created) return null;
+          persistPlanLibrary(withAuthoredPlan(ownPlanLibrary, created));
+          return created.id;
+        }}
         onOpenChange={(next) => {
           if (!next) setPlanMeals([]);
         }}

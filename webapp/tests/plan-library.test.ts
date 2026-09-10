@@ -80,7 +80,7 @@ test('toUserPlanLibrary drops data-url covers', () => {
 
 test('plans and diary persist the account plan library', () => {
   const page = readFileSync(new URL('../src/features/plans/pages.tsx', import.meta.url), 'utf8')
-  const hook = readFileSync(new URL('../src/features/plans/use-plan-library.ts', import.meta.url), 'utf8')
+  const hook = readFileSync(new URL('../src/features/diary/use-plan-library.ts', import.meta.url), 'utf8')
   const news = readFileSync(new URL('../src/features/diary/pages/news.tsx', import.meta.url), 'utf8')
   const feed = readFileSync(new URL('../src/features/diary/SharedMealsFeed.tsx', import.meta.url), 'utf8')
   expect(page).toContain('useSyncedPlanLibrary(')
@@ -88,5 +88,9 @@ test('plans and diary persist the account plan library', () => {
   expect(hook).toContain('putUserPlanLibrary(')
   expect(hook).toContain('putRequestFromSnapshot(')
   expect(news).toContain('usePlanLibraryQuery(')
+  expect(news).toContain('useSyncedPlanLibrary(')
+  expect(news).toContain('withAuthoredPlan(')
   expect(feed).toContain('usePlanLibraryQuery(')
+  expect(feed).toContain('useSyncedPlanLibrary(')
+  expect(feed).toContain('withAuthoredPlan(')
 })

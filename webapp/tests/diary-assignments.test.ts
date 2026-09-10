@@ -138,7 +138,7 @@ describe('diary feed search and saved meals', () => {
     ).toEqual(['meal-01'])
   })
 
-  test('favorites keep saved meals and drop pending plan copies', () => {
+  test('favorites keep saved meals including pending plan copies', () => {
     const own = MEAL_CATALOG[0]!
     const pending = {
       ...MEAL_CATALOG[1]!,
@@ -154,7 +154,7 @@ describe('diary feed search and saved meals', () => {
         savedIds: new Set([own.id, pending.id, done.id]),
         query: '',
       }).map((meal) => meal.id),
-    ).toEqual([own.id, done.id])
+    ).toEqual([own.id, pending.id, done.id])
   })
 
   test('does not merge guest bookmarks onto a signed-in account', () => {

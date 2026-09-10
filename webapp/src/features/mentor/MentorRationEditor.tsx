@@ -1,5 +1,6 @@
 import * as React from 'react'
 import {
+  CalendarDaysIcon,
   CameraIcon,
   ChevronDownIcon,
   ChevronUpIcon,
@@ -31,20 +32,25 @@ import { fileToMealImage } from '@/features/diary'
 import {
   ProductSheetTabFade,
   productSheetEditorFrameClass,
+  productSheetOverlayChipClass,
   productSheetTabDockClass,
-  productSheetTabTriggerClass,
+  productSheetTabTriggerDarkClass,
 } from '@/components/nora/product-sheet'
 import { cn } from '@/lib/utils'
 
 import {
   addDraftLine,
+  addPlanDraftDay,
   draftLineItems,
   draftRationTotals,
   emptyMealDraft,
+  emptyPlanDayMeals,
   emptyRationDraft,
+  finalizePlanDaysDraft,
   finalizeRationDraft,
   joinDraftLines,
   nextUnusedMealSlot,
+  PLAN_DRAFT_MAX_DAYS,
   previewRationFromDraft,
   removeDraftLine,
   setDraftLine,
@@ -63,17 +69,24 @@ const EDITOR_COPY = {
     untitled: 'Новый рацион',
     editing: 'Редактор рациона',
     saveNew: 'Добавить рацион',
+    addMeal: 'Добавить приём',
+    overviewTab: 'Описание',
+    descriptionLabel: 'Описание',
     titlePlaceholder: 'Например, Лёгкий старт 1600',
     descriptionPlaceholder: 'Коротко, что в дне',
     emptyTitleError: 'Назовите рацион',
   },
   plan: {
-    untitled: 'Новый план',
+    untitled: 'Новый рацион',
     editing: 'Редактор плана',
-    saveNew: 'Создать план',
+    saveNew: 'Создать рацион',
+    addMeal: 'Добавить',
+    overviewTab: 'Рацион',
+    descriptionLabel: 'Рацион',
     titlePlaceholder: 'Например, Офис без срывов',
     descriptionPlaceholder: 'Коротко, что в плане',
     emptyTitleError: 'Назовите план',
+    headerHint: 'Можно задать название, добавить дни и разложить приёмы.',
   },
 } as const
 
@@ -111,7 +124,21 @@ const SECTION_HEADING_CLASS =
 const ADD_MEAL_CLASS = cn(
   'nora-press-grow ios-glass-glare inline-flex h-8 min-h-8 max-h-8 shrink-0 items-center rounded-full border-0 px-3 py-0',
   'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-none tracking-normal',
-  'bg-[var(--nora-inset)] text-[var(--nora-text-secondary)] backdrop-blur-[16px]',
+  'bg-[var(--nora-tint)] text-[var(--nora-on-accent)] hover:bg-[var(--nora-tint-dark)]',
+  'outline-none focus-visible:shadow-[var(--nora-shadow-focus)]',
+)
+const MEAL_TRASH_CLASS = cn(
+  'nora-press-grow inline-flex size-8 items-center justify-center rounded-full',
+  'text-[var(--nora-text-secondary)]',
+  'hover:bg-[var(--nora-error-soft-bg)] hover:text-[var(--nora-error)]',
+  'active:bg-[var(--nora-error)] active:text-[var(--nora-on-accent)]',
+  'outline-none focus-visible:shadow-[var(--nora-shadow-focus)]',
+  'disabled:pointer-events-none disabled:opacity-30',
+)
+const LINE_ADD_CLASS = cn(
+  'nora-press-grow ios-glass-glare-soft inline-flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-[var(--nora-inset)] text-[var(--nora-text-secondary)]',
+  'hover:bg-[var(--nora-tint-dimmed)] hover:text-[var(--nora-tint)]',
+  'active:bg-[var(--nora-tint)] active:text-[var(--nora-on-accent)]',
   'outline-none focus-visible:shadow-[var(--nora-shadow-focus)]',
 )
 const COMPOSER_ACTION_CLASS = cn(
@@ -121,12 +148,25 @@ const COMPOSER_ACTION_CLASS = cn(
   'outline-none focus-visible:shadow-[var(--nora-shadow-focus)]',
 )
 const COMPOSER_FOOTER_ACTION_CLASS = cn(
-  COMPOSER_ACTION_CLASS,
-  'h-11 min-h-11 max-h-11 w-full justify-center rounded-full px-4',
+  'nora-press-grow ios-glass-glare-soft inline-flex h-10 min-h-10 max-h-10 w-full shrink-0 items-center justify-center border-0 px-4 py-0',
+  'rounded-[14px]',
+  'font-[family-name:var(--nora-font)] text-[13px] font-medium leading-none',
+  'bg-[var(--nora-tint)] text-[var(--nora-on-accent)] hover:bg-[var(--nora-tint-dark)]',
+  'outline-none focus-visible:shadow-[var(--nora-shadow-focus)]',
 )
-const MEAL_TAB_CLASS = productSheetTabTriggerClass
+const MEAL_TAB_CLASS = productSheetTabTriggerDarkClass
+const DESCRIPTION_TAB_CLASS = productSheetTabTriggerDarkClass
 const SECTION_DIVIDER_CLASS = 'border-t border-[var(--nora-divider)]'
 const TITLE_GOAL_ROW_CLASS = 'grid grid-cols-[minmax(0,1fr)_10.5rem] items-start gap-3'
+const HEADER_TITLE_FIELD_CLASS = cn(
+  FIELD_TYPE_CLASS,
+  '!bg-[var(--nora-panel)] w-full px-3 !py-0 !h-8 !min-h-8 !max-h-8 !rounded-[10px]',
+)
+const HEADER_DESC_FIELD_CLASS = cn(
+  FIELD_TYPE_CLASS,
+  FIELD_CHIP_CLASS,
+  '!bg-[var(--nora-panel)] min-h-12 w-full px-3 py-2',
+)
 const EDITOR_TABS_DOCK_CLASS = productSheetTabDockClass
 const MACRO_ICON_CLASS = 'size-[13px] shrink-0'
 const DESCRIPTION_TAB = 'description'
@@ -145,6 +185,7 @@ const MACRO_FIELDS = [
   { key: 'fat', label: 'Ж', ariaLabel: 'Жиры', icon: DropletIcon },
   { key: 'carbs', label: 'У', ariaLabel: 'Углеводы', icon: CookieIcon },
 ] as const
+const PLAN_TOTALS_CAPTION = 'Сумма по всем дням'
 
 function isGoal(value: string): value is RationGoal {
   return (RATION_GOALS as readonly string[]).includes(value)
@@ -152,6 +193,11 @@ function isGoal(value: string): value is RationGoal {
 
 function isSlot(value: string): value is RationMealSlot {
   return (RATION_MEAL_SLOTS as readonly string[]).includes(value)
+}
+
+function planEditorHeaderDescription(mealTitles: readonly string[], hint: string) {
+  const names = mealTitles.map((title) => title.trim()).filter(Boolean).join(', ')
+  return names ? `${names}. ${hint}` : hint
 }
 
 export function RationEditorDialog({
@@ -162,6 +208,7 @@ export function RationEditorDialog({
   finalizeOptions,
   onOpenChange,
   onSave,
+  onSaveDays,
   onDelete,
 }: {
   open: boolean
@@ -171,18 +218,28 @@ export function RationEditorDialog({
   finalizeOptions?: { idPrefix?: string; source?: string; emptyTitleError?: string }
   onOpenChange: (open: boolean) => void
   onSave: (ration: RationEntry) => void | Promise<void>
+  onSaveDays?: (days: readonly RationEntry[]) => void | Promise<void>
   onDelete?: (rationId: string) => void | Promise<void>
 }) {
   const copy = EDITOR_COPY[mode]
   const saveInFooter = mode === 'plan'
+  const showGoal = mode === 'ration'
+  const planDaysEnabled = mode === 'plan' && Boolean(onSaveDays)
   const [form, setForm] = React.useState<RationDraft>(draft ?? emptyRationDraft())
+  const [dayDrafts, setDayDrafts] = React.useState<RationMealDraft[][]>(() => [
+    draft?.meals ?? emptyPlanDayMeals(),
+  ])
+  const [activeDay, setActiveDay] = React.useState(0)
   const [activeTab, setActiveTab] = React.useState(DESCRIPTION_TAB)
+  const showPlanDescriptionChrome = activeTab === DESCRIPTION_TAB
   const scrollRef = React.useRef<HTMLDivElement>(null)
   const draftKey = `${open ? 'open' : 'closed'}:${draft?.id ?? 'new'}`
   const [loadedDraftKey, setLoadedDraftKey] = React.useState(draftKey)
   if (open && draft && loadedDraftKey !== draftKey) {
     setLoadedDraftKey(draftKey)
     setForm(draft)
+    setDayDrafts([draft.meals.length > 0 ? draft.meals : emptyPlanDayMeals()])
+    setActiveDay(0)
     setActiveTab(DESCRIPTION_TAB)
   }
   if (activeTab !== DESCRIPTION_TAB && !form.meals.some((meal) => meal.key === activeTab)) {
@@ -193,49 +250,84 @@ export function RationEditorDialog({
     scrollRef.current?.scrollTo({ top: 0 })
   }, [activeTab])
 
-  const preview = previewRationFromDraft(form)
+  const planMeals = planDaysEnabled
+    ? dayDrafts.flatMap((day, index) => (index === activeDay ? form.meals : day))
+    : form.meals
+  const previewSource = { ...form, meals: planMeals }
+  const preview = previewRationFromDraft(previewSource)
   const heading = form.title.trim() || copy.untitled
-  const totals = draftRationTotals(form)
+  const totals = draftRationTotals(previewSource)
   const editing = Boolean(form.id)
   const saveLabel = editing ? 'Сохранить' : copy.saveNew
+  const headerTitle = editing ? copy.editing : copy.untitled
+  const headerDescription =
+    mode === 'plan'
+      ? planEditorHeaderDescription(
+          preview.meals.map((meal) => meal.title),
+          EDITOR_COPY.plan.headerHint,
+        )
+      : preview.description || 'Названия приёмов появятся здесь'
+  const mealsHeading = planDaysEnabled
+    ? `Приёмы · День ${activeDay + 1}`
+    : 'Приёмы дня'
+
+  function currentDays() {
+    return planDaysEnabled
+      ? dayDrafts.map((day, index) => (index === activeDay ? form.meals : day))
+      : [form.meals]
+  }
+
+  function commitMeals(meals: RationMealDraft[]) {
+    setForm((current) => ({ ...current, meals }))
+    if (planDaysEnabled) {
+      setDayDrafts((days) =>
+        days.map((day, index) => (index === activeDay ? meals : day)),
+      )
+    }
+  }
 
   function patch(next: Partial<RationDraft>) {
     setForm((current) => ({ ...current, ...next }))
   }
 
   function patchMeal(key: string, next: Partial<RationMealDraft>) {
-    setForm((current) => ({
-      ...current,
-      meals: current.meals.map((meal) => (meal.key === key ? { ...meal, ...next } : meal)),
-    }))
+    commitMeals(
+      form.meals.map((meal) => (meal.key === key ? { ...meal, ...next } : meal)),
+    )
   }
 
   function moveMeal(key: string, direction: -1 | 1) {
-    setForm((current) => {
-      const index = current.meals.findIndex((meal) => meal.key === key)
-      const target = current.meals[index + direction]
-      if (!target) return current
-      return { ...current, meals: reorderMealDrafts(current.meals, key, target.key) }
-    })
+    const index = form.meals.findIndex((meal) => meal.key === key)
+    const target = form.meals[index + direction]
+    if (!target) return
+    commitMeals(reorderMealDrafts(form.meals, key, target.key))
   }
 
   function reorderMeal(fromKey: string, toKey: string) {
-    setForm((current) => ({ ...current, meals: reorderMealDrafts(current.meals, fromKey, toKey) }))
+    commitMeals(reorderMealDrafts(form.meals, fromKey, toKey))
   }
 
   function removeMeal(key: string) {
-    setForm((current) => {
-      if (current.meals.length <= 1) return current
-      return { ...current, meals: current.meals.filter((meal) => meal.key !== key) }
-    })
+    if (form.meals.length <= 1) return
+    commitMeals(form.meals.filter((meal) => meal.key !== key))
     if (activeTab === key) setActiveTab(DESCRIPTION_TAB)
   }
 
   async function handleSave() {
-    const result = finalizeRationDraft(form, ownerId, {
+    const options = {
       ...finalizeOptions,
       emptyTitleError: finalizeOptions?.emptyTitleError ?? copy.emptyTitleError,
-    })
+    }
+    if (planDaysEnabled && onSaveDays) {
+      const result = finalizePlanDaysDraft(form, currentDays(), ownerId, options)
+      if (!result.ok) {
+        toast.error(result.error)
+        return
+      }
+      await onSaveDays(result.days)
+      return
+    }
+    const result = finalizeRationDraft(form, ownerId, options)
     if (!result.ok) {
       toast.error(result.error)
       return
@@ -245,8 +337,28 @@ export function RationEditorDialog({
 
   function addMeal() {
     const meal = emptyMealDraft(nextUnusedMealSlot(form.meals))
-    setForm((current) => ({ ...current, meals: [...current.meals, meal] }))
+    commitMeals([...form.meals, meal])
     if (activeTab !== DESCRIPTION_TAB) setActiveTab(meal.key)
+  }
+
+  function selectDay(index: number) {
+    if (index === activeDay) return
+    const synced = currentDays()
+    const meals = synced[index] ?? emptyPlanDayMeals()
+    setDayDrafts(synced)
+    setActiveDay(index)
+    setForm((current) => ({ ...current, meals }))
+    setActiveTab(DESCRIPTION_TAB)
+  }
+
+  function addDay() {
+    const synced = addPlanDraftDay(currentDays())
+    if (synced.length === dayDrafts.length) return
+    const nextIndex = synced.length - 1
+    setDayDrafts(synced)
+    setActiveDay(nextIndex)
+    setForm((current) => ({ ...current, meals: synced[nextIndex] ?? emptyPlanDayMeals() }))
+    setActiveTab(DESCRIPTION_TAB)
   }
 
   function changeTab(value: string) {
@@ -261,87 +373,222 @@ export function RationEditorDialog({
         data-modal-frame="meal"
         showCloseButton={false}
       >
-        <DialogHeader className="sr-only">
-          <DialogTitle>{editing ? copy.editing : copy.untitled}</DialogTitle>
-          <DialogDescription>
-            {preview.description || 'Названия приёмов появятся здесь'}
-          </DialogDescription>
-        </DialogHeader>
-        <Tabs
-          className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden"
-          onValueChange={changeTab}
-          value={activeTab}
-        >
-          <div className="flex shrink-0 items-start gap-2 px-3 pt-3 sm:px-4 sm:pt-3.5">
-            <p className="min-w-0 flex-1 truncate font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 text-[var(--nora-text)]">
-              {heading}
-            </p>
-            <div className="flex shrink-0 items-center gap-1.5">
-              {onDelete && form.id ? (
-                <button
-                  className="nora-press-grow inline-flex h-8 items-center rounded-full px-2.5 font-[family-name:var(--nora-font)] text-[13px] font-normal text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]"
-                  onClick={() => {
-                    void onDelete(form.id!)
-                  }}
-                  type="button"
-                >
-                  Удалить
-                </button>
-              ) : null}
-              <DialogClose
-                aria-label="Закрыть"
-                className="nora-press-grow inline-flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]"
-              >
-                <XIcon aria-hidden className="size-4" strokeWidth={1.75} />
-              </DialogClose>
-            </div>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
-            <div className="flex flex-col gap-4 px-3 pt-3 pb-8 sm:px-4">
-              <TabsContent className="mt-0" data-ration-tab="description" value={DESCRIPTION_TAB}>
-                <div className="flex flex-col gap-4">
-                  <section>
-                    <p className="whitespace-pre-line font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
-                      {preview.description || 'Названия приёмов появятся здесь'}
-                    </p>
-                    <p className="mt-2 font-[family-name:var(--nora-font)] text-[12px] font-light leading-4 text-[var(--nora-text-tertiary)] tabular-nums">
-                      {totals.kcal} ккал · Б {totals.protein} · Ж {totals.fat} · У {totals.carbs}
-                      {` · ${preview.mealsPerDay} ${preview.mealsPerDay === 1 ? 'приём' : 'приёма'}`}
-                    </p>
-                  </section>
-                  <div className={TITLE_GOAL_ROW_CLASS}>
-                    <label className="grid min-w-0 gap-1.5">
+        {mode === 'plan' ? (
+          <div className="shrink-0 px-2 pt-2">
+            <DialogHeader
+              className="min-w-0 gap-2 rounded-[16px] bg-[var(--nora-inset)] p-2.5 text-left"
+              data-plan-editor-header=""
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--nora-text)] text-[var(--nora-panel)]">
+                    <CalendarDaysIcon aria-hidden className="size-4" strokeWidth={1.7} />
+                  </span>
+                  <DialogTitle className="min-w-0 truncate font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 tracking-normal text-[var(--nora-text)]">
+                    {headerTitle}
+                  </DialogTitle>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {onDelete && form.id ? (
+                    <button
+                      className="nora-press-grow inline-flex h-8 items-center rounded-full px-2.5 font-[family-name:var(--nora-font)] text-[13px] font-normal text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]"
+                      onClick={() => {
+                        void onDelete(form.id!)
+                      }}
+                      type="button"
+                    >
+                      Удалить
+                    </button>
+                  ) : null}
+                  <DialogClose
+                    aria-label="Закрыть"
+                    className={cn(
+                      productSheetOverlayChipClass,
+                      'nora-press-grow size-8 shrink-0 bg-[var(--nora-panel)] sm:size-8',
+                      'hover:text-[var(--nora-text)] focus-visible:shadow-[var(--nora-shadow-focus)]',
+                    )}
+                  >
+                    <XIcon aria-hidden className="size-3.5" strokeWidth={1.75} />
+                  </DialogClose>
+                </div>
+              </div>
+              <DialogDescription className="sr-only">{headerDescription}</DialogDescription>
+              {showPlanDescriptionChrome ? (
+                <>
+                  <div className="grid gap-2" data-plan-editor-identity="">
+                    <label className="grid min-w-0 gap-1">
                       <span className={FIELD_LABEL_CLASS}>Название</span>
                       <NoraInput
-                        className={TITLE_FIELD_CLASS}
+                        className={HEADER_TITLE_FIELD_CLASS}
                         onChange={(event) => patch({ title: event.target.value })}
                         placeholder={copy.titlePlaceholder}
                         value={form.title}
                       />
                     </label>
-                    <label className="grid min-w-0 gap-1.5">
-                      <span className={FIELD_LABEL_CLASS}>Цель</span>
-                      <NoraSelect
-                        className={GOAL_FIELD_CLASS}
-                        items={[...GOAL_ITEMS]}
-                        onValueChange={(value) => {
-                          if (value && isGoal(value)) patch({ goal: value })
-                        }}
-                        value={form.goal}
+                    <label className="grid min-w-0 gap-1">
+                      <span className={FIELD_LABEL_CLASS}>{copy.descriptionLabel}</span>
+                      <NoraTextarea
+                        className={HEADER_DESC_FIELD_CLASS}
+                        onChange={(event) => patch({ description: event.target.value })}
+                        placeholder={copy.descriptionPlaceholder}
+                        value={form.description}
                       />
                     </label>
                   </div>
-                  <label className="grid gap-1.5">
-                    <span className={FIELD_LABEL_CLASS}>Описание</span>
-                    <NoraTextarea
-                      className={cn(FIELD_CLASS, 'min-h-16 px-3 py-2.5')}
-                      onChange={(event) => patch({ description: event.target.value })}
-                      placeholder={copy.descriptionPlaceholder}
-                      value={form.description}
-                    />
-                  </label>
-                  <div aria-hidden className={SECTION_DIVIDER_CLASS} />
+                  <div className="grid gap-1" data-plan-editor-totals="">
+                    <span className={FIELD_LABEL_CLASS}>{PLAN_TOTALS_CAPTION}</span>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {MACRO_FIELDS.map((field) => (
+                        <MacroField
+                          ariaLabel={field.ariaLabel}
+                          icon={field.icon}
+                          key={field.key}
+                          label={field.label}
+                          readOnly
+                          tone="summary"
+                          value={String(totals[field.key])}
+                        />
+                      ))}
+                      <MacroField
+                        ariaLabel="Приёмы"
+                        icon={UtensilsIcon}
+                        label="приёмы"
+                        readOnly
+                        tone="summary"
+                        value={String(planMeals.length)}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : null}
+              {planDaysEnabled ? (
+                <div
+                  className="flex flex-wrap items-center gap-1.5"
+                  data-plan-editor-days=""
+                >
+                  {dayDrafts.map((_, index) => (
+                    <button
+                      className={cn(
+                        'nora-press-grow inline-flex h-8 min-h-8 max-h-8 items-center rounded-full border-0 px-3',
+                        'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-none',
+                        index === activeDay
+                          ? 'bg-[var(--nora-text)] text-[var(--nora-panel)]'
+                          : 'bg-[var(--nora-panel)] text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]',
+                      )}
+                      data-plan-editor-day={String(index)}
+                      key={`plan-day-${index}`}
+                      onClick={() => selectDay(index)}
+                      type="button"
+                    >
+                      День {index + 1}
+                    </button>
+                  ))}
+                  {dayDrafts.length < PLAN_DRAFT_MAX_DAYS ? (
+                    <button
+                      className={cn(ADD_MEAL_CLASS, 'gap-1.5')}
+                      data-plan-editor-add-day=""
+                      onClick={addDay}
+                      type="button"
+                    >
+                      <PlusIcon aria-hidden className="size-3.5" strokeWidth={2} />
+                      Добавить день
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </DialogHeader>
+          </div>
+        ) : (
+          <DialogHeader className="sr-only">
+            <DialogTitle>{headerTitle}</DialogTitle>
+            <DialogDescription>{headerDescription}</DialogDescription>
+          </DialogHeader>
+        )}
+        <Tabs
+          className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden"
+          onValueChange={changeTab}
+          value={activeTab}
+        >
+          {mode === 'ration' ? (
+            <div className="flex shrink-0 items-start gap-2 px-3 pt-3 sm:px-4 sm:pt-3.5">
+              <p className="min-w-0 flex-1 truncate font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 text-[var(--nora-text)]">
+                {heading}
+              </p>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {onDelete && form.id ? (
+                  <button
+                    className="nora-press-grow inline-flex h-8 items-center rounded-full px-2.5 font-[family-name:var(--nora-font)] text-[13px] font-normal text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]"
+                    onClick={() => {
+                      void onDelete(form.id!)
+                    }}
+                    type="button"
+                  >
+                    Удалить
+                  </button>
+                ) : null}
+                <DialogClose
+                  aria-label="Закрыть"
+                  className="nora-press-grow inline-flex size-8 shrink-0 items-center justify-center rounded-full text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]"
+                >
+                  <XIcon aria-hidden className="size-4" strokeWidth={1.75} />
+                </DialogClose>
+              </div>
+            </div>
+          ) : null}
+          <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
+            <div className="flex flex-col gap-4 px-3 pt-3 pb-8 sm:px-4">
+              <TabsContent className="mt-0" data-ration-tab="description" value={DESCRIPTION_TAB}>
+                <div className="flex flex-col gap-4">
+                  {mode === 'ration' ? (
+                    <section>
+                      <p className="whitespace-pre-line font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
+                        {preview.description || 'Названия приёмов появятся здесь'}
+                      </p>
+                      <p className="mt-2 font-[family-name:var(--nora-font)] text-[12px] font-light leading-4 text-[var(--nora-text-tertiary)] tabular-nums">
+                        {totals.kcal} ккал · Б {totals.protein} · Ж {totals.fat} · У {totals.carbs}
+                        {` · ${preview.mealsPerDay} ${preview.mealsPerDay === 1 ? 'приём' : 'приёма'}`}
+                      </p>
+                    </section>
+                  ) : null}
+                  {showGoal ? (
+                    <div className={TITLE_GOAL_ROW_CLASS}>
+                      <label className="grid min-w-0 gap-1.5">
+                        <span className={FIELD_LABEL_CLASS}>Название</span>
+                        <NoraInput
+                          className={TITLE_FIELD_CLASS}
+                          onChange={(event) => patch({ title: event.target.value })}
+                          placeholder={copy.titlePlaceholder}
+                          value={form.title}
+                        />
+                      </label>
+                      <label className="grid min-w-0 gap-1.5">
+                        <span className={FIELD_LABEL_CLASS}>Цель</span>
+                        <NoraSelect
+                          className={GOAL_FIELD_CLASS}
+                          items={[...GOAL_ITEMS]}
+                          onValueChange={(value) => {
+                            if (value && isGoal(value)) patch({ goal: value })
+                          }}
+                          value={form.goal}
+                        />
+                      </label>
+                    </div>
+                  ) : null}
+                  {mode === 'ration' ? (
+                    <label className="grid gap-1.5">
+                      <span className={FIELD_LABEL_CLASS}>{copy.descriptionLabel}</span>
+                      <NoraTextarea
+                        className={cn(FIELD_CLASS, 'min-h-16 px-3 py-2.5')}
+                        onChange={(event) => patch({ description: event.target.value })}
+                        placeholder={copy.descriptionPlaceholder}
+                        value={form.description}
+                      />
+                    </label>
+                  ) : null}
+                  {mode === 'ration' ? <div aria-hidden className={SECTION_DIVIDER_CLASS} /> : null}
                   <MealsSectionHeading
+                    addLabel={copy.addMeal}
+                    heading={mealsHeading}
                     onAdd={addMeal}
                     onSave={handleSave}
                     saveLabel={saveLabel}
@@ -366,6 +613,8 @@ export function RationEditorDialog({
                 >
                   <div className="flex flex-col gap-4">
                     <MealsSectionHeading
+                      addLabel={copy.addMeal}
+                      heading={mealsHeading}
                       onAdd={addMeal}
                       onSave={handleSave}
                       saveLabel={saveLabel}
@@ -386,9 +635,9 @@ export function RationEditorDialog({
             <ProductSheetTabFade />
             <div className="min-w-0 overflow-x-auto overscroll-x-contain no-scrollbar">
               <TabsList className="h-8 gap-1.5 bg-transparent p-0">
-                <TabsTrigger className={MEAL_TAB_CLASS} value={DESCRIPTION_TAB}>
+                <TabsTrigger className={DESCRIPTION_TAB_CLASS} value={DESCRIPTION_TAB}>
                   <FileTextIcon className="size-[15px]" strokeWidth={1.75} />
-                  Описание
+                  {copy.overviewTab}
                 </TabsTrigger>
                 {form.meals.map((meal) => {
                   const Icon = SLOT_TAB_ICONS[meal.slot]
@@ -403,8 +652,16 @@ export function RationEditorDialog({
             </div>
           </div>
           {saveInFooter ? (
-            <div className="shrink-0 px-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3.5">
-              <button className={COMPOSER_FOOTER_ACTION_CLASS} onClick={() => void handleSave()} type="button">
+            <div
+              className="shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3.5"
+              data-plan-editor-save=""
+            >
+              <div aria-hidden className={SECTION_DIVIDER_CLASS} />
+              <button
+                className={cn(COMPOSER_FOOTER_ACTION_CLASS, 'mt-3')}
+                onClick={() => void handleSave()}
+                type="button"
+              >
                 {saveLabel}
               </button>
             </div>
@@ -416,11 +673,15 @@ export function RationEditorDialog({
 }
 
 function MealsSectionHeading({
+  addLabel,
+  heading = 'Приёмы дня',
   onAdd,
   onSave,
   saveLabel,
   showSave = true,
 }: {
+  addLabel: string
+  heading?: string
   onAdd: () => void
   onSave: () => void
   saveLabel: string
@@ -428,10 +689,10 @@ function MealsSectionHeading({
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <p className={cn(SECTION_HEADING_CLASS, 'min-w-0 truncate')}>Приёмы дня</p>
+      <p className={cn(SECTION_HEADING_CLASS, 'min-w-0 truncate')}>{heading}</p>
       <div className="flex min-w-0 shrink-0 items-center gap-1.5">
         <button className={ADD_MEAL_CLASS} onClick={onAdd} type="button">
-          Приём
+          {addLabel}
         </button>
         {showSave ? (
           <button className={COMPOSER_ACTION_CLASS} onClick={onSave} type="button">
@@ -503,7 +764,7 @@ function MealSlotToolbar({
         ) : null}
         <button
           aria-label="Удалить приём"
-          className="nora-press-grow inline-flex size-8 items-center justify-center text-[var(--nora-text-secondary)] disabled:opacity-30"
+          className={MEAL_TRASH_CLASS}
           disabled={!onRemove}
           onClick={onRemove}
           type="button"
@@ -618,7 +879,7 @@ function MealDraftCard({
         onRemove={onRemove}
       />
       <button
-        className={cn(FIELD_CHIP_CLASS, 'relative aspect-[4/3] min-h-28 w-full overflow-hidden p-0')}
+        className={cn(FIELD_CHIP_CLASS, 'relative aspect-[40/21] min-h-20 w-full overflow-hidden p-0')}
         onClick={() => fileRef.current?.click()}
         type="button"
       >
@@ -716,7 +977,7 @@ function DraftLineList({
             />
             <button
               aria-label={removeAriaLabel}
-              className="nora-press-grow ml-auto inline-flex size-8 items-center justify-center text-[var(--nora-text-secondary)] disabled:opacity-30"
+              className={cn(MEAL_TRASH_CLASS, 'ml-auto')}
               disabled={items.length <= 1}
               onClick={() => onChange(removeDraftLine(items, index))}
               type="button"
@@ -726,7 +987,7 @@ function DraftLineList({
           </div>
           <button
             aria-label={addAriaLabel}
-            className="nora-press-grow ios-glass-glare-soft inline-flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-[var(--nora-inset)] text-[var(--nora-text-secondary)]"
+            className={LINE_ADD_CLASS}
             data-draft-line-add=""
             onClick={() => onChange(addDraftLine(items, index))}
             type="button"
@@ -745,30 +1006,53 @@ function MacroField({
   icon: Icon,
   value,
   onChange,
+  readOnly = false,
+  tone = 'edit',
 }: {
   label: string
   ariaLabel?: string
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>
   value: string
-  onChange: (value: string) => void
+  onChange?: (value: string) => void
+  readOnly?: boolean
+  tone?: 'edit' | 'summary'
 }) {
+  const summary = tone === 'summary'
   return (
-    <label className={cn(FIELD_CHIP_CLASS, 'grid gap-1 px-2 py-2')}>
+    <label
+      className={cn(
+        'grid gap-1',
+        summary ? 'rounded-[14px] bg-[var(--nora-panel)] px-1.5 py-2' : cn(FIELD_CHIP_CLASS, 'px-2 py-2'),
+      )}
+    >
       <span className="inline-flex items-center justify-center gap-1 font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
         <Icon aria-hidden className={MACRO_ICON_CLASS} strokeWidth={1.75} />
         {label}
       </span>
-      <NoraInput
-        aria-label={ariaLabel ?? label}
-        className={cn(
-          FIELD_TYPE_CLASS,
-          FIELD_FACE_CLASS,
-          '!h-8 !rounded-[10px] px-1 text-center tabular-nums',
-        )}
-        inputMode="decimal"
-        onChange={(event) => onChange(event.target.value)}
-        value={value}
-      />
+      {readOnly ? (
+        <span
+          aria-label={ariaLabel ?? label}
+          className={cn(
+            FIELD_TYPE_CLASS,
+            'flex h-8 items-center justify-center rounded-[10px] px-1 tabular-nums',
+            summary ? '!bg-[var(--nora-inset)]' : FIELD_FACE_CLASS,
+          )}
+        >
+          {value}
+        </span>
+      ) : (
+        <NoraInput
+          aria-label={ariaLabel ?? label}
+          className={cn(
+            FIELD_TYPE_CLASS,
+            FIELD_FACE_CLASS,
+            '!h-8 !rounded-[10px] px-1 text-center tabular-nums',
+          )}
+          inputMode="decimal"
+          onChange={(event) => onChange?.(event.target.value)}
+          value={value}
+        />
+      )}
     </label>
   )
 }

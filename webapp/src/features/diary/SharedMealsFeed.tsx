@@ -19,7 +19,7 @@ import {
   readAssignedPlans,
 } from "@/platform/authored-plans";
 import { notifyHybridFavoriteAdded } from "@/platform/hybrid-notifications";
-import { readPlanLibrarySnapshot } from "@/platform/plan-library-local";
+import { readPlanLibrarySnapshot, withAuthoredPlan } from "@/platform/plan-library-local";
 import { mergeFavoriteIds } from "@/platform/saved-ids";
 
 import { createMyMeal, deleteMyMeal, likeSharedMeal } from "./api";
@@ -29,6 +29,7 @@ import {
 } from "./catalog-favorite";
 import { DiaryPlanDayPicker } from "./DiaryPlanDayPicker";
 import {
+  diaryCreatePlanFromMeals,
   diaryDefaultPlanId,
   diaryMealCreatePlanDraft,
   diaryMealOnPlanDay,
@@ -60,6 +61,7 @@ import {
   useSharedMealsQuery,
   useUserFavoritesQuery,
 } from "./queries";
+import { useSyncedPlanLibrary } from "./use-plan-library";
 import {
   Cover,
   MealCard,
@@ -129,6 +131,8 @@ export function SharedMealsFeed({
   );
   const favoritesQuery = useUserFavoritesQuery(Boolean(subjectId && auth.user));
   const planLibraryQuery = usePlanLibraryQuery(auth.user?.role === "user");
+  const { persist: persistPlanLibrary, snapshot: ownPlanLibrary } =
+    useSyncedPlanLibrary(auth.user?.role === "user");
   const [saved, setSaved] = React.useState(() => new Set<string>());
   const visible = React.useMemo(
     () => filterSharedMeals(meals, { tab, goal, query }),
@@ -496,6 +500,17 @@ export function SharedMealsFeed({
         fallbackPlanId={weekPlanFallbackId}
         meal={planMeal}
         meals={diaryMeals}
+        onCreatePlan={async ({ title, coverImage, description }) => {
+          const created = diaryCreatePlanFromMeals({
+            coverImage,
+            description,
+            meals: planMeal ? [planMeal] : [],
+            title,
+          });
+          if (!created) return null;
+          persistPlanLibrary(withAuthoredPlan(ownPlanLibrary, created));
+          return created.id;
+        }}
         onOpenChange={(next) => {
           if (!next && !addingDayKey) setPlanMeal(null);
         }}

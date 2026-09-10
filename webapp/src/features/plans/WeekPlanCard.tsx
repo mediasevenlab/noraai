@@ -216,7 +216,7 @@ export function WeekPlanCard({
               <NoraButton
                 aria-pressed={selected}
                 className={cn(
-                  'nora-press-grow min-w-0 flex-1',
+                  'nora-press-grow min-w-0 flex-1 [&_svg]:size-[11px]',
                   !selected && productCardFooterCtaClass,
                 )}
                 onClick={onSelect}

@@ -40,6 +40,14 @@ export const productSheetTabTriggerClass = cn(
   'data-active:hover:!bg-[var(--nora-input-bg)]',
 )
 
+/** Selected section tab — dark pill when active, frost when idle. */
+export const productSheetTabTriggerDarkClass = cn(
+  productSheetTabTriggerClass,
+  '[&_svg]:text-current',
+  'data-active:!bg-[var(--nora-text)] data-active:!text-[var(--nora-panel)] data-active:font-normal',
+  'data-active:hover:!bg-[var(--nora-text)] data-active:hover:!text-[var(--nora-panel)]',
+)
+
 export const productSheetOverlayChipClass =
   'ios-glass-glare inline-flex cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--nora-panel)]/72 text-[var(--nora-text-tertiary)] backdrop-blur-[16px] outline-none'
 

@@ -61,7 +61,7 @@ function GeneralViewSwitcher({
           }}
           type="button"
         >
-          <option.icon aria-hidden className="size-[13px] shrink-0" strokeWidth={1.75} />
+          <option.icon aria-hidden className="size-[11px] shrink-0" strokeWidth={1.75} />
           {option.label}
         </button>
       ))}

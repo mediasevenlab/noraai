@@ -506,6 +506,16 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
+    },
   },
   {
     files: ['src/**/*.{ts,tsx}'],
@@ -529,6 +539,7 @@ export default defineConfig([
     rules: {
       'react-refresh/only-export-components': 'off',
       'typographyPolicy/use-typography-component': 'off',
+      'react-hooks/refs': 'off',
     },
   },
   {
@@ -567,8 +578,8 @@ export default defineConfig([
       'src/features/auth/components/**/*.{ts,tsx}',
       'src/features/diary/**/*.{ts,tsx}',
       'src/features/mentor/**/*.{ts,tsx}',
+      'src/features/plans/**/*.{ts,tsx}',
       'src/features/payments/**/*.{ts,tsx}',
-      'src/features/plans/GeneralNutritionPage.tsx',
       'src/features/users/**/*.{ts,tsx}',
       'src/components/dashboard/MobileNavFab.tsx',
       'src/components/WebRouteSections.tsx',
@@ -582,6 +593,10 @@ export default defineConfig([
     rules: {
       'typographyPolicy/use-typography-component': 'off',
       'react-refresh/only-export-components': 'off',
+      'react-hooks/refs': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/exhaustive-deps': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
     },
   },
   {

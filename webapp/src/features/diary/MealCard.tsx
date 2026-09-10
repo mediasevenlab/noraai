@@ -517,7 +517,6 @@ export function MealLikeButton({
 export function MealAuthorByline({
   name,
   at,
-  hideStamp = false,
   revealAuthor = false,
   likeCount,
   liked,
@@ -526,7 +525,6 @@ export function MealAuthorByline({
 }: {
   name: string
   at: string
-  hideStamp?: boolean
   /** Fade the author row in (login demo share handoff). */
   revealAuthor?: boolean
   likeCount?: number
@@ -547,7 +545,7 @@ export function MealAuthorByline({
         <NoraAvatar size="sm">{authorInitials(name)}</NoraAvatar>
         <p className="min-w-0 truncate font-[family-name:var(--nora-font)] text-[12px] font-light leading-none text-[var(--nora-text-tertiary)]">
           <span className="font-medium text-[var(--nora-text-secondary)]">{name}</span>
-          {hideStamp ? null : <span>{` · ${formatMealStamp(at)}`}</span>}
+          <span>{` · ${formatMealStamp(at)}`}</span>
         </p>
       </div>
       {onToggleLike ? (
@@ -747,9 +745,9 @@ export function MealCard({
             </div>
           ) : picking ? null : showPlanState && (done || logged) ? (
             <div className={productCardOriginAnchorClass}>
-              <span aria-label="Выполнен" className={RATION_DONE_CARD_BADGE_CLASS}>
+              <span aria-label="Выполнено" className={RATION_DONE_CARD_BADGE_CLASS}>
                 <CircleCheckIcon aria-hidden className="size-3" strokeWidth={2} />
-                Выполнен
+                Выполнено
               </span>
             </div>
           ) : null}

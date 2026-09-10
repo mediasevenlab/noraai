@@ -19,8 +19,12 @@ import {
   parseAuthoredRations,
   parseMacroField,
   addDraftLine,
+  addPlanDraftDay,
   draftLineItems,
+  emptyMealDraft,
+  emptyPlanDayMeals,
   ensureTestAuthoredRations,
+  finalizePlanDaysDraft,
   joinDraftLines,
   moveDraftLine,
   previewRationFromDraft,
@@ -95,6 +99,65 @@ describe('mentor authored rations', () => {
     expect(draft.meals).toHaveLength(1)
     expect(draft.meals[0]?.slot).toBe('Завтрак')
     expect(draftRationTotals(draft)).toEqual({ kcal: 0, protein: 0, fat: 0, carbs: 0 })
+  })
+
+  test('plan draft can grow days and stamp meals onto each day', () => {
+    const breakfast = { ...emptyMealDraft('Завтрак'), title: 'Омлет', kcal: '300' }
+    const lunch = { ...emptyMealDraft('Обед'), title: 'Курица', kcal: '400' }
+    const one = addPlanDraftDay([])
+    expect(one).toHaveLength(1)
+    expect(one[0]?.[0]?.slot).toBe('Завтрак')
+    const two = addPlanDraftDay([[breakfast]])
+    expect(two).toHaveLength(2)
+    expect(two[1]).toHaveLength(1)
+    expect(two[1]![0]?.slot).toBe('Завтрак')
+    expect(two[1]![0]?.title).toBe('')
+    let days = [emptyPlanDayMeals()]
+    for (let index = 0; index < 10; index += 1) days = addPlanDraftDay(days)
+    expect(days).toHaveLength(7)
+
+    const missingTitle = finalizePlanDaysDraft(
+      { id: null, title: '  ', description: '', goal: 'Похудение' },
+      [[breakfast]],
+      'user-1',
+      { emptyTitleError: 'Назовите план' },
+    )
+    expect(missingTitle).toEqual({ ok: false, error: 'Назовите план' })
+
+    const hole = finalizePlanDaysDraft(
+      { id: null, title: 'Офис', description: 'Два дня', goal: 'Поддержание' },
+      [[emptyMealDraft('Завтрак')], [lunch]],
+      'user-1',
+    )
+    expect(hole).toEqual({ ok: false, error: 'Добавьте приём в День 1' })
+
+    const trailingEmpty = finalizePlanDaysDraft(
+      { id: null, title: 'Офис', description: 'Два дня', goal: 'Поддержание' },
+      [[breakfast], [emptyMealDraft('Завтрак')]],
+      'user-1',
+      { idPrefix: 'plan_', source: 'План' },
+    )
+    expect(trailingEmpty.ok).toBe(true)
+    if (!trailingEmpty.ok) return
+    expect(trailingEmpty.days).toHaveLength(1)
+    expect(trailingEmpty.days[0]?.meals.map((meal) => meal.title)).toEqual(['Омлет'])
+
+    const split = finalizePlanDaysDraft(
+      { id: null, title: 'Офис', description: 'Два дня', goal: 'Поддержание' },
+      [[breakfast], [lunch]],
+      'user-1',
+      { idPrefix: 'plan_', source: 'План' },
+    )
+    expect(split.ok).toBe(true)
+    if (!split.ok) return
+    expect(split.days).toHaveLength(2)
+    expect(split.days[0]?.title).toBe('Офис')
+    expect(split.days[0]?.description).toBe('Два дня')
+    expect(split.days[0]?.days).toBe(2)
+    expect(split.days[0]?.meals.map((meal) => meal.title)).toEqual(['Омлет'])
+    expect(split.days[1]?.meals.map((meal) => meal.title)).toEqual(['Курица'])
+    expect(split.days[0]?.kcal).toBe(300)
+    expect(split.days[1]?.kcal).toBe(400)
   })
 
   test('reorderMealDrafts places a meal where another plaque sits', () => {

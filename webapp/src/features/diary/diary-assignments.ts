@@ -5,7 +5,6 @@ import {
   MEAL_CATALOG,
   type MealEntry,
 } from './meals-catalog'
-import { isRationPlanPending } from './ration-import'
 
 const STORAGE_PREFIX = 'nora:diary:v1:'
 const MIN_MEALS = 4
@@ -195,11 +194,7 @@ export function filterDiaryMeals(
 ) {
   const query = input.query.trim().toLowerCase()
   return meals.filter((meal) => {
-    if (input.tab === 'Избранное') {
-      if (!input.savedIds.has(meal.id)) return false
-      // Favorites store saved meals, not plan-pending chrome.
-      if (isRationPlanPending(meal, input.completedIds)) return false
-    }
+    if (input.tab === 'Избранное' && !input.savedIds.has(meal.id)) return false
     if (!query) return true
     const portions = (meal.portionItems ?? []).map((item) =>
       typeof item === 'string' ? item : item.label,

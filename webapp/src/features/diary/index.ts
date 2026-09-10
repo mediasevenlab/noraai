@@ -36,6 +36,7 @@ export {
 export type { MealEntry } from './meals-catalog'
 export { mergeDemoAndApiMeals, mealDtoToEntry } from './merge-meals'
 export { useMealsQuery, useSharedMealsQuery, useUserFavoritesQuery, usePlanLibraryQuery, mealsQueryKeys, favoritesQueryKeys, planLibraryQueryKeys } from './queries'
+export { useSyncedPlanLibrary } from './use-plan-library'
 
 export { NewsPage as DiaryNewsPage } from './pages/news'
 export { diaryPeriodStartOverrideForEmail } from './diary-period-start'

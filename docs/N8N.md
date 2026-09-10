@@ -45,6 +45,8 @@ Import into the local n8n container (n8n must already be running):
 .\n8n\import-workflows.ps1
 ```
 
+The script upserts by the committed workflow `id` (`import:workflow --overwrite` when the CLI supports it, otherwise `delete:workflow --id=…` then import). Re-running it should not create duplicate workflows. Missing-delete on a first run is expected.
+
 After import, open the editor and activate `Дневник питания: фото → карточка` when testing the meal bot, `Дневник питания: приложение → карточка` for the diary **Добавить** modal, `Дневник питания: голос → текст` for the meal-card voice composer, and `Наставник: новый приём подопечного` for mentor Telegram notifications. PCC credentials are separate and optional.
 
 ### Meal diary path (local)

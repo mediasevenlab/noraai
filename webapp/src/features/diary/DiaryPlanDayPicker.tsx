@@ -1,7 +1,8 @@
 import * as React from "react";
-import { CalendarDaysIcon, Loader2Icon, XIcon } from "lucide-react";
+import { CalendarDaysIcon, Loader2Icon, PlusIcon, XIcon } from "lucide-react";
+import { toast } from "sonner";
 
-import { NoraSelect } from "@/components/nora/primitives";
+import { NoraInput, NoraSelect, NoraTextarea } from "@/components/nora/primitives";
 import {
   productToolbarSelectContentClass,
   productToolbarSelectItemClass,
@@ -18,8 +19,16 @@ import { cn } from "@/lib/utils";
 
 import { mealsCountLabel } from "./diary-feed";
 import {
+  DIARY_NEW_PLAN_ID,
+  DIARY_NEW_PLAN_MAX_DAYS,
+  DIARY_NEW_PLAN_MIN_DAYS,
   diaryDefaultPlanId,
+  diaryNewPlanDayCount,
+  diaryNewPlanDays,
+  diaryNewPlanTitle,
   diaryPlanDayOccupancy,
+  diaryPlanPickerItems,
+  isDiaryNewPlanId,
   type DiaryPlanStamp,
   type DiaryWeekPlanOption,
 } from "./diary-plan-import";
@@ -45,12 +54,20 @@ function planPickerDescription(
   selected: readonly MealEntry[],
   meal: MealEntry | null,
   bulk: boolean,
+  creatingNew: boolean,
 ) {
-  const hint = "Можно поставить в выбранный план, в один или несколько дней.";
+  const hint = creatingNew
+    ? "Назовите план, добавьте дни и поставьте приём."
+    : "Можно поставить в выбранный план, в один или несколько дней.";
   if (bulk) return `${mealsCountLabel(selected.length)} из дневника. ${hint}`;
   if (meal) return `${meal.title}. ${hint}`;
   return hint;
 }
+
+const PLAN_TITLE_FIELD_CLASS =
+  "mt-2 !h-10 !min-h-10 !max-h-10 rounded-[12px] bg-[var(--nora-panel)] px-3.5 font-[family-name:var(--nora-font)] !text-[13px] !font-normal !leading-5";
+const PLAN_DESC_FIELD_CLASS =
+  "mt-2 min-h-16 rounded-[12px] bg-[var(--nora-panel)] px-3.5 py-2.5 font-[family-name:var(--nora-font)] !text-[13px] !font-normal !leading-5";
 
 export function DiaryPlanDayPicker({
   addingDayKey,
@@ -59,6 +76,7 @@ export function DiaryPlanDayPicker({
   items,
   meal,
   meals,
+  onCreatePlan,
   onOpenChange,
   onPlanIdChange,
   onSelectDay,
@@ -72,6 +90,11 @@ export function DiaryPlanDayPicker({
   items?: readonly MealEntry[];
   meal: MealEntry | null;
   meals: readonly DiaryPlanStamp[];
+  onCreatePlan?: (draft: {
+    title: string;
+    description: string;
+    coverImage: string;
+  }) => Promise<string | null>;
   onOpenChange: (open: boolean) => void;
   onPlanIdChange?: (planId: string) => void;
   onSelectDay: (day: FeedPlanWeekDay, planId: string) => void;
@@ -82,20 +105,81 @@ export function DiaryPlanDayPicker({
   const weekFallback = fallbackPlanId ?? currentWeekPlanStampId();
   const fallbackSelected = diaryDefaultPlanId(plans, planIdProp ?? null);
   const [localPlanId, setLocalPlanId] = React.useState(fallbackSelected);
+  const [draftTitle, setDraftTitle] = React.useState("");
+  const [draftDescription, setDraftDescription] = React.useState("");
+  const [draftDayCount, setDraftDayCount] = React.useState(DIARY_NEW_PLAN_MIN_DAYS);
+  const [sessionCreatedPlanId, setSessionCreatedPlanId] = React.useState<string | null>(
+    null,
+  );
+  const [creating, setCreating] = React.useState(false);
   const planId = planIdProp ?? localPlanId;
-  const planItems = plans.map((plan) => ({
-    value: plan.id,
-    label: plan.title,
-  }));
-  const days = feedPlanWeekDays();
-  const selected = items ?? (meal ? [meal] : []);
+  const creatingNew = isDiaryNewPlanId(planId);
+  const usesDraftDays = creatingNew || planId === sessionCreatedPlanId;
+  const planItems = diaryPlanPickerItems(plans);
+  const weekDays = feedPlanWeekDays();
+  const days = usesDraftDays
+    ? diaryNewPlanDays(weekDays, draftDayCount)
+    : weekDays;
+  const canAddDay = usesDraftDays && draftDayCount < DIARY_NEW_PLAN_MAX_DAYS;
+  const selected = React.useMemo(
+    () => items ?? (meal ? [meal] : []),
+    [items, meal],
+  );
   const bulk = selected.length > 1;
-  const busy = Boolean(addingDayKey);
-  const description = planPickerDescription(selected, meal, bulk);
+  const busy = Boolean(addingDayKey) || creating;
+  const description = planPickerDescription(selected, meal, bulk, creatingNew);
+  const occupancyPlanId = creatingNew ? DIARY_NEW_PLAN_ID : planId;
+
+  React.useEffect(() => {
+    if (!open) return;
+    setDraftTitle(diaryNewPlanTitle("", selected));
+    setDraftDescription("");
+    setDraftDayCount(DIARY_NEW_PLAN_MIN_DAYS);
+    setSessionCreatedPlanId(null);
+    setCreating(false);
+  }, [open, selected]);
 
   function setPlanId(next: string) {
+    if (isDiaryNewPlanId(next)) {
+      setDraftDayCount(DIARY_NEW_PLAN_MIN_DAYS);
+      setSessionCreatedPlanId(null);
+    }
     setLocalPlanId(next);
     onPlanIdChange?.(next);
+  }
+
+  async function handleSelectDay(day: FeedPlanWeekDay) {
+    if (busy) return;
+    let targetId = planId;
+    if (creatingNew) {
+      const title = diaryNewPlanTitle(draftTitle, selected);
+      if (!title) {
+        toast.error("Назовите план");
+        return;
+      }
+      if (!onCreatePlan) {
+        toast.error("Не удалось создать план");
+        return;
+      }
+      setCreating(true);
+      try {
+        const createdId = await onCreatePlan({
+          title,
+          description: draftDescription,
+          coverImage: selected.find((item) => item.image)?.image ?? "",
+        });
+        if (!createdId) {
+          toast.error("Не удалось создать план");
+          return;
+        }
+        setSessionCreatedPlanId(createdId);
+        setPlanId(createdId);
+        targetId = createdId;
+      } finally {
+        setCreating(false);
+      }
+    }
+    onSelectDay(day, targetId);
   }
 
   return (
@@ -160,6 +244,33 @@ export function DiaryPlanDayPicker({
                   placeholder="План"
                   value={planId}
                 />
+                {creatingNew ? (
+                  <div className="mt-2.5" data-diary-new-plan="">
+                    <MealDetailHeading>Название</MealDetailHeading>
+                    <NoraInput
+                      className={PLAN_TITLE_FIELD_CLASS}
+                      data-diary-plan-title=""
+                      disabled={busy}
+                      onChange={(event) => setDraftTitle(event.target.value)}
+                      placeholder="Например, Офис без срывов"
+                      value={draftTitle}
+                    />
+                    <div className="mt-2.5">
+                      <MealDetailHeading>Описание</MealDetailHeading>
+                      <NoraTextarea
+                        className={PLAN_DESC_FIELD_CLASS}
+                        data-diary-plan-description=""
+                        disabled={busy}
+                        onChange={(event) =>
+                          setDraftDescription(event.target.value)
+                        }
+                        placeholder="Коротко, что в плане"
+                        rows={3}
+                        value={draftDescription}
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </div>
               </DialogHeader>
             </div>
@@ -170,7 +281,7 @@ export function DiaryPlanDayPicker({
                     selected,
                     meals,
                     day.date,
-                    planId,
+                    occupancyPlanId,
                     weekFallback,
                     completedIds,
                   );
@@ -192,7 +303,9 @@ export function DiaryPlanDayPicker({
                       }
                       disabled={dayBusy || busy}
                       key={day.dayKey}
-                      onClick={() => onSelectDay(day, planId)}
+                      onClick={() => {
+                        void handleSelectDay(day);
+                      }}
                       type="button"
                     >
                       <span
@@ -230,6 +343,26 @@ export function DiaryPlanDayPicker({
                     </button>
                   );
                 })}
+                {canAddDay ? (
+                  <button
+                    className={PLAN_DAY_ROW_CLASS}
+                    data-diary-add-plan-day=""
+                    disabled={busy}
+                    onClick={() => {
+                      setDraftDayCount((current) =>
+                        diaryNewPlanDayCount(current + 1),
+                      );
+                    }}
+                    type="button"
+                  >
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-[var(--nora-border-strong)] bg-[var(--nora-panel)] text-[var(--nora-text)]">
+                      <PlusIcon aria-hidden className="size-3" strokeWidth={2} />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text)]">
+                      Добавить день
+                    </span>
+                  </button>
+                ) : null}
               </div>
             </div>
           </>

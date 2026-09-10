@@ -106,6 +106,32 @@ export async function completeUserQuestionnaire(page: Page) {
   await expect(page).toHaveURL(/\/app\/general/)
 }
 
+export async function registerCompletedUser(
+  page: Page,
+  email: string,
+  displayName = 'Web E2E User',
+) {
+  await page.goto('/signup')
+  await fillRegisterForm(page, email)
+  await page.getByLabel('Имя').fill(displayName)
+  await page.getByRole('button', { name: 'Зарегистрироваться' }).click()
+  await completeUserQuestionnaire(page)
+}
+
+export async function createNamedPlan(
+  page: Page,
+  title: string,
+  mealTitle = 'Овсянка',
+) {
+  await page.getByRole('button', { name: 'Создать план' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByPlaceholder('Например, Офис без срывов')).toBeVisible()
+  await dialog.getByPlaceholder('Например, Офис без срывов').fill(title)
+  await dialog.getByRole('tab', { name: 'Завтрак' }).click()
+  await dialog.getByPlaceholder('Название блюда').fill(mealTitle)
+  await dialog.getByRole('button', { name: 'Создать рацион' }).click()
+}
+
 export async function openSidebarAccountMenu(page: Page) {
   await page.getByRole('button', { name: 'Открыть меню аккаунта' }).click()
 }

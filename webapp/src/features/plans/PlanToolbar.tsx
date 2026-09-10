@@ -25,8 +25,8 @@ const PLAN_GROUP_PLAQUE_CLASS =
   'ios-glass-glare inline-flex h-7 min-h-7 max-h-7 w-fit shrink-0 items-center gap-1 rounded-full border-0 py-0 pr-2.5 pl-2 text-[12px] font-normal leading-none backdrop-blur-[16px]'
 
 const PLAN_GROUP_PLAQUE_TONE = {
-  mine: 'bg-[var(--nora-tint)] text-white',
-  mentor: 'bg-[#16A34A] text-white',
+  mine: 'bg-[var(--nora-text)] text-[var(--nora-panel)]',
+  mentor: 'bg-[var(--nora-text)] text-[var(--nora-panel)]',
 } as const
 
 export function PlanGroupPlaque({
