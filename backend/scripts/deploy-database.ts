@@ -11,6 +11,9 @@ import {
 } from '../src/modules/users/infrastructure/admin-bootstrap'
 import {
   backfillUserQuestionnaires,
+  bootstrapDefaultAccounts,
+  DEFAULT_APP_ACCOUNT_PASSWORD,
+  type DefaultAccountsBootstrapResult,
   type QuestionnaireBackfillResult,
 } from '../src/modules/users'
 import {
@@ -29,6 +32,10 @@ type DatabaseDeployDependencies = {
     db: DbClient,
     config: ReturnType<typeof parseAdminSeedConfig>,
   ): Promise<unknown>
+  bootstrapDefaultAccounts(
+    db: DbClient,
+    password: string,
+  ): Promise<DefaultAccountsBootstrapResult>
   createDatabase(databaseUrl: string): DbClient
   log(message: string): void
   migrate(
@@ -43,6 +50,7 @@ const defaultDependencies: DatabaseDeployDependencies = {
   backfillMealVersions,
   backfillQuestionnaires: backfillUserQuestionnaires,
   bootstrap: bootstrapAdmin,
+  bootstrapDefaultAccounts,
   createDatabase: createPrisma,
   log: console.log,
   migrate(databaseUrl, source) {
@@ -80,6 +88,13 @@ export async function deployDatabase(
     if (config.seed !== null) {
       await dependencies.bootstrap(prisma, config.seed)
     }
+    const defaultAccounts = await dependencies.bootstrapDefaultAccounts(
+      prisma,
+      DEFAULT_APP_ACCOUNT_PASSWORD,
+    )
+    dependencies.log(
+      `Default accounts: created=${defaultAccounts.created.length} updated=${defaultAccounts.updated.length}`,
+    )
     const backfill = await dependencies.backfillQuestionnaires(prisma)
     dependencies.log(
       `Questionnaire backfill: scanned=${backfill.scanned} created=${backfill.created} skipped=${backfill.skipped}`,

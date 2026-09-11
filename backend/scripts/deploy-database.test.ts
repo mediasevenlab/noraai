@@ -46,6 +46,8 @@ describe('database deployment command', () => {
       'log',
       'backfill-meal-versions',
       'log',
+      'bootstrap-default-accounts',
+      'log',
       'backfill',
       'log',
       'assert',
@@ -73,6 +75,8 @@ describe('database deployment command', () => {
       'backfill-meal-versions',
       'log',
       'bootstrap:admin@example.com',
+      'bootstrap-default-accounts',
+      'log',
       'backfill',
       'log',
       'assert',
@@ -125,6 +129,9 @@ const unusedDependencies = {
   async bootstrap() {
     throw new Error('bootstrap must not run')
   },
+  async bootstrapDefaultAccounts() {
+    throw new Error('bootstrapDefaultAccounts must not run')
+  },
   createDatabase() {
     throw new Error('createDatabase must not run')
   },
@@ -164,6 +171,10 @@ function dependenciesRecording(calls: string[]) {
       config: { email: string },
     ) {
       calls.push(`bootstrap:${config.email}`)
+    },
+    async bootstrapDefaultAccounts() {
+      calls.push('bootstrap-default-accounts')
+      return { created: [], updated: [] }
     },
     createDatabase() {
       calls.push('create')

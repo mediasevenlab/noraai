@@ -58,5 +58,11 @@ export function createUsersModule(options: CreateUsersModuleOptions) {
 
 export { createQuestionnaireProjectUser }
 export { uniqueQuestionnaireAnswers } from './domain/questionnaire'
+export {
+  DEFAULT_APP_ACCOUNT_PASSWORD,
+  DEFAULT_APP_ACCOUNTS,
+} from './domain/default-accounts'
+export { bootstrapDefaultAccounts } from './infrastructure/default-accounts-bootstrap'
+export type { DefaultAccountsBootstrapResult } from './infrastructure/default-accounts-bootstrap'
 export { backfillUserQuestionnaires } from './infrastructure/questionnaire-backfill'
 export { createTelegramLinkStore } from './infrastructure/telegram-link-store'
