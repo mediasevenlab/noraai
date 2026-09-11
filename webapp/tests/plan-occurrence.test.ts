@@ -4,10 +4,14 @@ import { FEED_DIARY_SOURCE_MARK } from '../src/features/diary/feed-import'
 import { writePlanStartDate } from '../src/platform/plan-start'
 import {
   clearSkippedPlanMealIds,
+  diaryPlanIdForMeal,
   diaryPlanStartForMeal,
   keepsWeeklyPlanOnDiaryDelete,
   mealListAfterPlanDone,
+  orderDiaryDayByPlanLayout,
+  planLayoutSlotIndex,
   planOccurrenceDiaryAt,
+  planOccurrenceDiaryAtWithLayout,
   planOccurrenceStampWhilePending,
   readSkippedPlanMealIds,
   writeSkippedPlanMealIds,
@@ -221,5 +225,167 @@ describe('diary vs weekly plan occurrences', () => {
         value: originalStorage,
       })
     }
+  })
+
+  test('pending meals follow a same-day plan layout reorder', () => {
+    const turkey = {
+      ...pendingPlanMeal,
+      id: 'turkey',
+      at: new Date(2026, 8, 1, 8, 30, 0).toISOString(),
+    }
+    const apple = {
+      ...pendingPlanMeal,
+      id: 'apple',
+      at: new Date(2026, 8, 1, 13, 0, 0).toISOString(),
+    }
+    const fish = {
+      ...pendingPlanMeal,
+      id: 'fish',
+      at: new Date(2026, 8, 1, 19, 0, 0).toISOString(),
+    }
+    const planMeals = [turkey, apple, fish]
+    const start = new Date(2026, 8, 3, 12, 0, 0)
+    const layout = { '2026-09-01': ['apple', 'turkey', 'fish'] }
+    const appleAt = planOccurrenceDiaryAtWithLayout(apple, {
+      now: TUESDAY_THIS_WEEK,
+      planStart: start,
+      layout,
+      planMeals,
+    })
+    const turkeyAt = planOccurrenceDiaryAtWithLayout(turkey, {
+      now: TUESDAY_THIS_WEEK,
+      planStart: start,
+      layout,
+      planMeals,
+    })
+    const fishAt = planOccurrenceDiaryAtWithLayout(fish, {
+      now: TUESDAY_THIS_WEEK,
+      planStart: start,
+      layout,
+      planMeals,
+    })
+    expect(new Date(appleAt).getDate()).toBe(4)
+    expect(new Date(appleAt).getHours()).toBe(8)
+    expect(new Date(appleAt).getMinutes()).toBe(30)
+    expect(new Date(turkeyAt).getHours()).toBe(13)
+    expect(new Date(fishAt).getHours()).toBe(19)
+    expect(appleAt < turkeyAt && turkeyAt < fishAt).toBe(true)
+  })
+
+  test('pending meals follow a layout move onto another plan day', () => {
+    const turkey = {
+      ...pendingPlanMeal,
+      id: 'turkey',
+      at: new Date(2026, 8, 1, 8, 30, 0).toISOString(),
+    }
+    const apple = {
+      ...pendingPlanMeal,
+      id: 'apple',
+      at: new Date(2026, 8, 1, 13, 0, 0).toISOString(),
+    }
+    const start = new Date(2026, 8, 3, 12, 0, 0)
+    const appleAt = planOccurrenceDiaryAtWithLayout(apple, {
+      now: TUESDAY_THIS_WEEK,
+      planStart: start,
+      layout: { '2026-09-01': ['turkey'], '2026-09-02': ['apple'] },
+      planMeals: [turkey, apple],
+    })
+    expect(new Date(appleAt).getDate()).toBe(5)
+    expect(
+      planOccurrenceDiaryAtWithLayout(turkey, {
+        now: TUESDAY_THIS_WEEK,
+        planStart: start,
+        layout: { '2026-09-01': ['turkey'], '2026-09-02': ['apple'] },
+        planMeals: [turkey, apple],
+      }),
+    ).toBe(planOccurrenceDiaryAt(turkey, undefined, TUESDAY_THIS_WEEK, start))
+  })
+
+  test('completed plan meals ignore layout and keep their occurrence', () => {
+    const turkey = {
+      ...pendingPlanMeal,
+      id: 'turkey',
+      at: new Date(2026, 8, 1, 8, 30, 0).toISOString(),
+      assumptions: [...pendingPlanMeal.assumptions, RATION_DIARY_DONE_MARK],
+    }
+    const apple = {
+      ...pendingPlanMeal,
+      id: 'apple',
+      at: new Date(2026, 8, 1, 13, 0, 0).toISOString(),
+    }
+    const start = new Date(2026, 8, 3, 12, 0, 0)
+    const layout = { '2026-09-01': ['apple', 'turkey'] }
+    const planMeals = [turkey, apple]
+    const turkeyAt = planOccurrenceDiaryAtWithLayout(turkey, {
+      now: TUESDAY_THIS_WEEK,
+      planStart: start,
+      layout,
+      planMeals,
+    })
+    const appleAt = planOccurrenceDiaryAtWithLayout(apple, {
+      now: TUESDAY_THIS_WEEK,
+      planStart: start,
+      layout,
+      planMeals,
+    })
+    expect(turkeyAt).toBe(planOccurrenceDiaryAt(turkey, undefined, TUESDAY_THIS_WEEK, start))
+    expect(new Date(turkeyAt).getHours()).toBe(8)
+    expect(new Date(appleAt).getHours()).toBe(8)
+    expect(new Date(appleAt).getMinutes()).toBe(30)
+  })
+
+  test('frozen diary stamps win over a later plan layout', () => {
+    const frozenAt = new Date(2026, 8, 10, 10, 0, 0).toISOString()
+    const layout = { '2026-09-02': [pendingPlanMeal.id] }
+    expect(
+      planOccurrenceDiaryAtWithLayout(pendingPlanMeal, {
+        frozenAt,
+        now: TUESDAY_THIS_WEEK,
+        planStart: new Date(2026, 8, 3, 12, 0, 0),
+        layout,
+        planMeals: [pendingPlanMeal],
+      }),
+    ).toBe(frozenAt)
+  })
+
+  test('meals missing from the layout keep the occurrence stamp', () => {
+    const start = new Date(2026, 8, 3, 12, 0, 0)
+    expect(
+      planOccurrenceDiaryAtWithLayout(pendingPlanMeal, {
+        now: TUESDAY_THIS_WEEK,
+        planStart: start,
+        layout: { '2026-09-01': ['other-meal'] },
+        planMeals: [pendingPlanMeal],
+      }),
+    ).toBe(planOccurrenceDiaryAt(pendingPlanMeal, undefined, TUESDAY_THIS_WEEK, start))
+  })
+
+  test('diary meal plan id follows the selected plan that owns it', () => {
+    expect(diaryPlanIdForMeal(pendingPlanMeal, new Set([PLAN_ID, 'plan_office']))).toBe(PLAN_ID)
+  })
+
+  test('a diary day shows pending plan meals in board order, not newest-first', () => {
+    const turkey = { id: 'turkey' }
+    const apple = { id: 'apple' }
+    const fish = { id: 'fish' }
+    const croissant = { id: 'croissant' }
+    const layout = { '2026-09-01': ['apple', 'fish', 'turkey'] }
+    const ordered = orderDiaryDayByPlanLayout(
+      [turkey, fish, apple, croissant],
+      (meal) => planLayoutSlotIndex(meal.id, layout),
+    )
+    expect(ordered.map((meal) => meal.id)).toEqual(['apple', 'fish', 'turkey', 'croissant'])
+  })
+
+  test('completed diary cards stay put while pending plan meals follow the board', () => {
+    const turkey = { id: 'turkey', pinned: true }
+    const apple = { id: 'apple', pinned: false }
+    const fish = { id: 'fish', pinned: false }
+    const layout = { '2026-09-01': ['apple', 'fish', 'turkey'] }
+    const ordered = orderDiaryDayByPlanLayout(
+      [turkey, fish, apple],
+      (meal) => (meal.pinned ? null : planLayoutSlotIndex(meal.id, layout)),
+    )
+    expect(ordered.map((meal) => meal.id)).toEqual(['turkey', 'apple', 'fish'])
   })
 })

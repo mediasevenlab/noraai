@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 
 import { ApiRequestError } from '../src/platform/api'
-import { catalogCloneErrorMessage, mealCreateImageFields } from '../src/features/plans/plan-create'
+import { catalogCloneErrorMessage, firstDurablePlanCover, mealCreateImageFields } from '../src/features/plans/plan-create'
 
 test('plan create reuses the ration editor and stamps meals on chosen days', () => {
   const page = readFileSync(new URL('../src/features/plans/pages.tsx', import.meta.url), 'utf8')
@@ -18,12 +18,14 @@ test('plan create reuses the ration editor and stamps meals on chosen days', () 
   expect(page).toContain('stampRationDaysOntoPlan(')
   expect(page).toContain('onSaveDays=')
   expect(page).toContain('saveCreatedPlan(days)')
+  expect(page).toContain('firstDurablePlanCover(')
   expect(page).toContain('stampDaysOntoPlan(days, created.id)')
   expect(page).toContain('stampRationDaysOntoPlan(auth.transport, days, planId)')
   expect(create).toContain('rationMealCreateDrafts(')
   expect(create).toContain('rationPlanWeekDays(')
   expect(create).toContain('createMyMeal(')
-  expect(create).toContain('mealCreateImageFields(')
+  expect(create).toContain('preferredMealPhotoSrc(')
+  expect(create).toContain('firstDurablePlanCover(')
   expect(page).not.toContain('CreatePlanDialog')
   expect(editor).toContain("mode?: 'ration' | 'plan'")
   expect(editor).toContain("const showGoal = mode === 'ration'")
@@ -40,6 +42,19 @@ test('inline meal photos become create-meal image fields', () => {
   expect(
     mealCreateImageFields('data:image/png;base64,xyz'),
   ).toEqual({ imageBase64: 'xyz', imageMime: 'image/png' })
+})
+
+test('durable plan cover prefers a saved photo then the first stamped meal', () => {
+  expect(firstDurablePlanCover('/plans/office.jpg', [{ imageUrl: '/diary/croissant.jpg' }])).toBe(
+    '/plans/office.jpg',
+  )
+  expect(firstDurablePlanCover('', [{ imageUrl: '/diary/croissant.jpg' }])).toBe(
+    '/diary/croissant.jpg',
+  )
+  expect(
+    firstDurablePlanCover('data:image/jpeg;base64,abc', [{ imageUrl: '/diary/croissant.jpg' }]),
+  ).toBe('/diary/croissant.jpg')
+  expect(firstDurablePlanCover('/diary/meal-preview-placeholder.jpg', [])).toBe('')
 })
 
 test('catalog clone maps rate-limit failures to a Russian retry', () => {

@@ -11,6 +11,7 @@ import {
   PLAN_MOBILE_DOCK_ACTION_ID,
   PLAN_MOBILE_DOCK_EXTRA_ID,
   PLAN_MOBILE_DOCK_MOVE_ID,
+  PLAN_MOBILE_DOCK_EDIT_ID,
 } from './mobile-dock'
 import { CurrentPlanPage, PlanPage } from './pages'
 import { PLAN_PILL_TAB_CLASS, planToolbarPillClass } from './PlanToolbar'
@@ -83,14 +84,17 @@ function GeneralMobileDock({
   return (
     <div className={cn(MOBILE_DOCK_BOTTOM_CLASS, 'left-4 flex items-center gap-2')}>
       {onBack ? (
-        <button
-          aria-label="Назад"
-          className={MOBILE_DOCK_FAB_CLASS}
-          onClick={onBack}
-          type="button"
-        >
-          <ArrowLeftIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_CLASS} strokeWidth={1.75} />
-        </button>
+        <>
+          <button
+            aria-label="Назад"
+            className={MOBILE_DOCK_FAB_CLASS}
+            onClick={onBack}
+            type="button"
+          >
+            <ArrowLeftIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_CLASS} strokeWidth={1.75} />
+          </button>
+          <span className="flex items-center gap-2 empty:hidden" id={PLAN_MOBILE_DOCK_EDIT_ID} />
+        </>
       ) : null}
       {inPlanDetail ? (
         <span className="flex items-center gap-2 empty:hidden" id={PLAN_MOBILE_DOCK_MOVE_ID} />

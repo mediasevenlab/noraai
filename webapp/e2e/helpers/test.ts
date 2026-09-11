@@ -127,6 +127,7 @@ export async function createNamedPlan(
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByPlaceholder('Например, Офис без срывов')).toBeVisible()
   await dialog.getByPlaceholder('Например, Офис без срывов').fill(title)
+  await dialog.getByRole('button', { name: 'Открыть день 1' }).click()
   await dialog.getByRole('tab', { name: 'Завтрак' }).click()
   await dialog.getByPlaceholder('Название блюда').fill(mealTitle)
   await dialog.getByRole('button', { name: 'Создать рацион' }).click()

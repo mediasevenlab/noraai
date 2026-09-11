@@ -1,5 +1,6 @@
 import { rationGoalSchema } from '@web-app-demo/contracts'
 
+import { PLAN_SLOT_COUNT } from '@/platform/plan-slots'
 import type { SavedAccountScope } from '@/platform/saved-ids'
 
 export const AUTHORED_PLAN_ID_PREFIX = 'plan_'
@@ -19,6 +20,8 @@ export type AuthoredPlan = {
   createdAt: string
   goal: PlanGoal | null
   sourceCatalogId?: string
+  /** Authored day count, including trailing empty days. */
+  dayCount?: number
 }
 
 export function isAuthoredPlanId(planId: string) {
@@ -34,6 +37,13 @@ export function parsePlanGoal(value: unknown): PlanGoal | null {
   return parsed.success ? parsed.data : null
 }
 
+export function parseAuthoredPlanDayCount(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined
+  const count = Math.trunc(value)
+  if (count < 1 || count > PLAN_SLOT_COUNT) return undefined
+  return count
+}
+
 export function createAuthoredPlan(input: {
   title: string
   coverImage: string
@@ -41,11 +51,13 @@ export function createAuthoredPlan(input: {
   id?: string
   goal?: PlanGoal | null
   sourceCatalogId?: string
+  dayCount?: number
 }): AuthoredPlan | null {
   const title = input.title.trim()
   if (!title) return null
   const requestedId = input.id?.trim() ?? ''
   const sourceCatalogId = input.sourceCatalogId?.trim() || undefined
+  const dayCount = parseAuthoredPlanDayCount(input.dayCount)
   return {
     id: requestedId && isAuthoredPlanId(requestedId)
       ? requestedId
@@ -56,6 +68,7 @@ export function createAuthoredPlan(input: {
     createdAt: new Date().toISOString(),
     goal: input.goal ?? null,
     ...(sourceCatalogId ? { sourceCatalogId } : {}),
+    ...(dayCount ? { dayCount } : {}),
   }
 }
 
@@ -88,6 +101,7 @@ function parseAuthoredPlans(raw: string | null): AuthoredPlan[] {
       seen.add(id)
       const sourceCatalogId =
         typeof record.sourceCatalogId === 'string' ? record.sourceCatalogId.trim() : ''
+      const dayCount = parseAuthoredPlanDayCount(record.dayCount)
       plans.push({
         id,
         title,
@@ -96,6 +110,7 @@ function parseAuthoredPlans(raw: string | null): AuthoredPlan[] {
         createdAt: typeof record.createdAt === 'string' ? record.createdAt : '',
         goal: parsePlanGoal(record.goal),
         ...(sourceCatalogId.startsWith('catalog_') ? { sourceCatalogId } : {}),
+        ...(dayCount ? { dayCount } : {}),
       })
     }
     return plans

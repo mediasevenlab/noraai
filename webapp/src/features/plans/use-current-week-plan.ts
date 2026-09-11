@@ -13,6 +13,7 @@ import {
   usePlanAssignmentQuery,
 } from '@/features/mentor'
 
+import { applyPlanOutline, readPlanOutline, WEEK_PLAN_OUTLINE_KEY } from './plan-outline'
 import { buildCurrentWeekPlan } from './week-plan'
 
 export function useCurrentWeekPlan() {
@@ -44,10 +45,22 @@ export function useCurrentWeekPlan() {
     setLoadedDetachedIdentity(detachedIdentity)
     setDetachedIds(readDetachedPlanMealIds(savedScope))
   }
+  const [weekOutline, setWeekOutline] = React.useState(() =>
+    readPlanOutline(savedScope, WEEK_PLAN_OUTLINE_KEY),
+  )
+  const [loadedOutlineIdentity, setLoadedOutlineIdentity] = React.useState(detachedIdentity)
+  if (loadedOutlineIdentity !== detachedIdentity) {
+    setLoadedOutlineIdentity(detachedIdentity)
+    setWeekOutline(readPlanOutline(savedScope, WEEK_PLAN_OUTLINE_KEY))
+  }
 
   const plan = React.useMemo(
-    () => buildCurrentWeekPlan({ completedIds, detachedIds, meals, rations }),
-    [completedIds, detachedIds, meals, rations],
+    () =>
+      applyPlanOutline(
+        buildCurrentWeekPlan({ completedIds, detachedIds, meals, rations }),
+        weekOutline,
+      ),
+    [completedIds, detachedIds, meals, rations, weekOutline],
   )
 
   function detachPlanMeal(mealId: string) {
@@ -57,6 +70,10 @@ export function useCurrentWeekPlan() {
     setDetachedIds(next)
   }
 
+  function applyWeekOutline(next: { title: string; description: string } | null) {
+    setWeekOutline(next)
+  }
+
   return {
     plan,
     meals,
@@ -64,6 +81,7 @@ export function useCurrentWeekPlan() {
     completedIds,
     detachedIds,
     detachPlanMeal,
+    applyWeekOutline,
     isPending: mealsQuery.isPending,
     isError: mealsQuery.isError,
   }

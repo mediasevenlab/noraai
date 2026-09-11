@@ -25,6 +25,26 @@ export function isPersistedMealImageUrl(url: string | undefined): boolean {
   return !/\/api\/meals\/[^/]+\/(?:image|extras\/\d+)\/?$/.test(url)
 }
 
+/** Real photo for plan covers and meal copies — skip empty stubs and the collage placeholder. */
+export function usableMealCover(src: string | undefined): string {
+  const cover = src?.trim() ?? ''
+  if (!cover || cover === MEAL_COVER_PLACEHOLDER_SRC) return ''
+  if (cover.startsWith('data:')) return cover
+  if (!isPersistedMealImageUrl(cover)) return ''
+  return cover
+}
+
+export function preferredMealPhotoSrc(meal: {
+  image?: string
+  extraImages?: readonly string[]
+}) {
+  return (
+    usableMealCover(meal.image) ||
+    meal.extraImages?.map((src) => usableMealCover(src)).find(Boolean) ||
+    ''
+  )
+}
+
 export function resolveMealCover(imageUrl: string | undefined, title: string): string {
   if (isPersistedMealImageUrl(imageUrl)) return imageUrl!
   const catalog = MEAL_CATALOG.find((meal) => meal.title === title)

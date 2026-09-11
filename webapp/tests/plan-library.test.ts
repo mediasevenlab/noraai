@@ -42,6 +42,26 @@ test('putRequestFromSnapshot keeps week selection and authored metadata', () => 
   expect(isEmptyPlanLibrary({ ...request, updatedAt: null })).toBe(false)
 })
 
+test('putRequestFromSnapshot keeps authored empty-day count', () => {
+  const counted = { ...authored, dayCount: 4 }
+  const request = putRequestFromSnapshot(
+    {
+      authoredPlans: [counted],
+      savedPlanIds: [],
+      selectedPlanIds: [],
+      planStarts: {},
+    },
+    new Date('2026-09-07T12:00:00.000Z'),
+  )
+  expect(request.authoredPlans[0]?.dayCount).toBe(4)
+  const library = toUserPlanLibrary({
+    ...request,
+    authoredPlans: [{ ...request.authoredPlans[0]!, createdAt: authored.createdAt }],
+    updatedAt: '2026-09-07T12:00:00.000Z',
+  })
+  expect(snapshotFromPlanLibrary(library).authoredPlans[0]?.dayCount).toBe(4)
+})
+
 test('snapshot helpers add and remove authored plans', () => {
   const empty = {
     authoredPlans: [],

@@ -107,6 +107,7 @@ test('sidebar keeps Общее as the only diary and plan surface', () => {
     generalPage.lastIndexOf('PLAN_MOBILE_DOCK_EXTRA_ID'),
   )
   expect(generalPage).toContain('PLAN_MOBILE_DOCK_MOVE_ID')
+  expect(generalPage).toContain('PLAN_MOBILE_DOCK_EDIT_ID')
   expect(generalPage).toContain('DIARY_MOBILE_DOCK_MOVE_ID')
   expect(generalPage).toContain('inPlanDetail')
   expect(generalPage).toContain('requestAddMeal')

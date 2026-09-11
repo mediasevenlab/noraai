@@ -5,6 +5,8 @@ import {
   MEAL_COVER_PLACEHOLDER_SRC,
   mealsForWeekPlan,
   rationIdFromAssumptions,
+  usableMealCover,
+  preferredMealPhotoSrc,
   type MealEntry,
 } from '@/features/diary'
 import {
@@ -15,7 +17,7 @@ import {
   type RationEntry,
 } from '@/features/mentor'
 import type { PlanGoal } from '@/platform/authored-plans'
-import { addLocalDays } from '@/platform/plan-slots'
+import { addLocalDays, PLAN_SLOT_COUNT } from '@/platform/plan-slots'
 
 import type { CatalogPlan } from './plan-catalog'
 
@@ -75,6 +77,62 @@ export function planDayTabParts(day: Pick<WeekPlanDay, 'short' | 'label'>, index
     ordinal,
     label: `День ${ordinal}`,
   }
+}
+
+export function emptyPlanEditorDay(slot: {
+  date: Date
+  dayKey: string
+  short: string
+  label: string
+}): WeekPlanDay {
+  return {
+    dayKey: slot.dayKey,
+    short: slot.short,
+    label: slot.label,
+    dayIso: dayIsoFromDate(slot.date),
+    filled: false,
+    ration: null,
+    meals: [],
+    mealsCount: 0,
+    kcal: 0,
+    done: false,
+  }
+}
+
+/** Rebuild leading/hole/trailing empty days so the editor matches the authored day count. */
+export function padPlanDaysForEditor(
+  days: readonly WeekPlanDay[],
+  now = new Date(),
+  dayCount = 0,
+): WeekPlanDay[] {
+  const requested = Number.isFinite(dayCount) ? Math.trunc(dayCount) : 0
+  if (days.length === 0 && requested <= 0) return []
+  const byOrdinal = new Map<number, WeekPlanDay>()
+  for (const [index, day] of days.entries()) {
+    byOrdinal.set(planDayOrdinal(day, index + 1), day)
+  }
+  const maxOrdinal = Math.min(
+    PLAN_SLOT_COUNT,
+    Math.max(days.length, requested, ...byOrdinal.keys()),
+  )
+  const weekDays = rationPlanWeekDays(now)
+  const padded: WeekPlanDay[] = []
+  for (let ordinal = 1; ordinal <= maxOrdinal; ordinal += 1) {
+    const existing = byOrdinal.get(ordinal)
+    if (existing) {
+      padded.push({ ...existing, meals: [...existing.meals] })
+      continue
+    }
+    const slot = weekDays[ordinal - 1]
+    if (!slot) break
+    padded.push(emptyPlanEditorDay(slot))
+  }
+  return padded
+}
+
+/** Plan board hides days that currently have no meals; the editor still keeps them. */
+export function filledPlanBoardDays(days: readonly WeekPlanDay[]) {
+  return days.filter((day) => day.meals.length > 0)
 }
 
 /** Always open a plan on its first day (Day 1), not “today”. */
@@ -153,7 +211,8 @@ function syntheticRationFromMeals(id: string, meals: readonly MealEntry[]): Rati
     }),
     { kcal: 0, protein: 0, fat: 0, carbs: 0 },
   )
-  const cover = meals.find((meal) => meal.image.trim())?.image || MEAL_COVER_PLACEHOLDER_SRC
+  const cover =
+    meals.map((meal) => usableMealCover(meal.image)).find(Boolean) || MEAL_COVER_PLACEHOLDER_SRC
   return {
     id,
     title: meals[0]?.title || 'Рацион',
@@ -253,7 +312,9 @@ export function buildWeekPlan(input: {
     mealsCount,
     goal: input.goal ?? null,
     coverImage:
-      firstPlanCoverImage(slots) || input.coverImage || MEAL_COVER_PLACEHOLDER_SRC,
+      usableMealCover(input.coverImage) ||
+      firstPlanCoverImage(slots) ||
+      MEAL_COVER_PLACEHOLDER_SRC,
     cardDays,
     days,
   }
@@ -294,7 +355,10 @@ export function buildWeekPlanFromRation(input: {
     mealsCount: slots.reduce((sum, day) => sum + day.mealsCount, 0),
     goal: input.goal ?? input.ration.goal,
     coverImage:
-      firstPlanCoverImage(slots) || input.coverImage || input.ration.image || MEAL_COVER_PLACEHOLDER_SRC,
+      usableMealCover(input.coverImage) ||
+      firstPlanCoverImage(slots) ||
+      usableMealCover(input.ration.image) ||
+      MEAL_COVER_PLACEHOLDER_SRC,
     cardDays: slots.slice(0, WEEK_PLAN_CARD_SLOTS),
     days,
   }
@@ -331,7 +395,9 @@ export function buildWeekPlanFromCatalog(input: {
     mealsCount: slots.reduce((sum, day) => sum + day.mealsCount, 0),
     goal: input.plan.goal,
     coverImage:
-      firstPlanCoverImage(slots) || input.plan.coverImage || MEAL_COVER_PLACEHOLDER_SRC,
+      usableMealCover(input.plan.coverImage) ||
+      firstPlanCoverImage(slots) ||
+      MEAL_COVER_PLACEHOLDER_SRC,
     cardDays: slots.slice(0, WEEK_PLAN_CARD_SLOTS),
     days,
   }
@@ -370,9 +436,10 @@ function previewMealsFromRation(ration: RationEntry, day: Date, planId: string):
 
 function firstPlanCoverImage(slots: readonly WeekPlanDay[]) {
   for (const day of slots) {
-    const meal = day.meals.find((item) => item.image.trim())
-    if (meal) return meal.image
-    if (day.ration?.image.trim()) return day.ration.image
+    const mealCover = day.meals.map((item) => preferredMealPhotoSrc(item)).find(Boolean)
+    if (mealCover) return mealCover
+    const rationCover = usableMealCover(day.ration?.image)
+    if (rationCover) return rationCover
   }
   return ''
 }

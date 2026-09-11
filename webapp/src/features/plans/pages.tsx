@@ -22,6 +22,7 @@ import {
   emptyRationDraft,
   isAuthoredPlanId,
   mentorRationToEntry,
+  rationPlanWeekDays,
   RationEditorDialog,
   usePlanAssignmentQuery,
   type RationDraft,
@@ -32,6 +33,7 @@ import {
   mealsQueryKeys,
   planOccurrenceDiaryAt,
   SkeletonMealCard,
+  usableMealCover,
 } from '@/features/diary'
 import {
   isAssignedPlanId,
@@ -51,6 +53,7 @@ import {
   MOBILE_DOCK_FAB_ICON_CLASS,
   MOBILE_DOCK_PILL_CLASS,
   PLAN_MOBILE_DOCK_ACTION_ID,
+  PLAN_MOBILE_DOCK_EDIT_ID,
   PLAN_MOBILE_DOCK_EXTRA_ID,
 } from './mobile-dock'
 import {
@@ -59,8 +62,20 @@ import {
   isCatalogPlanId,
   PLAN_CATALOG,
 } from './plan-catalog'
-import { stampRationDaysOntoPlan, catalogCloneErrorMessage } from './plan-create'
+import { stampRationDaysOntoPlan, catalogCloneErrorMessage, firstDurablePlanCover } from './plan-create'
+import { PlanOutlineDialog } from './PlanOutlineDialog'
 import { PlanPageShell } from './PlanPageShell'
+import {
+  applyPlanMealLayout,
+  layoutFromDays,
+  planLayoutDayCount,
+  readPlanMealLayout,
+  writePlanMealLayout,
+} from './plan-meal-layout'
+import {
+  WEEK_PLAN_OUTLINE_KEY,
+  writePlanOutline,
+} from './plan-outline'
 import { PlanStartDialog } from './PlanStartDialog'
 import { useSyncedPlanLibrary } from './use-plan-library'
 import { PlanToolbar, visiblePlanCards, partitionPlanCards, PlanGroupPlaque, PLAN_GROUP_ICONS, planToolbarPillClass, type PlanFeedTab, type PlanLibrary } from './PlanToolbar'
@@ -214,7 +229,7 @@ export function PlanPage({
       : allCards.find((plan) => plan.id === startPickerPlanId) ?? null
 
   async function stampDaysOntoPlan(days: readonly RationEntry[], planId: string) {
-    if (!auth.user || auth.user.role !== 'user') return
+    if (!auth.user || auth.user.role !== 'user') return []
     const createdMeals = await stampRationDaysOntoPlan(auth.transport, days, planId)
     queryClient.setQueryData<{ items: Array<(typeof createdMeals)[number]['meal']> }>(
       mealsQueryKeys.forSubject(auth.user.id),
@@ -224,6 +239,7 @@ export function PlanPage({
       },
     )
     await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.forSubject(auth.user.id) })
+    return createdMeals
   }
 
   async function stampRationOntoPlan(ration: RationEntry, planId: string) {
@@ -321,22 +337,33 @@ export function PlanPage({
     setStartPickerPlanId(planId)
   }
 
-  async function saveCreatedPlan(days: readonly RationEntry[]) {
+  async function saveCreatedPlan(days: readonly RationEntry[], dayCount = days.length) {
     const ration = days[0]
     if (!ration || creating) return
     const created = createAuthoredPlan({
       coverImage:
-        days.map((day) => day.image).find((image) => image.trim()) || ration.image,
+        usableMealCover(days.map((day) => day.image).find(Boolean)) ||
+        days.flatMap((day) => day.meals).map((meal) => usableMealCover(meal.image)).find(Boolean) ||
+        ration.image,
       description: ration.description,
       goal: parsePlanGoal(ration.goal),
       id: ration.id,
       title: ration.title,
+      dayCount,
     })
     if (!created) return
     setCreating(true)
     try {
-      await stampDaysOntoPlan(days, created.id)
-      persist(withAuthoredPlan(snapshot, created))
+      const createdMeals = await stampDaysOntoPlan(days, created.id)
+      persist(
+        withAuthoredPlan(snapshot, {
+          ...created,
+          coverImage: firstDurablePlanCover(
+            created.coverImage,
+            createdMeals.map((item) => item.meal),
+          ),
+        }),
+      )
       setCreateDraft(null)
       toast.success('План создан')
     } catch (error) {
@@ -499,8 +526,8 @@ export function PlanPage({
         onSave={(ration) => {
           void saveCreatedPlan([ration])
         }}
-        onSaveDays={(days) => {
-          void saveCreatedPlan(days)
+        onSaveDays={(days, dayCount) => {
+          void saveCreatedPlan(days, dayCount)
         }}
         open={createDraft != null}
         ownerId={savedScope.userId}
@@ -555,6 +582,7 @@ export function CurrentPlanPage({
     completedIds,
     detachedIds,
     detachPlanMeal,
+    applyWeekOutline,
     isPending,
     isError,
   } = useCurrentWeekPlan()
@@ -563,6 +591,8 @@ export function CurrentPlanPage({
   const authored = snapshot.authoredPlans
   const assignment = usePlanAssignmentQuery(savedScope.userId, false, Boolean(auth.user))
   const [adding, setAdding] = React.useState(false)
+  const [editing, setEditing] = React.useState(false)
+  const [layoutRevision, setLayoutRevision] = React.useState(0)
   const catalog = planId ? catalogPlanById(planId) : null
   const cloned = catalog ? authoredCloneOfCatalog(authored, catalog.id) : null
   const plan = React.useMemo(() => {
@@ -617,8 +647,23 @@ export function CurrentPlanPage({
       })),
     }))
   }, [completedIds, plan, planStart])
+  const outlineDays = React.useMemo(() => {
+    if (!plan) return scheduledDays
+    return applyPlanMealLayout(scheduledDays, readPlanMealLayout(savedScope, plan.id))
+  }, [layoutRevision, plan, savedScope.email, savedScope.userId, scheduledDays])
+  const editorDayCount = React.useMemo(() => {
+    if (!plan) return 0
+    const stored = authored.find((item) => item.id === plan.id)?.dayCount ?? 0
+    const layoutCount = planLayoutDayCount(
+      readPlanMealLayout(savedScope, plan.id),
+      rationPlanWeekDays().map((day) => day.dayKey),
+    )
+    return Math.max(stored, layoutCount)
+  }, [authored, layoutRevision, plan, savedScope.email, savedScope.userId])
   const catalogView = Boolean(catalog)
+  const canEdit = Boolean(plan && !catalogView && !isAssignedPlanId(plan.id))
   const [dockExtra, setDockExtra] = React.useState<HTMLElement | null>(null)
+  const [dockEdit, setDockEdit] = React.useState<HTMLElement | null>(null)
   React.useLayoutEffect(() => {
     if (showMobileBackDock || !catalogView) {
       setDockExtra(null)
@@ -626,6 +671,13 @@ export function CurrentPlanPage({
     }
     setDockExtra(document.getElementById(PLAN_MOBILE_DOCK_EXTRA_ID))
   }, [catalogView, planId, showMobileBackDock])
+  React.useLayoutEffect(() => {
+    if (showMobileBackDock) {
+      setDockEdit(null)
+      return
+    }
+    setDockEdit(document.getElementById(PLAN_MOBILE_DOCK_EDIT_ID))
+  }, [planId, showMobileBackDock])
   const badge = plan
     ? catalogView
       ? 'Каталог'
@@ -702,6 +754,101 @@ export function CurrentPlanPage({
     </button>
   ) : null
 
+  function openEditor() {
+    setLayoutRevision((current) => current + 1)
+    setEditing(true)
+  }
+
+  const desktopEditButton = canEdit ? (
+    <button
+      className={`${planToolbarPillClass} nora-press-grow inline-flex shrink-0 flex-row items-center justify-center gap-1.5 whitespace-nowrap px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]`}
+      data-plan-outline-open=""
+      onClick={() => openEditor()}
+      type="button"
+    >
+      Редактировать
+    </button>
+  ) : null
+  const mobileEditButton = canEdit ? (
+    <button
+      className={MOBILE_DOCK_PILL_CLASS}
+      data-plan-outline-open=""
+      onClick={() => openEditor()}
+      type="button"
+    >
+      Редактировать
+    </button>
+  ) : null
+
+  async function saveOutline(next: {
+    title: string
+    description: string
+    coverImage: string
+    days: typeof scheduledDays
+    newDayRations: RationEntry[]
+  }) {
+    const title = next.title.trim()
+    if (!title) {
+      toast.error('Назовите план')
+      return
+    }
+    if (!plan) return
+    let stampedMeals: Array<{ meal: { imageUrl?: string } }> = []
+    const hasNewMeals = next.newDayRations.some((ration) => ration.meals.length > 0)
+    if (hasNewMeals) {
+      if (!auth.user || auth.user.role !== 'user') {
+        toast.error('Войдите, чтобы сохранить приёмы')
+        return
+      }
+      try {
+        const createdMeals = await stampRationDaysOntoPlan(
+          auth.transport,
+          next.newDayRations,
+          plan.id,
+        )
+        stampedMeals = createdMeals
+        queryClient.setQueryData<{ items: Array<(typeof createdMeals)[number]['meal']> }>(
+          mealsQueryKeys.forSubject(auth.user.id),
+          (previous) => {
+            const kept = previous?.items ?? []
+            return { items: [...createdMeals.map((item) => item.meal), ...kept] }
+          },
+        )
+        await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.forSubject(auth.user.id) })
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Не удалось сохранить приёмы')
+        return
+      }
+    }
+    const mealCover =
+      next.days.flatMap((day) => day.meals).map((meal) => usableMealCover(meal.image)).find(Boolean) ||
+      ''
+    const coverImage = firstDurablePlanCover(next.coverImage || mealCover, [
+      ...stampedMeals.map((item) => item.meal),
+      ...next.days.flatMap((day) => day.meals).map((meal) => ({ imageUrl: usableMealCover(meal.image) })),
+    ])
+    const authoredPlan = authored.find((item) => item.id === plan.id)
+    if (authoredPlan) {
+      persist(
+        withAuthoredPlan(snapshot, {
+          ...authoredPlan,
+          title,
+          description: next.description.trim(),
+          coverImage: coverImage || authoredPlan.coverImage,
+          dayCount: next.days.length,
+        }),
+      )
+    } else {
+      const outline = { title, description: next.description.trim() }
+      writePlanOutline(savedScope, WEEK_PLAN_OUTLINE_KEY, outline)
+      applyWeekOutline(outline)
+    }
+    writePlanMealLayout(savedScope, plan.id, layoutFromDays(next.days))
+    setLayoutRevision((current) => current + 1)
+    setEditing(false)
+    toast.success('План сохранён')
+  }
+
   return (
     <>
     <PlanPageShell
@@ -759,6 +906,7 @@ export function CurrentPlanPage({
                 >
                   <ArrowLeftIcon aria-hidden />
                 </button>
+                {desktopEditButton}
                 {catalogView ? (
                   <button
                     className={`${planToolbarPillClass} nora-press-grow inline-flex shrink-0 flex-row items-center justify-center gap-1.5 whitespace-nowrap px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] disabled:pointer-events-none disabled:opacity-50`}
@@ -775,7 +923,9 @@ export function CurrentPlanPage({
           <CurrentPlanMeals
             canReorder={!isAssignedPlanId(plan.id)}
             completedIds={completedIds}
+            dayCount={editorDayCount}
             days={scheduledDays}
+            layoutRevision={layoutRevision}
             onDetachPlanMeal={detachPlanMeal}
             planId={plan.id}
             readOnly={catalogView}
@@ -793,10 +943,29 @@ export function CurrentPlanPage({
         >
           <ArrowLeftIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_CLASS} strokeWidth={1.75} />
         </button>
+        {mobileEditButton}
         {catalogMineButton}
       </div>
-    ) : catalogMineButton && dockExtra ? (
-      createPortal(catalogMineButton, dockExtra)
+    ) : (
+      <>
+        {mobileEditButton && dockEdit ? createPortal(mobileEditButton, dockEdit) : null}
+        {catalogMineButton && dockExtra ? createPortal(catalogMineButton, dockExtra) : null}
+      </>
+    )}
+    {plan && canEdit ? (
+      <PlanOutlineDialog
+        coverImage={usableMealCover(plan.coverImage)}
+        dayCount={editorDayCount}
+        days={outlineDays}
+        description={plan.description}
+        goal={plan.goal}
+        onOpenChange={setEditing}
+        onSave={(next) => void saveOutline(next)}
+        open={editing}
+        ownerId={auth.user?.id ?? 'guest'}
+        planId={plan.id}
+        title={plan.title}
+      />
     ) : null}
     </>
   )

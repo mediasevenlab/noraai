@@ -43,6 +43,7 @@ export type RationDraft = {
   title: string
   description: string
   goal: RationGoal
+  coverImage?: string
   meals: RationMealDraft[]
 }
 
@@ -165,6 +166,7 @@ export function emptyRationDraft(): RationDraft {
     title: '',
     description: '',
     goal: 'Похудение',
+    coverImage: '',
     meals: [emptyMealDraft('Завтрак')],
   }
 }
@@ -257,6 +259,26 @@ export function addPlanDraftDay(days: readonly RationMealDraft[][]) {
   return [...days.map((day) => day.slice()), emptyPlanDayMeals()]
 }
 
+export function reorderPlanDraftDays(
+  days: readonly RationMealDraft[][],
+  fromIndex: number,
+  toIndex: number,
+) {
+  if (
+    fromIndex === toIndex ||
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= days.length ||
+    toIndex >= days.length
+  ) {
+    return days.map((day) => day.slice())
+  }
+  const next = days.map((day) => day.slice())
+  const [item] = next.splice(fromIndex, 1)
+  next.splice(toIndex, 0, item!)
+  return next
+}
+
 export function syncPlanDraftDay(
   days: readonly RationMealDraft[][],
   index: number,
@@ -275,6 +297,28 @@ export function trimTrailingEmptyPlanDays(days: readonly RationMealDraft[][]) {
 
 export function draftRationTotals(draft: RationDraft) {
   return rationDayTotals(draftMealsWithTitles(draft))
+}
+
+export function draftPlanDayAverages(days: readonly RationMealDraft[][]) {
+  const count = Math.max(days.length, 1)
+  const totals = days.reduce(
+    (sum, meals) => {
+      const day = rationDayTotals(titledDraftMeals(meals))
+      return {
+        kcal: sum.kcal + day.kcal,
+        protein: sum.protein + day.protein,
+        fat: sum.fat + day.fat,
+        carbs: sum.carbs + day.carbs,
+      }
+    },
+    { kcal: 0, protein: 0, fat: 0, carbs: 0 },
+  )
+  return {
+    kcal: Math.round(totals.kcal / count),
+    protein: Math.round(totals.protein / count),
+    fat: Math.round(totals.fat / count),
+    carbs: Math.round(totals.carbs / count),
+  }
 }
 
 function rationImage(meals: readonly RationMeal[]) {
@@ -372,6 +416,7 @@ export function rationToDraft(ration: RationEntry): RationDraft {
     title: ration.title,
     description: ration.description,
     goal: ration.goal,
+    coverImage: ration.image,
     meals: (ration.meals.length > 0 ? ration.meals : [emptyMealDraft()]).map((meal) => ({
       key: nextDraftKey(),
       slot: meal.slot,

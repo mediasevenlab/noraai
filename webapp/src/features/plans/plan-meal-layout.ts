@@ -1,30 +1,32 @@
 import type { MealEntry } from '@/features/diary'
-import type { SavedAccountScope } from '@/platform/saved-ids'
+import {
+  extraPlanSlotTime,
+  planSlotTimesForCount,
+  type PlanMealLayout,
+} from '@/platform/plan-meal-layout'
 
 import type { WeekPlanDay } from './week-plan'
 
-export type PlanMealLayout = Record<string, string[]>
+export type { PlanMealLayout }
+export { readPlanMealLayout, writePlanMealLayout } from '@/platform/plan-meal-layout'
 
-const LAYOUT_PREFIX = 'nora:plan-meal-layout:v1:'
-
-function extraSlotTime(previous: string | undefined) {
-  const base = previous ? new Date(previous) : new Date(2026, 0, 1, 8, 30, 0)
-  const next = new Date(base)
-  next.setMinutes(next.getMinutes() + 30)
-  return next.toISOString()
-}
-
-function slotTimesForCount(existing: string[], count: number) {
-  const times = existing.slice(0, count)
-  while (times.length < count) times.push(extraSlotTime(times.at(-1)))
-  return times
+export function planLayoutDayCount(
+  layout: PlanMealLayout | null,
+  weekDayKeys: readonly string[],
+) {
+  if (!layout || weekDayKeys.length === 0) return 0
+  let last = -1
+  for (const [index, dayKey] of weekDayKeys.entries()) {
+    if (Object.prototype.hasOwnProperty.call(layout, dayKey)) last = index
+  }
+  return last + 1
 }
 
 function restampDay(meals: MealEntry[], slotTimes: string[], dayIso: string): MealEntry[] {
   const day = new Date(dayIso)
-  const times = slotTimesForCount(slotTimes, meals.length)
+  const times = planSlotTimesForCount(slotTimes, meals.length)
   return meals.map((meal, index) => {
-    const source = new Date(times[index] ?? extraSlotTime(times.at(-1)))
+    const source = new Date(times[index] ?? extraPlanSlotTime(times.at(-1)))
     const stamped = new Date(day)
     stamped.setHours(source.getHours(), source.getMinutes(), source.getSeconds(), 0)
     return { ...meal, at: stamped.toISOString() }
@@ -89,6 +91,31 @@ export function movePlanMeal(
   })
 }
 
+export function reorderPlanDays(
+  days: readonly WeekPlanDay[],
+  fromIndex: number,
+  toIndex: number,
+): WeekPlanDay[] {
+  if (
+    fromIndex === toIndex ||
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= days.length ||
+    toIndex >= days.length
+  ) {
+    return days.map((day) => ({ ...day, meals: [...day.meals] }))
+  }
+  const groups = days.map((day) => day.meals.slice())
+  const [moved] = groups.splice(fromIndex, 1)
+  groups.splice(toIndex, 0, moved!)
+  return days.map((day, index) =>
+    withDayTotals(
+      day,
+      restampDay(groups[index]!, day.meals.map((item) => item.at), day.dayIso),
+    ),
+  )
+}
+
 export function movePlanMeals(
   days: readonly WeekPlanDay[],
   mealIds: readonly string[],
@@ -138,49 +165,5 @@ export function applyPlanMealLayout(
     Object.assign(day, withDayTotals(day, day.meals))
   }
   return next
-}
-
-function layoutStorageKey(planId: string, accountKey: string) {
-  return `${LAYOUT_PREFIX}${planId}:${accountKey}`
-}
-
-export function readPlanMealLayout(
-  scope: SavedAccountScope | string,
-  planId: string,
-): PlanMealLayout | null {
-  if (typeof localStorage === 'undefined' || !planId) return null
-  const keys = typeof scope === 'string' ? [scope] : [scope.email?.trim().toLowerCase(), scope.userId]
-  for (const key of keys) {
-    if (!key) continue
-    const raw = localStorage.getItem(layoutStorageKey(planId, key))
-    if (!raw) continue
-    try {
-      const parsed: unknown = JSON.parse(raw)
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) continue
-      const layout: PlanMealLayout = {}
-      for (const [dayKey, ids] of Object.entries(parsed as Record<string, unknown>)) {
-        if (!Array.isArray(ids)) continue
-        layout[dayKey] = ids.filter((id): id is string => typeof id === 'string' && id.length > 0)
-      }
-      return layout
-    } catch {
-      continue
-    }
-  }
-  return null
-}
-
-export function writePlanMealLayout(
-  scope: SavedAccountScope | string,
-  planId: string,
-  layout: PlanMealLayout,
-) {
-  if (typeof localStorage === 'undefined' || !planId) return
-  const payload = JSON.stringify(layout)
-  const keys = typeof scope === 'string' ? [scope] : [scope.email?.trim().toLowerCase(), scope.userId]
-  for (const key of keys) {
-    if (!key) continue
-    localStorage.setItem(layoutStorageKey(planId, key), payload)
-  }
 }
 

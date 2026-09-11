@@ -18,6 +18,7 @@ import {
   weekPlanAssumption,
   weekPlanIdFromAssumptions,
 } from './ration-import'
+import { usableMealCover, preferredMealPhotoSrc } from './meal-cover'
 
 export type DiaryWeekPlanOption = {
   id: string
@@ -91,7 +92,13 @@ export function isDiaryNewPlanId(planId: string) {
 
 export function diaryPlanPickerItems(plans: readonly DiaryWeekPlanOption[]) {
   return [
-    { value: DIARY_NEW_PLAN_ID, label: 'Новый план' },
+    {
+      value: DIARY_NEW_PLAN_ID,
+      label: 'Новый план',
+      menuLabel: '+ Создать новый план',
+      className: 'font-medium text-[var(--nora-text)]',
+      separatorAfter: true,
+    },
     ...plans.map((plan) => ({ value: plan.id, label: plan.title })),
   ]
 }
@@ -125,17 +132,19 @@ export function diaryCreatePlanFromMeals(input: {
   description?: string
   coverImage?: string
   meals?: readonly { image?: string }[]
+  dayCount?: number
 }): AuthoredPlan | null {
   const title = input.title.trim()
   if (!title) return null
   const coverImage =
-    input.coverImage?.trim() ||
-    input.meals?.map((meal) => meal.image?.trim() ?? '').find(Boolean) ||
+    usableMealCover(input.coverImage) ||
+    input.meals?.map((meal) => usableMealCover(meal.image)).find(Boolean) ||
     ''
   return createAuthoredPlan({
     title,
     coverImage,
     description: input.description,
+    dayCount: input.dayCount,
   })
 }
 
@@ -148,7 +157,9 @@ export function diaryMealCanCopyToPlan(
     assumptions?: readonly string[]
   },
   completedIds?: ReadonlySet<string>,
+  options?: { allowPending?: boolean },
 ) {
+  if (options?.allowPending) return true
   return !isRationPlanPending(meal, completedIds)
 }
 
@@ -253,11 +264,12 @@ export function diaryMealsFreshForPlanDay<T extends { id: string; assumptions?: 
   planId: string,
   fallbackPlanId: string,
   completedIds?: ReadonlySet<string>,
+  options?: { allowPending?: boolean },
 ): T[] {
   const seen = new Set<string>()
   const fresh: T[] = []
   for (const meal of candidates) {
-    if (!diaryMealCanCopyToPlan(meal, completedIds)) continue
+    if (!diaryMealCanCopyToPlan(meal, completedIds, options)) continue
     const sourceId = diaryPlanSourceId(meal)
     if (seen.has(sourceId)) continue
     if (diaryMealOnPlanDay(meals, sourceId, day, planId, fallbackPlanId)) continue
@@ -274,6 +286,7 @@ export function diaryPlanDayOccupancy(
   planId: string,
   fallbackPlanId: string,
   completedIds?: ReadonlySet<string>,
+  options?: { allowPending?: boolean },
 ) {
   const unique = new Map<string, { id: string; assumptions?: readonly string[] }>()
   for (const meal of candidates) {
@@ -283,7 +296,7 @@ export function diaryPlanDayOccupancy(
   let already = 0
   let copyable = 0
   for (const meal of unique.values()) {
-    if (!diaryMealCanCopyToPlan(meal, completedIds)) continue
+    if (!diaryMealCanCopyToPlan(meal, completedIds, options)) continue
     copyable += 1
     if (diaryMealOnPlanDay(meals, diaryPlanSourceId(meal), day, planId, fallbackPlanId)) {
       already += 1
@@ -294,6 +307,33 @@ export function diaryPlanDayOccupancy(
     already,
     fresh: copyable - already,
   }
+}
+
+/** Prefer this card's photo, then the original diary meal's stored photo. */
+export function diaryMealPhotoSrc(
+  meal: {
+    id: string
+    image?: string
+    extraImages?: readonly string[]
+    assumptions?: readonly string[]
+  },
+  library: readonly {
+    id?: string
+    imageUrl?: string
+    image?: string
+    extraImageUrls?: readonly string[]
+    extraImages?: readonly string[]
+  }[] = [],
+) {
+  const own = preferredMealPhotoSrc(meal)
+  if (own) return own
+  const sourceId = diaryPlanSourceId(meal)
+  const source = library.find((item) => item.id === sourceId)
+  if (!source || source.id === meal.id) return ''
+  return preferredMealPhotoSrc({
+    image: source.imageUrl || source.image,
+    extraImages: source.extraImageUrls ?? source.extraImages,
+  })
 }
 
 /** One planned-meal create payload. Appends to the day; does not replace a ration. */

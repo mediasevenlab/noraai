@@ -8,6 +8,7 @@ import {
   diaryMealCanCopyToPlan,
   diaryMealCreatePlanDraft,
   diaryMealOnPlanDay,
+  diaryMealPhotoSrc,
   diaryMealsFreshForPlanDay,
   diaryMealStampOnDay,
   diaryNewPlanDayCount,
@@ -248,9 +249,22 @@ describe('diary meals copied into a weekly plan', () => {
     }
 
     expect(diaryMealCanCopyToPlan(pendingFromPlan)).toBe(false)
+    expect(diaryMealCanCopyToPlan(pendingFromPlan, undefined, { allowPending: true })).toBe(true)
     expect(diaryMealCanCopyToPlan(pendingFromOther)).toBe(false)
     expect(diaryMealCanCopyToPlan(doneFromPlan)).toBe(true)
     expect(diaryMealCanCopyToPlan(SOURCE)).toBe(true)
+
+    expect(
+      diaryMealsFreshForPlanDay(
+        [pendingFromPlan],
+        [],
+        day,
+        planId,
+        'week:2026-08-31',
+        undefined,
+        { allowPending: true },
+      ).map((meal) => meal.id),
+    ).toEqual([pendingFromPlan.id])
 
     expect(diaryMealAlreadyInWeekPlan(pendingFromPlan, planId, 'week:2026-08-31')).toBe(true)
     expect(diaryMealAlreadyInWeekPlan(doneFromPlan, planId, 'week:2026-08-31')).toBe(true)
@@ -482,7 +496,13 @@ describe('diary meals copied into a weekly plan', () => {
 
   test('picker can start a new authored plan and stamp the meal into it', () => {
     const items = diaryPlanPickerItems([{ id: 'plan_office', title: 'Офис без срывов' }])
-    expect(items[0]).toEqual({ value: DIARY_NEW_PLAN_ID, label: 'Новый план' })
+    expect(items[0]).toEqual({
+      value: DIARY_NEW_PLAN_ID,
+      label: 'Новый план',
+      menuLabel: '+ Создать новый план',
+      className: 'font-medium text-[var(--nora-text)]',
+      separatorAfter: true,
+    })
     expect(items[1]).toEqual({ value: 'plan_office', label: 'Офис без срывов' })
     expect(isDiaryNewPlanId(DIARY_NEW_PLAN_ID)).toBe(true)
     expect(isDiaryNewPlanId('plan_office')).toBe(false)
@@ -494,10 +514,12 @@ describe('diary meals copied into a weekly plan', () => {
       title: 'Офис без срывов',
       description: '  Коротко, что в плане  ',
       meals: [{ image: '/meals/turkey.jpg' }],
+      dayCount: 4,
     })
     expect(created?.title).toBe('Офис без срывов')
     expect(created?.description).toBe('Коротко, что в плане')
     expect(created?.coverImage).toBe('/meals/turkey.jpg')
+    expect(created?.dayCount).toBe(4)
     expect(created?.id.startsWith('plan_')).toBe(true)
     expect(diaryNewPlanDayCount(0)).toBe(1)
     expect(diaryNewPlanDayCount(Number.NaN)).toBe(1)
@@ -507,5 +529,20 @@ describe('diary meals copied into a weekly plan', () => {
     expect(
       diaryPlanDayOccupancy([SOURCE], [], new Date(2026, 8, 8, 12), DIARY_NEW_PLAN_ID, 'week:2026-08-31'),
     ).toEqual({ total: 1, already: 0, fresh: 1 })
+  })
+
+  test('plan copies without a photo reuse the original meal image', () => {
+    const copy = {
+      id: 'copy-1',
+      image: '/diary/meal-preview-placeholder.jpg',
+      assumptions: [
+        RATION_DIARY_SOURCE_MARK,
+        diaryPlanSourceAssumption(SOURCE.id),
+      ],
+    }
+    expect(diaryMealPhotoSrc(copy, [])).toBe('')
+    expect(
+      diaryMealPhotoSrc(copy, [{ id: SOURCE.id, imageUrl: '/diary/croissant.jpg' }]),
+    ).toBe('/diary/croissant.jpg')
   })
 })

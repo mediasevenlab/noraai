@@ -29,6 +29,11 @@ test('mobile toasts are two-thirds wide and sit on the left', () => {
   expect(css).toContain('left: 0.75rem !important')
 })
 
+test('toasts portal to body so a receding modal cannot bury them under the overlay', () => {
+  expect(sonner).toContain('createPortal')
+  expect(sonner).toContain('document.body')
+})
+
 test('mobile toasts match the nav FAB height and bottom inset', () => {
   const fab = readFileSync(
     new URL('../src/components/dashboard/MobileNavFab.tsx', import.meta.url),

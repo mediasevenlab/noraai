@@ -26,7 +26,7 @@ const PLAN_GROUP_PLAQUE_CLASS =
 
 const PLAN_GROUP_PLAQUE_TONE = {
   mine: 'bg-[var(--nora-text)] text-[var(--nora-panel)]',
-  mentor: 'bg-[var(--nora-text)] text-[var(--nora-panel)]',
+  mentor: 'bg-[var(--nora-success)] text-white',
 } as const
 
 export function PlanGroupPlaque({

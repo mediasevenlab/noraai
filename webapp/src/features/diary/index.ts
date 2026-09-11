@@ -1,7 +1,12 @@
 // Meal-cover must initialize before any export that can import auth/mentor.
 // Mentor → diary → auth → mentor is a real cycle; ration cover registration
 // calls setMealCoverExtras at module load.
-export { MEAL_COVER_PLACEHOLDER_SRC, setMealCoverExtras } from './meal-cover'
+export {
+  MEAL_COVER_PLACEHOLDER_SRC,
+  preferredMealPhotoSrc,
+  setMealCoverExtras,
+  usableMealCover,
+} from './meal-cover'
 export {
   isPlannedDiaryMeal,
   mealCanShareToFeed,
@@ -26,7 +31,11 @@ export {
   clearSkippedPlanMealIds,
   keepsWeeklyPlanOnDiaryDelete,
   planOccurrenceDiaryAt,
+  planOccurrenceDiaryAtWithLayout,
   planOccurrenceStampWhilePending,
+  planLayoutSlotIndex,
+  orderDiaryDayByPlanLayout,
+  diaryPlanIdForMeal,
   diaryPlanStartForMeal,
   readDetachedPlanMealIds,
   readSkippedPlanMealIds,
@@ -34,6 +43,7 @@ export {
   writeSkippedPlanMealIds,
 } from './plan-occurrence'
 export type { MealEntry } from './meals-catalog'
+export { mealCompositionLines } from './meals-catalog'
 export { mergeDemoAndApiMeals, mealDtoToEntry } from './merge-meals'
 export { useMealsQuery, useSharedMealsQuery, useUserFavoritesQuery, usePlanLibraryQuery, mealsQueryKeys, favoritesQueryKeys, planLibraryQueryKeys } from './queries'
 export { useSyncedPlanLibrary } from './use-plan-library'
@@ -49,6 +59,18 @@ export {
   writeSavedMealIds,
 } from './diary-assignments'
 export { createMyMeal, deleteMyMeal, setMyMealPlanDone, shareMyMeal } from './api'
+export { DiaryPlanDayPicker } from './DiaryPlanDayPicker'
+export type { FeedPlanWeekDay } from './feed-import'
+export {
+  diaryMealCreatePlanDraft,
+  diaryMealOnPlanDay,
+  diaryMealPhotoSrc,
+  diaryMealStampOnDay,
+  diaryMealsFreshForPlanDay,
+  diaryPlanCopiesOnDay,
+  diaryPlanDayOccupancy,
+  diaryPlanSourceId,
+} from './diary-plan-import'
 export { requestAddMeal, DIARY_MOBILE_DOCK_MOVE_ID } from './add-meal-request'
 export { fileToMealImage, mealImageFromUrl } from './meal-image-pick'
 export { MealFeedPhoto } from './meal-feed-photo'

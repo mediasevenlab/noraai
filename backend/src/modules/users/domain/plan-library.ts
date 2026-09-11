@@ -1,3 +1,5 @@
+import { AUTHORED_PLAN_DAY_COUNT_MAX } from '@web-app-demo/contracts'
+
 const AUTHORED_PLAN_ID_RE = /^plan_[A-Za-z0-9_-]{1,72}$/
 const CATALOG_PLAN_ID_RE = /^catalog_[A-Za-z0-9_-]{1,72}$/
 const PLAN_START_DAY_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -20,6 +22,7 @@ export type AuthoredUserPlanRecord = {
   createdAt: string
   goal: 'Похудение' | 'Набор' | 'Поддержание' | 'Здоровье' | null
   sourceCatalogId?: string
+  dayCount?: number
 }
 
 export type PlanStartRecord = {
@@ -85,6 +88,7 @@ function parseAuthoredPlan(value: unknown, nowIso: string): AuthoredUserPlanReco
     typeof record.createdAt === 'string' && !Number.isNaN(Date.parse(record.createdAt))
       ? new Date(record.createdAt).toISOString()
       : nowIso
+  const dayCount = parseDayCount(record.dayCount)
   return {
     id,
     title: title.slice(0, TITLE_MAX),
@@ -93,6 +97,7 @@ function parseAuthoredPlan(value: unknown, nowIso: string): AuthoredUserPlanReco
     createdAt,
     goal: parseGoal(record.goal),
     ...(CATALOG_PLAN_ID_RE.test(sourceCatalogId) ? { sourceCatalogId } : {}),
+    ...(dayCount ? { dayCount } : {}),
   }
 }
 
@@ -164,4 +169,11 @@ function parseGoal(value: unknown): AuthoredUserPlanRecord['goal'] {
   return typeof value === 'string' && GOALS.has(value)
     ? (value as AuthoredUserPlanRecord['goal'])
     : null
+}
+
+function parseDayCount(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined
+  const count = Math.trunc(value)
+  if (count < 1 || count > AUTHORED_PLAN_DAY_COUNT_MAX) return undefined
+  return count
 }

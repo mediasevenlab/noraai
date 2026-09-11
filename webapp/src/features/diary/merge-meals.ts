@@ -1,6 +1,6 @@
 import type { MealDto } from '@web-app-demo/contracts'
 
-import { isPersistedMealImageUrl, resolveMealCover } from './meal-cover'
+import { isPersistedMealImageUrl, resolveMealCover, usableMealCover } from './meal-cover'
 import type { MealEntry } from './meals-catalog'
 
 export function mealDtoToEntry(meal: MealDto): MealEntry {
@@ -46,7 +46,7 @@ export function mealCarouselImages(input: {
   const extras = input.extraImages?.length ? input.extraImages : (input.galleryExtras ?? [])
   return [input.cover, ...extras].filter(
     (src, index, all): src is string =>
-      Boolean(src) && isPersistedMealImageUrl(src) && all.indexOf(src) === index,
+      Boolean(usableMealCover(src)) && all.indexOf(src) === index,
   )
 }
 

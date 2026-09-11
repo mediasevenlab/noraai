@@ -33,6 +33,7 @@ import {
   type DiaryWeekPlanOption,
 } from "./diary-plan-import";
 import { feedPlanWeekDays, type FeedPlanWeekDay } from "./feed-import";
+import { usableMealCover } from "./meal-cover";
 import { MealDetailHeading, MEAL_DIALOG_OVERLAY_CHIP_CLASS } from "./meal-sheet";
 import type { MealEntry } from "./meals-catalog";
 import { currentWeekPlanStampId } from "./ration-import";
@@ -55,10 +56,13 @@ function planPickerDescription(
   meal: MealEntry | null,
   bulk: boolean,
   creatingNew: boolean,
+  lockedPlan: boolean,
 ) {
-  const hint = creatingNew
-    ? "Назовите план, добавьте дни и поставьте приём."
-    : "Можно поставить в выбранный план, в один или несколько дней.";
+  const hint = lockedPlan
+    ? "Можно поставить в другие дни этого плана."
+    : creatingNew
+      ? "Назовите план, добавьте дни и поставьте приём."
+      : "Можно поставить в выбранный план, в один или несколько дней.";
   if (bulk) return `${mealsCountLabel(selected.length)} из дневника. ${hint}`;
   if (meal) return `${meal.title}. ${hint}`;
   return hint;
@@ -71,34 +75,43 @@ const PLAN_DESC_FIELD_CLASS =
 
 export function DiaryPlanDayPicker({
   addingDayKey,
+  allowPendingCopies = false,
   completedIds,
   fallbackPlanId,
   items,
+  lockedPlan = false,
   meal,
   meals,
   onCreatePlan,
   onOpenChange,
+  onPlanDayCount,
   onPlanIdChange,
   onSelectDay,
   open,
+  planDays,
   planId: planIdProp,
   plans,
 }: {
   addingDayKey: string | null;
+  allowPendingCopies?: boolean;
   completedIds?: ReadonlySet<string>;
   fallbackPlanId?: string;
   items?: readonly MealEntry[];
+  lockedPlan?: boolean;
   meal: MealEntry | null;
   meals: readonly DiaryPlanStamp[];
   onCreatePlan?: (draft: {
     title: string;
     description: string;
     coverImage: string;
+    dayCount: number;
   }) => Promise<string | null>;
   onOpenChange: (open: boolean) => void;
+  onPlanDayCount?: (planId: string, dayCount: number) => void;
   onPlanIdChange?: (planId: string) => void;
   onSelectDay: (day: FeedPlanWeekDay, planId: string) => void;
   open: boolean;
+  planDays?: readonly FeedPlanWeekDay[];
   planId?: string;
   plans: readonly DiaryWeekPlanOption[];
 }) {
@@ -113,21 +126,23 @@ export function DiaryPlanDayPicker({
   );
   const [creating, setCreating] = React.useState(false);
   const planId = planIdProp ?? localPlanId;
-  const creatingNew = isDiaryNewPlanId(planId);
+  const creatingNew = !lockedPlan && isDiaryNewPlanId(planId);
   const usesDraftDays = creatingNew || planId === sessionCreatedPlanId;
   const planItems = diaryPlanPickerItems(plans);
   const weekDays = feedPlanWeekDays();
-  const days = usesDraftDays
-    ? diaryNewPlanDays(weekDays, draftDayCount)
-    : weekDays;
-  const canAddDay = usesDraftDays && draftDayCount < DIARY_NEW_PLAN_MAX_DAYS;
+  const days = planDays
+    ? planDays
+    : usesDraftDays
+      ? diaryNewPlanDays(weekDays, draftDayCount)
+      : weekDays;
+  const canAddDay = !lockedPlan && usesDraftDays && draftDayCount < DIARY_NEW_PLAN_MAX_DAYS;
   const selected = React.useMemo(
     () => items ?? (meal ? [meal] : []),
     [items, meal],
   );
   const bulk = selected.length > 1;
   const busy = Boolean(addingDayKey) || creating;
-  const description = planPickerDescription(selected, meal, bulk, creatingNew);
+  const description = planPickerDescription(selected, meal, bulk, creatingNew, lockedPlan);
   const occupancyPlanId = creatingNew ? DIARY_NEW_PLAN_ID : planId;
 
   React.useEffect(() => {
@@ -166,7 +181,9 @@ export function DiaryPlanDayPicker({
         const createdId = await onCreatePlan({
           title,
           description: draftDescription,
-          coverImage: selected.find((item) => item.image)?.image ?? "",
+          coverImage:
+            selected.map((item) => usableMealCover(item.image)).find(Boolean) ?? "",
+          dayCount: draftDayCount,
         });
         if (!createdId) {
           toast.error("Не удалось создать план");
@@ -227,6 +244,7 @@ export function DiaryPlanDayPicker({
                   />
                 </DialogClose>
               </div>
+              {!lockedPlan ? (
               <div
                 className="mt-2.5 border-t border-[var(--nora-divider)] pt-2.5"
                 data-diary-plan-select=""
@@ -272,6 +290,7 @@ export function DiaryPlanDayPicker({
                   </div>
                 ) : null}
               </div>
+              ) : null}
               </DialogHeader>
             </div>
             <div className="flex flex-col px-3 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3.5">
@@ -284,6 +303,7 @@ export function DiaryPlanDayPicker({
                     occupancyPlanId,
                     weekFallback,
                     completedIds,
+                    { allowPending: allowPendingCopies },
                   );
                   const already = occupancy.total > 0 && occupancy.fresh === 0;
                   const mixed = occupancy.already > 0 && occupancy.fresh > 0;
@@ -349,9 +369,11 @@ export function DiaryPlanDayPicker({
                     data-diary-add-plan-day=""
                     disabled={busy}
                     onClick={() => {
-                      setDraftDayCount((current) =>
-                        diaryNewPlanDayCount(current + 1),
-                      );
+                      const next = diaryNewPlanDayCount(draftDayCount + 1);
+                      setDraftDayCount(next);
+                      if (sessionCreatedPlanId) {
+                        onPlanDayCount?.(sessionCreatedPlanId, next);
+                      }
                     }}
                     type="button"
                   >

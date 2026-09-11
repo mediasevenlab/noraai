@@ -44,14 +44,16 @@ export type { RationEntry, RationGoal } from './rations-catalog'
 export { RationDialog } from './RationDialog'
 export { RationEditorDialog } from './MentorRationEditor'
 export {
+  emptyPlanDayMeals,
   emptyRationDraft,
   isAuthoredRationId,
   mergeAssignedRations,
   mentorRationToEntry,
   rationToDraft,
   rationToUpsertRequest,
+  titledDraftMeals,
 } from './authored-rations'
-export type { RationDraft } from './authored-rations'
+export type { RationDraft, RationMealDraft } from './authored-rations'
 export { RationUserPicker } from './RationDayPicker'
 export {
   getMentorUserPlans,

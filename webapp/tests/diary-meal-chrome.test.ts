@@ -286,9 +286,11 @@ test('day stats use modal-tab capsules in one scroll row', () => {
   expect(stats).toContain('DAY_STAT_CHIP_CLASS')
   expect(stats).toContain('DAY_DATE_CHIP_CLASS')
   expect(stats).not.toContain('DAY_PAST_CHIP_CLASS')
-  expect(stats).not.toContain('stampKey < todayKey')
-  expect(stats).not.toContain('DAY_PLAN_CHIP_CLASS')
-  expect(stats).not.toContain('localCalendarDayKey(new Date())')
+  expect(stats).toContain('DAY_PLAN_CHIP_CLASS')
+  expect(stats).toContain('planMode && stampKey <= todayKey')
+  expect(stats).toContain('localCalendarDayKey(new Date())')
+  expect(stats).toContain('data-diary-day-plan')
+  expect(news).toContain('planMode={showWholePlan}')
   expect(stats).toContain('className="size-[13px] text-white"')
   expect(stats).toContain('bg-[var(--nora-badge-yellow-bg)]')
   expect(stats).toContain('bg-[var(--nora-badge-red-bg)]')
@@ -357,8 +359,22 @@ test('diary favorites tab can bulk-add meals to a plan like a diary day', () => 
   expect(page).toContain('diaryMealCard(meal, FAVORITES_PICK_KEY)')
   expect(page).toContain('pickingDayKey === FAVORITES_PICK_KEY')
   expect(page).toContain('pickingDayKey !== FAVORITES_PICK_KEY')
-  expect(page).toContain('tab === "Избранное" ? [] : groupMealsByDay(filtered)')
+  expect(page).toContain('orderDiaryDayByPlanLayout(group.meals, diaryPlanSlotIndex)')
   expect(page).not.toContain('{filtered.map((meal) => diaryMealCard(meal))}')
+})
+
+test('diary feed stamps pending plan meals from the live plan layout', () => {
+  const page = readFileSync(
+    new URL('../src/features/diary/pages/news.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(page).toContain('function diaryPlanSlotIndex(meal: MealEntry)')
+  expect(page).toContain('orderDiaryDayByPlanLayout(group.meals, diaryPlanSlotIndex)')
+  expect(page).toContain('function diaryAtForMeal(meal: MealEntry, now = new Date())')
+  expect(page).toContain('planOccurrenceDiaryAtWithLayout')
+  expect(page).toContain('readPlanMealLayout')
+  expect(page).toContain('at: diaryAtForMeal(meal)')
+  expect(page).toContain('const stayAt = willComplete && meal ? diaryAtForMeal(meal) : undefined')
 })
 
 test('day activity dialog shows three iOS-style rings for the selected day', () => {
@@ -850,7 +866,8 @@ test('ration-imported diary cards are muted but stay openable', () => {
   expect(done).not.toContain("color-mix(in_srgb,var(--nora-panel)_78%")
   expect(news).toContain('toggleRationMealDone(')
   expect(news).toContain('setMyMealPlanDone(')
-  expect(news).toContain('planOccurrenceStampWhilePending(')
+  expect(news).toContain('diaryAtForMeal(')
+  expect(news).toContain('planOccurrenceDiaryAtWithLayout(')
   expect(news).toContain('mealListAfterPlanDone(')
   expect(news).toContain('recordedAt: stayAt')
   expect(news).toContain('result.meal')
@@ -871,7 +888,7 @@ test('ration-imported diary cards are muted but stay openable', () => {
     news.indexOf('function toggleRationMealDone'),
     news.indexOf('async function deleteMeal'),
   )
-  expect(completeFn).toContain('diaryAtById[id]')
+  expect(completeFn).toContain('diaryAtForMeal(meal)')
   expect(completeFn).toContain('writeDiaryPlanAtById(')
   expect(completeFn).toContain('recordedAt: stayAt')
   expect(completeFn).toContain('pinned.id')
@@ -1089,6 +1106,9 @@ test('own diary meals can be copied into a chosen weekly plan day', () => {
   expect(newsPage).not.toContain('onSelectRation=')
   expect(picker).toContain('data-diary-plan-picker=""')
   expect(picker).toContain('data-diary-plan-select=""')
+  expect(picker).toContain('lockedPlan')
+  expect(picker).toContain('allowPendingCopies')
+  expect(picker).toContain('planDays')
   expect(picker).not.toContain('data-diary-add-destination=""')
   expect(picker).not.toContain("label: 'В рацион'")
   expect(picker).not.toContain('День назначения')
@@ -1106,8 +1126,10 @@ test('own diary meals can be copied into a chosen weekly plan day', () => {
   expect(picker).toContain('diaryNewPlanDays')
   expect(picker).toContain('NoraTextarea')
   expect(picker).toContain('onCreatePlan')
+  expect(picker).toContain('dayCount: draftDayCount')
+  expect(picker).toContain('onPlanDayCount')
   expect(newsPage).toContain('onCreatePlan=')
-  expect(newsPage).toContain('title, coverImage, description')
+  expect(newsPage).toContain('title, coverImage, description, dayCount')
   expect(newsPage).toContain('diaryCreatePlanFromMeals(')
   expect(newsPage).toContain('withAuthoredPlan(')
   expect(picker).toContain('productToolbarSelectContentClass')
@@ -1174,8 +1196,10 @@ test('plan day picker stays open and occupied days can be toggled off', () => {
   expect(feedAdd).toContain('Убрано из плана')
   expect(feedAdd).not.toContain('setPlanMeal(null)')
   expect(feed).toContain('onCreatePlan=')
-  expect(feed).toContain('title, coverImage, description')
+  expect(feed).toContain('title, coverImage, description, dayCount')
   expect(feed).toContain('diaryCreatePlanFromMeals(')
+  expect(feed).toContain('onPlanDayCount=')
+  expect(newsPage).toContain('onPlanDayCount=')
 })
 
 test('diary pick-mode add-to-plan chip is blue when meals are selected', () => {

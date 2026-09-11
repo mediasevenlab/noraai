@@ -13,6 +13,7 @@ test('normalizePlanLibrary keeps authored metadata, favorites, selection and sta
     createdAt: '2026-09-01T00:00:00.000Z',
     goal: 'Похудение',
     sourceCatalogId: 'catalog_office',
+    dayCount: 4,
   }
 
   expect(
@@ -39,6 +40,7 @@ test('normalizePlanLibrary keeps authored metadata, favorites, selection and sta
         createdAt: '2026-09-01T00:00:00.000Z',
         goal: 'Похудение',
         sourceCatalogId: 'catalog_office',
+        dayCount: 4,
       },
     ],
     savedPlanIds: ['catalog_loss', authored.id],

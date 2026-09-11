@@ -15,6 +15,14 @@ import {
   Cover,
   createMyMeal,
   deleteMyMeal,
+  DiaryPlanDayPicker,
+  diaryMealCreatePlanDraft,
+  diaryMealOnPlanDay,
+  diaryMealsFreshForPlanDay,
+  diaryMealPhotoSrc,
+  diaryMealStampOnDay,
+  diaryPlanCopiesOnDay,
+  diaryPlanSourceId,
   favoriteMealIdsForSync,
   favoritesQueryKeys,
   imagesForDiaryMeal,
@@ -36,8 +44,10 @@ import {
   readSavedMealIds,
   reconcileLocalFavoriteIds,
   shareMyMeal,
+  useMealsQuery,
   useUserFavoritesQuery,
   writeSavedMealIds,
+  type FeedPlanWeekDay,
   type MealEntry,
   type MealMacrosRevealState,
 } from '@/features/diary'
@@ -46,7 +56,7 @@ import { putUserFavorites } from '@/platform/account-favorites'
 import { notifyHybridFavoriteAdded } from '@/platform/hybrid-notifications'
 import { mergeFavoriteIds } from '@/platform/saved-ids'
 
-import { defaultPlanDayKey, PLAN_DAY_TAB_SLOTS, planDayTabParts, type WeekPlanDay } from './week-plan'
+import { defaultPlanDayKey, filledPlanBoardDays, padPlanDaysForEditor, PLAN_DAY_TAB_SLOTS, planDayTabParts, type WeekPlanDay } from './week-plan'
 import {
   MOBILE_DOCK_FAB_ICON_CLASS,
   MOBILE_DOCK_PILL_CLASS,
@@ -76,20 +86,37 @@ const PLAN_DAY_TAB_SELECTED_CLASS = 'bg-[#2C2C2E]'
 const PLAN_DAY_TAB_PLACEHOLDER_CLASS =
   'relative flex h-[4.75rem] flex-col items-center justify-between rounded-full bg-[color-mix(in_srgb,var(--nora-inset)_46%,var(--nora-panel))] px-1 pb-2 pt-2.5'
 
+function pickerDaysFromPlan(days: readonly WeekPlanDay[], dayCount = 0): FeedPlanWeekDay[] {
+  return padPlanDaysForEditor(days, new Date(), dayCount).map((day, index) => {
+    const parts = planDayTabParts(day, index)
+    return {
+      date: new Date(day.dayIso),
+      dayKey: day.dayKey,
+      short: parts.label,
+      label: parts.label,
+      isToday: false,
+    }
+  })
+}
+
 export function CurrentPlanMeals({
   completedIds,
+  dayCount = 0,
   days,
   onDetachPlanMeal,
   planId,
   readOnly = false,
   canReorder,
+  layoutRevision = 0,
 }: {
   completedIds: ReadonlySet<string>
+  dayCount?: number
   days: readonly WeekPlanDay[]
   onDetachPlanMeal: (mealId: string) => void
   planId?: string
   readOnly?: boolean
   canReorder?: boolean
+  layoutRevision?: number
 }) {
   const auth = useAuth()
   const queryClient = useQueryClient()
@@ -105,7 +132,7 @@ export function CurrentPlanMeals({
   }
   const allowReorder = canReorder ?? !readOnly
   const [layout, setLayout] = React.useState(() => readPlanMealLayout(savedScope, planId ?? ''))
-  const layoutKey = `${planId ?? ''}:${savedIdentity}`
+  const layoutKey = `${planId ?? ''}:${savedIdentity}:${layoutRevision}`
   const [loadedLayoutKey, setLoadedLayoutKey] = React.useState(layoutKey)
   if (loadedLayoutKey !== layoutKey) {
     setLoadedLayoutKey(layoutKey)
@@ -117,6 +144,7 @@ export function CurrentPlanMeals({
   )
   const [previewDays, setPreviewDays] = React.useState<WeekPlanDay[] | null>(null)
   const boardDays = previewDays ?? appliedDays
+  const visibleDays = React.useMemo(() => filledPlanBoardDays(boardDays), [boardDays])
   const [openId, setOpenId] = React.useState<string | null>(null)
   const [openMacrosReveal, setOpenMacrosReveal] = React.useState<MealMacrosRevealState>({
     rolling: false,
@@ -126,16 +154,31 @@ export function CurrentPlanMeals({
   const openMealImages = openMeal ? imagesForDiaryMeal(openMeal, EMPTY_GALLERIES) : []
   const favoritesQuery = useUserFavoritesQuery(Boolean(subjectId && user))
   const questionnaireQuery = useQuestionnaireQuery(Boolean(user && subjectId && user.id === subjectId))
+  const canCopyToPlan = Boolean(!readOnly && planId && subjectId && user?.role === 'user')
+  const mealsQuery = useMealsQuery(canCopyToPlan ? subjectId : undefined)
+  const [planMeal, setPlanMeal] = React.useState<MealEntry | null>(null)
+  const [addingPlanDayKey, setAddingPlanDayKey] = React.useState<string | null>(null)
+  const pickerDays = React.useMemo(
+    () => pickerDaysFromPlan(appliedDays, dayCount),
+    [appliedDays, dayCount],
+  )
+  const occupancyMeals = React.useMemo(
+    () => [
+      ...(mealsQuery.data?.items ?? []),
+      ...boardDays.flatMap((day) => day.meals),
+    ],
+    [boardDays, mealsQuery.data?.items],
+  )
   const dailyCalories =
     questionnaireDailyCalorieTarget(questionnaireQuery.data?.answers) ??
     (subjectId ? readDiaryState(subjectId)?.dailyCalories : undefined) ??
     2200
-  const [selectedDayKey, setSelectedDayKey] = React.useState(() => defaultPlanDayKey(boardDays))
-  const fillDayRow = boardDays.length <= PLAN_DAY_TAB_SLOTS
+  const [selectedDayKey, setSelectedDayKey] = React.useState(() => defaultPlanDayKey(visibleDays))
+  const fillDayRow = visibleDays.length <= PLAN_DAY_TAB_SLOTS
   const dayTabWidthClass = fillDayRow ? 'min-w-0 flex-1' : 'w-14 shrink-0'
-  const placeholderCount = fillDayRow ? PLAN_DAY_TAB_SLOTS - boardDays.length : 0
+  const placeholderCount = fillDayRow ? PLAN_DAY_TAB_SLOTS - visibleDays.length : 0
   const selectedDay =
-    boardDays.find((day) => day.dayKey === selectedDayKey) ?? boardDays[0] ?? null
+    visibleDays.find((day) => day.dayKey === selectedDayKey) ?? visibleDays[0] ?? null
   if (selectedDay && selectedDay.dayKey !== selectedDayKey) {
     setSelectedDayKey(selectedDay.dayKey)
   }
@@ -310,6 +353,71 @@ export function CurrentPlanMeals({
     }
   }
 
+  async function addMealToPlanDay(meal: MealEntry, day: FeedPlanWeekDay) {
+    if (!canCopyToPlan || !subjectId || !planId || addingPlanDayKey) return
+    const copyOptions = { allowPending: true }
+    const fresh = diaryMealsFreshForPlanDay(
+      [meal],
+      occupancyMeals,
+      day.date,
+      planId,
+      planId,
+      completedIds,
+      copyOptions,
+    )
+    if (fresh.length === 0) {
+      const copyIds = [
+        ...new Set(
+          diaryPlanCopiesOnDay(occupancyMeals, diaryPlanSourceId(meal), day.date, planId, planId).map(
+            (copy) => copy.id,
+          ),
+        ),
+      ]
+      if (copyIds.length === 0) {
+        toast('Этот приём уже в этом дне')
+        return
+      }
+      setAddingPlanDayKey(day.dayKey)
+      try {
+        for (const mealId of copyIds) {
+          await deleteMyMeal(auth.transport, mealId)
+        }
+        await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.forSubject(subjectId) })
+        toast.success('Убрано из дня')
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Не удалось убрать приём из дня')
+      } finally {
+        setAddingPlanDayKey(null)
+      }
+      return
+    }
+    setAddingPlanDayKey(day.dayKey)
+    try {
+      const source = fresh[0]!
+      if (
+        diaryMealOnPlanDay(occupancyMeals, diaryPlanSourceId(source), day.date, planId, planId)
+      ) {
+        toast('Этот приём уже в этом дне')
+        return
+      }
+      const photoSrc = diaryMealPhotoSrc(source, occupancyMeals)
+      const image = photoSrc ? await mealImageFromUrl(photoSrc) : null
+      const recorded = diaryMealStampOnDay(day.date, source.at)
+      const draft = diaryMealCreatePlanDraft(source, planId, recorded)
+      await createMyMeal(auth.transport, {
+        ...draft,
+        ...(image ? { imageBase64: image.base64, imageMime: image.mime } : {}),
+      })
+      await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.forSubject(subjectId) })
+      toast.success(`Добавлено в ${day.label.toLowerCase()}`)
+      setPlanMeal(null)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Не удалось добавить приём в план')
+    } finally {
+      setAddingPlanDayKey(null)
+    }
+  }
+
   function mealDayKey(mealId: string) {
     return boardDays.find((day) => day.meals.some((item) => item.id === mealId))?.dayKey
   }
@@ -368,6 +476,15 @@ export function CurrentPlanMeals({
           if (!readOnly) void deleteMeal(meal)
         }}
         onOpen={() => setOpenId(meal.id)}
+        onAddToPlan={
+          canCopyToPlan
+            ? () => {
+                setOpenId(null)
+                setPlanMeal(meal)
+              }
+            : undefined
+        }
+        addingToPlan={addingPlanDayKey !== null && planMeal?.id === meal.id}
         onShare={() => {
           if (!readOnly) void shareMeal(meal)
         }}
@@ -419,7 +536,7 @@ export function CurrentPlanMeals({
           ref={dayTabListRef}
           role="tablist"
         >
-          {boardDays.map((day, index) => {
+          {visibleDays.map((day, index) => {
               const parts = planDayTabParts(day, index)
               const active = day.dayKey === selectedDay?.dayKey
               const daysLocked = picking && pickedIds.size === 0
@@ -475,7 +592,7 @@ export function CurrentPlanMeals({
               )
             })}
             {Array.from({ length: placeholderCount }, (_, index) => {
-              const ordinal = boardDays.length + index + 1
+              const ordinal = visibleDays.length + index + 1
               return (
                 <span
                   aria-hidden
@@ -514,7 +631,7 @@ export function CurrentPlanMeals({
         ) : null}
       </div>
       <div className="hidden flex-col gap-6 md:flex">
-        {boardDays.map((day) => (
+        {visibleDays.map((day) => (
           <section className="flex flex-col gap-3" key={day.dayKey}>
             {dayMeta(day)}
             <PlanMealGrid
@@ -590,6 +707,15 @@ export function CurrentPlanMeals({
               <MealOpenDetail
                 completedIds={completedIds}
                 meal={openMeal}
+                onAddToPlan={
+                  canCopyToPlan
+                    ? () => {
+                        setOpenId(null)
+                        setPlanMeal(openMeal)
+                      }
+                    : undefined
+                }
+                addingToPlan={addingPlanDayKey !== null && planMeal?.id === openMeal.id}
                 onMacrosRevealChange={setOpenMacrosReveal}
                 subjectUserId={subjectId}
               />
@@ -597,6 +723,27 @@ export function CurrentPlanMeals({
           ) : null}
         </DialogContent>
       </Dialog>
+      {canCopyToPlan && planId ? (
+        <DiaryPlanDayPicker
+          addingDayKey={addingPlanDayKey}
+          allowPendingCopies
+          completedIds={completedIds}
+          fallbackPlanId={planId}
+          lockedPlan
+          meal={planMeal}
+          meals={occupancyMeals}
+          onOpenChange={(open) => {
+            if (!open) setPlanMeal(null)
+          }}
+          onSelectDay={(day) => {
+            if (planMeal) void addMealToPlanDay(planMeal, day)
+          }}
+          open={Boolean(planMeal)}
+          planDays={pickerDays}
+          planId={planId}
+          plans={[{ id: planId, title: 'Этот план' }]}
+        />
+      ) : null}
     </>
   )
 }

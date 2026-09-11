@@ -151,6 +151,15 @@ describe('mergeDemoAndApiMeals', () => {
     restoreRationMealCovers()
   })
 
+  test('carousel skips the collage placeholder and keeps a real extra photo', () => {
+    expect(
+      mealCarouselImages({
+        cover: MEAL_COVER_PLACEHOLDER_SRC,
+        extraImages: ['/diary/croissant.jpg'],
+      }),
+    ).toEqual(['/diary/croissant.jpg'])
+  })
+
   test('carousel falls back to local extras when the version has none persisted', () => {
     expect(
       mealCarouselImages({

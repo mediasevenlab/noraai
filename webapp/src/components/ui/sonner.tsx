@@ -7,6 +7,7 @@ import {
   Loader2Icon,
 } from "lucide-react"
 import { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 
 import { useTheme } from "@/components/theme-provider"
 import { toasterPositionForViewport } from "@/components/ui/toaster-position"
@@ -33,7 +34,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
   const { scheme } = useTheme()
   const position = useToasterPosition()
 
-  return (
+  const toaster = (
     <Sonner
       theme={scheme === "editor-light" ? "light" : "dark"}
       className="toaster group"
@@ -78,6 +79,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
       position={position}
     />
   )
+
+  // Modal recess applies transform + overflow to #root. Keep toasts on body
+  // so they stay above the overlay instead of receding with the page.
+  if (typeof document === "undefined") return toaster
+  return createPortal(toaster, document.body)
 }
 
 export { Toaster }

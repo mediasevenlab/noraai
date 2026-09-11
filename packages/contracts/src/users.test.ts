@@ -142,6 +142,15 @@ describe('user and admin contracts', () => {
       updatedAt: '2026-09-07T12:00:00.000Z',
     })
     expect(
+      userPlanLibrarySchema.parse({
+        authoredPlans: [{ ...authored, dayCount: 4 }],
+        savedPlanIds: [],
+        selectedPlanIds: [],
+        planStarts: [],
+        updatedAt: '2026-09-07T12:00:00.000Z',
+      }).authoredPlans[0],
+    ).toMatchObject({ dayCount: 4 })
+    expect(
       putUserPlanLibraryRequestSchema.parse({
         authoredPlans: [{ ...authored, description: '  ' }],
         savedPlanIds: ['  catalog_loss  '],

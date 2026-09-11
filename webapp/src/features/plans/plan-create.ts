@@ -1,4 +1,9 @@
-import { createMyMeal, mealImageFromUrl } from '@/features/diary'
+import {
+  createMyMeal,
+  mealImageFromUrl,
+  preferredMealPhotoSrc,
+  usableMealCover,
+} from '@/features/diary'
 import { rationMealCreateDrafts, rationPlanWeekDays, type RationEntry } from '@/features/mentor'
 import { ApiRequestError, type AuthenticatedTransport } from '@/platform/api'
 
@@ -41,6 +46,15 @@ export function catalogCloneErrorMessage(error: unknown) {
   return 'Не удалось добавить план'
 }
 
+export function firstDurablePlanCover(
+  authored: string | undefined,
+  meals: readonly { imageUrl?: string }[],
+) {
+  const picked = authored?.startsWith('data:') ? '' : usableMealCover(authored)
+  if (picked) return picked
+  return meals.map((meal) => usableMealCover(meal.imageUrl)).find(Boolean) ?? ''
+}
+
 export async function stampRationDaysOntoPlan(
   transport: AuthenticatedTransport,
   days: readonly RationEntry[],
@@ -52,8 +66,9 @@ export async function stampRationDaysOntoPlan(
       const date = weekDays[dayIndex]?.date ?? weekDays[0]?.date ?? new Date()
       return rationMealCreateDrafts(ration, date, planId).map(async (body, mealIndex) => {
         const meal = ration.meals[mealIndex]
-        const src = resolvePublicMealImageUrl(meal?.image ?? '')
-        const inline = mealCreateImageFields(src)
+        const photo = preferredMealPhotoSrc({ image: meal?.image })
+        const src = photo ? resolvePublicMealImageUrl(photo) : ''
+        const inline = src ? mealCreateImageFields(src) : null
         const fetched = inline || !src ? null : await mealImageFromUrl(src)
         const image = inline
           ? { imageBase64: inline.imageBase64, imageMime: inline.imageMime }

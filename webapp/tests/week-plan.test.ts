@@ -30,6 +30,7 @@ import {
   currentWeekPlanId,
   defaultPlanDayKey,
   formatPlanActiveRange,
+  filledPlanBoardDays,
   planDayTabParts,
   WEEK_PLAN_CARD_SLOTS,
   type WeekPlan,
@@ -290,10 +291,68 @@ test('authored plans keep their own meals and cover', () => {
     title: 'Офис без срывов',
   })
   expect(custom.title).toBe('Офис без срывов')
-  expect(custom.coverImage).toBe('/rations/ration-01.jpg')
+  expect(custom.coverImage).toBe('/plans/office.jpg')
   expect(custom.days[0]?.meals.map((meal) => meal.id)).toEqual(['custom-meal'])
   const week = buildCurrentWeekPlan({ meals, now, rations: SAMPLE_RATIONS })
   expect(week.days[0]?.meals.map((meal) => meal.id)).toEqual(['week-meal'])
+})
+
+test('new plan cover uses the first real meal photo and skips the collage placeholder', () => {
+  const monday = new Date(2026, 7, 31)
+  const customId = 'plan_custom-office'
+  const placeholderMeals = [
+    mealOn(monday, {
+      id: 'placeholder-meal',
+      title: 'Круассан',
+      image: '/diary/meal-preview-placeholder.jpg',
+      assumptions: [RATION_DIARY_SOURCE_MARK, `План:${customId}`],
+    }),
+  ]
+  const emptyCover = buildWeekPlan({
+    coverImage: '',
+    meals: placeholderMeals,
+    now,
+    planId: customId,
+    rations: [],
+    title: 'Другой план',
+  })
+  expect(emptyCover.coverImage).toBe('/diary/meal-preview-placeholder.jpg')
+
+  const photoMeals = [
+    mealOn(monday, {
+      id: 'photo-meal',
+      title: 'Круассан',
+      image: '/diary/croissant.jpg',
+      assumptions: [RATION_DIARY_SOURCE_MARK, `План:${customId}`],
+    }),
+  ]
+  const fromMeal = buildWeekPlan({
+    coverImage: '/diary/meal-preview-placeholder.jpg',
+    meals: photoMeals,
+    now,
+    planId: customId,
+    rations: [],
+    title: 'Другой план',
+  })
+  expect(fromMeal.coverImage).toBe('/diary/croissant.jpg')
+
+  const extrasOnly = buildWeekPlan({
+    coverImage: '',
+    meals: [
+      mealOn(monday, {
+        id: 'extras-meal',
+        title: 'Круассан',
+        image: '/diary/meal-preview-placeholder.jpg',
+        extraImages: ['/diary/croissant.jpg'],
+        assumptions: [RATION_DIARY_SOURCE_MARK, `План:${customId}`],
+      }),
+    ],
+    now,
+    planId: customId,
+    rations: [],
+    title: 'Другой план',
+  })
+  expect(extrasOnly.coverImage).toBe('/diary/croissant.jpg')
 })
 
 test('week plan card paints a plan summary plaque and a taller preview', () => {
@@ -427,6 +486,7 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(toolbar).toContain('PlanGroupPlaque')
   expect(toolbar).toContain('PLAN_GROUP_PLAQUE_TONE')
   expect(toolbar).toContain("bg-[var(--nora-text)] text-[var(--nora-panel)]")
+  expect(toolbar).toContain('bg-[var(--nora-success)] text-white')
   expect(toolbar).not.toContain('bg-[var(--nora-tint)] text-white')
   expect(toolbar).not.toContain('bg-[#16A34A] text-white')
   expect(toolbar).not.toContain('nora-tint-dimmed')
@@ -458,6 +518,13 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('size-9 shrink-0 justify-center p-0')
   expect(page).toContain('aria-label="Назад"')
   expect(page).toContain('ArrowLeftIcon')
+  expect(page).toContain('PlanOutlineDialog')
+  expect(page).toContain('Редактировать')
+  expect(page).toContain('PLAN_MOBILE_DOCK_EDIT_ID')
+  expect(page).toContain('data-plan-outline-open=""')
+  expect(page).toContain('canEdit')
+  expect(page).toContain('writePlanOutline')
+  expect(page).toContain('applyWeekOutline')
   expect(page).toContain('onOpenPlan')
   expect(page).toContain('showMobileBackDock')
   expect(page).toContain('MOBILE_DOCK_FAB_CLASS')
@@ -574,6 +641,34 @@ test('mobile plan day tabs show ordinal day number and open on day 1', () => {
   expect(defaultPlanDayKey([])).toBeNull()
 })
 
+test('filledPlanBoardDays hides a day that lost its last meal', () => {
+  const empty: WeekPlan['days'][number] = {
+    dayKey: '2026-09-01',
+    short: 'День 1',
+    label: 'День 1',
+    dayIso: '2026-09-01T12:00:00',
+    filled: false,
+    ration: null,
+    meals: [],
+    mealsCount: 0,
+    kcal: 0,
+    done: false,
+  }
+  const filled = {
+    ...empty,
+    dayKey: '2026-09-02',
+    short: 'День 2',
+    label: 'День 2',
+    dayIso: '2026-09-02T12:00:00',
+    filled: true,
+    meals: [mealOn(new Date(2026, 8, 2), { id: 'moved', title: 'Круассан' })],
+    mealsCount: 1,
+    kcal: 784,
+  }
+  expect(filledPlanBoardDays([empty, filled]).map((day) => day.dayKey)).toEqual(['2026-09-02'])
+  expect(filledPlanBoardDays([filled])).toHaveLength(1)
+})
+
 test('current plan lays meals under a diary-sized day badge', () => {
   const source = readFileSync(
     new URL('../src/features/plans/CurrentPlanMeals.tsx', import.meta.url),
@@ -590,6 +685,8 @@ test('current plan lays meals under a diary-sized day badge', () => {
     expect(source).toContain('role="tablist"')
     expect(source).toContain('md:hidden')
     expect(source).toContain('hidden flex-col gap-6 md:flex')
+    expect(source).toContain('filledPlanBoardDays(')
+    expect(source).toContain('visibleDays')
     expect(source).toContain('PLAN_DAY_TAB_SLOTS')
     expect(source).toContain('placeholderCount')
     expect(source).toContain('PLAN_DAY_TAB_PLACEHOLDER_CLASS')
@@ -629,6 +726,12 @@ test('current plan lays meals under a diary-sized day badge', () => {
     expect(source).toContain('PLAN_DAY_BADGE_CLASS')
   expect(source).toContain('h-7 min-h-7 max-h-7')
   expect(source).toContain('readOnly')
+  expect(source).toContain('onAddToPlan')
+  expect(source).toContain('DiaryPlanDayPicker')
+  expect(source).toContain('lockedPlan')
+  expect(source).toContain('allowPendingCopies')
+  expect(source).toContain('addMealToPlanDay')
+  expect(source).toContain('diaryMealPhotoSrc')
   expect(source).toContain('catalogFavoriteCreateDraft')
   expect(source).not.toContain('hideFooterShare={readOnly}')
   expect(source).toContain('mealCanShareToFeed')
@@ -834,6 +937,12 @@ test('authored plans persist and join the ration picker options', () => {
     expect(created?.id).toBe('plan_fixed-office')
     expect(created?.goal).toBe('Похудение')
     expect(created?.description).toBe('')
+    const counted = createAuthoredPlan({
+      title: 'Четыре дня',
+      coverImage: '/cover.jpg',
+      dayCount: 4,
+    })
+    expect(counted?.dayCount).toBe(4)
     const withCopy = createAuthoredPlan({
       title: 'Офис',
       coverImage: '/cover.jpg',
@@ -843,6 +952,8 @@ test('authored plans persist and join the ration picker options', () => {
     appendAuthoredPlan(scope, created!)
     expect(readAuthoredPlans(scope).map((plan) => plan.title)).toEqual(['Офис'])
     expect(readAuthoredPlans(scope)[0]?.goal).toBe('Похудение')
+    appendAuthoredPlan(scope, { ...created!, dayCount: 4 })
+    expect(readAuthoredPlans(scope)[0]?.dayCount).toBe(4)
     const cloned = createAuthoredPlan({
       title: 'Минус без голода',
       coverImage: '/rations/ration-08.jpg',

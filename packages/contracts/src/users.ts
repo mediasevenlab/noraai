@@ -298,6 +298,8 @@ const catalogPlanIdSchema = z
 
 const planStartDayKeySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 
+export const AUTHORED_PLAN_DAY_COUNT_MAX = 7
+
 export const authoredUserPlanSchema = z
   .object({
     id: authoredUserPlanIdSchema,
@@ -307,6 +309,7 @@ export const authoredUserPlanSchema = z
     createdAt: z.string().datetime(),
     goal: rationGoalSchema.nullable(),
     sourceCatalogId: catalogPlanIdSchema.optional(),
+    dayCount: z.number().int().min(1).max(AUTHORED_PLAN_DAY_COUNT_MAX).optional(),
   })
   .strict()
 

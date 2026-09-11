@@ -46,6 +46,7 @@ import {
 } from "@/platform/authored-plans";
 import { notifyHybridFavoriteAdded } from "@/platform/hybrid-notifications";
 import { readPlanLibrarySnapshot, withAuthoredPlan } from "@/platform/plan-library-local";
+import { readPlanMealLayout } from "@/platform/plan-meal-layout";
 import { mergeFavoriteIds, type SavedAccountScope } from "@/platform/saved-ids";
 import { cn } from "@/lib/utils";
 
@@ -97,12 +98,15 @@ import {
 } from "../diary-plan-import";
 import type { FeedPlanWeekDay } from "../feed-import";
 import { mealImageFromUrl } from "../meal-image-pick";
+import { preferredMealPhotoSrc } from "../meal-cover";
 import {
   keepsWeeklyPlanOnDiaryDelete,
-  mealListAfterPlanDone,
-  planOccurrenceDiaryAt,
-  planOccurrenceStampWhilePending,
+  diaryPlanIdForMeal,
   diaryPlanStartForMeal,
+  mealListAfterPlanDone,
+  orderDiaryDayByPlanLayout,
+  planLayoutSlotIndex,
+  planOccurrenceDiaryAtWithLayout,
   readSkippedPlanMealIds,
   writeSkippedPlanMealIds,
 } from "../plan-occurrence";
@@ -139,6 +143,8 @@ import {
   groupMealsByDay,
   isApiMealId,
   favoriteMealIdsForSync,
+  localCalendarDayKey,
+  localDayKey,
   mealsCountLabel,
   reconcileLocalFavoriteIds,
 } from "../diary-feed";
@@ -265,6 +271,7 @@ function FeedDayStats({
   picking = false,
   pickable = false,
   pickedCount = 0,
+  planMode = false,
   readOnly = false,
   savedScope,
   totals,
@@ -277,6 +284,7 @@ function FeedDayStats({
   picking?: boolean;
   pickable?: boolean;
   pickedCount?: number;
+  planMode?: boolean;
   readOnly?: boolean;
   savedScope: SavedAccountScope;
   totals: {
@@ -302,6 +310,10 @@ function FeedDayStats({
   }
   const shoppingComplete = isDayShoppingComplete(shoppingItems, bought);
   const heading = feedDayHeading(dayIso);
+  const stampKey = localDayKey(dayIso);
+  const todayKey = localCalendarDayKey(new Date());
+  const dateChipClass =
+    planMode && stampKey <= todayKey ? DAY_PLAN_CHIP_CLASS : DAY_DATE_CHIP_CLASS;
   const calorieDelta = dailyCalories - totals.kcal;
   const balanceLabel =
     calorieDelta > 0
@@ -330,18 +342,24 @@ function FeedDayStats({
             aria-label={`Выбрать приёмы за ${heading}`}
             aria-pressed={picking}
             className={cn(
-              DAY_DATE_CHIP_CLASS,
+              dateChipClass,
               "nora-press-grow",
               picking && "ring-1 ring-[var(--nora-tint)]",
             )}
             data-diary-day-pick=""
+            data-diary-day-plan={planMode && stampKey <= todayKey ? "" : undefined}
             onClick={onPickDay}
             type="button"
           >
             {dateChip}
           </button>
         ) : (
-          <div className={DAY_DATE_CHIP_CLASS}>{dateChip}</div>
+          <div
+            className={dateChipClass}
+            data-diary-day-plan={planMode && stampKey <= todayKey ? "" : undefined}
+          >
+            {dateChip}
+          </div>
         )}
         {picking && onMove ? (
           <FeedAddToPlanChip onMove={onMove} pickedCount={pickedCount} />
@@ -771,6 +789,31 @@ export function NewsPage({
     } else toast("Убрано из избранного", { id: "favorite-removed" });
   }
 
+  function diaryPlanSlotIndex(meal: MealEntry) {
+    if (diaryAtById[meal.id]) return null;
+    if (!isRationPlanPending(meal, completedIds)) return null;
+    const planId = diaryPlanIdForMeal(meal, selectedPlanIds);
+    if (!planId) return null;
+    return planLayoutSlotIndex(meal.id, readPlanMealLayout(savedScope, planId));
+  }
+
+  function diaryAtForMeal(meal: MealEntry, now = new Date()) {
+    const planId = diaryPlanIdForMeal(meal, selectedPlanIds, now);
+    const planMeals = planId
+      ? userMeals.filter(
+          (item) => diaryPlanIdForMeal(item, selectedPlanIds, now) === planId,
+        )
+      : [];
+    return planOccurrenceDiaryAtWithLayout(meal, {
+      frozenAt: diaryAtById[meal.id],
+      completedIds,
+      now,
+      planStart: diaryPlanStartForMeal(meal, savedScope, selectedPlanIds, now),
+      layout: planId ? readPlanMealLayout(savedScope, planId) : null,
+      planMeals,
+    });
+  }
+
   function toggleRationMealDone(id: string) {
     if (readOnly || !subjectId) return;
     const meal = userMeals.find((item) => item.id === id);
@@ -780,15 +823,7 @@ export function NewsPage({
     const willComplete = !next.has(id);
     if (willComplete) next.add(id);
     else next.delete(id);
-    const stayAt =
-      willComplete && meal
-        ? (diaryAtById[id] ??
-          planOccurrenceStampWhilePending(
-            meal,
-            new Date(),
-            diaryPlanStartForMeal(meal, savedScope, selectedPlanIds),
-          ))
-        : undefined;
+    const stayAt = willComplete && meal ? diaryAtForMeal(meal) : undefined;
     const previousMeals = queryClient.getQueryData<{
       items: Array<{ id: string; recordedAt: string; assumptions?: string[] }>;
     }>(mealsQueryKeys.forSubject(subjectId));
@@ -1113,7 +1148,8 @@ export function NewsPage({
         ) {
           continue;
         }
-        const image = await mealImageFromUrl(meal.image);
+        const photoSrc = preferredMealPhotoSrc(meal);
+        const image = photoSrc ? await mealImageFromUrl(photoSrc) : null;
         const recorded = diaryMealStampOnDay(day.date, meal.at);
         const draft = diaryMealCreatePlanDraft(meal, planId, recorded);
         await createMyMeal(auth.transport, {
@@ -1167,14 +1203,7 @@ export function NewsPage({
         .filter((meal) => !skippedIds.has(meal.id))
         .map((meal) => ({
           ...meal,
-          at:
-            diaryAtById[meal.id] ??
-            planOccurrenceDiaryAt(
-              meal,
-              completedIds,
-              new Date(),
-              diaryPlanStartForMeal(meal, savedScope, selectedIds),
-            ),
+          at: diaryAtForMeal(meal),
         }));
       if (tab !== "Избранное") {
         list = list.filter((meal) =>
@@ -1213,8 +1242,22 @@ export function NewsPage({
   ]);
 
   const dayGroups = React.useMemo(
-    () => (tab === "Избранное" ? [] : groupMealsByDay(filtered)),
-    [filtered, tab],
+    () =>
+      tab === "Избранное"
+        ? []
+        : groupMealsByDay(filtered).map((group) => ({
+            ...group,
+            meals: orderDiaryDayByPlanLayout(group.meals, diaryPlanSlotIndex),
+          })),
+    [
+      completedIds,
+      diaryAtById,
+      filtered,
+      savedScope.email,
+      savedScope.userId,
+      selectedPlanKey,
+      tab,
+    ],
   );
   const feedFiltersActive =
     tab !== "Все" || Boolean(query.trim()) || periodFilter != null;
@@ -1608,6 +1651,7 @@ export function NewsPage({
                             pickingDayKey === group.dayKey ? pickedIds.size : 0
                           }
                           picking={pickingDayKey === group.dayKey}
+                          planMode={showWholePlan}
                           readOnly={readOnly}
                           savedScope={savedScope}
                           totals={group.totals}
@@ -1794,10 +1838,11 @@ export function NewsPage({
         items={planMeals}
         meal={planMeals[0] ?? null}
         meals={userMeals}
-        onCreatePlan={async ({ title, coverImage, description }) => {
+        onCreatePlan={async ({ title, coverImage, description, dayCount }) => {
           const created = diaryCreatePlanFromMeals({
             coverImage,
             description,
+            dayCount,
             meals: planMeals,
             title,
           });
@@ -1807,6 +1852,11 @@ export function NewsPage({
         }}
         onOpenChange={(next) => {
           if (!next) setPlanMeals([]);
+        }}
+        onPlanDayCount={(planId, dayCount) => {
+          const existing = ownPlanLibrary.authoredPlans.find((item) => item.id === planId);
+          if (!existing) return;
+          persistPlanLibrary(withAuthoredPlan(ownPlanLibrary, { ...existing, dayCount }));
         }}
         onPlanIdChange={setPickerPlanId}
         onSelectDay={(day, planId) => {

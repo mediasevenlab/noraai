@@ -5,6 +5,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -246,7 +247,13 @@ type NoraSelectProps = {
   defaultValue?: string
   onValueChange?: (value: string | null) => void
   placeholder?: string
-  items: { value: string; label: string; menuLabel?: string }[]
+  items: {
+    value: string
+    label: string
+    menuLabel?: string
+    className?: string
+    separatorAfter?: boolean
+  }[]
   disabled?: boolean
   leadingIcon?: React.ReactNode
   hideChevron?: boolean
@@ -313,14 +320,16 @@ export function NoraSelect({
         )}
       >
         {items.map((item) => (
-          <SelectItem
-            key={item.value}
-            value={item.value}
-            indicator={itemIndicator}
-            className={cn(selectFont, "h-[var(--nora-control-h)]", itemClassName)}
-          >
-            {item.menuLabel ?? item.label}
-          </SelectItem>
+          <React.Fragment key={item.value}>
+            <SelectItem
+              value={item.value}
+              indicator={itemIndicator}
+              className={cn(selectFont, "h-[var(--nora-control-h)]", itemClassName, item.className)}
+            >
+              {item.menuLabel ?? item.label}
+            </SelectItem>
+            {item.separatorAfter ? <SelectSeparator /> : null}
+          </React.Fragment>
         ))}
       </SelectContent>
     </Select>

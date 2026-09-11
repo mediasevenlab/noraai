@@ -8,7 +8,7 @@ import {
 import { z } from 'zod'
 
 import type { AuthenticatedTransport } from '@/platform/api'
-import type { AuthoredPlan } from '@/platform/authored-plans'
+import { parseAuthoredPlanDayCount, type AuthoredPlan } from '@/platform/authored-plans'
 import type { PlanLibrarySnapshot } from '@/platform/plan-library-local'
 
 const authoredUserPlanWireSchema = z
@@ -20,6 +20,7 @@ const authoredUserPlanWireSchema = z
     createdAt: z.string(),
     goal: z.unknown().nullable().optional(),
     sourceCatalogId: z.string().optional(),
+    dayCount: z.number().optional(),
   })
   .passthrough()
 
@@ -61,6 +62,7 @@ function coerceAuthoredPlan(value: unknown): AuthoredPlan | null {
   if (!id.startsWith('plan_') || !title) return null
   const sourceCatalogId = parsed.data.sourceCatalogId?.trim() ?? ''
   const goal = parsed.data.goal
+  const dayCount = parseAuthoredPlanDayCount(parsed.data.dayCount)
   return {
     id,
     title,
@@ -72,6 +74,7 @@ function coerceAuthoredPlan(value: unknown): AuthoredPlan | null {
         ? goal
         : null,
     ...(sourceCatalogId.startsWith('catalog_') ? { sourceCatalogId } : {}),
+    ...(dayCount ? { dayCount } : {}),
   }
 }
 
@@ -107,6 +110,7 @@ export function toUserPlanLibrary(raw: z.infer<typeof userPlanLibraryWireSchema>
         : new Date(plan.createdAt).toISOString(),
       goal: plan.goal,
       ...(plan.sourceCatalogId ? { sourceCatalogId: plan.sourceCatalogId } : {}),
+      ...(plan.dayCount ? { dayCount: plan.dayCount } : {}),
     })
   }
   const planStarts: UserPlanLibrary['planStarts'] = []
@@ -136,6 +140,7 @@ export function snapshotFromPlanLibrary(library: UserPlanLibrary): PlanLibrarySn
       createdAt: plan.createdAt,
       goal: plan.goal,
       ...(plan.sourceCatalogId ? { sourceCatalogId: plan.sourceCatalogId } : {}),
+      ...(plan.dayCount ? { dayCount: plan.dayCount } : {}),
     })),
     savedPlanIds: library.savedPlanIds,
     selectedPlanIds: library.selectedPlanIds,
@@ -159,6 +164,7 @@ export function putRequestFromSnapshot(
       createdAt,
       goal: plan.goal,
       ...(plan.sourceCatalogId ? { sourceCatalogId: plan.sourceCatalogId } : {}),
+      ...(plan.dayCount ? { dayCount: plan.dayCount } : {}),
     })
     return parsed.success ? [parsed.data] : []
   })

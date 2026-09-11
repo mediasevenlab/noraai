@@ -6,6 +6,7 @@ import {
   assignedAuthoredRationState,
   assignedAuthoredRationsStorageKey,
   assignAuthoredRationToUser,
+  draftPlanDayAverages,
   draftRationTotals,
   emptyRationDraft,
   finalizeRationDraft,
@@ -32,6 +33,7 @@ import {
   readAssignedAuthoredRations,
   removeDraftLine,
   reorderMealDrafts,
+  reorderPlanDraftDays,
   setDraftLine,
   RATION_MEAL_SLOTS,
   splitIngredientLines,
@@ -99,6 +101,29 @@ describe('mentor authored rations', () => {
     expect(draft.meals).toHaveLength(1)
     expect(draft.meals[0]?.slot).toBe('Завтрак')
     expect(draftRationTotals(draft)).toEqual({ kcal: 0, protein: 0, fat: 0, carbs: 0 })
+  })
+
+  test('plan day averages split titled macros across every day in the draft', () => {
+    const breakfast = { ...emptyMealDraft('Завтрак'), title: 'Омлет', kcal: '300', protein: '20' }
+    const lunch = { ...emptyMealDraft('Обед'), title: 'Курица', kcal: '100', protein: '40' }
+    expect(draftPlanDayAverages([[breakfast]])).toEqual({
+      kcal: 300,
+      protein: 20,
+      fat: 0,
+      carbs: 0,
+    })
+    expect(draftPlanDayAverages([[breakfast], [lunch]])).toEqual({
+      kcal: 200,
+      protein: 30,
+      fat: 0,
+      carbs: 0,
+    })
+    expect(draftPlanDayAverages([[breakfast], emptyPlanDayMeals()])).toEqual({
+      kcal: 150,
+      protein: 10,
+      fat: 0,
+      carbs: 0,
+    })
   })
 
   test('plan draft can grow days and stamp meals onto each day', () => {
@@ -179,6 +204,21 @@ describe('mentor authored rations', () => {
     expect(reorderMealDrafts(meals, 'lunch', 'lunch')).toEqual(meals)
     expect(reorderMealDrafts(meals, 'missing', 'lunch')).toEqual(meals)
     expect(reorderMealDrafts(meals, 'lunch', 'missing')).toEqual(meals)
+  })
+
+  test('reorderPlanDraftDays moves a day plaque without copying meals', () => {
+    const breakfast = [{ ...emptyMealDraft('Завтрак'), title: 'Омлет' }]
+    const lunch = [{ ...emptyMealDraft('Обед'), title: 'Курица' }]
+    const snack = [{ ...emptyMealDraft('Перекус'), title: 'Йогурт' }]
+    expect(
+      reorderPlanDraftDays([breakfast, lunch, snack], 0, 2).map((day) => day[0]?.title),
+    ).toEqual(['Курица', 'Йогурт', 'Омлет'])
+    expect(
+      reorderPlanDraftDays([breakfast, lunch, snack], 2, 0).map((day) => day[0]?.title),
+    ).toEqual(['Йогурт', 'Омлет', 'Курица'])
+    expect(reorderPlanDraftDays([breakfast, lunch], 0, 0)).toEqual([breakfast, lunch])
+    expect(reorderPlanDraftDays([breakfast, lunch], -1, 1)).toEqual([breakfast, lunch])
+    expect(reorderPlanDraftDays([breakfast, lunch], 0, 5)).toEqual([breakfast, lunch])
   })
 
   test('next unused slot follows breakfast, lunch, snack, dinner', () => {

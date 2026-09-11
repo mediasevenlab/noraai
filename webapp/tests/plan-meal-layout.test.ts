@@ -7,6 +7,8 @@ import {
   layoutFromDays,
   movePlanMeal,
   movePlanMeals,
+  planLayoutDayCount,
+  reorderPlanDays,
 } from '../src/features/plans/plan-meal-layout'
 import type { WeekPlanDay } from '../src/features/plans/week-plan'
 
@@ -91,6 +93,33 @@ test('unknown meal or day leaves the plan unchanged', () => {
   expect(movePlanMeal([monday], 'a', '2026-09-09', 0)[0]?.meals[0]?.id).toBe('a')
 })
 
+test('planLayoutDayCount uses the last week slot present in the layout', () => {
+  expect(planLayoutDayCount(null, ['2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03'])).toBe(0)
+  expect(
+    planLayoutDayCount(
+      { '2026-08-31': ['a'], '2026-09-02': [] },
+      ['2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03'],
+    ),
+  ).toBe(3)
+})
+
+test('reorderPlanDays keeps calendar slots and swaps meal groups', () => {
+  const monday = day('2026-09-01', [meal('a', 8, 100), meal('b', 13, 200)])
+  const tuesday = day('2026-09-02', [meal('c', 8, 50)])
+  const wednesday = day('2026-09-03', [meal('d', 8, 80)])
+  const next = reorderPlanDays([monday, tuesday, wednesday], 0, 2)
+  expect(next.map((item) => item.dayKey)).toEqual(['2026-09-01', '2026-09-02', '2026-09-03'])
+  expect(next.map((item) => item.meals.map((mealItem) => mealItem.id))).toEqual([
+    ['c'],
+    ['d'],
+    ['a', 'b'],
+  ])
+  expect(new Date(next[0]!.meals[0]!.at).getDate()).toBe(1)
+  expect(new Date(next[2]!.meals[0]!.at).getDate()).toBe(3)
+  expect(reorderPlanDays([monday, tuesday], 0, 0)[0]?.meals[0]?.id).toBe('a')
+  expect(reorderPlanDays([monday, tuesday], -1, 1)[0]?.meals[0]?.id).toBe('a')
+})
+
 test('saved layout reapplies meal order across days', () => {
   const monday = day('2026-09-01', [meal('a', 8), meal('b', 13)])
   const tuesday = day('2026-09-02', [meal('c', 8)])
@@ -125,6 +154,7 @@ test('plan meals board starts a hold-to-drag reorder', () => {
   expect(source).toContain('Приёмы перемещены')
   expect(source).toContain('movePlanMeals')
   expect(source).toContain('PLAN_MOBILE_DOCK_MOVE_ID')
+  expect(source).toContain('layoutRevision')
   expect(source).toContain('pickedIds')
   expect(source).toContain('daysLocked')
   expect(source).toContain('selected={picking && pickedIds.has(meal.id)}')

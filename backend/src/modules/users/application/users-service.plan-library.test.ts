@@ -57,6 +57,7 @@ test('plan library starts empty and persists authored plans with selection', asy
     createdAt: '2026-09-01T00:00:00.000Z',
     goal: 'Похудение' as const,
     sourceCatalogId: 'catalog_office',
+    dayCount: 4,
   }
   let stored: {
     authoredPlans: unknown

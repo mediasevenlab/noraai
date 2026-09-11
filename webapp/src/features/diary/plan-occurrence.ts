@@ -1,5 +1,16 @@
+import {
+  extraPlanSlotTime,
+  planSlotTimesForCount,
+  type PlanMealLayout,
+} from '@/platform/plan-meal-layout'
 import { readPlanStartDate } from '@/platform/plan-start'
-import { addLocalDays, planSlotIndex, startOfLocalDay } from '@/platform/plan-slots'
+import {
+  addLocalDays,
+  dateFromDayKey,
+  dayKeyFromDate,
+  planSlotIndex,
+  startOfLocalDay,
+} from '@/platform/plan-slots'
 import { readSavedIdSet, writeSavedIdSet, type SavedAccountScope } from '@/platform/saved-ids'
 
 import { feedMealStampOnDay } from './feed-import'
@@ -106,6 +117,19 @@ export function planOccurrenceStampWhilePending(
   return planOccurrenceDiaryAt(meal, undefined, now, planStart)
 }
 
+/** Selected plan id that owns this diary meal. */
+export function diaryPlanIdForMeal(
+  meal: { assumptions?: readonly string[] },
+  selectedPlanIds: ReadonlySet<string>,
+  now = new Date(),
+): string | null {
+  const fallback = currentWeekPlanStampId(now)
+  for (const planId of selectedPlanIds) {
+    if (mealBelongsToWeekPlan(meal, planId, fallback)) return planId
+  }
+  return null
+}
+
 /** Start date of the selected plan that owns this diary meal. */
 export function diaryPlanStartForMeal(
   meal: { assumptions?: readonly string[] },
@@ -113,13 +137,138 @@ export function diaryPlanStartForMeal(
   selectedPlanIds: ReadonlySet<string>,
   now = new Date(),
 ): Date | null {
-  const fallback = currentWeekPlanStampId(now)
-  for (const planId of selectedPlanIds) {
-    if (mealBelongsToWeekPlan(meal, planId, fallback)) {
-      return readPlanStartDate(scope, planId)
+  const planId = diaryPlanIdForMeal(meal, selectedPlanIds, now)
+  return planId ? readPlanStartDate(scope, planId) : null
+}
+
+function mondayDayKey(date: Date) {
+  const monday = startOfLocalDay(date)
+  monday.setDate(monday.getDate() + (monday.getDay() === 0 ? -6 : 1 - monday.getDay()))
+  return dayKeyFromDate(monday)
+}
+
+function originalMealsOnLayoutDay(
+  meals: ReadonlyArray<{ id: string; at: string }>,
+  layoutDay: Date,
+) {
+  const want = planSlotIndex(layoutDay)
+  const weekKey = mondayDayKey(layoutDay)
+  const matches = meals
+    .filter((meal) => planSlotIndex(new Date(meal.at)) === want)
+    .slice()
+    .sort((left, right) => left.at.localeCompare(right.at))
+  const thisWeek = matches.filter((meal) => mondayDayKey(new Date(meal.at)) === weekKey)
+  return thisWeek.length > 0 ? thisWeek : matches
+}
+
+function pendingPlanLayoutDiaryAt(
+  meal: Pick<MealEntry, 'at'> & {
+    id?: string
+    fromApi?: boolean
+    title?: string
+    assumptions?: readonly string[]
+  },
+  layout: PlanMealLayout | null,
+  planMeals: ReadonlyArray<{ id: string; at: string }>,
+  now: Date,
+  planStart: Date | null,
+): string | null {
+  if (!layout || !meal.id || !isRationImportedMeal(meal)) return null
+  let dayKey: string | null = null
+  let orderedIds: string[] = []
+  for (const [key, ids] of Object.entries(layout)) {
+    if (ids.includes(meal.id)) {
+      dayKey = key
+      orderedIds = ids
+      break
     }
   }
+  if (!dayKey) return null
+  const templateDay = dateFromDayKey(dayKey)
+  if (!templateDay) return null
+  const byId = new Map(planMeals.map((item) => [item.id, item]))
+  const ordered = orderedIds
+    .map((id) => byId.get(id))
+    .filter((item): item is { id: string; at: string } => Boolean(item))
+  const index = ordered.findIndex((item) => item.id === meal.id)
+  if (index < 0) return null
+  const start = startOfLocalDay(planStart ?? now)
+  const target = addLocalDays(start, planSlotIndex(templateDay))
+  const slotTimes = planSlotTimesForCount(
+    originalMealsOnLayoutDay(planMeals, templateDay).map((item) => item.at),
+    ordered.length,
+  )
+  const source = slotTimes[index] ?? extraPlanSlotTime(slotTimes.at(-1))
+  return feedMealStampOnDay(target, new Date(source)).toISOString()
+}
+
+/**
+ * Diary `at` for a plan meal, including the live board layout.
+ * Completed / frozen cards keep their shown stamp even if the plan moved.
+ */
+export function planOccurrenceDiaryAtWithLayout(
+  meal: Pick<MealEntry, 'at'> & {
+    id?: string
+    fromApi?: boolean
+    title?: string
+    assumptions?: readonly string[]
+  },
+  input: {
+    completedIds?: ReadonlySet<string>
+    now?: Date
+    planStart?: Date | null
+    layout?: PlanMealLayout | null
+    planMeals?: ReadonlyArray<{ id: string; at: string }>
+    frozenAt?: string
+  } = {},
+) {
+  const now = input.now ?? new Date()
+  const planStart = input.planStart ?? null
+  if (input.frozenAt) return input.frozenAt
+  if (isRationPlanDone(meal, input.completedIds)) {
+    return planOccurrenceDiaryAt(meal, input.completedIds, now, planStart)
+  }
+  const layoutAt = pendingPlanLayoutDiaryAt(
+    meal,
+    input.layout ?? null,
+    input.planMeals ?? [],
+    now,
+    planStart,
+  )
+  if (layoutAt) return layoutAt
+  return planOccurrenceDiaryAt(meal, input.completedIds, now, planStart)
+}
+
+/** 0-based slot inside the layout day that currently holds this meal. */
+export function planLayoutSlotIndex(
+  mealId: string | undefined,
+  layout: PlanMealLayout | null,
+) {
+  if (!layout || !mealId) return null
+  for (const ids of Object.values(layout)) {
+    const index = ids.indexOf(mealId)
+    if (index >= 0) return index
+  }
   return null
+}
+
+/**
+ * Keep pinned cards (completed / own diary) in place and line pending plan
+ * meals up with the plan board: slot 1, then 2, then 3.
+ */
+export function orderDiaryDayByPlanLayout<T extends { id: string }>(
+  meals: readonly T[],
+  slotIndex: (meal: T) => number | null,
+): T[] {
+  const pending: T[] = []
+  const slots = meals.map((meal) => {
+    if (slotIndex(meal) == null) return meal
+    pending.push(meal)
+    return null
+  })
+  pending.sort((left, right) => (slotIndex(left) ?? 0) - (slotIndex(right) ?? 0))
+  let next = 0
+  return slots.map((meal) => meal ?? pending[next++]!)
 }
 
 /** Optimistic list patch for «Выполнить»: never assume `assumptions` is present. */

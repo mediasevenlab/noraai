@@ -45,6 +45,7 @@ import {
 } from "./feed-filters";
 import type { FeedPlanWeekDay } from "./feed-import";
 import { mealImageFromUrl } from "./meal-image-pick";
+import { preferredMealPhotoSrc } from "./meal-cover";
 import type { MealEntry } from "./meals-catalog";
 import { mealDtoToEntry } from "./merge-meals";
 import { readSavedMealIds, writeSavedMealIds } from "./diary-assignments";
@@ -255,7 +256,8 @@ export function SharedMealsFeed({
     try {
       let ownedId = copyId;
       if (!ownedId) {
-        const image = await mealImageFromUrl(meal.image);
+        const photoSrc = preferredMealPhotoSrc(meal);
+        const image = photoSrc ? await mealImageFromUrl(photoSrc) : null;
         const created = await createMyMeal(auth.transport, {
           ...catalogFavoriteCreateDraft(meal),
           ...(image
@@ -355,7 +357,8 @@ export function SharedMealsFeed({
     }
     setAddingDayKey(day.dayKey);
     try {
-      const image = await mealImageFromUrl(meal.image);
+      const photoSrc = preferredMealPhotoSrc(meal);
+      const image = photoSrc ? await mealImageFromUrl(photoSrc) : null;
       const recorded = diaryMealStampOnDay(day.date, meal.at);
       await createMyMeal(auth.transport, {
         ...diaryMealCreatePlanDraft(meal, planId, recorded),
@@ -500,10 +503,11 @@ export function SharedMealsFeed({
         fallbackPlanId={weekPlanFallbackId}
         meal={planMeal}
         meals={diaryMeals}
-        onCreatePlan={async ({ title, coverImage, description }) => {
+        onCreatePlan={async ({ title, coverImage, description, dayCount }) => {
           const created = diaryCreatePlanFromMeals({
             coverImage,
             description,
+            dayCount,
             meals: planMeal ? [planMeal] : [],
             title,
           });
@@ -513,6 +517,11 @@ export function SharedMealsFeed({
         }}
         onOpenChange={(next) => {
           if (!next && !addingDayKey) setPlanMeal(null);
+        }}
+        onPlanDayCount={(planId, dayCount) => {
+          const existing = ownPlanLibrary.authoredPlans.find((item) => item.id === planId);
+          if (!existing) return;
+          persistPlanLibrary(withAuthoredPlan(ownPlanLibrary, { ...existing, dayCount }));
         }}
         onPlanIdChange={setPickerPlanId}
         onSelectDay={(day, planId) => {

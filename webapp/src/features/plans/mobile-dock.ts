@@ -1,6 +1,7 @@
 export const PLAN_MOBILE_DOCK_EXTRA_ID = 'plan-mobile-dock-extra'
 export const PLAN_MOBILE_DOCK_ACTION_ID = 'plan-mobile-dock-action'
 export const PLAN_MOBILE_DOCK_MOVE_ID = 'plan-mobile-dock-move'
+export const PLAN_MOBILE_DOCK_EDIT_ID = 'plan-mobile-dock-edit'
 
 export const MOBILE_DOCK_BOTTOM_CLASS =
   'fixed z-40 md:hidden bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]'
