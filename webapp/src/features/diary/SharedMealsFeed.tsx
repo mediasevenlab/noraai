@@ -28,6 +28,7 @@ import {
   catalogFavoriteCreateDraft,
 } from "./catalog-favorite";
 import { DiaryPlanDayPicker } from "./DiaryPlanDayPicker";
+import { type DiaryPeriodFilter } from "./DiaryPeriodPicker";
 import {
   diaryCreatePlanFromMeals,
   diaryDefaultPlanId,
@@ -41,7 +42,6 @@ import {
 import {
   filterSharedMeals,
   type FeedGoal,
-  type SharedMealsFeedTab,
 } from "./feed-filters";
 import type { FeedPlanWeekDay } from "./feed-import";
 import { mealImageFromUrl } from "./meal-image-pick";
@@ -101,13 +101,15 @@ function patchSharedLike(
 export function SharedMealsFeed({
   query = "",
   origin = "feed",
-  tab = "Все",
+  likedOnly = false,
   goal = null,
+  period = null,
 }: {
   query?: string;
   origin?: ProductCardOrigin;
-  tab?: SharedMealsFeedTab;
+  likedOnly?: boolean;
   goal?: FeedGoal | null;
+  period?: DiaryPeriodFilter | null;
 }) {
   const auth = useAuth();
   const queryClient = useQueryClient();
@@ -136,10 +138,10 @@ export function SharedMealsFeed({
     useSyncedPlanLibrary(auth.user?.role === "user");
   const [saved, setSaved] = React.useState(() => new Set<string>());
   const visible = React.useMemo(
-    () => filterSharedMeals(meals, { tab, goal, query }),
-    [meals, tab, goal, query],
+    () => filterSharedMeals(meals, { likedOnly, goal, query, period }),
+    [meals, likedOnly, goal, query, period],
   );
-  const filtersActive = tab !== "Все" || Boolean(query.trim()) || goal != null;
+  const filtersActive = likedOnly || Boolean(query.trim()) || goal != null || period != null;
   const openMeal = openId
     ? (meals.find((meal) => meal.id === openId) ?? null)
     : null;
@@ -404,12 +406,14 @@ export function SharedMealsFeed({
   }
 
   if (visible.length === 0) {
-    const likesEmpty = tab === "Мои лайки" && !query.trim() && goal == null;
+    const likesEmpty = likedOnly && !query.trim() && goal == null && period == null;
     return (
       <ProductFeedEmpty
         description={
           likesEmpty
             ? "Лайкните приём в ленте — он появится в этой капсуле."
+            : period
+              ? "В этом периоде пока нет опубликованных приёмов."
             : goal
               ? "В этом калорийном интервале пока нет опубликованных приёмов."
               : "Смягчите поиск — в ленте остаются только опубликованные приёмы."
@@ -482,14 +486,8 @@ export function SharedMealsFeed({
                 }
               />
               <MealOpenDetail
-                addingToPlan={
-                  Boolean(addingDayKey) && planMeal?.id === openMeal.id
-                }
                 feedView
                 meal={openMeal}
-                onAddToPlan={
-                  canAddToPlan ? () => openPlanPicker(openMeal) : undefined
-                }
                 onMacrosRevealChange={setOpenMacrosReveal}
                 onToggleLike={() => toggleLike(openMeal)}
                 readOnly

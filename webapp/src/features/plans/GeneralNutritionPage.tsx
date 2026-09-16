@@ -24,7 +24,7 @@ const GENERAL_VIEWS = [
 ] as const
 
 const GENERAL_HEADING = {
-  title: 'Общее',
+  title: 'Мой дневник',
   description: 'Дневник и рационы на одной странице — переключайтесь в панели.',
 } as const
 
@@ -62,7 +62,7 @@ function GeneralViewSwitcher({
           }}
           type="button"
         >
-          <option.icon aria-hidden className="size-[11px] shrink-0" strokeWidth={1.75} />
+          <option.icon aria-hidden className="size-3.5 shrink-0" strokeWidth={1.75} />
           {option.label}
         </button>
       ))}

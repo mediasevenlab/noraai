@@ -259,6 +259,13 @@ export function addPlanDraftDay(days: readonly RationMealDraft[][]) {
   return [...days.map((day) => day.slice()), emptyPlanDayMeals()]
 }
 
+export function removePlanDraftDay(days: readonly RationMealDraft[][], index: number) {
+  if (days.length <= PLAN_DRAFT_MIN_DAYS || index < 0 || index >= days.length) {
+    return days.map((day) => day.slice())
+  }
+  return days.filter((_, dayIndex) => dayIndex !== index).map((day) => day.slice())
+}
+
 export function reorderPlanDraftDays(
   days: readonly RationMealDraft[][],
   fromIndex: number,

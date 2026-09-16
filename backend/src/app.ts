@@ -99,6 +99,7 @@ export function createApp({
     trustedProxyClientIpPosition: env.TRUSTED_PROXY_CLIENT_IP_POSITION,
   })) {
     app.use('/api/users/*', middleware)
+    app.use('/api/plans/*', middleware)
     app.use('/api/admin/*', middleware)
     app.use('/api/mentor/*', middleware)
   }
@@ -133,6 +134,7 @@ export function createApp({
   app.route('/api/auth', auth.routes)
   app.route('/api/users', users.userRoutes)
   app.route('/api/users', meals.userMealsRoutes)
+  app.route('/api/plans', users.planRoutes)
   app.route('/api/admin', users.adminRoutes)
   app.route('/api/mentor', users.mentorRoutes)
   app.route('/api/mentor', meals.mentorMealsRoutes)

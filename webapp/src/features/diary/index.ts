@@ -3,6 +3,12 @@
 // calls setMealCoverExtras at module load.
 export {
   MEAL_COVER_PLACEHOLDER_SRC,
+  MEAL_COVER_STUB_SRC,
+  PLAN_COVER_PLACEHOLDER_SRC,
+  displayMealCover,
+  displayPlanCover,
+  durablePlanCoverSrc,
+  isCoverPlaceholder,
   preferredMealPhotoSrc,
   setMealCoverExtras,
   usableMealCover,
@@ -10,12 +16,16 @@ export {
 export {
   isPlannedDiaryMeal,
   mealCanShareToFeed,
+  mealShareBlockedMessage,
+  mealHasAuthorPhoto,
+  MEAL_AUTHOR_PHOTO_MARK,
   isRationImportedMeal,
   isRationPlanDone,
   isRationPlanPending,
   mealCardOrigin,
   isPendingPlanMealShownInDiary,
   isDiaryFeedMealVisible,
+  isDiaryMealOnFutureDay,
   currentWeekPlanStampId,
   RATION_DIARY_DONE_MARK,
   RATION_DIARY_SOURCE_MARK,
@@ -45,7 +55,9 @@ export {
 export type { MealEntry } from './meals-catalog'
 export { mealCompositionLines } from './meals-catalog'
 export { mergeDemoAndApiMeals, mealDtoToEntry } from './merge-meals'
-export { useMealsQuery, useSharedMealsQuery, useUserFavoritesQuery, usePlanLibraryQuery, mealsQueryKeys, favoritesQueryKeys, planLibraryQueryKeys } from './queries'
+export { useMealsQuery, useSharedMealsQuery, useSharedRationsQuery, useUserFavoritesQuery, usePlanLibraryQuery, mealsQueryKeys, favoritesQueryKeys, planLibraryQueryKeys } from './queries'
+export { createMyMeal, deleteMyMeal, setMyMealPlanDone, shareMyMeal, shareMyRation, listSharedRations, likeSharedRation } from './api'
+export { authoredCloneOfSharedRation, canAddSharedRationToMine } from './feed-ration-clone'
 export { useSyncedPlanLibrary } from './use-plan-library'
 
 export { NewsPage as DiaryNewsPage } from './pages/news'
@@ -58,7 +70,6 @@ export {
   seededShuffle,
   writeSavedMealIds,
 } from './diary-assignments'
-export { createMyMeal, deleteMyMeal, setMyMealPlanDone, shareMyMeal } from './api'
 export { DiaryPlanDayPicker } from './DiaryPlanDayPicker'
 export type { FeedPlanWeekDay } from './feed-import'
 export {

@@ -3,11 +3,13 @@ import { expect, test } from 'bun:test'
 import {
   FEED_GOAL_KCAL_RANGE,
   filterSharedMeals,
+  filterSharedRations,
   goalsForMealKcal,
   mealMatchesFeedGoal,
   type FeedGoal,
 } from '../src/features/diary/feed-filters'
 import type { MealEntry } from '../src/features/diary/meals-catalog'
+import type { SharedRation } from '@web-app-demo/contracts'
 
 function meal(
   overrides: Partial<MealEntry> & Pick<MealEntry, 'id' | 'kcal'>,
@@ -53,14 +55,20 @@ test('feed goal filter keeps meals whose calories fall in that interval', () => 
     meal({ id: 'heavy', kcal: 850, title: 'Плов' }),
   ]
 
-  expect(filterSharedMeals(meals, { tab: 'Все', goal: 'Похудение', query: '' }).map((item) => item.id)).toEqual([
+  expect(
+    filterSharedMeals(meals, { likedOnly: false, goal: 'Похудение', query: '' }).map((item) => item.id),
+  ).toEqual([
     'light',
     'mid',
   ])
-  expect(filterSharedMeals(meals, { tab: 'Все', goal: 'Набор', query: '' }).map((item) => item.id)).toEqual([
+  expect(
+    filterSharedMeals(meals, { likedOnly: false, goal: 'Набор', query: '' }).map((item) => item.id),
+  ).toEqual([
     'heavy',
   ])
-  expect(filterSharedMeals(meals, { tab: 'Все', goal: null, query: 'плов' }).map((item) => item.id)).toEqual([
+  expect(
+    filterSharedMeals(meals, { likedOnly: false, goal: null, query: 'плов' }).map((item) => item.id),
+  ).toEqual([
     'heavy',
   ])
 })
@@ -73,10 +81,10 @@ test('my likes capsule keeps liked meals and still applies the goal filter', () 
   ]
 
   expect(
-    filterSharedMeals(meals, { tab: 'Мои лайки', goal: 'Похудение', query: '' }).map((item) => item.id),
+    filterSharedMeals(meals, { likedOnly: true, goal: 'Похудение', query: '' }).map((item) => item.id),
   ).toEqual(['liked-light'])
   expect(
-    filterSharedMeals(meals, { tab: 'Мои лайки', goal: null, query: 'плов' }).map((item) => item.id),
+    filterSharedMeals(meals, { likedOnly: true, goal: null, query: 'плов' }).map((item) => item.id),
   ).toEqual(['liked-heavy'])
 })
 
@@ -87,4 +95,83 @@ test('every catalog goal has a closed kcal interval for the feed filter', () => 
     expect(min).toBeLessThan(max)
     expect(mealMatchesFeedGoal(min, goal)).toBe(true)
   }
+})
+
+test('ration feed keeps published plans by likes, goal and query', () => {
+  function ration(overrides: Partial<SharedRation> & Pick<SharedRation, 'id'>): SharedRation {
+    return {
+      sourcePlanId: overrides.id,
+      title: 'Офис',
+      description: '',
+      goal: 'Похудение',
+      coverImage: '/cover.jpg',
+      days: 1,
+      kcal: 1400,
+      protein: 80,
+      fat: 40,
+      carbs: 120,
+      meals: [],
+      shared: true,
+      sharedAt: '2026-09-16T10:00:00.000Z',
+      createdAt: '2026-09-16T10:00:00.000Z',
+      updatedAt: '2026-09-16T10:00:00.000Z',
+      likeCount: 0,
+      liked: false,
+      own: false,
+      ...overrides,
+    }
+  }
+  const items = [
+    ration({ id: 'cut', title: 'Рельеф', goal: 'Похудение', liked: true }),
+    ration({ id: 'bulk', title: 'Набор', goal: 'Набор', liked: false }),
+  ]
+  expect(filterSharedRations(items, { likedOnly: true, goal: null, query: '' }).map((item) => item.id)).toEqual([
+    'cut',
+  ])
+  expect(
+    filterSharedRations(items, { likedOnly: false, goal: 'Набор', query: '' }).map((item) => item.id),
+  ).toEqual(['bulk'])
+  expect(
+    filterSharedRations(items, { likedOnly: false, goal: null, query: 'рельеф' }).map((item) => item.id),
+  ).toEqual(['cut'])
+  expect(
+    filterSharedRations(items, {
+      likedOnly: false,
+      goal: null,
+      query: '',
+      period: {
+        from: new Date(2026, 8, 16),
+        to: new Date(2026, 8, 16, 23, 59, 59, 999),
+      },
+    }).map((item) => item.id),
+  ).toEqual(['cut', 'bulk'])
+  expect(
+    filterSharedRations(items, {
+      likedOnly: false,
+      goal: null,
+      query: '',
+      period: {
+        from: new Date(2026, 7, 1),
+        to: new Date(2026, 7, 31, 23, 59, 59, 999),
+      },
+    }).map((item) => item.id),
+  ).toEqual([])
+})
+
+test('feed period keeps meals whose recorded day is inside the picked range', () => {
+  const meals = [
+    meal({ id: 'aug', kcal: 400, at: '2026-08-10T12:00:00.000Z', title: 'Август' }),
+    meal({ id: 'sep', kcal: 400, at: '2026-09-16T08:00:00.000Z', title: 'Сентябрь' }),
+  ]
+  expect(
+    filterSharedMeals(meals, {
+      likedOnly: false,
+      goal: null,
+      query: '',
+      period: {
+        from: new Date(2026, 8, 1),
+        to: new Date(2026, 8, 30, 23, 59, 59, 999),
+      },
+    }).map((item) => item.id),
+  ).toEqual(['sep'])
 })

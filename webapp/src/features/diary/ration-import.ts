@@ -25,6 +25,8 @@ export const WEEK_PLAN_ID_PREFIX = 'План:'
 export const WEEK_PLAN_LIVE_ID_PREFIX = 'week:'
 /** Hidden stamp that keeps the original diary meal id after a copy is added to a plan. */
 export const DIARY_PLAN_SOURCE_PREFIX = 'Дневник:'
+/** Hidden stamp after the owner attached their own photo to a derived card. */
+export const MEAL_AUTHOR_PHOTO_MARK = 'Добавлено своё фото'
 
 export function rationPlanAssumption(rationId: string) {
   return `${RATION_PLAN_ID_PREFIX}${rationId}`
@@ -102,6 +104,7 @@ export function visibleMealAssumptions(assumptions: string[] | undefined): strin
         && item !== RATION_DIARY_DONE_MARK
         && item !== FEED_DIARY_SOURCE_MARK
         && item !== CATALOG_FAVORITE_SOURCE_MARK
+        && item !== MEAL_AUTHOR_PHOTO_MARK
         && !item.startsWith(RATION_PLAN_ID_PREFIX)
         && !item.startsWith(WEEK_PLAN_ID_PREFIX)
         && !item.startsWith(FEED_SOURCE_ID_PREFIX)
@@ -152,14 +155,36 @@ export function isPlannedDiaryMeal(
   return isFeedImportedMeal(meal) || isRationImportedMeal(meal)
 }
 
-/** Own diary meals can go to the public feed; plan, feed, and catalog copies cannot. */
+/** Own diary meals can go to the public feed. Catalog, plan, and feed copies need an owner photo. */
+export function mealHasAuthorPhoto(meal: {
+  assumptions?: readonly string[]
+  extraImages?: readonly string[]
+}): boolean {
+  if (meal.assumptions?.includes(MEAL_AUTHOR_PHOTO_MARK)) return true
+  return Boolean(meal.extraImages?.some((src) => src.trim().length > 0))
+}
+
 export function mealCanShareToFeed(meal: {
   id?: string
   fromApi?: boolean
   title?: string
   assumptions?: readonly string[]
+  extraImages?: readonly string[]
 }): boolean {
-  return !isPlannedDiaryMeal(meal) && !isCatalogFavoriteMeal(meal)
+  if (!isPlannedDiaryMeal(meal) && !isCatalogFavoriteMeal(meal)) return true
+  return mealHasAuthorPhoto(meal)
+}
+
+export function mealShareBlockedMessage(meal: {
+  id?: string
+  fromApi?: boolean
+  title?: string
+  assumptions?: readonly string[]
+}): string {
+  if (isPlannedDiaryMeal(meal) || isCatalogFavoriteMeal(meal)) {
+    return 'Копию из каталога, плана или ленты можно отправить только после своего фото в карточке'
+  }
+  return 'В ленту можно отправить только свой приём'
 }
 
 /** Planned ration meal that is still waiting to be marked done. */
@@ -220,6 +245,11 @@ export function isPendingPlanMealShownInDiary(
 /** Diary feed shows logged meals on past days and today, never future calendar days. */
 export function isDiaryMealInVisibleDay(meal: { at: string }, now = new Date()) {
   return localDayKey(meal.at) <= localCalendarDayKey(now)
+}
+
+/** Planned meals on a day that has not started yet — view only from the diary. */
+export function isDiaryMealOnFutureDay(meal: { at: string }, now = new Date()) {
+  return localDayKey(meal.at) > localCalendarDayKey(now)
 }
 
 export function isDiaryFeedMealVisible(

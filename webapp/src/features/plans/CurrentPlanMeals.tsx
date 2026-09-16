@@ -37,6 +37,7 @@ import {
   MEAL_DIALOG_FRAME_CLASS,
   mealCardOrigin,
   mealCanShareToFeed,
+  mealShareBlockedMessage,
   mealImageFromUrl,
   mealsCountLabel,
   mealsQueryKeys,
@@ -337,7 +338,7 @@ export function CurrentPlanMeals({
       return
     }
     if (!mealCanShareToFeed(meal) && !meal.shared) {
-      toast.error('В ленту можно отправить только свой приём')
+      toast.error(mealShareBlockedMessage(meal))
       return
     }
     const nextShared = !meal.shared
@@ -707,15 +708,6 @@ export function CurrentPlanMeals({
               <MealOpenDetail
                 completedIds={completedIds}
                 meal={openMeal}
-                onAddToPlan={
-                  canCopyToPlan
-                    ? () => {
-                        setOpenId(null)
-                        setPlanMeal(openMeal)
-                      }
-                    : undefined
-                }
-                addingToPlan={addingPlanDayKey !== null && planMeal?.id === openMeal.id}
                 onMacrosRevealChange={setOpenMacrosReveal}
                 subjectUserId={subjectId}
               />

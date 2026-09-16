@@ -31,6 +31,7 @@ import type {
   UserDeleter,
   UserRoleUpdater,
   UserReferralsReader,
+  SharedRationsStore,
 } from '../application/ports'
 import { UsersFailure } from '../domain/errors'
 import { uuidMealIds } from '../domain/favorite-meal-ids'
@@ -62,6 +63,7 @@ type UsersRepository =
   & UserFavoritesStore
   & UserPlanLibraryStore
   & MentorPlansStore
+  & SharedRationsStore
 
 export function createPrismaUsersRepository(db: DbClient): UsersRepository {
   return {
@@ -231,6 +233,116 @@ export function createPrismaUsersRepository(db: DbClient): UsersRepository {
         throw new UsersFailure('not_found', 'Plan not found')
       }
       await db.mentorPlan.delete({ where: { id: planId } })
+    },
+    async findByAuthorAndSource(authorId, sourcePlanId) {
+      const row = await db.sharedRation.findUnique({
+        where: { authorId_sourcePlanId: { authorId, sourcePlanId } },
+      })
+      return row ? toSharedRationRecord(row) : null
+    },
+    async findById(id) {
+      const row = await db.sharedRation.findUnique({ where: { id } })
+      return row ? toSharedRationRecord(row) : null
+    },
+    async upsertShared(input) {
+      const row = await db.sharedRation.upsert({
+        where: {
+          authorId_sourcePlanId: {
+            authorId: input.authorId,
+            sourcePlanId: input.sourcePlanId,
+          },
+        },
+        create: {
+          authorId: input.authorId,
+          sourcePlanId: input.sourcePlanId,
+          title: input.title,
+          description: input.description,
+          goal: input.goal,
+          coverImage: input.coverImage,
+          days: input.days,
+          meals: input.meals as Prisma.InputJsonValue,
+          kcal: input.kcal,
+          protein: input.protein,
+          fat: input.fat,
+          carbs: input.carbs,
+          sharedAt: input.sharedAt,
+        },
+        update: {
+          title: input.title,
+          description: input.description,
+          goal: input.goal,
+          coverImage: input.coverImage,
+          days: input.days,
+          meals: input.meals as Prisma.InputJsonValue,
+          kcal: input.kcal,
+          protein: input.protein,
+          fat: input.fat,
+          carbs: input.carbs,
+          sharedAt: input.sharedAt,
+        },
+      })
+      return toSharedRationRecord(row)
+    },
+    async setSharedAt(id, sharedAt) {
+      const row = await db.sharedRation.update({
+        where: { id },
+        data: { sharedAt },
+      })
+      return toSharedRationRecord(row)
+    },
+    async listShared(limit, viewerUserId) {
+      const rows = await db.sharedRation.findMany({
+        where: { sharedAt: { not: null } },
+        orderBy: { sharedAt: 'desc' },
+        take: limit,
+        include: {
+          author: { select: { displayName: true, nickname: true } },
+          _count: { select: { likes: true } },
+          likes: {
+            where: { userId: viewerUserId },
+            select: { userId: true },
+            take: 1,
+          },
+        },
+      })
+      return rows.map((row) =>
+        toSharedRationRecord(row, {
+          authorName: sharedRationAuthorLabel(row.author),
+          likeCount: row._count.likes,
+          liked: row.likes.length > 0,
+        }),
+      )
+    },
+    async setLiked(rationId, userId, liked) {
+      if (liked) {
+        await db.sharedRationLike.upsert({
+          where: { rationId_userId: { rationId, userId } },
+          create: { rationId, userId },
+          update: {},
+        })
+      } else {
+        await db.sharedRationLike.deleteMany({ where: { rationId, userId } })
+      }
+      const row = await db.sharedRation.findUnique({
+        where: { id: rationId },
+        include: {
+          author: { select: { displayName: true, nickname: true } },
+          _count: { select: { likes: true } },
+          likes: {
+            where: { userId },
+            select: { userId: true },
+            take: 1,
+          },
+        },
+      })
+      if (!row) {
+        throw new UsersFailure('not_found', 'Ration not found')
+      }
+      return toSharedRationRecord(row, {
+        authorName: sharedRationAuthorLabel(row.author),
+        likeCount: row._count.likes,
+        liked: row.likes.length > 0,
+      })
     },
     async getQuestionnaire(userId) {
       const row = await db.userQuestionnaireProfile.findUnique({
@@ -705,4 +817,52 @@ function isPublicId(value: string) {
 function stringIds(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return value.filter((id): id is string => typeof id === 'string' && id.length > 0)
+}
+
+function sharedRationAuthorLabel(user: { displayName: string | null; nickname: string | null }) {
+  const name = user.displayName?.trim() || user.nickname?.trim()
+  if (!name) return 'Пользователь'
+  return name.length > 80 ? name.slice(0, 80) : name
+}
+
+function toSharedRationRecord(
+  row: {
+    id: string
+    authorId: string
+    sourcePlanId: string
+    title: string
+    description: string
+    goal: string | null
+    coverImage: string
+    days: number
+    meals: unknown
+    kcal: number
+    protein: number
+    fat: number
+    carbs: number
+    sharedAt: Date | null
+    createdAt: Date
+    updatedAt: Date
+  },
+  extras?: { authorName?: string; likeCount?: number; liked?: boolean },
+) {
+  return {
+    id: row.id,
+    authorId: row.authorId,
+    sourcePlanId: row.sourcePlanId,
+    title: row.title,
+    description: row.description,
+    goal: row.goal,
+    coverImage: row.coverImage,
+    days: row.days,
+    meals: row.meals,
+    kcal: row.kcal,
+    protein: row.protein,
+    fat: row.fat,
+    carbs: row.carbs,
+    sharedAt: row.sharedAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    ...extras,
+  }
 }

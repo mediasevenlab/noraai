@@ -19,6 +19,7 @@ import {
   updateUserRoleRequestSchema,
   putUserFavoritesRequestSchema,
   putUserPlanLibraryRequestSchema,
+  shareRationRequestSchema,
   userFavoritesSchema,
   userPlanLibrarySchema,
   userSchema,
@@ -126,6 +127,10 @@ describe('user and admin contracts', () => {
       goal: 'Похудение' as const,
       sourceCatalogId: 'catalog_office',
     }
+    const fromFeed = {
+      ...authored,
+      sourceSharedRationId: '019c0000-0000-7000-8000-000000000301',
+    }
     expect(
       userPlanLibrarySchema.parse({
         authoredPlans: [authored],
@@ -150,6 +155,15 @@ describe('user and admin contracts', () => {
         updatedAt: '2026-09-07T12:00:00.000Z',
       }).authoredPlans[0],
     ).toMatchObject({ dayCount: 4 })
+    expect(
+      userPlanLibrarySchema.parse({
+        authoredPlans: [fromFeed],
+        savedPlanIds: [],
+        selectedPlanIds: [],
+        planStarts: [],
+        updatedAt: '2026-09-07T12:00:00.000Z',
+      }).authoredPlans[0]?.sourceSharedRationId,
+    ).toBe(fromFeed.sourceSharedRationId)
     expect(
       putUserPlanLibraryRequestSchema.parse({
         authoredPlans: [{ ...authored, description: '  ' }],
@@ -286,5 +300,33 @@ describe('user and admin contracts', () => {
         hasNext: false,
       }),
     ).toMatchObject({ page: 1, pageSize: 20, total: 1, hasNext: false })
+  })
+
+  test('ration share requires a snapshot only when publishing', () => {
+    const snapshot = {
+      title: 'Офис',
+      description: '',
+      goal: 'Похудение' as const,
+      coverImage: '/cover.jpg',
+      meals: [
+        {
+          dayIndex: 0,
+          slot: 'Обед' as const,
+          title: 'Курица',
+          ingredients: 'рис',
+          image: '/meal.jpg',
+          kcal: 400,
+          protein: 30,
+          fat: 10,
+          carbs: 40,
+        },
+      ],
+    }
+    expect(shareRationRequestSchema.parse({ shared: true, snapshot })).toMatchObject({
+      shared: true,
+      snapshot: { title: 'Офис' },
+    })
+    expect(shareRationRequestSchema.parse({ shared: false })).toEqual({ shared: false })
+    expect(() => shareRationRequestSchema.parse({ shared: true })).toThrow()
   })
 })

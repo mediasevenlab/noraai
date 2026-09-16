@@ -972,6 +972,67 @@ describe('MealsService', () => {
     expect(refineInput?.coverBase64).toBeUndefined()
   })
 
+  test('refineMeal keeps catalog origin stamps after a text-only change', async () => {
+    const existing = mealRecord({
+      assumptions: ['Добавлено из каталога', 'Каталог:plan-preview:catalog_loss:1'],
+    })
+    let savedAssumptions: string[] = []
+    const service = new MealsService({
+      analyzer: {
+        analyze: async () => {
+          throw new Error('unused')
+        },
+        refine: async () => ({
+          ok: true as const,
+          model: 'gemini-test',
+          meal: {
+            title: 'Овсянка с бананом',
+            excerpt: 'Овсянка, банан',
+            body: '',
+            category: 'Завтрак',
+            mealType: 'Завтрак',
+            tags: [] as string[],
+            nutrition: { kcal: 380, protein: 22, fat: 9, carbs: 55 },
+            clientNoteStructured: '',
+            composition: [],
+            assumptions: ['Банан спелый'],
+            micronutrients: [],
+          },
+        }),
+      },
+      imageStore: { saveImage: async () => ({ imageKey: 'a', imageMime: 'image/jpeg' }), readImage: async () => null },
+      imageUrlBuilder: imageUrls(),
+      repository: repositoryStub({
+        findMealById: async () => existing,
+        updateMealContent: async (_id, content) => {
+          savedAssumptions = content.assumptions
+          return mealRecord({
+            ...content,
+            id: existing.id,
+            userId: existing.userId,
+            assumptions: content.assumptions,
+          })
+        },
+      }),
+    })
+
+    const result = await service.refineMeal(
+      { id: existing.userId, role: 'user' },
+      existing.id,
+      { message: 'банан 80г' },
+    )
+
+    expect(savedAssumptions).toEqual([
+      'Добавлено из каталога',
+      'Каталог:plan-preview:catalog_loss:1',
+      'Банан спелый',
+    ])
+    expect(result.meal.assumptions).toEqual(savedAssumptions)
+    await expect(
+      service.setMealShared({ id: existing.userId, role: 'user' }, existing.id, true),
+    ).rejects.toMatchObject({ kind: 'forbidden' })
+  })
+
   test('refineMeal with attach photo still loads cover image', async () => {
     const existing = mealRecord({ imageKey: 'cover.jpg', imageMime: 'image/jpeg' })
     let refineInput: { coverBase64?: string; attachBase64?: string } | undefined
@@ -1090,6 +1151,7 @@ describe('MealsService', () => {
     expect(savedVariant).toBe('extra')
     expect(refined.meal.extraImageUrls).toEqual([`/img/${existing.id}/extras/0`])
     expect(refined.meal.imageUrl).toBe(`/img/${existing.id}`)
+    expect(refined.meal.assumptions).toContain('Добавлено своё фото')
   })
 
   test('refineMeal skips extra slides when attach reuses the cover key', async () => {
@@ -1464,6 +1526,48 @@ describe('MealsService', () => {
     await expect(
       catalogService.setMealShared({ id: catalogCopy.userId, role: 'user' }, catalogCopy.id, true),
     ).rejects.toMatchObject({ kind: 'forbidden' })
+    const uniquified = mealRecord({
+      id: '88888888-8888-4888-8888-888888888888',
+      assumptions: ['Добавлено из каталога', 'Каталог:plan-preview:catalog_loss:1'],
+      versions: [
+        {
+          id: '99999999-9999-4999-8999-999999999999',
+          createdAt: '2026-08-04T08:00:00.000Z',
+          label: 'vers. 2.0',
+          extraImageKeys: ['meals/owner-photo.webp'],
+          snapshot: {
+            title: 'Овсянка',
+            ingredients: 'Овсянка',
+            category: 'Завтрак',
+            meal: 'Завтрак',
+            kcal: 300,
+            protein: 20,
+            fat: 8,
+            carbs: 40,
+            portionItems: [],
+            clientComment: '',
+            assumptions: ['Добавлено из каталога'],
+            micronutrients: [],
+          },
+        },
+      ],
+      activeVersionId: '99999999-9999-4999-8999-999999999999',
+    })
+    const uniquifiedService = new MealsService({
+      analyzer: { analyze: async () => ({ ok: true, model: 'x', meal: {} as never }), refine: async () => ({ ok: true, model: 'x', meal: {} as never }) },
+      imageStore: { saveImage: async () => ({ imageKey: 'a', imageMime: 'image/jpeg' }), readImage: async () => null },
+      imageUrlBuilder: imageUrls((id) => `/img/${id}`),
+      repository: repositoryStub({
+        findMealById: async () => uniquified,
+        setMealShared: async (_id, sharedAt) => ({ ...uniquified, sharedAt }),
+      }),
+    })
+    const publishedCopy = await uniquifiedService.setMealShared(
+      { id: uniquified.userId, role: 'user' },
+      uniquified.id,
+      true,
+    )
+    expect(publishedCopy.meal.shared).toBe(true)
     const feed = await service.listSharedMeals(owner.id)
     expect(feed.items).toHaveLength(1)
     expect(feed.items[0]?.id).toBe(shared.id)

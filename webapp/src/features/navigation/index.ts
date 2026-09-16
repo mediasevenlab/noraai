@@ -3,6 +3,7 @@ export {
   isMentorPlanPath,
   isUserPlanPath,
   userGeneralSearch,
+  userFeedSearch,
   userSplitNutritionGeneralPath,
   navigationItemMatchingPath,
   navigationItemsForRole,

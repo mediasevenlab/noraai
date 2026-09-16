@@ -6,6 +6,7 @@ import type {
   UserReferralsQuery,
   PutUserFavoritesRequest,
   PutUserPlanLibraryRequest,
+  ShareRationRequest,
   TelegramLinkRequest,
   UpdateProfileRequest,
   UpdateUserRoleRequest,
@@ -17,6 +18,7 @@ import type { AuthenticatedPrincipal } from '../../auth'
 import { UsersFailure } from '../domain/errors'
 import { publishedFavoriteMealIds } from '../domain/favorite-meal-ids'
 import {
+  authoredPlanCanShareToFeed,
   emptyPlanLibrary,
   normalizePlanLibrary,
 } from '../domain/plan-library'
@@ -26,6 +28,7 @@ import {
   toMentorRationDto,
   tryToMentorRationDto,
 } from '../domain/mentor-ration'
+import { snapshotFromRequest, toSharedRationDto } from '../domain/shared-ration'
 import type {
   AdminDashboardReader,
   AdminUsersReader,
@@ -45,6 +48,7 @@ import type {
   UserRoleUpdater,
   UserReferralsReader,
   UserMentorConnector,
+  SharedRationsStore,
 } from './ports'
 
 type UsersServiceDependencies = {
@@ -60,6 +64,7 @@ type UsersServiceDependencies = {
   planAssignmentsStore?: PlanAssignmentsStore
   userFavoritesStore?: UserFavoritesStore
   userPlanLibraryStore?: UserPlanLibraryStore
+  sharedRationsStore?: SharedRationsStore
   mentorPlansStore?: MentorPlansStore
   telegramLinks?: TelegramLinkStore
   botUsername?: string
@@ -223,6 +228,71 @@ export class UsersService {
     return this.toPlanLibraryDto(saved)
   }
 
+  async listSharedRations(principal: AuthenticatedPrincipal) {
+    const store = this.requireSharedRationsStore()
+    const items = await store.listShared(200, principal.id)
+    return {
+      items: items.slice(0, 80).map((row) =>
+        toSharedRationDto(row, { own: row.authorId === principal.id }),
+      ),
+    }
+  }
+
+  async setRationShared(
+    principal: AuthenticatedPrincipal,
+    planId: string,
+    input: ShareRationRequest,
+  ) {
+    await this.assertOwnsShareablePlan(principal, planId)
+    if (input.shared) {
+      const owned = await this.shareableAuthoredPlan(principal, planId)
+      if (owned && !authoredPlanCanShareToFeed(owned)) {
+        throw new UsersFailure(
+          'forbidden',
+          'Копию из каталога или ленты нельзя повторно отправить в ленту',
+        )
+      }
+    }
+    const store = this.requireSharedRationsStore()
+    const existing = await store.findByAuthorAndSource(principal.id, planId)
+    if (!input.shared) {
+      if (!existing) {
+        throw new UsersFailure('not_found', 'Ration not found')
+      }
+      if (existing.sharedAt == null) {
+        return { ration: toSharedRationDto(existing, { own: true }) }
+      }
+      const saved = await store.setSharedAt(existing.id, null)
+      return { ration: toSharedRationDto(saved, { own: true }) }
+    }
+    if (!input.snapshot) {
+      throw new UsersFailure('invalid', 'Snapshot is required when publishing a ration')
+    }
+    const snapshot = snapshotFromRequest(input.snapshot)
+    const sharedAt = existing?.sharedAt ?? this.dependencies.clock.now()
+    const saved = await store.upsertShared({
+      authorId: principal.id,
+      sourcePlanId: planId,
+      ...snapshot,
+      sharedAt,
+    })
+    return { ration: toSharedRationDto(saved, { own: true }) }
+  }
+
+  async setRationLiked(
+    principal: AuthenticatedPrincipal,
+    rationId: string,
+    liked: boolean,
+  ) {
+    const store = this.requireSharedRationsStore()
+    const ration = await store.findById(rationId)
+    if (!ration || ration.sharedAt == null) {
+      throw new UsersFailure('not_found', 'Ration not found')
+    }
+    const saved = await store.setLiked(rationId, principal.id, liked)
+    return { ration: toSharedRationDto(saved, { own: saved.authorId === principal.id }) }
+  }
+
   async listMentorPlans(principal: AuthenticatedPrincipal) {
     const store = this.requireMentorPlansStore()
     const items = await store.listMentorPlans(principal.id)
@@ -356,6 +426,37 @@ export class UsersService {
     const store = this.dependencies.mentorPlansStore
     if (!store) throw new UsersFailure('not_found', 'Mentor plans are unavailable')
     return store
+  }
+
+  private requireSharedRationsStore() {
+    const store = this.dependencies.sharedRationsStore
+    if (!store) throw new UsersFailure('not_found', 'Shared rations are unavailable')
+    return store
+  }
+
+  private async assertOwnsShareablePlan(principal: AuthenticatedPrincipal, planId: string) {
+    if (planId.startsWith('plan_')) {
+      const owned = await this.shareableAuthoredPlan(principal, planId)
+      if (!owned) {
+        throw new UsersFailure('not_found', 'Plan not found')
+      }
+      return
+    }
+    if (isUuid(planId)) {
+      const plan = await this.dependencies.mentorPlansStore?.getMentorPlan(principal.id, planId)
+      if (!plan) {
+        throw new UsersFailure('not_found', 'Plan not found')
+      }
+      return
+    }
+    throw new UsersFailure('invalid', 'Plan not found')
+  }
+
+  private async shareableAuthoredPlan(principal: AuthenticatedPrincipal, planId: string) {
+    if (!planId.startsWith('plan_')) return null
+    const saved = await this.dependencies.userPlanLibraryStore?.getPlanLibrary(principal.id)
+    const library = this.toPlanLibraryDto(saved)
+    return library.authoredPlans.find((plan) => plan.id === planId) ?? null
   }
 
   private async readPlanAssignment(

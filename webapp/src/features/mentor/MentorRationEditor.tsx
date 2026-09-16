@@ -3,6 +3,7 @@ import {
   CalendarDaysIcon,
   CameraIcon,
   ChevronDownIcon,
+  ImagePlusIcon,
   ChevronLeftIcon,
   ChevronUpIcon,
   CoffeeIcon,
@@ -29,7 +30,17 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { fileToMealImage, usableMealCover } from '@/features/diary'
+import {
+  applyMealPhotoFallback,
+  displayMealCover,
+  displayMediaSrc,
+  durablePlanCoverSrc,
+  fileToMealImage,
+  isCoverPlaceholder,
+  mealPhotoOriginalSrc,
+  PLAN_COVER_PLACEHOLDER_SRC,
+  usableMealCover,
+} from '@/features/diary'
 import {
   ProductSheetTabFade,
   productSheetEditorFrameClass,
@@ -55,6 +66,7 @@ import {
   PLAN_DRAFT_MAX_DAYS,
   previewRationFromDraft,
   removeDraftLine,
+  removePlanDraftDay,
   setDraftLine,
   reorderMealDrafts,
   reorderPlanDraftDays,
@@ -83,7 +95,7 @@ const EDITOR_COPY = {
     untitled: 'Новый рацион',
     editing: 'Редактировать',
     saveNew: 'Создать рацион',
-    addMeal: 'Добавить приём',
+    addMeal: 'Добавить',
     overviewTab: 'Рацион',
     descriptionLabel: 'Рацион',
     titlePlaceholder: 'Например, Офис без срывов',
@@ -104,9 +116,10 @@ const TITLE_FIELD_CLASS = cn(
   FIELD_TYPE_CLASS,
   '!bg-[var(--nora-inset)] w-full px-3 !py-0 !h-8 !min-h-8 !max-h-8 !rounded-[10px]',
 )
-const MEAL_TITLE_FIELD_CLASS = cn(
+const LINE_INPUT_CLASS = cn(
   FIELD_TYPE_CLASS,
-  '!bg-[var(--nora-inset)] w-full px-3.5 !py-0 !h-8 !min-h-8 !max-h-8 !rounded-[14px]',
+  FIELD_FACE_CLASS,
+  '!h-8 !min-h-8 !max-h-8 min-w-0 flex-1 !rounded-full !px-2.5',
 )
 const GOAL_FIELD_CLASS = cn(
   FIELD_TYPE_CLASS,
@@ -114,16 +127,21 @@ const GOAL_FIELD_CLASS = cn(
   'w-full px-3 !py-0 !h-8 !min-h-8 !max-h-8',
   'data-[size=default]:!h-8 data-[size=default]:!min-h-8 data-[size=default]:!max-h-8',
 )
-const MEAL_COVER_BUTTON_CLASS = cn(
+const EDITOR_COVER_CLASS = cn(
   FIELD_CHIP_CLASS,
-  'relative aspect-[40/21] min-h-20 w-full overflow-hidden p-0',
+  'relative aspect-[16/9] min-h-[7.5rem] w-full overflow-hidden p-0',
 )
+const MEAL_COVER_BUTTON_CLASS = EDITOR_COVER_CLASS
+const PLAN_EDITOR_COVER_CLASS = EDITOR_COVER_CLASS
+const COVER_PLACEHOLDER_IMAGE_CLASS = 'object-contain scale-[1.11]'
 const COVER_CHANGE_CHIP_CLASS = cn(
-  productSheetOverlayChipClass,
-  'pointer-events-none absolute right-2 top-2 size-8',
-  'transition-[background-color,color]',
-  'group-hover:bg-[var(--nora-panel)] group-hover:text-[var(--nora-text)]',
-  'group-active:bg-[var(--nora-text)] group-active:text-[var(--nora-panel)]',
+  'ios-glass-glare pointer-events-none absolute right-2 top-2 z-[1] inline-flex size-8',
+  'items-center justify-center rounded-full border-0 outline-none backdrop-blur-[12px]',
+  'bg-[color-mix(in_srgb,var(--nora-text)_55%,transparent)] text-[var(--nora-panel)]',
+  'shadow-[inset_0_1px_0_color-mix(in_srgb,white_42%,transparent),0_1px_2px_color-mix(in_srgb,var(--nora-text)_18%,transparent)]',
+  'transition-[background-color]',
+  'group-hover:bg-[var(--nora-text)]',
+  'group-active:bg-[var(--nora-text)]',
 )
 const SLOT_ROW_CLASS = cn(
   'ios-glass-glare-soft flex min-h-12 items-center gap-2 rounded-[14px] px-2 py-2',
@@ -166,10 +184,14 @@ const FIELD_LABEL_CLASS =
 const SECTION_HEADING_CLASS =
   'font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
 const ADD_MEAL_CLASS = cn(
-  'nora-press-grow ios-glass-glare inline-flex h-8 min-h-8 max-h-8 shrink-0 items-center rounded-full border-0 px-3 py-0',
+  'nora-press-grow ios-glass-glare inline-flex h-8 min-h-8 max-h-8 shrink-0 items-center gap-1.5 rounded-full border-0 py-0 pr-3 pl-1.5',
   'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-none tracking-normal',
   'bg-[var(--nora-tint)] text-[var(--nora-on-accent)] hover:bg-[var(--nora-tint-dark)]',
   'outline-none focus-visible:shadow-[var(--nora-shadow-focus)]',
+)
+const ADD_MEAL_PLUS_CLASS = cn(
+  'inline-flex size-5 shrink-0 items-center justify-center rounded-full',
+  'bg-[var(--nora-on-accent)] text-[var(--nora-tint)]',
 )
 const MEAL_TRASH_CLASS = cn(
   'nora-press-grow inline-flex size-8 items-center justify-center rounded-full',
@@ -288,6 +310,7 @@ export function RationEditorDialog({
   const [activeTab, setActiveTab] = React.useState(DESCRIPTION_TAB)
   const coverFileRef = React.useRef<HTMLInputElement>(null)
   const [busyCover, setBusyCover] = React.useState(false)
+  const [coverFailed, setCoverFailed] = React.useState(false)
   const inPlanDay = planDaysEnabled && viewingDay !== null
   const showPlanDescriptionChrome = activeTab === DESCRIPTION_TAB && !inPlanDay
   const scrollRef = React.useRef<HTMLDivElement>(null)
@@ -322,17 +345,29 @@ export function RationEditorDialog({
   const heading = form.title.trim() || copy.untitled
   const totals = draftRationTotals(previewSource)
   const coverSrc =
-    usableMealCover(form.coverImage) ||
+    durablePlanCoverSrc(form.coverImage) ||
     planMeals.map((meal) => usableMealCover(meal.image)).find(Boolean) ||
-    ''
+    (mode === 'plan' ? PLAN_COVER_PLACEHOLDER_SRC : '')
+  const shownCover = coverFailed ? PLAN_COVER_PLACEHOLDER_SRC : coverSrc
+  const coverDisplaySrc = shownCover
+    ? isCoverPlaceholder(shownCover)
+      ? shownCover
+      : displayMediaSrc(shownCover, 'card')
+    : ''
+  const coverOriginalSrc = shownCover && !isCoverPlaceholder(shownCover)
+    ? mealPhotoOriginalSrc(shownCover, 'card')
+    : shownCover
   const editing = Boolean(form.id)
   const saveLabel = editing ? 'Сохранить' : copy.saveNew
+  const activeMealIndex = form.meals.findIndex((meal) => meal.key === activeTab)
   const headerTitle =
     viewingDay === null
       ? editing
         ? copy.editing
         : copy.untitled
-      : `День ${viewingDay + 1}`
+      : activeMealIndex >= 0
+        ? `День ${viewingDay + 1} · Приём ${activeMealIndex + 1}`
+        : `День ${viewingDay + 1}`
   const headerDescription =
     mode === 'plan'
       ? planEditorHeaderDescription(
@@ -340,11 +375,11 @@ export function RationEditorDialog({
           EDITOR_COPY.plan.headerHint,
         )
       : preview.description || 'Названия приёмов появятся здесь'
-  const activeMealIndex = form.meals.findIndex((meal) => meal.key === activeTab)
-  const mealsHeading =
-    planDaysEnabled && inPlanDay && activeMealIndex >= 0
-      ? `День ${activeDay + 1} · Приём ${activeMealIndex + 1}`
-      : 'Приёмы дня'
+  const mealsHeading = 'Приёмы дня'
+
+  React.useEffect(() => {
+    setCoverFailed(false)
+  }, [coverSrc])
 
   function currentDays() {
     return planDaysEnabled
@@ -425,9 +460,9 @@ export function RationEditorDialog({
         return
       }
       const cover =
-        usableMealCover(form.coverImage) ||
+        durablePlanCoverSrc(form.coverImage) ||
         result.days.flatMap((day) => day.meals).map((meal) => usableMealCover(meal.image)).find(Boolean) ||
-        ''
+        PLAN_COVER_PLACEHOLDER_SRC
       const days = result.days.map((day, index) =>
         index === 0 ? { ...day, image: cover || day.image } : day,
       )
@@ -468,6 +503,22 @@ export function RationEditorDialog({
     const synced = addPlanDraftDay(currentDays())
     if (synced.length === dayDrafts.length) return
     setDayDrafts(synced)
+  }
+
+  function removeDay(index: number) {
+    const synced = currentDays()
+    const next = removePlanDraftDay(synced, index)
+    if (next.length === synced.length) return
+    setDayDrafts(next)
+    if (viewingDay === index) {
+      setViewingDay(null)
+      setActiveTab(DESCRIPTION_TAB)
+    } else if (viewingDay !== null && viewingDay > index) {
+      setViewingDay(viewingDay - 1)
+    }
+    const nextActive = Math.min(activeDay > index ? activeDay - 1 : activeDay, next.length - 1)
+    setActiveDay(Math.max(0, nextActive))
+    setForm((current) => ({ ...current, meals: next[Math.max(0, nextActive)] ?? current.meals }))
   }
 
   function moveDay(fromIndex: number, direction: -1 | 1) {
@@ -537,12 +588,11 @@ export function RationEditorDialog({
               <DialogDescription className="sr-only">{headerDescription}</DialogDescription>
               {showPlanDescriptionChrome ? (
                 <div className="grid gap-2" data-plan-editor-identity="">
-                  <label className="grid min-w-0 gap-1">
-                    <span className={FIELD_LABEL_CLASS}>Обложка</span>
+                  <label className="grid min-w-0">
                     <button
                       aria-label="Сменить обложку"
                       className={cn(
-                        MEAL_COVER_BUTTON_CLASS,
+                        PLAN_EDITOR_COVER_CLASS,
                         'group nora-press-grow !bg-[var(--nora-panel)]',
                       )}
                       data-plan-editor-cover=""
@@ -551,9 +601,29 @@ export function RationEditorDialog({
                     >
                       {coverSrc ? (
                         <>
-                          <img alt="" className="absolute inset-0 size-full object-cover" src={coverSrc} />
+                          <img
+                            alt=""
+                            className={cn(
+                              'absolute inset-0 size-full',
+                              isCoverPlaceholder(shownCover)
+                                ? COVER_PLACEHOLDER_IMAGE_CLASS
+                                : 'object-cover',
+                            )}
+                            data-display={coverDisplaySrc}
+                            data-original={coverOriginalSrc}
+                            onError={(event) => {
+                              applyMealPhotoFallback(
+                                event.currentTarget,
+                                PLAN_COVER_PLACEHOLDER_SRC,
+                              )
+                              if (event.currentTarget.dataset.fallback === '2') {
+                                setCoverFailed(true)
+                              }
+                            }}
+                            src={coverDisplaySrc}
+                          />
                           <span className={COVER_CHANGE_CHIP_CLASS}>
-                            <CameraIcon aria-hidden className="size-4" />
+                            <ImagePlusIcon aria-hidden className="size-4" strokeWidth={1.75} />
                           </span>
                         </>
                       ) : (
@@ -691,6 +761,7 @@ export function RationEditorDialog({
                       onAdd={addDay}
                       onMove={moveDay}
                       onOpen={openDay}
+                      onRemove={removeDay}
                     />
                   ) : (
                     <>
@@ -722,14 +793,16 @@ export function RationEditorDialog({
                   value={meal.key}
                 >
                   <div className="flex flex-col gap-4">
-                    <MealsSectionHeading
-                      addLabel={copy.addMeal}
-                      heading={mealsHeading}
-                      onAdd={addMeal}
-                      onSave={handleSave}
-                      saveLabel={saveLabel}
-                      showSave={!saveInFooter}
-                    />
+                    {!inPlanDay ? (
+                      <MealsSectionHeading
+                        addLabel={copy.addMeal}
+                        heading={mealsHeading}
+                        onAdd={addMeal}
+                        onSave={handleSave}
+                        saveLabel={saveLabel}
+                        showSave={!saveInFooter}
+                      />
+                    ) : null}
                     <MealDraftCard
                       index={index}
                       meal={meal}
@@ -775,6 +848,19 @@ export function RationEditorDialog({
                     })}
                   </TabsList>
                 </div>
+                {inPlanDay ? (
+                  <button
+                    className={ADD_MEAL_CLASS}
+                    data-plan-editor-add-meal=""
+                    onClick={addMeal}
+                    type="button"
+                  >
+                    <span className={ADD_MEAL_PLUS_CLASS}>
+                      <PlusIcon aria-hidden className="size-3" strokeWidth={2.25} />
+                    </span>
+                    {copy.addMeal}
+                  </button>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -813,11 +899,13 @@ function PlanDayPlaqueList({
   onAdd,
   onMove,
   onOpen,
+  onRemove,
 }: {
   days: readonly RationMealDraft[][]
   onAdd: () => void
   onMove: (index: number, direction: -1 | 1) => void
   onOpen: (index: number) => void
+  onRemove: (index: number) => void
 }) {
   return (
     <div className="grid gap-2" data-plan-editor-days="">
@@ -873,6 +961,16 @@ function PlanDayPlaqueList({
             >
               <ChevronDownIcon aria-hidden className="size-4" />
             </button>
+            <button
+              aria-label={`Удалить день ${index + 1}`}
+              className={MEAL_TRASH_CLASS}
+              data-plan-editor-day-remove={String(index)}
+              disabled={days.length <= 1}
+              onClick={() => onRemove(index)}
+              type="button"
+            >
+              <Trash2Icon aria-hidden className="size-4" />
+            </button>
           </div>
         )
       })}
@@ -915,6 +1013,9 @@ function MealsSectionHeading({
       <p className={cn(SECTION_HEADING_CLASS, 'min-w-0 truncate')}>{heading}</p>
       <div className="flex min-w-0 shrink-0 items-center gap-1.5">
         <button className={ADD_MEAL_CLASS} onClick={onAdd} type="button">
+          <span className={ADD_MEAL_PLUS_CLASS}>
+            <PlusIcon aria-hidden className="size-3" strokeWidth={2.25} />
+          </span>
           {addLabel}
         </button>
         {showSave ? (
@@ -1079,6 +1180,7 @@ function MealDraftCard({
 }) {
   const fileRef = React.useRef<HTMLInputElement>(null)
   const [busyPhoto, setBusyPhoto] = React.useState(false)
+  const mealCoverSrc = displayMealCover(meal.image)
 
   async function onPickPhoto(file: File | undefined) {
     if (!file) return
@@ -1102,18 +1204,28 @@ function MealDraftCard({
         onRemove={onRemove}
       />
       <button
-        className={MEAL_COVER_BUTTON_CLASS}
+        aria-label="Сменить фото"
+        className={cn(MEAL_COVER_BUTTON_CLASS, 'group nora-press-grow !bg-[var(--nora-panel)]')}
+        data-plan-editor-meal-cover=""
         onClick={() => fileRef.current?.click()}
         type="button"
       >
-        {meal.image ? (
-          <img alt="" className="absolute inset-0 size-full object-cover" src={meal.image} />
-        ) : (
-          <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 font-[family-name:var(--nora-font)] text-[12px] font-light text-[var(--nora-text-tertiary)]">
-            <CameraIcon className="size-4" />
-            {busyPhoto ? 'Фото…' : 'Фото'}
+        <img
+          alt=""
+          className={cn(
+            'absolute inset-0 size-full',
+            isCoverPlaceholder(mealCoverSrc) ? COVER_PLACEHOLDER_IMAGE_CLASS : 'object-cover',
+          )}
+          src={mealCoverSrc}
+        />
+        <span className={COVER_CHANGE_CHIP_CLASS}>
+          <ImagePlusIcon aria-hidden className="size-4" strokeWidth={1.75} />
+        </span>
+        {busyPhoto ? (
+          <span className="absolute inset-0 flex items-center justify-center font-[family-name:var(--nora-font)] text-[12px] font-light text-[var(--nora-text-tertiary)]">
+            Фото…
           </span>
-        )}
+        ) : null}
       </button>
       <input
         accept="image/*"
@@ -1126,12 +1238,14 @@ function MealDraftCard({
         ref={fileRef}
         type="file"
       />
-      <NoraInput
-        className={MEAL_TITLE_FIELD_CLASS}
-        onChange={(event) => onPatch({ title: event.target.value })}
-        placeholder="Название блюда"
-        value={meal.title}
-      />
+      <div className={SLOT_ROW_CLASS}>
+        <NoraInput
+          className={LINE_INPUT_CLASS}
+          onChange={(event) => onPatch({ title: event.target.value })}
+          placeholder="Название блюда"
+          value={meal.title}
+        />
+      </div>
       <div className="grid grid-cols-4 gap-1.5">
         {MACRO_FIELDS.map((field) => (
           <MacroField
@@ -1189,11 +1303,7 @@ function DraftLineList({
           <div className={cn(SLOT_ROW_CLASS, 'min-w-0 flex-1')}>
             <span className={MEAL_INDEX_CLASS}>{index + 1}</span>
             <NoraInput
-              className={cn(
-                FIELD_TYPE_CLASS,
-                FIELD_FACE_CLASS,
-                '!h-8 !min-h-8 !max-h-8 min-w-0 flex-1 !rounded-full !px-2.5',
-              )}
+              className={LINE_INPUT_CLASS}
               onChange={(event) => onChange(setDraftLine(items, index, event.target.value))}
               placeholder={placeholder}
               value={item}

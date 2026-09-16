@@ -42,6 +42,9 @@ test('meal dialog hero is slightly shorter than the previous 259px cap', () => {
     'utf8',
   )
   expect(addHero).toContain('dotsOffset="raised"')
+  expect(addHero).toContain('absolute inset-0 size-full object-cover')
+  expect(addHero).not.toContain('data-meal-add-cover-stub=""')
+  expect(addHero).not.toContain('p-2.5 sm:p-3')
   expect(news).toContain('bottom-[3.4rem]')
   expect(news).toContain('flex flex-wrap py-1')
 })
@@ -109,9 +112,19 @@ test('diary toolbar can show the whole selected plan', () => {
   expect(toolbar).toContain('План')
   expect(toolbar).not.toContain('Весь план')
   expect(toolbar).toContain('tab !== "Избранное"')
+  expect(toolbar).toContain('aria-pressed={tab === "Избранное"}')
+  expect(toolbar).toContain('BookmarkIcon')
+  expect(toolbar).toContain('Избранное')
+  expect(toolbar.indexOf('data-diary-whole-plan=""')).toBeLessThan(
+    toolbar.indexOf('aria-pressed={tab === "Избранное"}'),
+  )
+  expect(toolbar).not.toContain('{FEED_TABS.map')
   expect(toolbar).toContain('aria-pressed={showWholePlan}')
-  expect(toolbar).toContain('CircleIcon')
-  expect(toolbar).toContain('CircleCheckIcon')
+  expect(toolbar).toContain('LayersIcon')
+  expect(toolbar).toContain('showWholePlan && "fill-current"')
+  expect(toolbar).not.toContain('CircleIcon')
+  expect(toolbar).not.toContain('CircleCheckIcon')
+  expect(toolbar).not.toContain('CalendarRangeIcon')
   expect(toolbar).toContain('[&>svg]:size-3.5')
   expect(toolbar).toContain('CameraIcon')
   expect(page).toContain('setShowWholePlan((current) => !current)')
@@ -154,7 +167,8 @@ test('diary search expands the trailing pill without stretching across desktop',
   expect(search).not.toContain('aria-disabled="true"')
   expect(search).not.toContain('NoraSearch')
   expect(search).toContain('md:hidden')
-  expect(search).toContain('text-[var(--nora-text-tertiary)]')
+  expect(search).toContain('text-[var(--nora-text-secondary)]')
+  expect(search).not.toContain('text-[var(--nora-text-tertiary)]')
   expect(search).not.toContain('hidden md:flex')
   expect(search).not.toContain('hidden md:contents')
   expect(search).not.toContain('hidden md:inline-flex')
@@ -182,7 +196,7 @@ test('diary search expands the trailing pill without stretching across desktop',
   expect(news).toContain('id: "favorites-save-failed"')
   expect(news).toContain('data-search-open={searchOpen ? "" : undefined}')
   expect(news).not.toContain('data-diary-calorie-chip')
-  expect(news).toContain('className={cn(diaryToolbarPillClass, "shrink-0 p-1")}')
+  expect(news).toContain('className={cn(diaryToolbarPillClass, "size-9 justify-center p-0")}')
   expect(news).not.toContain('-translate-x-3 opacity-0')
 })
 
@@ -193,6 +207,8 @@ test('mobile calendar is an icon button without the period label', () => {
   )
   expect(picker).toContain('diaryToolbarIconButtonClass')
   expect(picker).toContain('aria-label={`Период: ${label}`}')
+  expect(picker).toContain('numberOfMonths={2}')
+  expect(picker).not.toContain('numberOfMonths={1}')
   expect(picker).not.toContain('max-md:hidden')
   expect(picker).not.toContain('{label}</span>')
 })
@@ -205,6 +221,10 @@ test('desktop add button stays inside the diary toolbar row', () => {
   expect(toolbar).toContain('Добавить')
   expect(toolbar).toContain('max-md:hidden')
   expect(toolbar).toContain('diaryToolbarPillClass')
+  expect(toolbar).toContain('ios-float-seg')
+  expect(toolbar).toContain('data-active=""')
+  expect(toolbar).not.toContain('rounded-full bg-[var(--nora-text)] text-[var(--nora-panel)]')
+  expect(toolbar).not.toContain('productCardFooterCtaClass')
   expect(toolbar).not.toContain('variant="tinted"')
 })
 
@@ -223,7 +243,7 @@ test('true empty diary feed shows a skeleton card grid', () => {
   expect(news).not.toContain('Пока нет записей')
 })
 
-test('feed empty messages use shopping plaques instead of a blank meal card', () => {
+test('feed empty messages use a placeholder card instead of a shopping plaque', () => {
   expect(news).toContain('data-slot="feed-empty"')
   expect(news).toContain('<ProductFeedEmpty')
   expect(news).toContain('origin="diary"')
@@ -240,6 +260,13 @@ test('feed empty messages use shopping plaques instead of a blank meal card', ()
     new URL('../src/components/nora/product-sheet.tsx', import.meta.url),
     'utf8',
   )
+  const feedEmpty = sheet.slice(sheet.indexOf('export function ProductFeedEmpty'))
+  expect(feedEmpty).toContain('productFeedGridClass')
+  expect(feedEmpty).toContain('data-slot="meal-card"')
+  expect(feedEmpty).toContain('data-empty-card=""')
+  expect(feedEmpty).toContain('data-slot="meal-card-preview"')
+  expect(feedEmpty).toContain('data-slot="empty-description"')
+  expect(feedEmpty).not.toContain('<NoraEmpty')
   expect(empty).toContain('export const noraPlaqueClass')
   expect(empty).toContain('export const noraPlaqueIconClass')
   expect(empty).toContain('size-8 shrink-0')
@@ -446,10 +473,11 @@ test('day shopping dialog lists ration groceries like the planner rows', () => {
 
 test('diary toolbar uses floating white iOS pills with a drop shadow', () => {
   expect(news).toContain('diaryToolbarPillClass')
-  expect(news).toContain('ios-float-seg')
+  expect(news).toContain('BookmarkIcon')
+  expect(news).toContain('LayersIcon')
   expect(news).toContain('text-[13px] font-normal leading-none')
   expect(news).toContain('flex w-full min-w-0 items-center pt-1')
-  expect(news).toContain("aria-pressed={tab === option}")
+  expect(news).toContain('aria-pressed={tab === "Избранное"}')
   expect(news).not.toContain('NoraSegmented')
   const picker = readFileSync(
     new URL('../src/features/diary/DiaryPeriodPicker.tsx', import.meta.url),
@@ -686,7 +714,12 @@ test('diary card footer keeps bookmark and share without an overflow menu', () =
   expect(news).toContain('picking={Boolean(pickingDayKey)}')
   expect(news).toContain('tab === "Избранное" ? undefined')
   expect(news).toContain('feedView')
-  expect(news).toContain('{feedView ? null : (')
+  expect(news).toContain('{feedView || previewOnly ? null : (')
+  expect(news).toContain('previewOnly={isDiaryMealOnFutureDay(openMeal)}')
+  expect(news).toContain('isDiaryMealOnFutureDay(meal)')
+  expect(news).toContain('if (meal && isDiaryMealOnFutureDay({ at: diaryAtForMeal(meal) })) return')
+  expect(news).toContain('at: diaryAtForMeal(openMealSource)')
+  expect(news).toContain('!previewOnly && isPlannedDiaryMeal(meal)')
   expect(news).not.toContain('navigator.share')
   expect(card).not.toContain('clipboard.writeText')
   expect(news).toContain('shareMyMeal(')
@@ -694,7 +727,7 @@ test('diary card footer keeps bookmark and share without an overflow menu', () =
   expect(card).toContain('hidden size-7 sm:inline-flex')
   expect(card).toContain('aria-label="Удалить"')
   expect(macros).toContain('font-light')
-  expect(macros).toContain('text-[var(--nora-text)]')
+  expect(macros).toContain('font-medium text-[var(--nora-text)]')
   expect(macros).toContain('{meal.kcal} ккал')
   expect(macros).toContain("{' · Б: '}")
   expect(macros).toContain("{' · Ж: '}")
@@ -894,7 +927,7 @@ test('ration-imported diary cards are muted but stay openable', () => {
   expect(completeFn).toContain('pinned.id')
   expect(completeFn).not.toContain('invalidateQueries')
   expect(news).toContain('diaryMealCanCopyToPlan(meal, completedIds)')
-  expect(news).toContain('diaryMealCanCopyToPlan(openMeal, completedIds)')
+  expect(news).not.toContain('diaryMealCanCopyToPlan(openMeal, completedIds)')
   expect(card).not.toContain('CalendarIcon')
   expect(card).not.toContain('grayscale-[0.4]')
   expect(card).not.toContain('opacity-55')
@@ -924,12 +957,15 @@ test('planned diary cards keep a muted cover without a plan badge', () => {
   expect(card).toContain('RATION_PENDING_COVER_CLASS')
 })
 
-test('planned card titles are softer than completed ones', () => {
+test('planned card titles use the same color as completed ones', () => {
   const card = readFileSync(
     new URL('../src/features/diary/MealCard.tsx', import.meta.url),
     'utf8',
   )
-  expect(card).toContain("pending ? 'text-[var(--nora-text-secondary)]' : 'text-[var(--nora-text)]'")
+  expect(card).toContain(
+    'truncate shrink-0 font-[family-name:var(--nora-font)] text-[15px] font-medium leading-6 tracking-normal text-[var(--nora-text)]',
+  )
+  expect(card).not.toContain("pending ? 'text-[var(--nora-text-secondary)]' : 'text-[var(--nora-text)]'")
 })
 
 test('self-uploaded diary cards do not get a cover badge', () => {
@@ -958,9 +994,9 @@ test('mentee questionnaire keeps the view switcher clickable and hides diary fil
     toolbar.indexOf('{toolbarDisabled ? null : ('),
   )
   expect(toolbar.indexOf('{toolbarDisabled ? null : (')).toBeLessThan(
-    toolbar.indexOf('{FEED_TABS.map'),
+    toolbar.indexOf('aria-pressed={tab === "Избранное"}'),
   )
-  expect(toolbar.indexOf('{FEED_TABS.map')).toBeLessThan(toolbar.indexOf('{toolbarEnd ?'))
+  expect(toolbar.indexOf('aria-pressed={tab === "Избранное"}')).toBeLessThan(toolbar.indexOf('{toolbarEnd ?'))
   expect(toolbar).not.toContain('pointer-events-none opacity-40')
 })
 
@@ -1067,7 +1103,13 @@ test('own diary meals can be copied into a chosen weekly plan day', () => {
   )
   expect(news).toContain('aria-label="В план"')
   expect(newsPage).toContain('diaryMealCanCopyToPlan(meal, completedIds)')
-  expect(newsPage).toContain('diaryMealCanCopyToPlan(openMeal, completedIds)')
+  expect(newsPage).not.toContain('diaryMealCanCopyToPlan(openMeal, completedIds)')
+  const detail = readFileSync(
+    new URL('../src/features/diary/MealOpenDetail.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(detail).not.toContain('В план')
+  expect(detail).not.toContain('onAddToPlan')
   expect(newsPage).toContain('<DiaryPlanDayPicker')
   expect(newsPage).toContain('diaryMealCreatePlanDraft(')
   expect(newsPage).toContain('diaryMealsFreshForPlanDay(')

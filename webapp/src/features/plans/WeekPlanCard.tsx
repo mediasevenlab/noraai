@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { BookmarkIcon, CircleCheckIcon, ListIcon, ShoppingBagIcon, Trash2Icon } from 'lucide-react'
+import { BookmarkIcon, CircleCheckIcon, ListIcon, Share2Icon, ShoppingBagIcon, Trash2Icon } from 'lucide-react'
 
 import { NoraButton, NoraIconButton } from '@/components/nora/primitives'
 import {
@@ -75,7 +75,7 @@ function PlanSummaryPlaque({
         className={cn(
           'inline-flex h-[20px] w-[4.25rem] shrink-0 items-center justify-center rounded-full max-md:hidden',
           'bg-[color-mix(in_srgb,var(--nora-panel)_80%,transparent)]',
-          'font-[family-name:var(--nora-font)] text-[11px] font-normal leading-none tabular-nums',
+          'font-[family-name:var(--nora-font)] text-[11px] font-medium leading-none tabular-nums',
           filled ? 'text-[var(--nora-text)]' : 'text-[var(--nora-text-tertiary)]',
         )}
       >
@@ -103,11 +103,14 @@ export function WeekPlanCard({
   plan,
   saved = false,
   selected = false,
+  shared = false,
   savedScope,
   onOpen,
   onSelect,
+  onShare,
   onToggleSave,
   onDelete,
+  canShare = true,
 }: {
   actionLabel?: string
   /** Cover badge for the live selected plan, e.g. `07.09 - 15.09`. */
@@ -116,11 +119,14 @@ export function WeekPlanCard({
   plan: WeekPlan
   saved?: boolean
   selected?: boolean
+  shared?: boolean
   savedScope: SavedAccountScope
   onOpen: () => void
   onSelect?: () => void
+  onShare?: () => void
   onToggleSave?: () => void
   onDelete?: () => void
+  canShare?: boolean
 }) {
   const [shoppingOpen, setShoppingOpen] = React.useState(false)
   const shoppingMeals = plan.days.flatMap((day) => day.meals)
@@ -227,6 +233,21 @@ export function WeekPlanCard({
               </NoraButton>
             ) : null}
             <div className="flex items-center gap-1">
+              <NoraIconButton
+                aria-label={
+                  shared
+                    ? 'Скрыть из ленты'
+                    : canShare && onShare
+                      ? 'Поделиться'
+                      : 'Этот рацион нельзя отправить в ленту'
+                }
+                active={shared}
+                className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
+                disabled={!onShare || (!canShare && !shared)}
+                onClick={onShare}
+              >
+                <Share2Icon className="size-4" />
+              </NoraIconButton>
               {onToggleSave ? (
                 <NoraIconButton
                   aria-label={saved ? 'Убрать' : 'Сохранить'}

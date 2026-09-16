@@ -53,7 +53,7 @@ const FOOTER_HOME_PATHS = new Set<WorkspaceRoutePath>(['/admin/users'])
 
 const navigationByRole = {
   user: [
-    { label: 'Общее', to: '/app/general' },
+    { label: 'Мой дневник', to: '/app/general' },
     { label: 'Лента', to: '/app/feed' },
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Рефералы', to: '/app/referrals' },
@@ -120,6 +120,10 @@ export function userGeneralSearch(
     planId,
     library: view === 'plan' ? library : undefined,
   }
+}
+
+export function userFeedSearch(rationId?: string) {
+  return { rationId }
 }
 
 /** Landing path after login/register, restricted to the current role's safe route set. */

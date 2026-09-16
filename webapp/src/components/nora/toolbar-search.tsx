@@ -4,7 +4,7 @@ import { SearchIcon, XIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const toolbarIconButtonClass =
-  'nora-press-grow inline-flex size-9 shrink-0 items-center justify-center !rounded-full !border-0 !bg-transparent !shadow-none outline-none hover:text-[var(--nora-text)] disabled:pointer-events-none disabled:opacity-50 [&>svg]:size-4 [&>svg]:!text-current'
+  'nora-press-grow inline-flex size-9 shrink-0 items-center justify-center !rounded-full !border-0 !bg-transparent !shadow-none outline-none hover:text-[var(--nora-text)] disabled:pointer-events-none disabled:opacity-50 [&>svg]:size-3.5 [&>svg]:!text-current'
 
 const INPUT_CLASS =
   'min-w-0 flex-1 cursor-text border-0 bg-transparent p-0 font-[family-name:var(--nora-font)] text-[16px] font-normal leading-5 text-[var(--nora-text)] outline-none placeholder:font-light placeholder:text-[var(--nora-input-placeholder)] md:text-[13px] md:leading-none'
@@ -53,7 +53,7 @@ export function ProductToolbarSearch({
           toolbarIconButtonClass,
           active
             ? 'text-[var(--nora-text)]'
-            : 'text-[var(--nora-text-tertiary)]',
+            : 'text-[var(--nora-text-secondary)]',
         )}
         disabled={disabled}
         onClick={() => {
@@ -69,7 +69,7 @@ export function ProductToolbarSearch({
         }}
         type="button"
       >
-        <SearchIcon />
+        <SearchIcon strokeWidth={1.75} />
       </button>
       {expanded ? (
         <div className="flex min-w-0 flex-1 items-center">
@@ -94,7 +94,7 @@ export function ProductToolbarSearch({
             onClick={clearOrCollapse}
             type="button"
           >
-            <XIcon />
+            <XIcon strokeWidth={1.75} />
           </button>
         </div>
       ) : null}

@@ -2,13 +2,15 @@ import {
   isRationImportedMeal,
   isRationPlanDone,
   isRationPlanPending,
-  MEAL_COVER_PLACEHOLDER_SRC,
+  PLAN_COVER_PLACEHOLDER_SRC,
   mealsForWeekPlan,
   rationIdFromAssumptions,
-  usableMealCover,
+  durablePlanCoverSrc,
   preferredMealPhotoSrc,
+  usableMealCover,
   type MealEntry,
 } from '@/features/diary'
+import type { SharedRation, SharedRationSnapshot } from '@web-app-demo/contracts'
 import {
   assignedRationOnDay,
   localDayKey,
@@ -212,7 +214,7 @@ function syntheticRationFromMeals(id: string, meals: readonly MealEntry[]): Rati
     { kcal: 0, protein: 0, fat: 0, carbs: 0 },
   )
   const cover =
-    meals.map((meal) => usableMealCover(meal.image)).find(Boolean) || MEAL_COVER_PLACEHOLDER_SRC
+    meals.map((meal) => usableMealCover(meal.image)).find(Boolean) || PLAN_COVER_PLACEHOLDER_SRC
   return {
     id,
     title: meals[0]?.title || 'Рацион',
@@ -312,9 +314,9 @@ export function buildWeekPlan(input: {
     mealsCount,
     goal: input.goal ?? null,
     coverImage:
-      usableMealCover(input.coverImage) ||
+      durablePlanCoverSrc(input.coverImage) ||
       firstPlanCoverImage(slots) ||
-      MEAL_COVER_PLACEHOLDER_SRC,
+      PLAN_COVER_PLACEHOLDER_SRC,
     cardDays,
     days,
   }
@@ -355,10 +357,10 @@ export function buildWeekPlanFromRation(input: {
     mealsCount: slots.reduce((sum, day) => sum + day.mealsCount, 0),
     goal: input.goal ?? input.ration.goal,
     coverImage:
-      usableMealCover(input.coverImage) ||
+      durablePlanCoverSrc(input.coverImage) ||
       firstPlanCoverImage(slots) ||
       usableMealCover(input.ration.image) ||
-      MEAL_COVER_PLACEHOLDER_SRC,
+      PLAN_COVER_PLACEHOLDER_SRC,
     cardDays: slots.slice(0, WEEK_PLAN_CARD_SLOTS),
     days,
   }
@@ -395,9 +397,100 @@ export function buildWeekPlanFromCatalog(input: {
     mealsCount: slots.reduce((sum, day) => sum + day.mealsCount, 0),
     goal: input.plan.goal,
     coverImage:
-      usableMealCover(input.plan.coverImage) ||
+      durablePlanCoverSrc(input.plan.coverImage) ||
       firstPlanCoverImage(slots) ||
-      MEAL_COVER_PLACEHOLDER_SRC,
+      PLAN_COVER_PLACEHOLDER_SRC,
+    cardDays: slots.slice(0, WEEK_PLAN_CARD_SLOTS),
+    days,
+  }
+}
+
+/** One catalog-style day per shared-ration dayIndex, including empty trailing days. */
+export function rationDaysFromSharedRation(ration: SharedRation): RationEntry[] {
+  const grouped = new Map<number, SharedRation['meals']>()
+  for (const meal of ration.meals) {
+    const list = grouped.get(meal.dayIndex) ?? []
+    list.push(meal)
+    grouped.set(meal.dayIndex, list)
+  }
+  const lastIndex = Math.max(ration.days - 1, ...grouped.keys(), -1)
+  const days: RationEntry[] = []
+  for (let dayIndex = 0; dayIndex <= lastIndex; dayIndex += 1) {
+    const meals = (grouped.get(dayIndex) ?? []).map((meal) => ({
+      slot: meal.slot,
+      title: meal.title,
+      ingredients: meal.ingredients,
+      steps: [] as string[],
+      image: meal.image,
+      kcal: meal.kcal,
+      protein: meal.protein,
+      fat: meal.fat,
+      carbs: meal.carbs,
+    }))
+    const totals = meals.reduce(
+      (sum, meal) => ({
+        kcal: sum.kcal + meal.kcal,
+        protein: sum.protein + meal.protein,
+        fat: sum.fat + meal.fat,
+        carbs: sum.carbs + meal.carbs,
+      }),
+      { kcal: 0, protein: 0, fat: 0, carbs: 0 },
+    )
+    days.push({
+      id: `${ration.id}:${dayIndex}`,
+      title: ration.title,
+      description: ration.description,
+      goal: ration.goal ?? 'Поддержание',
+      days: 1,
+      kcal: totals.kcal,
+      protein: totals.protein,
+      fat: totals.fat,
+      carbs: totals.carbs,
+      mealsPerDay: meals.length,
+      image: meals.find((meal) => meal.image.trim())?.image || ration.coverImage,
+      source: 'Лента',
+      meals,
+    })
+  }
+  return days
+}
+
+export function buildWeekPlanFromSharedRation(input: {
+  ration: SharedRation
+  now?: Date
+}): WeekPlan {
+  const now = input.now ?? new Date()
+  const weekDays = rationPlanWeekDays(now)
+  const rationDays = rationDaysFromSharedRation(input.ration)
+  const slots: WeekPlanDay[] = weekDays.map((day, index) => {
+    const ration = rationDays[index] ?? null
+    const filled = Boolean(ration && ration.meals.length > 0)
+    const meals = filled && ration ? previewMealsFromRation(ration, day.date, input.ration.id) : []
+    return {
+      dayKey: day.dayKey,
+      short: day.short,
+      label: day.label,
+      dayIso: dayIsoFromDate(day.date),
+      filled,
+      ration: filled ? ration : null,
+      meals,
+      mealsCount: meals.length,
+      kcal: ration?.kcal ?? 0,
+      done: false,
+    }
+  })
+  const days = slots.filter((day) => day.filled)
+  return {
+    id: input.ration.sourcePlanId,
+    title: input.ration.title,
+    description: input.ration.description.trim(),
+    kcal: input.ration.kcal,
+    mealsCount: slots.reduce((sum, day) => sum + day.mealsCount, 0),
+    goal: input.ration.goal,
+    coverImage:
+      durablePlanCoverSrc(input.ration.coverImage) ||
+      firstPlanCoverImage(slots) ||
+      PLAN_COVER_PLACEHOLDER_SRC,
     cardDays: slots.slice(0, WEEK_PLAN_CARD_SLOTS),
     days,
   }
@@ -464,4 +557,41 @@ export function buildCurrentWeekPlan(input: {
     rations: input.rations,
     title: CURRENT_WEEK_PLAN_TITLE,
   })
+}
+
+function shareableImage(src: string) {
+  const value = src.trim()
+  if (!value) return ''
+  if (value.startsWith('data:') && value.length > 2048) return ''
+  return value.slice(0, 2048)
+}
+
+export function sharedRationSnapshotFromWeekPlan(plan: WeekPlan): SharedRationSnapshot | null {
+  const title = plan.title.trim()
+  if (!title) return null
+  const meals = plan.days.flatMap((day, dayIndex) =>
+    day.meals.flatMap((meal) => {
+      const mealTitle = meal.title.trim()
+      if (!mealTitle) return []
+      return [{
+        dayIndex,
+        slot: meal.meal,
+        title: mealTitle,
+        ingredients: meal.ingredients,
+        image: shareableImage(preferredMealPhotoSrc(meal) || meal.image),
+        kcal: meal.kcal,
+        protein: meal.protein,
+        fat: meal.fat,
+        carbs: meal.carbs,
+      }]
+    }),
+  )
+  if (meals.length === 0) return null
+  return {
+    title,
+    description: plan.description.trim(),
+    goal: plan.goal,
+    coverImage: shareableImage(plan.coverImage),
+    meals,
+  }
 }

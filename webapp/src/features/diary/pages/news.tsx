@@ -8,9 +8,8 @@ import {
   CalendarIcon,
   CameraIcon,
   ChartNoAxesCombinedIcon,
-  CircleCheckIcon,
-  CircleIcon,
   FlameIcon,
+  LayersIcon,
   ListIcon,
   SearchIcon,
   ShoppingBagIcon,
@@ -113,9 +112,11 @@ import {
 import {
   currentWeekPlanStampId,
   isDiaryFeedMealVisible,
+  isDiaryMealOnFutureDay,
   isRationPlanDone,
   isRationPlanPending,
   mealCanShareToFeed,
+  mealShareBlockedMessage,
   mealCardOrigin,
 } from "../ration-import";
 import {
@@ -172,11 +173,7 @@ import {
 import type { MealMacrosRevealState } from "../meal-card-reveal";
 
 type FeedTab = "Все" | "Избранное";
-const FEED_TABS = ["Все", "Избранное"] as const satisfies readonly FeedTab[];
 const SHOW_DIARY_WEEK_ACTIVITY = false;
-
-const DIARY_PILL_TAB_CLASS =
-  "ios-float-seg nora-press-grow inline-flex h-full flex-none items-center justify-center rounded-full px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-active:text-[var(--nora-text)]";
 const DAY_STAT_CHIP_CLASS =
   "ios-glass-glare inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0 bg-[color-mix(in_srgb,var(--nora-input-bg)_55%,var(--nora-canvas))] py-0 pr-2.5 pl-2 text-[12px] font-normal leading-none text-[var(--nora-text-secondary)] backdrop-blur-[16px]";
 const DAY_DATE_CHIP_CLASS =
@@ -746,7 +743,10 @@ export function NewsPage({
     return new Date().toISOString();
   }, [periodStartIso, subjectEmail, user, subjectId, userMeals]);
 
-  const openMeal = userMeals.find((m) => m.id === openId) ?? null;
+  const openMealSource = userMeals.find((m) => m.id === openId) ?? null;
+  const openMeal = openMealSource
+    ? { ...openMealSource, at: diaryAtForMeal(openMealSource) }
+    : null;
   const openMealPending = openMeal
     ? isRationPlanPending(openMeal, completedIds)
     : false;
@@ -817,6 +817,7 @@ export function NewsPage({
   function toggleRationMealDone(id: string) {
     if (readOnly || !subjectId) return;
     const meal = userMeals.find((item) => item.id === id);
+    if (meal && isDiaryMealOnFutureDay({ at: diaryAtForMeal(meal) })) return;
     const previous = new Set(completedIds);
     const previousDiaryAt = diaryAtById;
     const next = new Set(completedIds);
@@ -965,7 +966,7 @@ export function NewsPage({
       return;
     }
     if (!mealCanShareToFeed(meal) && !meal.shared) {
-      toast.error("В ленту можно отправить только свой приём");
+      toast.error(mealShareBlockedMessage(meal));
       return;
     }
     const nextShared = !meal.shared;
@@ -1364,9 +1365,13 @@ export function NewsPage({
         onShare={() => {
           void shareMeal(meal);
         }}
-        onDelete={() => {
-          void deleteMeal(meal);
-        }}
+        onDelete={
+          isDiaryMealOnFutureDay(meal)
+            ? undefined
+            : () => {
+                void deleteMeal(meal);
+              }
+        }
       />
     );
   }
@@ -1410,26 +1415,6 @@ export function NewsPage({
                 ) : null}
                 {toolbarDisabled ? null : (
                   <div className="diary-toolbar-press flex min-w-0 flex-1 items-center gap-2">
-                    <div
-                      aria-label="Лента"
-                      className={cn(diaryToolbarPillClass, "shrink-0 p-1")}
-                      role="group"
-                    >
-                      {FEED_TABS.map((option) => (
-                        <button
-                          aria-pressed={tab === option}
-                          className={DIARY_PILL_TAB_CLASS}
-                          data-active={tab === option || undefined}
-                          key={option}
-                          onClick={() => {
-                            setTab(option);
-                          }}
-                          type="button"
-                        >
-                          {option}
-                        </button>
-                      ))}
-                    </div>
                     {isOwnAccount && !readOnly && tab !== "Избранное" && selectedPlanIds.size > 0 ? (
                       <button
                         aria-pressed={showWholePlan}
@@ -1444,14 +1429,33 @@ export function NewsPage({
                         onClick={() => setShowWholePlan((current) => !current)}
                         type="button"
                       >
-                        {showWholePlan ? (
-                          <CircleCheckIcon aria-hidden strokeWidth={1.75} />
-                        ) : (
-                          <CircleIcon aria-hidden strokeWidth={1.75} />
-                        )}
+                        <LayersIcon
+                          aria-hidden
+                          className={cn(showWholePlan && "fill-current")}
+                          strokeWidth={1.75}
+                        />
                         План
                       </button>
                     ) : null}
+                    <button
+                      aria-pressed={tab === "Избранное"}
+                      className={cn(
+                        diaryToolbarPillClass,
+                        "nora-press-grow shrink-0 gap-1 px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-active:text-[var(--nora-text)] [&>svg]:size-3.5",
+                      )}
+                      data-active={tab === "Избранное" || undefined}
+                      onClick={() => {
+                        setTab(tab === "Избранное" ? "Все" : "Избранное");
+                      }}
+                      type="button"
+                    >
+                      <BookmarkIcon
+                        aria-hidden
+                        className={cn(tab === "Избранное" && "fill-current")}
+                        strokeWidth={1.75}
+                      />
+                      Избранное
+                    </button>
                     {SHOW_DIARY_WEEK_ACTIVITY ? (
                       <div
                         className={cn(diaryToolbarPillClass, "size-9 justify-center p-0")}
@@ -1517,7 +1521,7 @@ export function NewsPage({
                       <button
                         className={cn(
                           diaryToolbarPillClass,
-                          "nora-press-grow max-md:hidden gap-1 px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] [&>svg]:size-4",
+                          "nora-press-grow max-md:hidden p-1",
                         )}
                         type="button"
                         onClick={() => {
@@ -1525,8 +1529,13 @@ export function NewsPage({
                           setAddMealOpen(true);
                         }}
                       >
-                        <CameraIcon aria-hidden strokeWidth={1.75} />
-                        Добавить
+                        <span
+                          className="ios-float-seg inline-flex h-full items-center justify-center gap-1 rounded-full px-3 text-[13px] font-normal leading-none text-[var(--nora-text)] [&>svg]:size-3.5"
+                          data-active=""
+                        >
+                          <CameraIcon aria-hidden className="size-3.5 shrink-0" strokeWidth={1.75} />
+                          Добавить
+                        </span>
                       </button>
                     ) : null}
                   </div>
@@ -1732,17 +1741,7 @@ export function NewsPage({
               <MealOpenDetail
                 meal={openMeal}
                 completedIds={completedIds}
-                addingToPlan={
-                  Boolean(addingPlanDayKey) &&
-                  planMeals.some((item) => item.id === openMeal.id)
-                }
-                onAddToPlan={
-                  canAddToPlan &&
-                  !pickingDayKey &&
-                  diaryMealCanCopyToPlan(openMeal, completedIds)
-                    ? () => openPlanPicker(openMeal)
-                    : undefined
-                }
+                previewOnly={isDiaryMealOnFutureDay(openMeal)}
                 onCompletePlan={
                   tab === "Избранное"
                     ? undefined

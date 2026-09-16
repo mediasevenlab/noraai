@@ -2,6 +2,8 @@ import { AUTHORED_PLAN_DAY_COUNT_MAX } from '@web-app-demo/contracts'
 
 const AUTHORED_PLAN_ID_RE = /^plan_[A-Za-z0-9_-]{1,72}$/
 const CATALOG_PLAN_ID_RE = /^catalog_[A-Za-z0-9_-]{1,72}$/
+const SHARED_RATION_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const PLAN_START_DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 const SAVED_PLAN_ID_MAX = 80
 const COVER_IMAGE_MAX = 2048
@@ -22,6 +24,7 @@ export type AuthoredUserPlanRecord = {
   createdAt: string
   goal: 'Похудение' | 'Набор' | 'Поддержание' | 'Здоровье' | null
   sourceCatalogId?: string
+  sourceSharedRationId?: string
   dayCount?: number
 }
 
@@ -84,6 +87,8 @@ function parseAuthoredPlan(value: unknown, nowIso: string): AuthoredUserPlanReco
   if (!id || !AUTHORED_PLAN_ID_RE.test(id) || !title) return null
   const sourceCatalogId =
     typeof record.sourceCatalogId === 'string' ? record.sourceCatalogId.trim() : ''
+  const sourceSharedRationId =
+    typeof record.sourceSharedRationId === 'string' ? record.sourceSharedRationId.trim() : ''
   const createdAt =
     typeof record.createdAt === 'string' && !Number.isNaN(Date.parse(record.createdAt))
       ? new Date(record.createdAt).toISOString()
@@ -97,8 +102,16 @@ function parseAuthoredPlan(value: unknown, nowIso: string): AuthoredUserPlanReco
     createdAt,
     goal: parseGoal(record.goal),
     ...(CATALOG_PLAN_ID_RE.test(sourceCatalogId) ? { sourceCatalogId } : {}),
+    ...(SHARED_RATION_ID_RE.test(sourceSharedRationId) ? { sourceSharedRationId } : {}),
     ...(dayCount ? { dayCount } : {}),
   }
+}
+
+export function authoredPlanCanShareToFeed(plan: {
+  sourceCatalogId?: string
+  sourceSharedRationId?: string
+}) {
+  return !plan.sourceCatalogId && !plan.sourceSharedRationId
 }
 
 function uniquePlanIds(value: unknown): string[] {

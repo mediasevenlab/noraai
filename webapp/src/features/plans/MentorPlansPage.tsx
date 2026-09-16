@@ -11,7 +11,7 @@ import {
   productFeedGridClass,
 } from '@/components/nora/product-sheet'
 import { useAuth } from '@/features/auth'
-import { SkeletonMealCard } from '@/features/diary'
+import { mealsQueryKeys, shareMyRation, SkeletonMealCard, useSharedRationsQuery } from '@/features/diary'
 import {
   emptyRationDraft,
   getMentorUserPlans,
@@ -34,7 +34,7 @@ import { CurrentPlanMeals } from './CurrentPlanMeals'
 import { PlanPageShell } from './PlanPageShell'
 import { PlanToolbar, visiblePlanCards, type PlanFeedTab } from './PlanToolbar'
 import { WeekPlanCard, WeekPlanCardSkeleton } from './WeekPlanCard'
-import { buildWeekPlanFromRation } from './week-plan'
+import { buildWeekPlanFromRation, sharedRationSnapshotFromWeekPlan } from './week-plan'
 
 export function MentorPlansPage() {
   const auth = useAuth()
@@ -43,6 +43,11 @@ export function MentorPlansPage() {
   const userId = auth.user?.id ?? 'guest'
   const savedScope = { userId, email: auth.user?.email }
   const plansQuery = useMentorPlansQuery()
+  const sharedRationsQuery = useSharedRationsQuery()
+  const sharedSourceIds = React.useMemo(
+    () => new Set((sharedRationsQuery.data?.items ?? []).map((item) => item.sourcePlanId)),
+    [sharedRationsQuery.data?.items],
+  )
   const createPlan = useCreateMentorPlanMutation()
   const deletePlan = useDeleteMentorPlanMutation()
   const [draft, setDraft] = React.useState<RationDraft | null>(null)
@@ -107,6 +112,25 @@ export function MentorPlansPage() {
     }
   }, [assigningUserId, auth.transport, queryClient, sendPlan])
 
+  async function toggleShare(plan: (typeof cards)[number]) {
+    const nextShared = !sharedSourceIds.has(plan.id)
+    const snapshotPayload = sharedRationSnapshotFromWeekPlan(plan)
+    if (nextShared && !snapshotPayload) {
+      toast.error('Добавьте приёмы, прежде чем делиться рационом')
+      return
+    }
+    try {
+      await shareMyRation(auth.transport, plan.id, {
+        shared: nextShared,
+        ...(nextShared && snapshotPayload ? { snapshot: snapshotPayload } : {}),
+      })
+      await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.sharedRations() })
+      toast.success(nextShared ? 'Рацион появился в ленте' : 'Скрыто из ленты')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Не удалось поделиться рационом')
+    }
+  }
+
   return (
     <PlanPageShell
       badge="Планы"
@@ -162,8 +186,10 @@ export function MentorPlansPage() {
                 const source = plansQuery.data?.items.find((item) => item.id === plan.id)
                 if (source) setSendPlan(mentorRationToEntry(source))
               }}
+              onShare={() => void toggleShare(plan)}
               plan={plan}
               savedScope={savedScope}
+              shared={sharedSourceIds.has(plan.id)}
             />
           ))}
         </section>

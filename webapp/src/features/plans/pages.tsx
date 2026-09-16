@@ -29,13 +29,17 @@ import {
   type RationEntry,
 } from '@/features/mentor'
 import {
+  authoredCloneOfSharedRation,
   mealsForWeekPlan,
   mealsQueryKeys,
   planOccurrenceDiaryAt,
+  shareMyRation,
   SkeletonMealCard,
   usableMealCover,
+  useSharedRationsQuery,
 } from '@/features/diary'
 import {
+  authoredPlanCanShareToFeed,
   isAssignedPlanId,
   parsePlanGoal,
   writeAssignedPlans,
@@ -81,7 +85,7 @@ import { useSyncedPlanLibrary } from './use-plan-library'
 import { PlanToolbar, visiblePlanCards, partitionPlanCards, PlanGroupPlaque, PLAN_GROUP_ICONS, planToolbarPillClass, type PlanFeedTab, type PlanLibrary } from './PlanToolbar'
 import { useCurrentWeekPlan } from './use-current-week-plan'
 import { WeekPlanCard, WeekPlanCardSkeleton } from './WeekPlanCard'
-import { buildWeekPlan, buildWeekPlanFromCatalog, buildWeekPlanFromRation, formatPlanActiveRange, type WeekPlan } from './week-plan'
+import { buildWeekPlan, buildWeekPlanFromCatalog, buildWeekPlanFromRation, buildWeekPlanFromSharedRation, formatPlanActiveRange, rationDaysFromSharedRation, sharedRationSnapshotFromWeekPlan, type WeekPlan } from './week-plan'
 
 export function PlanPage({
   heading,
@@ -108,6 +112,11 @@ export function PlanPage({
   const savedScope = { userId: auth.user?.id ?? 'guest', email: auth.user?.email }
   const { snapshot, persist } = useSyncedPlanLibrary()
   const authored = snapshot.authoredPlans
+  const sharedRationsQuery = useSharedRationsQuery()
+  const sharedSourceIds = React.useMemo(
+    () => new Set((sharedRationsQuery.data?.items ?? []).map((item) => item.sourcePlanId)),
+    [sharedRationsQuery.data?.items],
+  )
   const savedIds = React.useMemo(() => new Set(snapshot.savedPlanIds), [snapshot.savedPlanIds])
   const selectedPlanIds = React.useMemo(
     () => new Set(snapshot.selectedPlanIds),
@@ -321,6 +330,34 @@ export function PlanPage({
     toast.success('План удалён')
   }
 
+  async function toggleShare(plan: WeekPlan) {
+    const nextShared = !sharedSourceIds.has(plan.id)
+    const authoredPlan = authored.find((item) => item.id === plan.id)
+    if (nextShared && !isAuthoredPlanId(plan.id)) {
+      toast.error('Этот рацион нельзя отправить в ленту')
+      return
+    }
+    if (nextShared && authoredPlan && !authoredPlanCanShareToFeed(authoredPlan)) {
+      toast.error('Копию из каталога или ленты нельзя повторно отправить в ленту')
+      return
+    }
+    const snapshotPayload = sharedRationSnapshotFromWeekPlan(plan)
+    if (nextShared && !snapshotPayload) {
+      toast.error('Добавьте приёмы, прежде чем делиться рационом')
+      return
+    }
+    try {
+      await shareMyRation(auth.transport, plan.id, {
+        shared: nextShared,
+        ...(nextShared && snapshotPayload ? { snapshot: snapshotPayload } : {}),
+      })
+      await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.sharedRations() })
+      toast.success(nextShared ? 'Рацион появился в ленте' : 'Скрыто из ленты')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Не удалось поделиться рационом')
+    }
+  }
+
   async function selectPlan(planId: string) {
     const assigned = assignment.data?.authoredPlans.find((item) => item.id === planId)
     if (
@@ -412,10 +449,16 @@ export function PlanPage({
         }}
         onToggleSave={() => toggleSave(plan.id, plan.title)}
         onDelete={isAuthoredPlanId(plan.id) ? () => deletePlan(plan.id) : undefined}
+        onShare={() => void toggleShare(plan)}
+        canShare={
+          isAuthoredPlanId(plan.id) &&
+          authoredPlanCanShareToFeed(authored.find((item) => item.id === plan.id) ?? {})
+        }
         plan={plan}
         saved={savedIds.has(plan.id)}
         savedScope={savedScope}
         selected={selected}
+        shared={sharedSourceIds.has(plan.id)}
       />
     )
   }
@@ -423,7 +466,7 @@ export function PlanPage({
   const canCreate = library !== 'catalog'
   const createFab = canCreate ? (
     <button
-      aria-label="Создать план"
+      aria-label="Создать рацион"
       className={MOBILE_DOCK_FAB_CLASS}
       onClick={() => setCreateDraft(emptyRationDraft())}
       type="button"
@@ -565,11 +608,13 @@ export function CurrentPlanPage({
   onBack,
   onOpenPlan,
   planId,
+  sharedRationId,
   showMobileBackDock = true,
 }: {
   onBack?: () => void
   onOpenPlan?: (planId: string) => void
   planId?: string
+  sharedRationId?: string
   showMobileBackDock?: boolean
 }) {
   const auth = useAuth()
@@ -590,14 +635,31 @@ export function CurrentPlanPage({
   const { snapshot, persist } = useSyncedPlanLibrary()
   const authored = snapshot.authoredPlans
   const assignment = usePlanAssignmentQuery(savedScope.userId, false, Boolean(auth.user))
+  const sharedRationsQuery = useSharedRationsQuery()
+  const sharedRation = sharedRationId
+    ? (sharedRationsQuery.data?.items.find((item) => item.id === sharedRationId) ?? null)
+    : null
   const [adding, setAdding] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
   const [layoutRevision, setLayoutRevision] = React.useState(0)
-  const catalog = planId ? catalogPlanById(planId) : null
-  const cloned = catalog ? authoredCloneOfCatalog(authored, catalog.id) : null
+  const ownAuthored = sharedRation?.own
+    ? authored.find((item) => item.id === sharedRation.sourcePlanId) ?? null
+    : null
+  const resolvedPlanId = ownAuthored?.id ?? planId
+  const catalog = resolvedPlanId ? catalogPlanById(resolvedPlanId) : null
+  const cloned = catalog
+    ? authoredCloneOfCatalog(authored, catalog.id)
+    : sharedRation && !sharedRation.own
+      ? authoredCloneOfSharedRation(authored, sharedRation.id)
+      : null
+  const feedPreview = Boolean(sharedRation && !ownAuthored)
   const plan = React.useMemo(() => {
-    if (!planId || planId === weekPlan.id) return weekPlan
-    const authoredPlan = authored.find((item) => item.id === planId)
+    if (sharedRationId) {
+      if (!sharedRation) return null
+      if (feedPreview) return buildWeekPlanFromSharedRation({ ration: sharedRation })
+    }
+    if (!resolvedPlanId || resolvedPlanId === weekPlan.id) return weekPlan
+    const authoredPlan = authored.find((item) => item.id === resolvedPlanId)
     if (authoredPlan) {
       return buildWeekPlan({
         completedIds,
@@ -612,7 +674,7 @@ export function CurrentPlanPage({
       })
     }
     if (catalog) return buildWeekPlanFromCatalog({ plan: catalog })
-    const assigned = assignment.data?.authoredPlans.find((item) => item.id === planId)
+    const assigned = assignment.data?.authoredPlans.find((item) => item.id === resolvedPlanId)
     if (!assigned) return null
     const stamped = mealsForWeekPlan(meals, assigned.id, weekPlan.id)
     if (stamped.length > 0) {
@@ -635,7 +697,20 @@ export function CurrentPlanPage({
       ration: mentorRationToEntry(assigned),
       title: assigned.title,
     })
-  }, [assignment.data, authored, catalog, completedIds, detachedIds, meals, planId, rations, weekPlan])
+  }, [
+    assignment.data,
+    authored,
+    catalog,
+    completedIds,
+    detachedIds,
+    feedPreview,
+    meals,
+    rations,
+    resolvedPlanId,
+    sharedRation,
+    sharedRationId,
+    weekPlan,
+  ])
   const planStart = plan ? readPlanStartDate(savedScope, plan.id) : null
   const scheduledDays = React.useMemo(() => {
     if (!plan) return []
@@ -658,35 +733,40 @@ export function CurrentPlanPage({
       readPlanMealLayout(savedScope, plan.id),
       rationPlanWeekDays().map((day) => day.dayKey),
     )
-    return Math.max(stored, layoutCount)
-  }, [authored, layoutRevision, plan, savedScope.email, savedScope.userId])
+    return Math.max(stored, layoutCount, feedPreview ? sharedRation?.days ?? 0 : 0)
+  }, [authored, feedPreview, layoutRevision, plan, savedScope.email, savedScope.userId, sharedRation?.days])
   const catalogView = Boolean(catalog)
-  const canEdit = Boolean(plan && !catalogView && !isAssignedPlanId(plan.id))
+  const canEdit = Boolean(plan && !catalogView && !feedPreview && !isAssignedPlanId(plan.id))
   const [dockExtra, setDockExtra] = React.useState<HTMLElement | null>(null)
   const [dockEdit, setDockEdit] = React.useState<HTMLElement | null>(null)
   React.useLayoutEffect(() => {
-    if (showMobileBackDock || !catalogView) {
+    if (showMobileBackDock || !(catalogView || feedPreview)) {
       setDockExtra(null)
       return
     }
     setDockExtra(document.getElementById(PLAN_MOBILE_DOCK_EXTRA_ID))
-  }, [catalogView, planId, showMobileBackDock])
+  }, [catalogView, feedPreview, planId, sharedRationId, showMobileBackDock])
   React.useLayoutEffect(() => {
     if (showMobileBackDock) {
       setDockEdit(null)
       return
     }
     setDockEdit(document.getElementById(PLAN_MOBILE_DOCK_EDIT_ID))
-  }, [planId, showMobileBackDock])
+  }, [planId, sharedRationId, showMobileBackDock])
   const badge = plan
-    ? catalogView
-      ? 'Каталог'
-      : isAuthoredPlanId(plan.id)
-        ? 'Мой'
-        : isAssignedPlanId(plan.id)
-          ? 'Наставник'
-          : 'Неделя'
+    ? feedPreview
+      ? 'Лента'
+      : catalogView
+        ? 'Каталог'
+        : isAuthoredPlanId(plan.id)
+          ? 'Мой'
+          : isAssignedPlanId(plan.id)
+            ? 'Наставник'
+            : 'Неделя'
     : 'План'
+  const loadingPlan = isPending || Boolean(sharedRationId && sharedRationsQuery.isPending)
+  const loadError = isError || Boolean(sharedRationId && sharedRationsQuery.isError)
+  const backListLabel = sharedRationId ? 'К ленте' : 'К планам'
 
   function goBack() {
     if (onBack) {
@@ -743,11 +823,61 @@ export function CurrentPlanPage({
     }
   }
 
-  const catalogMineButton = catalogView ? (
+  async function addSharedRationToMine() {
+    if (!sharedRation || sharedRation.own || adding) return
+    if (cloned) {
+      openPlan(cloned.id)
+      return
+    }
+    if (!auth.user || auth.user.role !== 'user') {
+      toast.error('Войдите, чтобы добавить план')
+      return
+    }
+    if (authored.length >= 20) {
+      toast.error('В «Мои» уже 20 рационов')
+      return
+    }
+    const created = createAuthoredPlan({
+      coverImage: sharedRation.coverImage,
+      dayCount: sharedRation.days,
+      description: sharedRation.description,
+      goal: sharedRation.goal,
+      sourceSharedRationId: sharedRation.id,
+      title: sharedRation.title,
+    })
+    if (!created) return
+    setAdding(true)
+    try {
+      const createdMeals = await stampRationDaysOntoPlan(
+        auth.transport,
+        rationDaysFromSharedRation(sharedRation),
+        created.id,
+      )
+      queryClient.setQueryData<{ items: Array<(typeof createdMeals)[number]['meal']> }>(
+        mealsQueryKeys.forSubject(auth.user.id),
+        (previous) => {
+          const kept = previous?.items ?? []
+          return { items: [...createdMeals.map((item) => item.meal), ...kept] }
+        },
+      )
+      await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.forSubject(auth.user.id) })
+      persist(withAuthoredPlan(snapshot, created))
+      toast.success('План добавлен в «Мои»')
+      openPlan(created.id)
+    } catch (error) {
+      toast.error(catalogCloneErrorMessage(error))
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  const addToMine = catalogView ? addCatalogToMine : feedPreview ? addSharedRationToMine : null
+
+  const catalogMineButton = addToMine ? (
     <button
       className={MOBILE_DOCK_PILL_CLASS}
       disabled={adding}
-      onClick={() => void addCatalogToMine()}
+      onClick={() => void addToMine()}
       type="button"
     >
       {cloned ? 'Открыть в «Мои»' : 'Добавить'}
@@ -858,27 +988,33 @@ export function CurrentPlanPage({
           ? plan.description
           : catalogView
             ? 'Готовый план на семь дней. Добавьте его в «Мои», чтобы менять приёмы.'
-            : 'Приёмы по дням, которые вы уже добавили из рационов.'
+            : feedPreview
+              ? 'План, которым поделились в ленте.'
+              : 'Приёмы по дням, которые вы уже добавили из рационов.'
       }
       showHeaderOnMobile
       title={plan?.title ?? 'План'}
     >
-      {isError ? (
+      {loadError ? (
         <ProductFeedEmpty
           description="Проверьте соединение и попробуйте ещё раз."
           icon={<CalendarRangeIcon aria-hidden strokeWidth={1.75} />}
           title="Не удалось загрузить план"
         />
-      ) : isPending ? (
+      ) : loadingPlan ? (
         <ProductFeedSkeletonSlots Card={SkeletonMealCard} />
       ) : plan == null ? (
         <ProductFeedEmpty
           action={
             <NoraButton onClick={() => goBack()} variant="tinted">
-              К планам
+              {backListLabel}
             </NoraButton>
           }
-          description="Этот план больше не сохранён в аккаунте."
+          description={
+            sharedRationId
+              ? 'Этот рацион больше не опубликован в ленте.'
+              : 'Этот план больше не сохранён в аккаунте.'
+          }
           icon={<CalendarRangeIcon aria-hidden strokeWidth={1.75} />}
           title="План не найден"
         />
@@ -886,7 +1022,7 @@ export function CurrentPlanPage({
         <ProductFeedEmpty
           action={
             <NoraButton onClick={() => goBack()} variant="tinted">
-              К планам
+              {backListLabel}
             </NoraButton>
           }
           description="Создайте план или откройте план от наставника, чтобы наполнить дни приёмами."
@@ -907,11 +1043,11 @@ export function CurrentPlanPage({
                   <ArrowLeftIcon aria-hidden />
                 </button>
                 {desktopEditButton}
-                {catalogView ? (
+                {addToMine ? (
                   <button
                     className={`${planToolbarPillClass} nora-press-grow inline-flex shrink-0 flex-row items-center justify-center gap-1.5 whitespace-nowrap px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] disabled:pointer-events-none disabled:opacity-50`}
                     disabled={adding}
-                    onClick={() => void addCatalogToMine()}
+                    onClick={() => void addToMine()}
                     type="button"
                   >
                     {cloned ? 'Открыть в «Мои»' : 'Добавить'}
@@ -921,14 +1057,14 @@ export function CurrentPlanPage({
             </div>
           </section>
           <CurrentPlanMeals
-            canReorder={!isAssignedPlanId(plan.id)}
+            canReorder={!feedPreview && !isAssignedPlanId(plan.id)}
             completedIds={completedIds}
             dayCount={editorDayCount}
             days={scheduledDays}
             layoutRevision={layoutRevision}
             onDetachPlanMeal={detachPlanMeal}
             planId={plan.id}
-            readOnly={catalogView}
+            readOnly={catalogView || feedPreview}
           />
         </>
       )}
@@ -954,7 +1090,7 @@ export function CurrentPlanPage({
     )}
     {plan && canEdit ? (
       <PlanOutlineDialog
-        coverImage={usableMealCover(plan.coverImage)}
+        coverImage={plan.coverImage}
         dayCount={editorDayCount}
         days={outlineDays}
         description={plan.description}

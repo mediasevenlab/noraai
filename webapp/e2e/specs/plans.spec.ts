@@ -11,7 +11,7 @@ test('creates a plan and selects it with a start date', async ({ page }) => {
   await registerCompletedUser(page, uniqueEmail('web-e2e-plan-select'))
 
   await page.getByRole('group', { name: 'Раздел' }).getByRole('button', { name: 'Рационы' }).click()
-  await expect(page.getByRole('heading', { level: 1, name: 'Общее' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Мой дневник' })).toBeVisible()
 
   await createNamedPlan(page, title)
   await expect(page.getByText('План создан')).toBeVisible()

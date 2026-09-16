@@ -40,6 +40,12 @@ describe('media display src', () => {
     expect(displayMediaSrc('/catalog/spagetti-v-slivochnom-souse-s-kuricej.png', 'full')).toBe(
       '/catalog/spagetti-v-slivochnom-souse-s-kuricej.png',
     )
+    expect(displayMediaSrc('/rations/plan-cover-placeholder.png', 'card')).toBe(
+      '/rations/plan-cover-placeholder.png',
+    )
+    expect(displayMediaSrc('/diary/meal-cover-placeholder.png', 'card')).toBe(
+      '/diary/meal-cover-placeholder.png',
+    )
   })
 
   test('falls back from a missing variant to the original photo, then the placeholder', () => {

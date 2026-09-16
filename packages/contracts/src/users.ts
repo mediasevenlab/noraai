@@ -309,6 +309,7 @@ export const authoredUserPlanSchema = z
     createdAt: z.string().datetime(),
     goal: rationGoalSchema.nullable(),
     sourceCatalogId: catalogPlanIdSchema.optional(),
+    sourceSharedRationId: z.string().uuid().optional(),
     dayCount: z.number().int().min(1).max(AUTHORED_PLAN_DAY_COUNT_MAX).optional(),
   })
   .strict()
@@ -332,9 +333,108 @@ export const userPlanLibrarySchema = z
 
 export const putUserPlanLibraryRequestSchema = userPlanLibrarySchema.omit({ updatedAt: true })
 
+export const sharePlanIdSchema = z.union([authoredUserPlanIdSchema, z.string().uuid()])
+
+export const sharedRationMealSchema = z
+  .object({
+    dayIndex: z.number().int().min(0).max(AUTHORED_PLAN_DAY_COUNT_MAX - 1),
+    slot: rationMealSlotSchema,
+    title: z.string().trim().min(1).max(200),
+    ingredients: z.string().trim().max(4000).default(''),
+    image: z.string().max(2048).default(''),
+    kcal: z.number().int().nonnegative().max(20_000),
+    protein: z.number().int().nonnegative().max(5_000),
+    fat: z.number().int().nonnegative().max(5_000),
+    carbs: z.number().int().nonnegative().max(5_000),
+  })
+  .strict()
+
+export const sharedRationSnapshotSchema = z
+  .object({
+    title: z.string().trim().min(1).max(120),
+    description: z.string().trim().max(2000).default(''),
+    goal: rationGoalSchema.nullable().default(null),
+    coverImage: z.string().max(2048).default(''),
+    meals: z.array(sharedRationMealSchema).min(1).max(80),
+  })
+  .strict()
+
+export const shareRationRequestSchema = z
+  .object({
+    shared: z.boolean(),
+    snapshot: sharedRationSnapshotSchema.optional(),
+  })
+  .strict()
+  .refine((value) => !value.shared || value.snapshot != null, {
+    message: 'Snapshot is required when publishing a ration',
+    path: ['snapshot'],
+  })
+
+export const likeRationRequestSchema = z
+  .object({
+    liked: z.boolean(),
+  })
+  .strict()
+
+export const sharedRationSchema = z
+  .object({
+    id: z.string().uuid(),
+    sourcePlanId: z.string().trim().min(1).max(80),
+    title: z.string().trim().min(1).max(120),
+    description: z.string().trim().max(2000),
+    goal: rationGoalSchema.nullable(),
+    coverImage: z.string().max(2048),
+    days: z.number().int().positive().max(AUTHORED_PLAN_DAY_COUNT_MAX),
+    kcal: z.number().int().nonnegative(),
+    protein: z.number().int().nonnegative(),
+    fat: z.number().int().nonnegative(),
+    carbs: z.number().int().nonnegative(),
+    meals: z.array(sharedRationMealSchema).max(80),
+    shared: z.boolean(),
+    sharedAt: z.string().datetime().nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+    authorName: z.string().trim().min(1).max(80).optional(),
+    likeCount: z.number().int().nonnegative().default(0),
+    liked: z.boolean().default(false),
+    own: z.boolean().default(false),
+  })
+  .strict()
+
+export const listSharedRationsResponseSchema = z
+  .object({
+    items: z.array(sharedRationSchema).max(80),
+  })
+  .strict()
+
+export const sharedRationMutationResponseSchema = z
+  .object({
+    ration: sharedRationSchema,
+  })
+  .strict()
+
+export const shareRationParamsSchema = z
+  .object({
+    planId: sharePlanIdSchema,
+  })
+  .strict()
+
+export const sharedRationParamsSchema = z
+  .object({
+    rationId: z.string().uuid(),
+  })
+  .strict()
+
 export type AuthoredUserPlan = z.infer<typeof authoredUserPlanSchema>
 export type UserPlanLibrary = z.infer<typeof userPlanLibrarySchema>
 export type PutUserPlanLibraryRequest = z.infer<typeof putUserPlanLibraryRequestSchema>
+export type SharedRationMeal = z.infer<typeof sharedRationMealSchema>
+export type SharedRationSnapshot = z.infer<typeof sharedRationSnapshotSchema>
+export type ShareRationRequest = z.infer<typeof shareRationRequestSchema>
+export type LikeRationRequest = z.infer<typeof likeRationRequestSchema>
+export type SharedRation = z.infer<typeof sharedRationSchema>
+export type ListSharedRationsResponse = z.infer<typeof listSharedRationsResponseSchema>
+export type SharedRationMutationResponse = z.infer<typeof sharedRationMutationResponseSchema>
 
 const positiveIntegerQuerySchema = (defaultValue: number, maximum?: number) =>
   z.coerce.number().int().positive().max(maximum ?? Number.MAX_SAFE_INTEGER).default(defaultValue)

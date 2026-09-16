@@ -35,7 +35,7 @@ import {
   useAuth,
 } from '@/features/auth'
 import { SharedMealsFeedPage } from '@/features/diary'
-import { homePathForRole, postAuthPath, userGeneralSearch } from '@/features/navigation'
+import { homePathForRole, postAuthPath, userFeedSearch, userGeneralSearch } from '@/features/navigation'
 import {
   MentorHome,
   MentorMenteeDiary,
@@ -43,7 +43,7 @@ import {
   MentorUsers,
 } from '@/features/mentor'
 import { MentorPayments, UserPayments } from '@/features/payments'
-import { GeneralNutritionPage, MenteeAssignedPlans, MentorPlanDetailPage, MentorPlansPage } from '@/features/plans'
+import { CurrentPlanPage, GeneralNutritionPage, MenteeAssignedPlans, MentorPlanDetailPage, MentorPlansPage } from '@/features/plans'
 import {
   AccountProfile,
   UserHome,
@@ -124,7 +124,37 @@ export function UserDiaryNewsPage() {
 
 export function UserFeedPage() {
   useWorkspaceUser('user')
-  return <SharedMealsFeedPage />
+  const navigate = useNavigate()
+  const search = useLocation({ select: (location) => location.search })
+  const rationId = typeof search.rationId === 'string' ? search.rationId : undefined
+  return (
+    <>
+      <div className={rationId ? 'hidden' : undefined} hidden={Boolean(rationId)}>
+        <SharedMealsFeedPage
+          onOpenRation={(id) => {
+            void navigate({ search: userFeedSearch(id), to: '/app/feed' })
+          }}
+        />
+      </div>
+      {rationId ? (
+        <div className="max-md:pb-24">
+          <CurrentPlanPage
+            onBack={() => {
+              void navigate({ search: userFeedSearch(), to: '/app/feed' })
+            }}
+            onOpenPlan={(planId) => {
+              void navigate({
+                search: userGeneralSearch('plan', planId),
+                to: '/app/general',
+              })
+            }}
+            sharedRationId={rationId}
+            showMobileBackDock
+          />
+        </div>
+      ) : null}
+    </>
+  )
 }
 
 export function UserRationsPage() {

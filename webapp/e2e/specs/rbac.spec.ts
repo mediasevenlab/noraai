@@ -23,7 +23,7 @@ test('keeps user and administrator workspaces separate', async ({ browser, page 
   await fillRegisterForm(page, userEmail)
   await page.getByRole('button', { name: 'Зарегистрироваться' }).click()
   await completeUserQuestionnaire(page)
-  await expect(page.getByRole('link', { name: 'Общее' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Мой дневник' })).toBeVisible()
   await openSidebarAccountMenu(page)
   await expect(page.getByRole('menuitem', { name: 'Платежи' })).toBeDisabled()
   await page.keyboard.press('Escape')

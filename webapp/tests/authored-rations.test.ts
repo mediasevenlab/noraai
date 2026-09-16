@@ -32,6 +32,7 @@ import {
   rationToDraft,
   readAssignedAuthoredRations,
   removeDraftLine,
+  removePlanDraftDay,
   reorderMealDrafts,
   reorderPlanDraftDays,
   setDraftLine,
@@ -124,6 +125,18 @@ describe('mentor authored rations', () => {
       fat: 0,
       carbs: 0,
     })
+  })
+
+  test('plan draft can remove a day but keeps at least one', () => {
+    const breakfast = { ...emptyMealDraft('Завтрак'), title: 'Омлет' }
+    const lunch = { ...emptyMealDraft('Обед'), title: 'Курица' }
+    const removed = removePlanDraftDay([[breakfast], [lunch], emptyPlanDayMeals()], 1)
+    expect(removed).toHaveLength(2)
+    expect(removed[0]?.[0]?.title).toBe('Омлет')
+    expect(removed[1]?.[0]?.title).toBe('')
+    expect(removePlanDraftDay([[breakfast]], 0)).toHaveLength(1)
+    expect(removePlanDraftDay([[breakfast], [lunch]], -1)).toHaveLength(2)
+    expect(removePlanDraftDay([[breakfast], [lunch]], 8)).toHaveLength(2)
   })
 
   test('plan draft can grow days and stamp meals onto each day', () => {

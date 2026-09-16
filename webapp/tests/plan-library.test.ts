@@ -13,7 +13,7 @@ import {
   withoutAuthoredPlan,
   type PlanLibrarySnapshot,
 } from '../src/platform/plan-library-local'
-import { createAuthoredPlan } from '../src/platform/authored-plans'
+import { createAuthoredPlan, authoredPlanCanShareToFeed } from '../src/platform/authored-plans'
 
 const authored = createAuthoredPlan({
   id: 'plan_11111111-1111-4111-8111-111111111111',
@@ -113,4 +113,12 @@ test('plans and diary persist the account plan library', () => {
   expect(feed).toContain('usePlanLibraryQuery(')
   expect(feed).toContain('useSyncedPlanLibrary(')
   expect(feed).toContain('withAuthoredPlan(')
+})
+
+test('cloned catalog or feed plans cannot be published to the feed', () => {
+  expect(authoredPlanCanShareToFeed({})).toBe(true)
+  expect(authoredPlanCanShareToFeed({ sourceCatalogId: 'catalog_office' })).toBe(false)
+  expect(
+    authoredPlanCanShareToFeed({ sourceSharedRationId: '019c0000-0000-7000-8000-000000000301' }),
+  ).toBe(false)
 })

@@ -77,7 +77,7 @@ export const diaryToolbarChipClass =
 
 /** Icon-only calendar / collapsed search on mobile — sits inside a floating pill. */
 export const diaryToolbarIconButtonClass =
-  'nora-press-grow inline-flex size-9 shrink-0 items-center justify-center !rounded-full !border-0 !bg-transparent !shadow-none text-[var(--nora-text-secondary)] outline-none disabled:pointer-events-none disabled:opacity-50 [&>svg]:size-4'
+  'nora-press-grow inline-flex size-9 shrink-0 items-center justify-center !rounded-full !border-0 !bg-transparent !shadow-none text-[var(--nora-text-secondary)] outline-none disabled:pointer-events-none disabled:opacity-50 [&>svg]:size-3.5'
 
 type DiaryPeriodPickerProps = {
   /** Registration day (or earliest diary bound). Default label starts here. */
@@ -166,15 +166,22 @@ export function DiaryPeriodPicker({
           />
         }
       >
-        <CalendarIcon className="size-4 shrink-0 text-current" />
+        <CalendarIcon className="size-3.5 shrink-0 text-current" strokeWidth={1.75} />
       </PopoverTrigger>
       <PopoverContent align="end" className={pickerPopoverClass} sideOffset={4}>
         <Calendar
           locale={dayPickerRu}
           mode="range"
-          numberOfMonths={1}
-          defaultMonth={range?.to ?? range?.from}
+          numberOfMonths={2}
+          defaultMonth={
+            range?.to
+              ? new Date(range.to.getFullYear(), range.to.getMonth() - 1, 1)
+              : range?.from
+          }
           selected={range}
+          classNames={{
+            months: 'relative flex flex-row gap-4',
+          }}
           onSelect={(next) => {
             setCustomized(true)
             setCustomRange(next)

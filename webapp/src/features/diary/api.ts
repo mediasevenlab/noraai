@@ -1,15 +1,21 @@
 import {
   createUserMealResponseSchema,
   deleteMealResponseSchema,
+  likeRationRequestSchema,
   listMealsResponseSchema,
+  listSharedRationsResponseSchema,
   mealComposerTurnResponseSchema,
   mealMutationResponseSchema,
   mealsTranscribeResponseSchema,
   setMealPlanDoneRequestSchema,
+  shareRationRequestSchema,
+  sharedRationMutationResponseSchema,
   type CreateUserMealRequest,
   type CreateUserMealResponse,
   type DeleteMealResponse,
+  type LikeRationRequest,
   type ListMealsResponse,
+  type ListSharedRationsResponse,
   type MealComposerTurnRequest,
   type MealComposerTurnResponse,
   type MealMutationResponse,
@@ -18,6 +24,8 @@ import {
   type SelectMealVersionRequest,
   type SetMealPlanDoneRequest,
   type ShareMealRequest,
+  type ShareRationRequest,
+  type SharedRationMutationResponse,
   type LikeMealRequest,
 } from '@web-app-demo/contracts'
 
@@ -172,6 +180,36 @@ export function likeSharedMeal(
     `/api/meals/${encodeURIComponent(mealId)}/like`,
     mealMutationResponseSchema,
     { method: 'PATCH', body },
+  )
+}
+
+export function listSharedRations(
+  transport: AuthenticatedTransport,
+): Promise<ListSharedRationsResponse> {
+  return transport.request('/api/plans/shared', listSharedRationsResponseSchema)
+}
+
+export function shareMyRation(
+  transport: AuthenticatedTransport,
+  planId: string,
+  body: ShareRationRequest,
+): Promise<SharedRationMutationResponse> {
+  return transport.request(
+    `/api/users/me/plans/${encodeURIComponent(planId)}/share`,
+    sharedRationMutationResponseSchema,
+    { method: 'PATCH', body: shareRationRequestSchema.parse(body) },
+  )
+}
+
+export function likeSharedRation(
+  transport: AuthenticatedTransport,
+  rationId: string,
+  body: LikeRationRequest,
+): Promise<SharedRationMutationResponse> {
+  return transport.request(
+    `/api/plans/${encodeURIComponent(rationId)}/like`,
+    sharedRationMutationResponseSchema,
+    { method: 'PATCH', body: likeRationRequestSchema.parse(body) },
   )
 }
 

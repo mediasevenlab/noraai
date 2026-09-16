@@ -259,6 +259,8 @@ type NoraSelectProps = {
   hideChevron?: boolean
   chevron?: "plain" | "circle"
   itemIndicator?: "start" | "end"
+  /** Trap pointer events so a nested dialog does not dismiss when picking an option. */
+  modal?: boolean
 }
 
 export function NoraSelect({
@@ -275,6 +277,7 @@ export function NoraSelect({
   hideChevron = false,
   chevron = "plain",
   itemIndicator = "end",
+  modal = false,
 }: NoraSelectProps) {
   const selectedLabel =
     value == null ? undefined : items.find((item) => item.value === value)?.label
@@ -284,6 +287,7 @@ export function NoraSelect({
       value={value}
       defaultValue={defaultValue}
       disabled={disabled}
+      modal={modal}
       onValueChange={onValueChange}
     >
       <SelectTrigger

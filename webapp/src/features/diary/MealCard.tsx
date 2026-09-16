@@ -65,7 +65,7 @@ function MacrosLine({ meal, className }: { meal: MealEntry; className?: string }
         className,
       )}
     >
-      <span className="text-[var(--nora-text)]">
+      <span className="font-medium text-[var(--nora-text)]">
         {meal.kcal} ккал
       </span>
       {' · Б: '}
@@ -142,7 +142,7 @@ export function MealMacrosPlaque({
     <div className="pointer-events-none flex items-center gap-1.5">
       <div className={cn(shell, 'gap-1 pl-2.5 pr-3')}>
         <ZapIcon aria-hidden className="size-[15px] shrink-0" strokeWidth={1.75} />
-        <span className="whitespace-nowrap text-[11px] leading-none">
+        <span className="whitespace-nowrap text-[11px] font-medium leading-none">
           <RollingMacroValue
             intervalMs={48}
             max={740}
@@ -652,7 +652,7 @@ export function MealCard({
   addingToDiary?: boolean
   onAddToPlan?: () => void
   addingToPlan?: boolean
-  onDelete: () => void
+  onDelete?: () => void
   footerStart?: React.ReactNode
   selected?: boolean
   /** Hide status badges while picking meals into a plan. */
@@ -769,7 +769,7 @@ export function MealCard({
             </div>
           ) : null}
         </div>
-        {readOnly ? null : (
+        {readOnly || !onDelete ? null : (
           <button
             type="button"
             aria-label="Удалить"
@@ -803,10 +803,7 @@ export function MealCard({
         >
           <div className="min-w-0">
             <h3
-              className={cn(
-                'truncate shrink-0 font-[family-name:var(--nora-font)] text-[15px] font-medium leading-6 tracking-normal',
-                pending ? 'text-[var(--nora-text-secondary)]' : 'text-[var(--nora-text)]',
-              )}
+              className="truncate shrink-0 font-[family-name:var(--nora-font)] text-[15px] font-medium leading-6 tracking-normal text-[var(--nora-text)]"
             >
               {meal.title}
             </h3>

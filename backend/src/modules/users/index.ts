@@ -39,6 +39,7 @@ export function createUsersModule(options: CreateUsersModuleOptions) {
     telegramLinks,
     userFavoritesStore: repository,
     userPlanLibraryStore: repository,
+    sharedRationsStore: repository,
     userMentorConnector: repository,
     userReferralsReader: repository,
     userDeleter: repository,

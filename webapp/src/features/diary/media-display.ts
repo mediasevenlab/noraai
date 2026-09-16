@@ -1,3 +1,5 @@
+import { MEAL_COVER_STUB_SRC, PLAN_COVER_PLACEHOLDER_SRC } from './meal-cover'
+
 export type MediaDisplaySize = 'card' | 'full'
 
 export function mealPhotoDisplaySize(sizes: 'sm' | 'md' | 'lg'): MediaDisplaySize {
@@ -77,6 +79,7 @@ function catalogVariantSrc(src: string, size: MediaDisplaySize) {
   if (/\.card\.webp$/i.test(path)) return src
   // Plan catalog photos are originals from the recipe source, without .card.webp siblings.
   if (path.startsWith('/catalog/')) return src
+  if (path === PLAN_COVER_PLACEHOLDER_SRC || path === MEAL_COVER_STUB_SRC) return src
   const extension = size === 'card' ? '.card.webp' : '.webp'
   const variant = path.replace(/\.[^.]+$/, extension)
   const suffix = query ? `?${query}` : ''

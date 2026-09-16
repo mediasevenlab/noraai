@@ -15,7 +15,7 @@ import {
   writePlanLibrarySnapshot,
 } from '@/platform/plan-library-local'
 
-import { deleteMyMeal, listMentorUserMeals, listMyMeals, listSharedMeals } from './api'
+import { deleteMyMeal, listMentorUserMeals, listMyMeals, listSharedMeals, listSharedRations } from './api'
 import { readCompletedRationMealIds } from './ration-done'
 import { purgeExpiredPendingRationMeals } from './ration-plan-expiry'
 
@@ -24,6 +24,7 @@ export const mealsQueryKeys = {
   forSubject: (subjectUserId: string | undefined) =>
     [...mealsQueryKeys.all, subjectUserId ?? 'none'] as const,
   shared: () => [...mealsQueryKeys.all, 'shared'] as const,
+  sharedRations: () => [...mealsQueryKeys.all, 'shared-rations'] as const,
 }
 
 export const favoritesQueryKeys = {
@@ -71,6 +72,16 @@ export function useSharedMealsQuery() {
     queryKey: mealsQueryKeys.shared(),
     enabled: Boolean(auth.user),
     queryFn: async () => listSharedMeals(auth.transport),
+  })
+}
+
+export function useSharedRationsQuery() {
+  const auth = useAuth()
+
+  return useQuery({
+    queryKey: mealsQueryKeys.sharedRations(),
+    enabled: Boolean(auth.user),
+    queryFn: async () => listSharedRations(auth.transport),
   })
 }
 

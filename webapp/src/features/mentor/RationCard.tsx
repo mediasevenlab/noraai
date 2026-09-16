@@ -53,7 +53,7 @@ export function RationMacrosPlaque({
     <div className="pointer-events-none flex items-center gap-1.5">
       <div className={cn(shell, 'gap-1 pl-2.5 pr-3')}>
         <ZapIcon aria-hidden className="size-[15px] shrink-0" strokeWidth={1.75} />
-        <span className="whitespace-nowrap text-[11px] leading-none">
+        <span className="whitespace-nowrap text-[11px] font-medium leading-none">
           {ration.kcal}
           <span className="font-medium"> ккал</span>
         </span>
@@ -422,7 +422,8 @@ export function RationCard({
             </p>
           ) : null}
           <p className="mt-1 min-w-0 truncate font-[family-name:var(--nora-font)] text-[12px] font-light leading-4 text-[var(--nora-text-tertiary)] tabular-nums">
-            {mealsCountLabel(ration.meals.length)} · {ration.kcal} ккал
+            {mealsCountLabel(ration.meals.length)} ·{' '}
+            <span className="font-medium text-[var(--nora-text)]">{ration.kcal} ккал</span>
           </p>
         </button>
         <div className="pt-3">

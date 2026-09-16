@@ -11,13 +11,14 @@ import {
   resolveRoleDestination,
   safeReturnPath,
   secondaryNavigationItemsForRole,
+  userFeedSearch,
   userGeneralSearch,
   userSplitNutritionGeneralPath,
 } from '../src/features/navigation/model'
 
 test('role navigation exposes only the current workspace', () => {
   expect(navigationItemsForRole('user')).toEqual([
-    { label: 'Общее', to: '/app/general' },
+    { label: 'Мой дневник', to: '/app/general' },
     { label: 'Лента', to: '/app/feed' },
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Рефералы', to: '/app/referrals' },
@@ -56,6 +57,10 @@ test('legacy diary and plan URLs fold into Общее', () => {
   expect(userSplitNutritionGeneralPath('/app/feed')).toBeNull()
   expect(userGeneralSearch()).toEqual({ view: 'diary', planId: undefined })
   expect(userGeneralSearch('plan', 'current')).toEqual({ view: 'plan', planId: 'current' })
+  expect(userFeedSearch()).toEqual({ rationId: undefined })
+  expect(userFeedSearch('019c0000-0000-7000-8000-000000000301')).toEqual({
+    rationId: '019c0000-0000-7000-8000-000000000301',
+  })
 })
 
 test('role navigation separates primary and account-menu destinations', () => {
@@ -186,7 +191,7 @@ test('user weekly plan folds into Общее', () => {
   expect(isUserPlanPath('/app/plan/current')).toBe(true)
   expect(isUserPlanPath('/app/plan/plan_custom')).toBe(true)
   expect(isUserPlanPath('/app/rations')).toBe(false)
-  expect(navigationItemMatchingPath('user', '/app/plan')?.label).toBe('Общее')
+  expect(navigationItemMatchingPath('user', '/app/plan')?.label).toBe('Мой дневник')
   expect(navigationItemMatchingPath('user', '/app/plan/current')?.to).toBe('/app/general')
   expect(navigationItemMatchingPath('user', '/app/plan/plan_custom')?.to).toBe('/app/general')
   expect(postAuthPath('user', '/app/plan/current')).toBe(

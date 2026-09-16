@@ -32,6 +32,9 @@ import {
   formatPlanActiveRange,
   filledPlanBoardDays,
   planDayTabParts,
+  rationDaysFromSharedRation,
+  buildWeekPlanFromSharedRation,
+  sharedRationSnapshotFromWeekPlan,
   WEEK_PLAN_CARD_SLOTS,
   type WeekPlan,
 } from '../src/features/plans/week-plan'
@@ -316,7 +319,7 @@ test('new plan cover uses the first real meal photo and skips the collage placeh
     rations: [],
     title: 'Другой план',
   })
-  expect(emptyCover.coverImage).toBe('/diary/meal-preview-placeholder.jpg')
+  expect(emptyCover.coverImage).toBe('/rations/plan-cover-placeholder.png')
 
   const photoMeals = [
     mealOn(monday, {
@@ -335,6 +338,17 @@ test('new plan cover uses the first real meal photo and skips the collage placeh
     title: 'Другой план',
   })
   expect(fromMeal.coverImage).toBe('/diary/croissant.jpg')
+
+  const fromExpiredApiCover = buildWeekPlan({
+    coverImage:
+      '/api/meals/11111111-1111-4111-8111-111111111111/image?exp=1&sig=abc',
+    meals: photoMeals,
+    now,
+    planId: customId,
+    rations: [],
+    title: 'Другой план',
+  })
+  expect(fromExpiredApiCover.coverImage).toBe('/diary/croissant.jpg')
 
   const extrasOnly = buildWeekPlan({
     coverImage: '',
@@ -402,6 +416,13 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(source).toContain('origin="mentor-rations"')
   expect(source).toContain('bg-[var(--nora-success)] text-white')
   expect(page).toContain('fromMentor={isAssignedPlanId(plan.id)}')
+  expect(page).toContain('authoredPlanCanShareToFeed')
+  expect(page).toContain('canShare={')
+  expect(page).toContain('onShare={() => void toggleShare(plan)}')
+  expect(page).not.toContain('onShare={isAuthoredPlanId(plan.id) ?')
+  expect(source).toContain('disabled={!onShare || (!canShare && !shared)}')
+  expect(source).not.toContain('{onShare ? (')
+  expect(source).toContain("'Этот рацион нельзя отправить в ленту'")
   expect(page).toContain('formatPlanActiveRange(')
   expect(page).toContain('description: ration.description')
   expect(page).toContain('description: catalog.description')
@@ -437,7 +458,7 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(source).not.toContain('max-h-[108px]')
   expect(page).toContain('useSyncedPlanLibrary(')
   expect(page).toContain('persist(')
-  expect(page).toContain('canReorder={!isAssignedPlanId(plan.id)}')
+  expect(page).toContain('canReorder={!feedPreview && !isAssignedPlanId(plan.id)}')
   const savedPlans = readFileSync(
     new URL('../src/features/plans/saved-plans.ts', import.meta.url),
     'utf8',
@@ -514,6 +535,9 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('ListIcon')
   expect(page).toContain('MOBILE_DOCK_FAB_ICON_ACTIVE_CLASS')
   expect(page).toContain('buildWeekPlanFromCatalog')
+  expect(page).toContain('buildWeekPlanFromSharedRation')
+  expect(page).toContain('sharedRationId')
+  expect(page).toContain('addSharedRationToMine')
   expect(page).toContain('planToolbarPillClass')
   expect(page).toContain('size-9 shrink-0 justify-center p-0')
   expect(page).toContain('aria-label="Назад"')
@@ -769,16 +793,45 @@ test('plan shopping lists unique groceries from every planned meal', () => {
       id: 'shop-1',
       title: 'Омлет',
       ingredients: 'яйца, хлеб',
-      assumptions: [RATION_DIARY_SOURCE_MARK],
+      assumptions: [],
+      fromApi: false,
     }),
     mealOn(monday, {
       id: 'shop-2',
       title: 'Суп',
       ingredients: 'хлеб, морковь',
-      assumptions: [RATION_DIARY_SOURCE_MARK],
+      assumptions: [],
+      fromApi: false,
     }),
   ])
   expect(items.map((item) => item.label)).toEqual(['яйца', 'хлеб', 'морковь'])
+})
+
+test('plan shopping splits newline ingredients and portion lines', () => {
+  const monday = new Date(2026, 7, 31)
+  expect(
+    planShoppingItems([
+      mealOn(monday, {
+        id: 'nl-1',
+        title: 'Салат',
+        ingredients: 'кефир 1%\nяблоко 150 г',
+        assumptions: [],
+        fromApi: false,
+      }),
+    ]).map((item) => item.label),
+  ).toEqual(['кефир 1%', 'яблоко 150 г'])
+  expect(
+    planShoppingItems([
+      mealOn(monday, {
+        id: 'pi-1',
+        title: 'Обед',
+        ingredients: 'ignored blob',
+        portionItems: ['треска 150 г', 'кабачок'],
+        assumptions: [],
+        fromApi: false,
+      }),
+    ]).map((item) => item.label),
+  ).toEqual(['треска 150 г', 'кабачок'])
 })
 
 test('plan shopping can list groceries for one plan day', () => {
@@ -791,7 +844,8 @@ test('plan shopping can list groceries for one plan day', () => {
           id: 'd1',
           title: 'Омлет',
           ingredients: 'яйца, хлеб',
-          assumptions: [RATION_DIARY_SOURCE_MARK],
+          assumptions: [],
+          fromApi: false,
         }),
       ],
     },
@@ -801,7 +855,8 @@ test('plan shopping can list groceries for one plan day', () => {
           id: 'd2',
           title: 'Суп',
           ingredients: 'хлеб, морковь',
-          assumptions: [RATION_DIARY_SOURCE_MARK],
+          assumptions: [],
+          fromApi: false,
         }),
       ],
     },
@@ -818,6 +873,36 @@ test('plan shopping can list groceries for one plan day', () => {
   ])
   expect(planShoppingItemsForDay(days, '1').map((item) => item.label)).toEqual(['яйца', 'хлеб'])
   expect(planShoppingItemsForDay(days, '2').map((item) => item.label)).toEqual(['хлеб', 'морковь'])
+})
+
+test('week plan preview meals fill the shopping list without a diary stamp', () => {
+  const plan = buildWeekPlanFromRation({
+    planId: 'plan:preview-shop',
+    title: 'Превью',
+    ration: SAMPLE_RATIONS[0]!,
+    now,
+  })
+  expect(plan.days[0]?.meals[0]?.assumptions).toBeUndefined()
+  expect(plan.days[0]?.meals[0]?.fromApi).toBe(false)
+  expect(
+    planShoppingItems(plan.days.flatMap((day) => day.meals)).map((item) => item.label),
+  ).toEqual(['яйца', 'кабачок', 'помидор', 'огурец'])
+  expect(planShoppingItemsForDay(plan.days, '1').map((item) => item.label)).toEqual([
+    'яйца',
+    'кабачок',
+    'помидор',
+    'огурец',
+  ])
+})
+
+test('plan shopping dialog keeps the day filter usable inside the cart', () => {
+  const source = readFileSync(
+    new URL('../src/features/plans/PlanShoppingDialog.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(source).toContain('disablePointerDismissal')
+  expect(source).toMatch(/<NoraSelect[\s\S]*?\bmodal\b/)
+  expect(source).toContain('planShoppingItemsForDay')
 })
 
 test('plan list splits own cards from mentor cards', () => {
@@ -974,4 +1059,95 @@ test('authored plans persist and join the ration picker options', () => {
       value: originalStorage,
     })
   }
+})
+
+test('week plan snapshot for the feed keeps meals by day', () => {
+  const plan: WeekPlan = {
+    id: 'plan_11111111-1111-4111-8111-111111111111',
+    title: 'Офис',
+    description: 'День',
+    kcal: 420,
+    coverImage: '/cover.jpg',
+    mealsCount: 1,
+    goal: 'Похудение',
+    cardDays: [],
+    days: [
+      {
+        dayKey: '2026-09-16',
+        short: 'День 1',
+        label: 'День 1',
+        dayIso: '2026-09-16T12:00:00',
+        filled: true,
+        ration: null,
+        meals: [
+          mealOn(now, { id: 'm1', title: 'Курица', kcal: 420 }),
+        ],
+        mealsCount: 1,
+        kcal: 420,
+        done: false,
+      },
+    ],
+  }
+  const snapshot = sharedRationSnapshotFromWeekPlan(plan)
+  expect(snapshot).toMatchObject({
+    title: 'Офис',
+    goal: 'Похудение',
+    meals: [{ dayIndex: 0, title: 'Курица', kcal: 420, slot: 'Завтрак' }],
+  })
+})
+
+test('shared feed ration opens as the same day-board plan', () => {
+  const rationId = '019c0000-0000-7000-8000-000000000301'
+  const sourcePlanId = 'plan_11111111-1111-4111-8111-111111111111'
+  const ration = {
+    id: rationId,
+    sourcePlanId,
+    title: 'Офис',
+    description: 'День в офисе',
+    goal: 'Похудение' as const,
+    coverImage: '/cover.jpg',
+    days: 2,
+    kcal: 900,
+    protein: 60,
+    fat: 20,
+    carbs: 80,
+    meals: [
+      {
+        dayIndex: 0,
+        slot: 'Обед' as const,
+        title: 'Курица',
+        ingredients: 'курица',
+        image: '/diary/meals/meal-01.jpg',
+        kcal: 420,
+        protein: 35,
+        fat: 12,
+        carbs: 40,
+      },
+      {
+        dayIndex: 1,
+        slot: 'Завтрак' as const,
+        title: 'Омлет',
+        ingredients: 'яйца',
+        image: '',
+        kcal: 480,
+        protein: 25,
+        fat: 8,
+        carbs: 40,
+      },
+    ],
+    shared: true,
+    sharedAt: '2026-09-16T10:00:00.000Z',
+    createdAt: '2026-09-16T10:00:00.000Z',
+    updatedAt: '2026-09-16T10:00:00.000Z',
+    likeCount: 0,
+    liked: false,
+    own: false,
+  }
+  expect(rationDaysFromSharedRation(ration)).toHaveLength(2)
+  const plan = buildWeekPlanFromSharedRation({ ration, now })
+  expect(plan.id).toBe(sourcePlanId)
+  expect(plan.title).toBe('Офис')
+  expect(plan.days).toHaveLength(2)
+  expect(plan.days[0]?.meals[0]?.title).toBe('Курица')
+  expect(plan.days[1]?.meals[0]?.title).toBe('Омлет')
 })

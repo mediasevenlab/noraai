@@ -11,6 +11,8 @@ import type {
   UserRole,
 } from '@web-app-demo/contracts'
 
+import type { SharedRationRecord } from '../domain/shared-ration'
+
 export type UserRecord = {
   id: string
   publicId: number
@@ -218,6 +220,36 @@ export type MentorPlansStore = {
     carbs: number
   }): Promise<MentorPlanRecord>
   deleteMentorPlan(mentorId: string, planId: string): Promise<void>
+}
+
+export type SharedRationsStore = {
+  findByAuthorAndSource(
+    authorId: string,
+    sourcePlanId: string,
+  ): Promise<SharedRationRecord | null>
+  findById(id: string): Promise<SharedRationRecord | null>
+  upsertShared(input: {
+    authorId: string
+    sourcePlanId: string
+    title: string
+    description: string
+    goal: string | null
+    coverImage: string
+    days: number
+    meals: unknown
+    kcal: number
+    protein: number
+    fat: number
+    carbs: number
+    sharedAt: Date | null
+  }): Promise<SharedRationRecord>
+  setSharedAt(id: string, sharedAt: Date | null): Promise<SharedRationRecord>
+  listShared(limit: number, viewerUserId: string): Promise<SharedRationRecord[]>
+  setLiked(
+    rationId: string,
+    userId: string,
+    liked: boolean,
+  ): Promise<SharedRationRecord>
 }
 
 export type MealMediaCleanup = {

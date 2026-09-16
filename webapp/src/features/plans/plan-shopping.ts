@@ -1,16 +1,36 @@
-import { dayShoppingItems, type MealEntry } from '@/features/diary'
+import { mealCompositionLines, type MealEntry } from '@/features/diary'
 import { readSavedIdSet, writeSavedIdSet, type SavedAccountScope } from '@/platform/saved-ids'
 
 const STORAGE_PREFIX = 'nora:plan-shopping:v1:'
 
 export const PLAN_SHOPPING_ALL_DAYS = 'all'
 
+export type PlanShoppingItem = {
+  key: string
+  label: string
+}
+
 export type PlanShoppingDay = {
   meals: readonly MealEntry[]
 }
 
-export function planShoppingItems(meals: readonly MealEntry[]) {
-  return dayShoppingItems(meals)
+function shoppingItemKey(label: string) {
+  return label.trim().toLowerCase()
+}
+
+/** Unique grocery lines from every planned meal, including authored preview cards. */
+export function planShoppingItems(meals: readonly MealEntry[]): PlanShoppingItem[] {
+  const seen = new Set<string>()
+  const items: PlanShoppingItem[] = []
+  for (const meal of meals) {
+    for (const label of mealCompositionLines(meal)) {
+      const key = shoppingItemKey(label)
+      if (seen.has(key)) continue
+      seen.add(key)
+      items.push({ key, label })
+    }
+  }
+  return items
 }
 
 export function planShoppingDayOptions(dayCount: number) {

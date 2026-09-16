@@ -1,7 +1,11 @@
-import type { ComponentProps, ComponentType } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import { GraduationCapIcon, ImagesIcon, NewspaperIcon, UtensilsCrossedIcon } from 'lucide-react'
 
-import { NoraEmpty } from '@/components/nora/primitives'
+import {
+  noraPlaqueIconClass,
+  noraProductMetaClass,
+  noraProductTitleClass,
+} from '@/components/nora/primitives'
 import { cn } from '@/lib/utils'
 
 export type ProductCardOrigin = 'diary' | 'feed' | 'rations' | 'mentor-rations'
@@ -152,26 +156,77 @@ export function ProductFeedSkeletonSlots({
   )
 }
 
-/** Filtered-empty / error — shopping-style plaque, not a blank meal card. */
+/** Filtered-empty / error — placeholder card in the feed grid. */
 export function ProductFeedEmpty({
+  action,
   className,
+  description,
   icon,
   origin,
-  ...props
-}: ComponentProps<typeof NoraEmpty> & {
+  title,
+}: {
+  action?: ReactNode
+  className?: string
+  description?: ReactNode
+  icon?: ReactNode
   origin?: ProductCardOrigin
+  title: ReactNode
 }) {
   const OriginIcon = origin ? PRODUCT_CARD_ORIGIN[origin].Icon : undefined
+  const resolvedIcon =
+    icon ?? (OriginIcon ? <OriginIcon aria-hidden strokeWidth={1.75} /> : undefined)
   return (
-    <section data-slot="feed-empty">
-      <NoraEmpty
-        icon={
-          icon ??
-          (OriginIcon ? <OriginIcon aria-hidden strokeWidth={1.75} /> : undefined)
-        }
-        {...props}
-        className={className}
-      />
+    <section className={productFeedGridClass} data-slot="feed-empty">
+      <article
+        aria-label={typeof title === 'string' ? title : undefined}
+        className={cn('flex h-full min-w-0 flex-col', className)}
+        data-empty-card=""
+        data-slot="meal-card"
+        role="status"
+      >
+        <div className="relative shrink-0 px-2 pt-2">
+          <div
+            className="relative flex aspect-[4/3] w-full max-h-[132px] items-center justify-center bg-[var(--nora-inset)] sm:max-h-[148px] md:aspect-auto md:h-[168px] md:max-h-none"
+            data-slot="meal-card-preview"
+          >
+            {resolvedIcon ? (
+              <span className={cn(noraPlaqueIconClass, 'size-10 [&_svg]:size-4')}>
+                {resolvedIcon}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <div
+          className={cn(
+            'flex flex-1 flex-col px-3 pt-3 sm:px-4 sm:pt-3.5',
+            action ? undefined : 'pb-3 sm:pb-3.5',
+          )}
+        >
+          <h3 className={cn(noraProductTitleClass, 'text-pretty')}>{title}</h3>
+          {description ? (
+            <p
+              className={cn(noraProductMetaClass, 'mt-2 text-pretty')}
+              data-slot="empty-description"
+            >
+              {description}
+            </p>
+          ) : null}
+          {action ? (
+            <div className="mt-auto pt-3">
+              <div
+                aria-hidden
+                className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]"
+              />
+              <div
+                className="flex items-center py-3 [&_button]:rounded-full"
+                data-slot="empty-card-footer"
+              >
+                {action}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </article>
     </section>
   )
 }

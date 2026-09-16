@@ -1,7 +1,19 @@
+import type { SharedRation } from '@web-app-demo/contracts'
+
+import { isMealInLocalDayRange, type DiaryPeriodFilter } from './DiaryPeriodPicker'
 import type { MealEntry } from './meals-catalog'
 
-export const FEED_TABS = ['Все', 'Мои лайки'] as const
-export type SharedMealsFeedTab = (typeof FEED_TABS)[number]
+export function feedStampInPeriod(
+  iso: string | null | undefined,
+  period: DiaryPeriodFilter | null,
+) {
+  if (!period) return true
+  if (!iso) return false
+  return isMealInLocalDayRange(iso, period.from, period.to)
+}
+
+export const FEED_KINDS = ['Приёмы', 'Рационы'] as const
+export type FeedKind = (typeof FEED_KINDS)[number]
 
 export const FEED_GOALS = ['Похудение', 'Набор', 'Поддержание', 'Здоровье'] as const
 export type FeedGoal = (typeof FEED_GOALS)[number]
@@ -40,14 +52,49 @@ export function matchesSharedMealQuery(meal: MealEntry, query: string) {
 export function filterSharedMeals(
   meals: readonly MealEntry[],
   input: {
-    tab: SharedMealsFeedTab
+    likedOnly: boolean
     goal: FeedGoal | null
     query: string
+    period?: DiaryPeriodFilter | null
   },
 ) {
   return meals.filter((meal) => {
-    if (input.tab === 'Мои лайки' && !meal.liked) return false
+    if (input.likedOnly && !meal.liked) return false
     if (input.goal && !mealMatchesFeedGoal(meal.kcal, input.goal)) return false
+    if (!feedStampInPeriod(meal.at, input.period ?? null)) return false
     return matchesSharedMealQuery(meal, input.query)
+  })
+}
+
+export function matchesSharedRationQuery(ration: SharedRation, query: string) {
+  const needle = query.trim().toLowerCase()
+  if (!needle) return true
+  const haystack = [
+    ration.title,
+    ration.description,
+    ration.authorName,
+    ration.goal,
+    ...ration.meals.map((meal) => meal.title),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+  return haystack.includes(needle)
+}
+
+export function filterSharedRations(
+  rations: readonly SharedRation[],
+  input: {
+    likedOnly: boolean
+    goal: FeedGoal | null
+    query: string
+    period?: DiaryPeriodFilter | null
+  },
+) {
+  return rations.filter((ration) => {
+    if (input.likedOnly && !ration.liked) return false
+    if (input.goal && ration.goal !== input.goal) return false
+    if (!feedStampInPeriod(ration.sharedAt ?? ration.createdAt, input.period ?? null)) return false
+    return matchesSharedRationQuery(ration, input.query)
   })
 }

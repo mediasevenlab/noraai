@@ -1,8 +1,9 @@
 import {
   createMyMeal,
   mealImageFromUrl,
+  PLAN_COVER_PLACEHOLDER_SRC,
+  durablePlanCoverSrc,
   preferredMealPhotoSrc,
-  usableMealCover,
 } from '@/features/diary'
 import { rationMealCreateDrafts, rationPlanWeekDays, type RationEntry } from '@/features/mentor'
 import { ApiRequestError, type AuthenticatedTransport } from '@/platform/api'
@@ -50,9 +51,9 @@ export function firstDurablePlanCover(
   authored: string | undefined,
   meals: readonly { imageUrl?: string }[],
 ) {
-  const picked = authored?.startsWith('data:') ? '' : usableMealCover(authored)
+  const picked = authored?.startsWith('data:') ? '' : durablePlanCoverSrc(authored)
   if (picked) return picked
-  return meals.map((meal) => usableMealCover(meal.imageUrl)).find(Boolean) ?? ''
+  return meals.map((meal) => durablePlanCoverSrc(meal.imageUrl)).find(Boolean) ?? PLAN_COVER_PLACEHOLDER_SRC
 }
 
 export async function stampRationDaysOntoPlan(

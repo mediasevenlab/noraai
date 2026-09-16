@@ -20,6 +20,12 @@ import {
   putUserFavoritesRequestSchema,
   putUserPlanLibraryRequestSchema,
   questionnaireResponseSchema,
+  shareRationParamsSchema,
+  shareRationRequestSchema,
+  sharedRationMutationResponseSchema,
+  sharedRationParamsSchema,
+  likeRationRequestSchema,
+  listSharedRationsResponseSchema,
   telegramLinkRequestSchema,
   telegramLinkResponseSchema,
   upsertMentorPlanRequestSchema,
@@ -231,6 +237,70 @@ const putCurrentUserPlanLibraryRoute = createRoute({
     404: { content: errorContent, description: 'Plan library is unavailable' },
     413: { content: errorContent, description: 'Request body is too large' },
     429: { content: errorContent, description: 'Too many requests' },
+  },
+})
+
+const shareMyRationRoute = createRoute({
+  method: 'patch',
+  path: '/me/plans/{planId}/share',
+  security: bearerSecurity,
+  request: {
+    params: shareRationParamsSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: shareRationRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: sharedRationMutationResponseSchema } },
+      description: 'Ration share updated',
+    },
+    400: { content: errorContent, description: 'Invalid payload' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Forbidden' },
+    404: { content: errorContent, description: 'Plan not found' },
+  },
+})
+
+const listSharedRationsRoute = createRoute({
+  method: 'get',
+  path: '/shared',
+  security: bearerSecurity,
+  responses: {
+    200: {
+      content: { 'application/json': { schema: listSharedRationsResponseSchema } },
+      description: 'Public shared rations',
+    },
+    401: { content: errorContent, description: 'Authentication required' },
+  },
+})
+
+const likeSharedRationRoute = createRoute({
+  method: 'patch',
+  path: '/{rationId}/like',
+  security: bearerSecurity,
+  request: {
+    params: sharedRationParamsSchema,
+    body: {
+      content: {
+        'application/json': {
+          schema: likeRationRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: sharedRationMutationResponseSchema } },
+      description: 'Ration like updated',
+    },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Forbidden' },
+    404: { content: errorContent, description: 'Ration not found' },
   },
 })
 
@@ -592,6 +662,7 @@ export function createUsersRoutes({
   const userRoutes = new OpenAPIHono<AuthHttpEnv>({ defaultHook: validationErrorHook })
   const adminRoutes = new OpenAPIHono<AuthHttpEnv>({ defaultHook: validationErrorHook })
   const mentorRoutes = new OpenAPIHono<AuthHttpEnv>({ defaultHook: validationErrorHook })
+  const planRoutes = new OpenAPIHono<AuthHttpEnv>({ defaultHook: validationErrorHook })
 
   userRoutes.use('*', requireAuth)
   userRoutes.openapi(updateProfileRoute, async (c) => {
@@ -666,6 +737,18 @@ export function createUsersRoutes({
     return c.json(
       await executeUsers(() =>
         service.putCurrentUserPlanLibrary(c.var.user, c.req.valid('json')),
+      ),
+      200,
+    )
+  })
+  userRoutes.openapi(shareMyRationRoute, async (c) => {
+    return c.json(
+      await executeUsers(() =>
+        service.setRationShared(
+          c.var.user,
+          c.req.valid('param').planId,
+          c.req.valid('json'),
+        ),
       ),
       200,
     )
@@ -788,5 +871,22 @@ export function createUsersRoutes({
     ),
   )
 
-  return { adminRoutes, mentorRoutes, userRoutes }
+  planRoutes.use('*', requireAuth)
+  planRoutes.openapi(listSharedRationsRoute, async (c) =>
+    c.json(await executeUsers(() => service.listSharedRations(c.var.user)), 200),
+  )
+  planRoutes.openapi(likeSharedRationRoute, async (c) =>
+    c.json(
+      await executeUsers(() =>
+        service.setRationLiked(
+          c.var.user,
+          c.req.valid('param').rationId,
+          c.req.valid('json').liked,
+        ),
+      ),
+      200,
+    ),
+  )
+
+  return { adminRoutes, mentorRoutes, planRoutes, userRoutes }
 }

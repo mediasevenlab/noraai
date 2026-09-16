@@ -12,12 +12,12 @@ import {
   SidebarSeparator,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { userGeneralSearch } from '@/features/navigation'
+import { userFeedSearch, userGeneralSearch } from '@/features/navigation'
 
 const GENERAL_ITEMS = [
   {
     key: 'general',
-    label: 'Общее',
+    label: 'Мой дневник',
     to: '/app/general' as const,
     search: userGeneralSearch(),
     icon: Columns2Icon,
@@ -36,19 +36,28 @@ const SOCIAL_ITEMS = [
     key: 'feed',
     label: 'Лента',
     to: '/app/feed' as const,
-    search: undefined,
+    search: userFeedSearch(),
     icon: ImagesIcon,
   },
 ]
 
+type UserNavItem = (typeof GENERAL_ITEMS)[number] | (typeof SOCIAL_ITEMS)[number]
+
+function UserNavLink({
+  item,
+  onNavigate,
+}: {
+  item: UserNavItem
+  onNavigate: () => void
+}) {
+  if (item.to === '/app/feed') {
+    return <Link onClick={onNavigate} search={item.search} to="/app/feed" />
+  }
+  return <Link onClick={onNavigate} search={item.search} to="/app/general" />
+}
+
 function UserNavGroup<
-  T extends {
-    key: string
-    label: string
-    to: '/app/feed' | '/app/general'
-    search?: ReturnType<typeof userGeneralSearch>
-    icon: typeof Columns2Icon
-  },
+  T extends UserNavItem,
 >({
   disabled,
   items,
@@ -100,13 +109,7 @@ function UserNavGroup<
                   ) : (
                     <SidebarMenuButton
                       isActive={active}
-                      render={(
-                        <Link
-                          onClick={() => setOpenMobile(false)}
-                          search={item.search}
-                          to={item.to}
-                        />
-                      )}
+                      render={<UserNavLink item={item} onNavigate={() => setOpenMobile(false)} />}
                       tooltip={item.label}
                     >
                       <Icon />
@@ -125,11 +128,11 @@ function UserNavGroup<
   )
 }
 
-/** Diary and plan share Общее; catalog is its own entry; feed stays under Социальная сеть. */
+/** Diary and plan share Мой дневник; catalog is its own entry; feed stays under Социальная сеть. */
 export function UserAppNavigation({ disabled = false }: { disabled?: boolean }) {
   return (
     <>
-      <UserNavGroup disabled={disabled} items={GENERAL_ITEMS} label="Общее" />
+      <UserNavGroup disabled={disabled} items={GENERAL_ITEMS} label="Питание" />
       <SidebarSeparator />
       <UserNavGroup disabled={disabled} items={SOCIAL_ITEMS} label="Социальная сеть" />
     </>

@@ -30,6 +30,8 @@ model User {
   questionnaireProfile UserQuestionnaireProfile?
   meals               Meal[]
   mealLikes           MealLike[]
+  sharedRations       SharedRation[]
+  sharedRationLikes   SharedRationLike[]
   mentorMealViewCursors MentorMenteeMealCursor[] @relation("MentorMealViewCursors")
   menteeMealViewCursors MentorMenteeMealCursor[] @relation("MenteeMealViewCursors")
   mentorMealViews       MentorMenteeMealView[]   @relation("MentorMealViews")
@@ -175,6 +177,43 @@ model UserPlanLibrary {
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "user_plan_libraries_user_id_fkey")
 
   @@map("user_plan_libraries")
+}
+
+model SharedRation {
+  id           String             @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  authorId     String             @map("author_id") @db.Uuid
+  sourcePlanId String             @map("source_plan_id") @db.VarChar(80)
+  title        String
+  description  String             @default("")
+  goal         String?
+  coverImage   String             @default("") @map("cover_image")
+  days         Int                @default(1)
+  meals        Json
+  kcal         Int
+  protein      Int
+  fat          Int
+  carbs        Int
+  sharedAt     DateTime?          @map("shared_at")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  author       User               @relation(fields: [authorId], references: [id], onDelete: Cascade, map: "shared_rations_author_id_fkey")
+  likes        SharedRationLike[]
+
+  @@unique([authorId, sourcePlanId], map: "shared_rations_author_id_source_plan_id_key")
+  @@index([sharedAt], map: "shared_rations_shared_at_idx")
+  @@map("shared_rations")
+}
+
+model SharedRationLike {
+  rationId  String       @map("ration_id") @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  createdAt DateTime     @default(now()) @map("created_at")
+  ration    SharedRation @relation(fields: [rationId], references: [id], onDelete: Cascade, map: "shared_ration_likes_ration_id_fkey")
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade, map: "shared_ration_likes_user_id_fkey")
+
+  @@id([rationId, userId], map: "shared_ration_likes_pkey")
+  @@index([rationId], map: "shared_ration_likes_ration_id_idx")
+  @@map("shared_ration_likes")
 }
 
 model UserQuestionnaireProfile {

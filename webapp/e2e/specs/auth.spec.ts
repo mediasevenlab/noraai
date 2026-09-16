@@ -46,11 +46,10 @@ test('registers, restores the session, opens protected UI, and logs out', async 
   await page.getByRole('button', { name: 'Зарегистрироваться' }).click()
   await completeUserQuestionnaire(page)
   await expect(page.getByRole('main')).toHaveCount(1)
-  await expect(page.getByRole('navigation', { name: 'Питание' })).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'Мой дневник' })).toHaveCount(0)
-  await expect(page.getByRole('navigation', { name: 'Общее' })).toBeVisible()
-  await expect(page.getByRole('heading', { level: 1, name: 'Общее' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Общее' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Питание' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Мой дневник' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Общее' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { level: 1, name: 'Мой дневник' })).toBeVisible()
   await openSidebarAccountMenu(page)
   await expect(page.getByRole('menuitem', { name: 'Профиль' })).toBeVisible()
   await expect(page.getByRole('menuitem', { name: 'Настройки' })).toBeVisible()
@@ -77,7 +76,7 @@ test('registers, restores the session, opens protected UI, and logs out', async 
 
   await expect((await refreshAfterReload).status()).toBe(200)
   await expect((await meAfterReload).status()).toBe(200)
-  await expect(page.getByRole('heading', { level: 1, name: 'Общее' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Мой дневник' })).toBeVisible()
 
   await goToWorkspaceFromAccountMenu(page, 'Профиль')
   await expect(page).toHaveURL(/\/app\/profile$/)
@@ -171,8 +170,8 @@ test('keeps one logical browser session active across concurrent tabs', async ({
 
   await expect(page).toHaveURL(/\/app\/general/)
   await expect(secondPage).toHaveURL(/\/app\/general/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Общее' })).toBeVisible()
-  await expect(secondPage.getByRole('heading', { level: 1, name: 'Общее' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Мой дневник' })).toBeVisible()
+  await expect(secondPage.getByRole('heading', { level: 1, name: 'Мой дневник' })).toBeVisible()
 
   await page.route('**/api/auth/logout', async (route) => {
     await route.fulfill({

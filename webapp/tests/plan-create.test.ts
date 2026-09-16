@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 
 import { ApiRequestError } from '../src/platform/api'
+import { PLAN_COVER_PLACEHOLDER_SRC } from '../src/features/diary/meal-cover'
 import { catalogCloneErrorMessage, firstDurablePlanCover, mealCreateImageFields } from '../src/features/plans/plan-create'
 
 test('plan create reuses the ration editor and stamps meals on chosen days', () => {
@@ -17,7 +18,7 @@ test('plan create reuses the ration editor and stamps meals on chosen days', () 
   expect(page).toContain('AUTHORED_PLAN_ID_PREFIX')
   expect(page).toContain('stampRationDaysOntoPlan(')
   expect(page).toContain('onSaveDays=')
-  expect(page).toContain('saveCreatedPlan(days)')
+  expect(page).toContain('saveCreatedPlan(days, dayCount)')
   expect(page).toContain('firstDurablePlanCover(')
   expect(page).toContain('stampDaysOntoPlan(days, created.id)')
   expect(page).toContain('stampRationDaysOntoPlan(auth.transport, days, planId)')
@@ -54,7 +55,22 @@ test('durable plan cover prefers a saved photo then the first stamped meal', () 
   expect(
     firstDurablePlanCover('data:image/jpeg;base64,abc', [{ imageUrl: '/diary/croissant.jpg' }]),
   ).toBe('/diary/croissant.jpg')
-  expect(firstDurablePlanCover('/diary/meal-preview-placeholder.jpg', [])).toBe('')
+  expect(firstDurablePlanCover('/diary/meal-preview-placeholder.jpg', [])).toBe(
+    PLAN_COVER_PLACEHOLDER_SRC,
+  )
+  expect(firstDurablePlanCover('', [])).toBe(PLAN_COVER_PLACEHOLDER_SRC)
+  expect(
+    firstDurablePlanCover(
+      '/api/meals/11111111-1111-4111-8111-111111111111/image?exp=1&sig=abc',
+      [{ imageUrl: '/diary/croissant.jpg' }],
+    ),
+  ).toBe('/diary/croissant.jpg')
+  expect(
+    firstDurablePlanCover(
+      '/api/meals/11111111-1111-4111-8111-111111111111/image?exp=1&sig=abc',
+      [{ imageUrl: '/api/meals/11111111-1111-4111-8111-111111111111/image?exp=1&sig=abc' }],
+    ),
+  ).toBe(PLAN_COVER_PLACEHOLDER_SRC)
 })
 
 test('catalog clone maps rate-limit failures to a Russian retry', () => {

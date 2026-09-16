@@ -20,6 +20,8 @@ export type AuthoredPlan = {
   createdAt: string
   goal: PlanGoal | null
   sourceCatalogId?: string
+  /** Feed ration this authored copy was added from. */
+  sourceSharedRationId?: string
   /** Authored day count, including trailing empty days. */
   dayCount?: number
 }
@@ -30,6 +32,14 @@ export function isAuthoredPlanId(planId: string) {
 
 export function isAssignedPlanId(planId: string) {
   return UUID_RE.test(planId)
+}
+
+/** Catalog and feed clones stay in «Мои»; only original authored plans go to the feed. */
+export function authoredPlanCanShareToFeed(plan: {
+  sourceCatalogId?: string
+  sourceSharedRationId?: string
+}) {
+  return !plan.sourceCatalogId && !plan.sourceSharedRationId
 }
 
 export function parsePlanGoal(value: unknown): PlanGoal | null {
@@ -51,12 +61,17 @@ export function createAuthoredPlan(input: {
   id?: string
   goal?: PlanGoal | null
   sourceCatalogId?: string
+  sourceSharedRationId?: string
   dayCount?: number
 }): AuthoredPlan | null {
   const title = input.title.trim()
   if (!title) return null
   const requestedId = input.id?.trim() ?? ''
   const sourceCatalogId = input.sourceCatalogId?.trim() || undefined
+  const sourceSharedRationId =
+    input.sourceSharedRationId?.trim() && UUID_RE.test(input.sourceSharedRationId.trim())
+      ? input.sourceSharedRationId.trim()
+      : undefined
   const dayCount = parseAuthoredPlanDayCount(input.dayCount)
   return {
     id: requestedId && isAuthoredPlanId(requestedId)
@@ -68,6 +83,7 @@ export function createAuthoredPlan(input: {
     createdAt: new Date().toISOString(),
     goal: input.goal ?? null,
     ...(sourceCatalogId ? { sourceCatalogId } : {}),
+    ...(sourceSharedRationId ? { sourceSharedRationId } : {}),
     ...(dayCount ? { dayCount } : {}),
   }
 }
@@ -101,6 +117,8 @@ function parseAuthoredPlans(raw: string | null): AuthoredPlan[] {
       seen.add(id)
       const sourceCatalogId =
         typeof record.sourceCatalogId === 'string' ? record.sourceCatalogId.trim() : ''
+      const sourceSharedRationId =
+        typeof record.sourceSharedRationId === 'string' ? record.sourceSharedRationId.trim() : ''
       const dayCount = parseAuthoredPlanDayCount(record.dayCount)
       plans.push({
         id,
@@ -110,6 +128,7 @@ function parseAuthoredPlans(raw: string | null): AuthoredPlan[] {
         createdAt: typeof record.createdAt === 'string' ? record.createdAt : '',
         goal: parsePlanGoal(record.goal),
         ...(sourceCatalogId.startsWith('catalog_') ? { sourceCatalogId } : {}),
+        ...(UUID_RE.test(sourceSharedRationId) ? { sourceSharedRationId } : {}),
         ...(dayCount ? { dayCount } : {}),
       })
     }

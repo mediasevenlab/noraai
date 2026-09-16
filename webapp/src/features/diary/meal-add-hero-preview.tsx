@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import { useLatest } from '@/lib/use-latest'
 
 import { MealPhotoSlides } from './MealCard'
-import { MEAL_COVER_PLACEHOLDER_SRC } from './meal-cover'
+import { MEAL_COVER_STUB_SRC } from './meal-cover'
 import { nextComposerHeroIndex } from './meal-hero-preview'
 
 export const MEAL_ADD_PREVIEW_FADE_MS = 500
@@ -97,7 +97,7 @@ export function MealAddHeroPreview({ slides }: { slides: string[] }) {
         alt=""
         aria-hidden
         className="absolute inset-0 size-full object-cover"
-        src={MEAL_COVER_PLACEHOLDER_SRC}
+        src={MEAL_COVER_STUB_SRC}
       />
       {settledSlides.length > 0 ? (
         <MealPhotoSlides

@@ -79,6 +79,12 @@ const userDiaryNewsLegacyRoute = createRoute({
 const userFeedRoute = createRoute({
   getParentRoute: () => userWorkspaceRoute,
   path: '/app/feed',
+  validateSearch: (search: Record<string, unknown>) => ({
+    rationId:
+      typeof search.rationId === 'string' && search.rationId.trim()
+        ? search.rationId.trim()
+        : undefined,
+  }),
   component: lazyRouteComponent(() => import('./pages'), 'UserFeedPage'),
 })
 

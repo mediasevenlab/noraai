@@ -77,7 +77,6 @@ export function PlanShoppingDialog({
   if (loadedIdentity !== storageIdentity) {
     setLoadedIdentity(storageIdentity)
     setBought(planId ? readBoughtPlanShoppingKeys(savedScope, planId) : new Set<string>())
-    setDayValue(PLAN_SHOPPING_ALL_DAYS)
   }
 
   React.useEffect(() => {
@@ -96,7 +95,7 @@ export function PlanShoppingDialog({
   }
 
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
+    <Dialog disablePointerDismissal onOpenChange={onOpenChange} open={open}>
       <DialogContent
         className={FRAME_CLASS}
         data-modal-frame="meal"
@@ -142,6 +141,7 @@ export function PlanShoppingDialog({
                 contentClassName={productToolbarSelectContentClass}
                 itemClassName={productToolbarSelectItemClass}
                 items={dayOptions}
+                modal
                 onValueChange={(value) => {
                   if (value) setDayValue(value)
                 }}

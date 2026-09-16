@@ -13,7 +13,12 @@ import {
 import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { MealsFailure } from '../domain/errors'
-import { mealAssumptionsArePlanCopy, mealAssumptionsBlockShare } from '../domain/meal-share'
+import {
+  mealAssumptionsArePlanCopy,
+  mealCanPublishToFeed,
+  preserveMealShareAssumptions,
+  withAuthorPhotoMark,
+} from '../domain/meal-share'
 import {
   applyMealPlanDoneMark,
   countUnreadMealsByMentee,
@@ -311,7 +316,12 @@ export class MealsService {
     const items = await this.dependencies.repository.listSharedMeals(200, viewerUserId)
     return {
       items: items
-        .filter((meal) => !mealAssumptionsBlockShare(meal.assumptions))
+        .filter((meal) =>
+          mealCanPublishToFeed({
+            assumptions: meal.assumptions,
+            extraImageKeys: extraImageKeysForActiveVersion(meal.versions, meal.activeVersionId),
+          }),
+        )
         .slice(0, 80)
         .map((meal) =>
           this.toDto(this.hydrateVersions(meal), {
@@ -335,8 +345,17 @@ export class MealsService {
     if (meal.userId !== actor.id) {
       throw new MealsFailure('forbidden', 'Only the meal owner can share it')
     }
-    if (shared && mealAssumptionsBlockShare(meal.assumptions)) {
-      throw new MealsFailure('forbidden', 'Ration meals cannot be published to the feed')
+    if (
+      shared
+      && !mealCanPublishToFeed({
+        assumptions: meal.assumptions,
+        extraImageKeys: extraImageKeysForActiveVersion(meal.versions, meal.activeVersionId),
+      })
+    ) {
+      throw new MealsFailure(
+        'forbidden',
+        'Копию из каталога, плана или ленты можно опубликовать только после своего фото',
+      )
     }
     if ((meal.sharedAt != null) === shared) {
       return { meal: this.toDto(this.hydrateVersions(meal)) }
@@ -669,6 +688,8 @@ export class MealsService {
     })
     const fields = mapGeminiCardToMealFields(result.meal)
     const extraImageKeys = await this.extraImageKeysAfterRefine(ensured, mealId, input)
+    let assumptions = preserveMealShareAssumptions(ensured.assumptions, fields.assumptions)
+    if (input.imageBase64) assumptions = withAuthorPhotoMark(assumptions)
     const refinedBase = ensureMealVersions({
       ...this.toVersioned(ensured),
       title: fields.title,
@@ -681,7 +702,7 @@ export class MealsService {
       carbs: fields.carbs,
       portionItems: fields.portionItems,
       clientComment: fields.clientComment,
-      assumptions: fields.assumptions,
+      assumptions,
       micronutrients: fields.micronutrients,
     })
     const withHistory = appendMealVersion(

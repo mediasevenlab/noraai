@@ -5,12 +5,15 @@ import { assumptionsForMeal } from '../src/features/diary/meals-catalog'
 import {
   currentWeekPlanStampId,
   isDiaryFeedMealVisible,
+  isDiaryMealOnFutureDay,
   isPendingPlanMealShownInDiary,
   isRationImportedMeal,
   isRationPlanDone,
   isRationPlanPending,
   mealBelongsToWeekPlan,
   mealCanShareToFeed,
+  mealShareBlockedMessage,
+  MEAL_AUTHOR_PHOTO_MARK,
   mealCardOrigin,
   RATION_DIARY_DONE_MARK,
   RATION_DIARY_SOURCE_MARK,
@@ -239,6 +242,9 @@ describe('ration-imported diary meals', () => {
     expect(isDiaryFeedMealVisible(pendingYesterday, weekId, undefined, now, true)).toBe(false)
     expect(isDiaryFeedMealVisible(pendingTomorrow, weekId, undefined, now, true)).toBe(true)
     expect(isDiaryFeedMealVisible(ownTomorrow, null, undefined, now, true)).toBe(false)
+    expect(isDiaryMealOnFutureDay(pendingTomorrow, now)).toBe(true)
+    expect(isDiaryMealOnFutureDay(pendingToday, now)).toBe(false)
+    expect(isDiaryMealOnFutureDay(pendingYesterday, now)).toBe(false)
     const otherPlan = {
       ...pendingToday,
       id: 'pending-office',
@@ -281,7 +287,7 @@ describe('ration-imported diary meals', () => {
     ])
   })
 
-  test('only user-authored meals can be shared to the feed', () => {
+  test('only user-authored meals can be shared to the feed unless a copy has an owner photo', () => {
     expect(mealCanShareToFeed({ title: 'Овсянка', fromApi: true, assumptions: [] })).toBe(true)
     expect(
       mealCanShareToFeed({
@@ -304,5 +310,31 @@ describe('ration-imported diary meals', () => {
         assumptions: [CATALOG_FAVORITE_SOURCE_MARK],
       }),
     ).toBe(false)
+    expect(
+      mealCanShareToFeed({
+        id: '11111111-1111-4111-8111-111111111111',
+        title: 'Каталог',
+        fromApi: true,
+        assumptions: [CATALOG_FAVORITE_SOURCE_MARK, MEAL_AUTHOR_PHOTO_MARK],
+      }),
+    ).toBe(true)
+    expect(
+      mealCanShareToFeed({
+        title: 'План',
+        fromApi: true,
+        assumptions: [RATION_DIARY_SOURCE_MARK],
+        extraImages: ['/api/meals/x/extras/0'],
+      }),
+    ).toBe(true)
+    expect(
+      mealShareBlockedMessage({
+        title: 'План',
+        fromApi: true,
+        assumptions: [RATION_DIARY_SOURCE_MARK],
+      }),
+    ).toContain('своего фото')
+    expect(visibleMealAssumptions([RATION_DIARY_SOURCE_MARK, MEAL_AUTHOR_PHOTO_MARK, 'Вес по фото'])).toEqual([
+      'Вес по фото',
+    ])
   })
 })

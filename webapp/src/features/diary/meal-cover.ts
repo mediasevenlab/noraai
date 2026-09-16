@@ -2,6 +2,17 @@ import { MEAL_CATALOG } from './meals-catalog'
 import { setRationImportedMealTitles } from './ration-import'
 
 export const MEAL_COVER_PLACEHOLDER_SRC = '/diary/meal-preview-placeholder.jpg'
+export const MEAL_COVER_STUB_SRC = '/diary/meal-cover-placeholder.png'
+export const PLAN_COVER_PLACEHOLDER_SRC = '/rations/plan-cover-placeholder.png'
+
+export function isCoverPlaceholder(src: string | undefined): boolean {
+  const cover = src?.trim() ?? ''
+  return (
+    cover === MEAL_COVER_PLACEHOLDER_SRC ||
+    cover === MEAL_COVER_STUB_SRC ||
+    cover === PLAN_COVER_PLACEHOLDER_SRC
+  )
+}
 
 const extraCovers = new Map<string, string>()
 
@@ -25,13 +36,30 @@ export function isPersistedMealImageUrl(url: string | undefined): boolean {
   return !/\/api\/meals\/[^/]+\/(?:image|extras\/\d+)\/?$/.test(url)
 }
 
-/** Real photo for plan covers and meal copies — skip empty stubs and the collage placeholder. */
+/** Real photo for plan covers and meal copies — skip empty stubs and collage/plan placeholders. */
 export function usableMealCover(src: string | undefined): string {
   const cover = src?.trim() ?? ''
-  if (!cover || cover === MEAL_COVER_PLACEHOLDER_SRC) return ''
+  if (!cover || isCoverPlaceholder(cover)) return ''
   if (cover.startsWith('data:')) return cover
   if (!isPersistedMealImageUrl(cover)) return ''
   return cover
+}
+
+/** Plan-owned cover that can be stored. Signed meal routes expire; live meal photos replace them. */
+export function durablePlanCoverSrc(src: string | undefined): string {
+  const cover = usableMealCover(src)
+  if (!cover || cover.includes('/api/meals/')) return ''
+  return cover
+}
+
+/** Plan card / create-from-scratch preview when there is no meal photo yet. */
+export function displayPlanCover(src: string | undefined): string {
+  return usableMealCover(src) || PLAN_COVER_PLACEHOLDER_SRC
+}
+
+/** Meal editor preview when the dish has no photo yet. */
+export function displayMealCover(src: string | undefined): string {
+  return usableMealCover(src) || MEAL_COVER_STUB_SRC
 }
 
 export function preferredMealPhotoSrc(meal: {

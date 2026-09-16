@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 
-import { emptyPlanLibrary, normalizePlanLibrary } from './plan-library'
+import { emptyPlanLibrary, normalizePlanLibrary, authoredPlanCanShareToFeed } from './plan-library'
 
 const nowIso = '2026-09-07T12:00:00.000Z'
 
@@ -13,6 +13,7 @@ test('normalizePlanLibrary keeps authored metadata, favorites, selection and sta
     createdAt: '2026-09-01T00:00:00.000Z',
     goal: 'Похудение',
     sourceCatalogId: 'catalog_office',
+    sourceSharedRationId: '019c0000-0000-7000-8000-000000000301',
     dayCount: 4,
   }
 
@@ -40,6 +41,7 @@ test('normalizePlanLibrary keeps authored metadata, favorites, selection and sta
         createdAt: '2026-09-01T00:00:00.000Z',
         goal: 'Похудение',
         sourceCatalogId: 'catalog_office',
+        sourceSharedRationId: '019c0000-0000-7000-8000-000000000301',
         dayCount: 4,
       },
     ],
@@ -89,4 +91,12 @@ test('emptyPlanLibrary is a blank document', () => {
     selectedPlanIds: [],
     planStarts: [],
   })
+})
+
+test('cloned catalog or feed plans cannot be published to the feed', () => {
+  expect(authoredPlanCanShareToFeed({})).toBe(true)
+  expect(authoredPlanCanShareToFeed({ sourceCatalogId: 'catalog_office' })).toBe(false)
+  expect(
+    authoredPlanCanShareToFeed({ sourceSharedRationId: '019c0000-0000-7000-8000-000000000301' }),
+  ).toBe(false)
 })

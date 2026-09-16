@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { GraduationCapIcon, ListIcon, UserIcon } from 'lucide-react'
+import { BookmarkIcon, GraduationCapIcon, ListIcon, UserIcon } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import { productFeedToolbarRowClass } from '@/components/nora/product-sheet'
@@ -111,24 +111,23 @@ export function PlanToolbar({
       <div className="flex w-full min-w-0 items-center pt-1">
         <div className={cn(productFeedToolbarRowClass, searchOpen && 'max-md:overflow-hidden')}>
           {toolbarStart}
-          <div
-            aria-label="Планы"
-            className={cn(toolbarPillClass, 'p-1')}
-            role="group"
+          <button
+            aria-pressed={tab === 'Избранное'}
+            className={cn(
+              toolbarPillClass,
+              'nora-press-grow shrink-0 gap-1 px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-active:text-[var(--nora-text)] [&>svg]:size-3.5',
+            )}
+            data-active={tab === 'Избранное' || undefined}
+            onClick={() => onTabChange(tab === 'Избранное' ? 'Все' : 'Избранное')}
+            type="button"
           >
-            {PLAN_TABS.map((option) => (
-              <button
-                aria-pressed={tab === option}
-                className={PLAN_PILL_TAB_CLASS}
-                data-active={tab === option || undefined}
-                key={option}
-                onClick={() => onTabChange(option)}
-                type="button"
-              >
-                {option}
-              </button>
-            ))}
-          </div>
+            <BookmarkIcon
+              aria-hidden
+              className={cn(tab === 'Избранное' && 'fill-current')}
+              strokeWidth={1.75}
+            />
+            Избранное
+          </button>
           <div className={cn('ml-auto flex min-w-0 items-center gap-2', searchOpen && 'max-md:flex-1')}>
             <div
               className={cn(
@@ -150,10 +149,10 @@ export function PlanToolbar({
           </div>
           {canCreate ? (
             <button
-              aria-label="Создать план"
+              aria-label="Создать рацион"
               className={cn(
                 toolbarPillClass,
-                'nora-press-grow inline-flex shrink-0 flex-row items-center justify-center gap-1.5 whitespace-nowrap px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] [&>svg]:size-4',
+                'nora-press-grow inline-flex shrink-0 flex-row items-center justify-center gap-1.5 whitespace-nowrap px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] [&>svg]:size-3.5',
                 'max-md:hidden max-sm:size-9 max-sm:px-0',
                 searchOpen &&
                   'max-md:pointer-events-none max-md:max-w-0 max-md:overflow-hidden max-md:opacity-0',
@@ -161,8 +160,8 @@ export function PlanToolbar({
               onClick={onCreate}
               type="button"
             >
-              <ListIcon aria-hidden className="size-4" />
-              <span className="hidden sm:inline">Создать план</span>
+              <ListIcon aria-hidden className="size-3.5" />
+              <span className="hidden sm:inline">Создать рацион</span>
             </button>
           ) : null}
         </div>

@@ -267,14 +267,13 @@ export function MealOpenDetail({
   demoPressedTab = null,
   demoPressedComplete = false,
   allowCompletePlan = false,
+  previewOnly = false,
   onTitleTyped,
   onCompositionTyped,
   onMacrosRevealChange,
   onCompletePlan,
   onAddToDiary,
   addingToDiary = false,
-  onAddToPlan,
-  addingToPlan = false,
   onDemoPromoted,
   onCommitVersionGallery,
   onToggleLike,
@@ -290,14 +289,13 @@ export function MealOpenDetail({
   demoPressedTab?: MealDetailTab | null
   demoPressedComplete?: boolean
   allowCompletePlan?: boolean
+  previewOnly?: boolean
   onTitleTyped?: () => void
   onCompositionTyped?: () => void
   onMacrosRevealChange?: (state: MealMacrosRevealState) => void
   onCompletePlan?: () => void
   onAddToDiary?: () => void
   addingToDiary?: boolean
-  onAddToPlan?: () => void
-  addingToPlan?: boolean
   onDemoPromoted?: (demoId: string, apiMealId: string) => void
   onCommitVersionGallery?: (input: {
     mealId: string
@@ -333,7 +331,7 @@ export function MealOpenDetail({
   const shownTitle = reveal === 'waiting' || reveal === 'settle' ? frozenTitle : meal.title
   const [detailTabUncontrolled, setDetailTabUncontrolled] = React.useState<MealDetailTab>('Состав')
   const detailTab = tabProp ?? detailTabUncontrolled
-  const canRefine = !readOnly && !mealCardRevealLocksTabs(reveal)
+  const canRefine = !readOnly && !previewOnly && !mealCardRevealLocksTabs(reveal)
   const isPersisted = Boolean(meal.fromApi || isApiMealId(meal.id))
   const versionItems =
     meal.versions && meal.versions.length > 0
@@ -581,30 +579,7 @@ export function MealOpenDetail({
           </DialogDescription>
         )}
           </div>
-          {feedView && onAddToPlan ? (
-            <button
-              aria-label="В план"
-              className={cn(
-                'nora-press-grow ios-glass-glare inline-flex h-8 min-h-8 max-h-8 shrink-0 items-center gap-1 rounded-full border-0 py-0 pl-2.5 pr-3',
-                'font-[family-name:var(--nora-font)] text-[11px] font-medium leading-none tracking-normal',
-                'bg-[var(--nora-input-bg)]/72 text-[var(--nora-text-secondary)] backdrop-blur-[16px] outline-none',
-                'focus-visible:shadow-[var(--nora-shadow-focus)] disabled:opacity-50',
-              )}
-              disabled={addingToPlan}
-              onClick={(event) => {
-                event.stopPropagation()
-                onAddToPlan()
-              }}
-              type="button"
-            >
-              {addingToPlan ? (
-                <Loader2Icon aria-hidden className="size-[15px] shrink-0 animate-spin" strokeWidth={1.75} />
-              ) : (
-                <PlusIcon aria-hidden className="size-[15px] shrink-0" strokeWidth={1.75} />
-              )}
-              В план
-            </button>
-          ) : feedView && onAddToDiary ? (
+          {feedView && onAddToDiary ? (
             <button
               aria-label="В дневник"
               className={cn(
@@ -627,35 +602,12 @@ export function MealOpenDetail({
               )}
               В дневник
             </button>
-          ) : isPlannedDiaryMeal(meal) && onCompletePlan && (!readOnly || allowCompletePlan) ? (
+          ) : !previewOnly && isPlannedDiaryMeal(meal) && onCompletePlan && (!readOnly || allowCompletePlan) ? (
             <RationPlanDoneButton
               done={isRationPlanDone(meal, completedIds)}
               onToggle={onCompletePlan}
               pressed={demoPressedComplete}
             />
-          ) : onAddToPlan ? (
-            <button
-              aria-label="В план"
-              className={cn(
-                'nora-press-grow ios-glass-glare inline-flex h-8 min-h-8 max-h-8 shrink-0 items-center gap-1 rounded-full border-0 py-0 pl-2.5 pr-3',
-                'font-[family-name:var(--nora-font)] text-[11px] font-medium leading-none tracking-normal',
-                'bg-[var(--nora-input-bg)]/72 text-[var(--nora-text-secondary)] backdrop-blur-[16px] outline-none',
-                'focus-visible:shadow-[var(--nora-shadow-focus)] disabled:opacity-50',
-              )}
-              disabled={addingToPlan}
-              onClick={(event) => {
-                event.stopPropagation()
-                onAddToPlan()
-              }}
-              type="button"
-            >
-              {addingToPlan ? (
-                <Loader2Icon aria-hidden className="size-[15px] shrink-0 animate-spin" strokeWidth={1.75} />
-              ) : (
-                <PlusIcon aria-hidden className="size-[15px] shrink-0" strokeWidth={1.75} />
-              )}
-              В план
-            </button>
           ) : null}
         </div>
         <div
@@ -760,7 +712,7 @@ export function MealOpenDetail({
             locked={mealCardRevealLocksTabs(reveal)}
             pressedTab={demoPressedTab}
           />
-          {feedView ? null : (
+          {feedView || previewOnly ? null : (
           <ComposerPressSurface className={MEAL_COMPOSER_FIELD_CLASS}>
           {attach ? (
             <div className="relative mb-3 size-12">

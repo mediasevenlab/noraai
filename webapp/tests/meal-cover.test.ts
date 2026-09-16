@@ -1,8 +1,14 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
+  displayMealCover,
+  displayPlanCover,
+  durablePlanCoverSrc,
+  isCoverPlaceholder,
   isPersistedMealImageUrl,
   MEAL_COVER_PLACEHOLDER_SRC,
+  MEAL_COVER_STUB_SRC,
+  PLAN_COVER_PLACEHOLDER_SRC,
   preferredMealPhotoSrc,
   resolveMealCover,
   setMealCoverExtras,
@@ -43,6 +49,8 @@ describe('meal cover resolution', () => {
   test('usable meal covers skip the collage placeholder and unsigned stubs', () => {
     expect(usableMealCover('')).toBe('')
     expect(usableMealCover(MEAL_COVER_PLACEHOLDER_SRC)).toBe('')
+    expect(usableMealCover(MEAL_COVER_STUB_SRC)).toBe('')
+    expect(usableMealCover(PLAN_COVER_PLACEHOLDER_SRC)).toBe('')
     expect(usableMealCover('/api/meals/11111111-1111-4111-8111-111111111111/image')).toBe('')
     expect(usableMealCover('/diary/croissant.jpg')).toBe('/diary/croissant.jpg')
     expect(usableMealCover('data:image/jpeg;base64,abc')).toBe('data:image/jpeg;base64,abc')
@@ -52,5 +60,28 @@ describe('meal cover resolution', () => {
         extraImages: ['/diary/croissant.jpg'],
       }),
     ).toBe('/diary/croissant.jpg')
+  })
+
+  test('stored plan covers skip signed meal routes that expire', () => {
+    const signed =
+      '/api/meals/11111111-1111-4111-8111-111111111111/image?exp=1&sig=abc'
+    expect(durablePlanCoverSrc(signed)).toBe('')
+    expect(durablePlanCoverSrc('/diary/croissant.jpg')).toBe('/diary/croissant.jpg')
+    expect(durablePlanCoverSrc('data:image/jpeg;base64,abc')).toBe('data:image/jpeg;base64,abc')
+    expect(durablePlanCoverSrc(PLAN_COVER_PLACEHOLDER_SRC)).toBe('')
+  })
+
+  test('blank plans show the plan cover stub until a real meal photo exists', () => {
+    expect(isCoverPlaceholder(PLAN_COVER_PLACEHOLDER_SRC)).toBe(true)
+    expect(displayPlanCover('')).toBe(PLAN_COVER_PLACEHOLDER_SRC)
+    expect(displayPlanCover(MEAL_COVER_PLACEHOLDER_SRC)).toBe(PLAN_COVER_PLACEHOLDER_SRC)
+    expect(displayPlanCover('/diary/croissant.jpg')).toBe('/diary/croissant.jpg')
+  })
+
+  test('blank meals show the meal cover stub until a real photo exists', () => {
+    expect(isCoverPlaceholder(MEAL_COVER_STUB_SRC)).toBe(true)
+    expect(displayMealCover('')).toBe(MEAL_COVER_STUB_SRC)
+    expect(displayMealCover(MEAL_COVER_PLACEHOLDER_SRC)).toBe(MEAL_COVER_STUB_SRC)
+    expect(displayMealCover('/diary/croissant.jpg')).toBe('/diary/croissant.jpg')
   })
 })
