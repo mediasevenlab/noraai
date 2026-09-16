@@ -765,10 +765,11 @@ export function MealOpenDetail({
               contentClassName={COMPACT_SELECT_CONTENT_CLASS}
               itemClassName={COMPACT_SELECT_ITEM_CLASS}
               itemIndicator="end"
-              disabled={!canRefine || busy || versionItems.length < 2}
+              disabled={!canRefine || sending || versionItems.length < 2}
               hideChevron
               items={versionItems}
               leadingIcon={<HistoryIcon strokeWidth={1.75} />}
+              modal
               onValueChange={(value) => {
                 if (value) void onSelectVersion(value)
               }}

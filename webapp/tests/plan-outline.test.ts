@@ -94,7 +94,7 @@ test('plan outline dialog edits title, description and day order', () => {
   expect(page).toContain('PlanOutlineDialog')
   expect(page).toContain('coverImage={plan.coverImage}')
   expect(page).not.toContain('coverImage={usableMealCover(plan.coverImage)}')
-  expect(page).toContain('Редактировать')
+  expect(page).toContain('Изменить')
   expect(page).toContain('applyWeekOutline')
   expect(page).toContain('newDayRations')
   expect(page).toContain('stampRationDaysOntoPlan')

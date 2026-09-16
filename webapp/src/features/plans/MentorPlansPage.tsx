@@ -11,7 +11,7 @@ import {
   productFeedGridClass,
 } from '@/components/nora/product-sheet'
 import { useAuth } from '@/features/auth'
-import { mealsQueryKeys, shareMyRation, SkeletonMealCard, useSharedRationsQuery } from '@/features/diary'
+import { daysCountLabel, mealsCountLabel, mealsQueryKeys, shareMyRation, SkeletonMealCard, useSharedRationsQuery } from '@/features/diary'
 import {
   emptyRationDraft,
   getMentorUserPlans,
@@ -254,7 +254,17 @@ export function MentorPlanDetailPage({ planId }: { planId: string }) {
   return (
     <PlanPageShell
       badge="План"
+      coverImage={plan?.coverImage}
       description={plan?.description.trim() || 'Приёмы по дням этого плана.'}
+      facts={
+        plan
+          ? [
+              { label: 'Дней', value: daysCountLabel(plan.days.length) },
+              { label: 'Приёмов', value: mealsCountLabel(plan.mealsCount) },
+              { label: 'Калорийность', value: `${plan.kcal} ккал` },
+            ]
+          : []
+      }
       showHeaderOnMobile
       title={plan?.title ?? 'План'}
     >

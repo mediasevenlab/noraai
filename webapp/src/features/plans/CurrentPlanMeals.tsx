@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { CalendarIcon, ArrowLeftRightIcon, UtensilsIcon, XIcon, ZapIcon } from 'lucide-react'
+import { CalendarIcon, ArrowLeftRightIcon, PlusIcon, Trash2Icon, UtensilsIcon, XIcon, ZapIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Dialog, DialogContent } from '@/components/ui/dialog'
@@ -104,7 +104,9 @@ export function CurrentPlanMeals({
   completedIds,
   dayCount = 0,
   days,
+  onAddEmptyDay,
   onDetachPlanMeal,
+  onRemoveEmptyDay,
   planId,
   readOnly = false,
   canReorder,
@@ -113,7 +115,9 @@ export function CurrentPlanMeals({
   completedIds: ReadonlySet<string>
   dayCount?: number
   days: readonly WeekPlanDay[]
+  onAddEmptyDay?: () => void
   onDetachPlanMeal: (mealId: string) => void
+  onRemoveEmptyDay?: (dayKey: string) => void
   planId?: string
   readOnly?: boolean
   canReorder?: boolean
@@ -139,13 +143,18 @@ export function CurrentPlanMeals({
     setLoadedLayoutKey(layoutKey)
     setLayout(readPlanMealLayout(savedScope, planId ?? ''))
   }
+  const paddedDays = React.useMemo(
+    () => padPlanDaysForEditor(days, new Date(), dayCount),
+    [dayCount, days],
+  )
   const appliedDays = React.useMemo(
-    () => applyPlanMealLayout(days, layout),
-    [days, layout],
+    () => applyPlanMealLayout(paddedDays, layout),
+    [layout, paddedDays],
   )
   const [previewDays, setPreviewDays] = React.useState<WeekPlanDay[] | null>(null)
   const boardDays = previewDays ?? appliedDays
-  const visibleDays = React.useMemo(() => filledPlanBoardDays(boardDays), [boardDays])
+  const visibleDays = boardDays
+  const filledDays = React.useMemo(() => filledPlanBoardDays(boardDays), [boardDays])
   const [openId, setOpenId] = React.useState<string | null>(null)
   const [openMacrosReveal, setOpenMacrosReveal] = React.useState<MealMacrosRevealState>({
     rolling: false,
@@ -174,17 +183,24 @@ export function CurrentPlanMeals({
     questionnaireDailyCalorieTarget(questionnaireQuery.data?.answers) ??
     (subjectId ? readDiaryState(subjectId)?.dailyCalories : undefined) ??
     2200
-  const [selectedDayKey, setSelectedDayKey] = React.useState(() => defaultPlanDayKey(visibleDays))
+  const [selectedDayKey, setSelectedDayKey] = React.useState(
+    () => defaultPlanDayKey(filledPlanBoardDays(days)) ?? defaultPlanDayKey(days),
+  )
   const fillDayRow = visibleDays.length <= PLAN_DAY_TAB_SLOTS
   const dayTabWidthClass = fillDayRow ? 'min-w-0 flex-1' : 'w-14 shrink-0'
   const placeholderCount = fillDayRow ? PLAN_DAY_TAB_SLOTS - visibleDays.length : 0
   const selectedDay =
-    visibleDays.find((day) => day.dayKey === selectedDayKey) ?? visibleDays[0] ?? null
+    visibleDays.find((day) => day.dayKey === selectedDayKey) ??
+    visibleDays.at(-1) ??
+    visibleDays[0] ??
+    null
   if (selectedDay && selectedDay.dayKey !== selectedDayKey) {
     setSelectedDayKey(selectedDay.dayKey)
   }
   const dayTabListRef = React.useRef<HTMLDivElement>(null)
   const [picking, setPicking] = React.useState(false)
+  const canAddEmptyDay =
+    Boolean(onAddEmptyDay) && picking && visibleDays.length < PLAN_DAY_TAB_SLOTS
   const [pickedIds, setPickedIds] = React.useState<Set<string>>(() => new Set())
   const [dockMove, setDockMove] = React.useState<HTMLElement | null>(null)
   const drag = usePlanMealDrag({
@@ -501,9 +517,9 @@ export function CurrentPlanMeals({
     )
   }
 
-  function dayMeta(day: WeekPlanDay) {
+  function dayMeta(day: WeekPlanDay, canRemove = false) {
     return (
-      <div className="flex w-full min-w-0 items-center gap-1.5 py-3">
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 py-3">
         <div className={PLAN_DAY_BADGE_CLASS}>
           <CalendarIcon aria-hidden className="size-[13px]" strokeWidth={1.75} />
           {day.short}
@@ -517,9 +533,25 @@ export function CurrentPlanMeals({
           <ZapIcon aria-hidden className="size-[13px]" strokeWidth={1.75} />
           <span className="tabular-nums">{day.kcal} ккал</span>
         </div>
-        <div className={cn(PLAN_DAY_BADGE_CLASS, 'ml-auto')}>
-          <UtensilsIcon aria-hidden className="size-[13px]" strokeWidth={1.75} />
-          {mealsCountLabel(day.mealsCount)}
+        <div className="ml-auto flex min-w-0 items-center gap-1.5">
+          <div className={PLAN_DAY_BADGE_CLASS}>
+            <UtensilsIcon aria-hidden className="size-[13px]" strokeWidth={1.75} />
+            {mealsCountLabel(day.mealsCount)}
+          </div>
+          {canRemove ? (
+            <button
+              className={cn(
+                PLAN_DAY_BADGE_CLASS,
+                'nora-press-grow shrink-0 cursor-pointer text-[var(--nora-error)] hover:bg-[var(--nora-error)] hover:text-white',
+              )}
+              data-plan-remove-day={day.dayKey}
+              onClick={() => onRemoveEmptyDay?.(day.dayKey)}
+              type="button"
+            >
+              <Trash2Icon aria-hidden className="size-[13px]" strokeWidth={1.75} />
+              Удалить
+            </button>
+          ) : null}
         </div>
       </div>
     )
@@ -537,6 +569,26 @@ export function CurrentPlanMeals({
           ref={dayTabListRef}
           role="tablist"
         >
+          {canAddEmptyDay ? (
+            <button
+              aria-label="Добавить день"
+              className={cn(PLAN_DAY_TAB_CLASS, 'w-12 shrink-0')}
+              data-plan-add-day=""
+              onClick={() => onAddEmptyDay?.()}
+              type="button"
+            >
+              <CalendarIcon
+                aria-hidden
+                className="size-3.5 text-[var(--nora-text-secondary)]"
+                strokeWidth={1.75}
+              />
+              <span className="mt-auto inline-flex size-7 items-center justify-center">
+                <span className="flex size-7 items-center justify-center rounded-full bg-[var(--nora-tint-dimmed)] text-[var(--nora-tint)]">
+                  <PlusIcon aria-hidden className="size-3.5" strokeWidth={2.25} />
+                </span>
+              </span>
+            </button>
+          ) : null}
           {visibleDays.map((day, index) => {
               const parts = planDayTabParts(day, index)
               const active = day.dayKey === selectedDay?.dayKey
@@ -550,12 +602,12 @@ export function CurrentPlanMeals({
                   className={cn(
                     PLAN_DAY_TAB_CLASS,
                     dayTabWidthClass,
-                    active && !daysLocked && PLAN_DAY_TAB_SELECTED_CLASS,
+                    active && !picking && !daysLocked && PLAN_DAY_TAB_SELECTED_CLASS,
                     daysLocked && 'pointer-events-none opacity-40',
                   )}
                   data-plan-day-index={day.meals.length}
                   data-plan-day-tab={day.dayKey}
-                  data-selected={active && !daysLocked ? '' : undefined}
+                  data-selected={active && !picking && !daysLocked ? '' : undefined}
                   disabled={daysLocked}
                   key={day.dayKey}
                   onClick={() => {
@@ -573,7 +625,7 @@ export function CurrentPlanMeals({
                     aria-hidden
                     className={cn(
                       'size-3.5',
-                      active ? 'text-[#888888]' : 'text-[var(--nora-text-secondary)]',
+                      active && !picking ? 'text-[#888888]' : 'text-[var(--nora-text-secondary)]',
                     )}
                     strokeWidth={1.75}
                   />
@@ -616,7 +668,7 @@ export function CurrentPlanMeals({
         </div>
         {selectedDay ? (
           <section className="flex flex-col gap-3">
-            {dayMeta(selectedDay)}
+            {dayMeta(selectedDay, Boolean(onRemoveEmptyDay) && selectedDay.meals.length === 0)}
             <PlanMealGrid
               canReorder={allowReorder && !picking}
               day={selectedDay}
@@ -632,7 +684,7 @@ export function CurrentPlanMeals({
         ) : null}
       </div>
       <div className="hidden flex-col gap-6 md:flex">
-        {visibleDays.map((day) => (
+        {filledDays.map((day) => (
           <section className="flex flex-col gap-3" key={day.dayKey}>
             {dayMeta(day)}
             <PlanMealGrid
@@ -671,6 +723,7 @@ export function CurrentPlanMeals({
           )
         : null}
       <Dialog
+        disablePointerDismissal
         open={Boolean(openMeal)}
         onOpenChange={(open) => {
           if (!open) {

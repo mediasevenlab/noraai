@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 
 import {
+  TOASTER_MOBILE_BOTTOM,
   TOASTER_MOBILE_WIDTH,
   toasterPositionForViewport,
 } from '../src/components/ui/toaster-position'
@@ -24,7 +25,7 @@ test('desktop viewports keep toasts at the bottom-right', () => {
 
 test('mobile toasts are two-thirds wide and sit on the left', () => {
   expect(sonner).toContain('position === "bottom-left"')
-  expect(sonner).toContain('max(1rem, var(--app-safe-bottom, env(safe-area-inset-bottom)))')
+  expect(sonner).toContain('TOASTER_MOBILE_BOTTOM')
   expect(css).toContain(TOASTER_MOBILE_WIDTH)
   expect(css).toContain('left: 0.75rem !important')
 })
@@ -34,7 +35,7 @@ test('toasts portal to body so a receding modal cannot bury them under the overl
   expect(sonner).toContain('document.body')
 })
 
-test('mobile toasts match the nav FAB height and bottom inset', () => {
+test('mobile toasts sit above the dock instead of covering it', () => {
   const fab = readFileSync(
     new URL('../src/components/dashboard/MobileNavFab.tsx', import.meta.url),
     'utf8',
@@ -45,7 +46,6 @@ test('mobile toasts match the nav FAB height and bottom inset', () => {
   )
   expect(css).toContain('min-height: 48px')
   expect(css).toContain('height: 48px')
-  expect(css).toContain(
-    'bottom: max(1rem, var(--app-safe-bottom, env(safe-area-inset-bottom))) !important',
-  )
+  expect(css).toContain(TOASTER_MOBILE_BOTTOM)
+  expect(sonner).toContain('TOASTER_MOBILE_BOTTOM')
 })

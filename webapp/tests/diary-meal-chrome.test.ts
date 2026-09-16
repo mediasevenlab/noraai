@@ -488,8 +488,9 @@ test('diary toolbar uses floating white iOS pills with a drop shadow', () => {
   expect(picker).toContain('inline-flex size-9')
   const css = readFileSync(new URL('../src/styles/nora-ui.css', import.meta.url), 'utf8')
   expect(css).toContain('.ios-float-pill')
-  expect(css).toContain('.ios-glass-glare')
+  expect(css).toContain('.ios-float-pill-dock')
   expect(css).toContain('0 4px 10px')
+  expect(css).toContain('0 8px 20px')
   expect(css).toContain('.ios-float-pill[data-search-open]')
   expect(css).toContain('.scheme-editor-dark .ios-float-pill')
   expect(css).toContain('background: var(--nora-input-bg)')
@@ -761,10 +762,12 @@ test('card favorite bookmarks use blue when saved', () => {
     new URL('../src/features/plans/WeekPlanCard.tsx', import.meta.url),
     'utf8',
   )
-  for (const source of [actions, ration, plan]) {
+  for (const source of [actions, ration]) {
     expect(source).toContain("saved ? 'Убрать' : 'Сохранить'")
     expect(source).toContain('text-[var(--nora-tint)]')
   }
+  expect(plan).toContain("saved ? 'Убрать из избранного' : 'В избранное'")
+  expect(plan).toContain('text-[var(--nora-tint)]')
   expect(ration).toContain('{ration.description}')
   expect(ration).toContain('whitespace-pre-line')
 })
@@ -1242,6 +1245,21 @@ test('plan day picker stays open and occupied days can be toggled off', () => {
   expect(feed).toContain('diaryCreatePlanFromMeals(')
   expect(feed).toContain('onPlanDayCount=')
   expect(newsPage).toContain('onPlanDayCount=')
+})
+
+test('meal version select stays usable inside the meal dialog', () => {
+  const detail = readFileSync(
+    new URL('../src/features/diary/MealOpenDetail.tsx', import.meta.url),
+    'utf8',
+  )
+  const newsPage = readFileSync(
+    new URL('../src/features/diary/pages/news.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(detail).toMatch(/<NoraSelect[\s\S]*?\bmodal\b/)
+  expect(detail).toContain('disabled={!canRefine || sending || versionItems.length < 2}')
+  expect(detail).not.toContain('disabled={!canRefine || busy || versionItems.length < 2}')
+  expect(newsPage).toContain('disablePointerDismissal')
 })
 
 test('diary pick-mode add-to-plan chip is blue when meals are selected', () => {

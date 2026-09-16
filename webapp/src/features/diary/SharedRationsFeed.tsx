@@ -73,7 +73,7 @@ function RationSummaryPlaque({ ration }: { ration: SharedRation }) {
     >
       <span
         className={cn(
-          'inline-flex size-[20px] shrink-0 items-center justify-center rounded-full',
+          'inline-flex size-7 shrink-0 items-center justify-center rounded-full',
           filled
             ? 'bg-[var(--nora-tint-dimmed)] text-[var(--nora-tint)]'
             : 'bg-transparent text-[var(--nora-text-tertiary)]',
@@ -91,7 +91,7 @@ function RationSummaryPlaque({ ration }: { ration: SharedRation }) {
       </span>
       <span
         className={cn(
-          'inline-flex h-[20px] w-[4.25rem] shrink-0 items-center justify-center rounded-full max-md:hidden',
+          'inline-flex h-7 w-[4.25rem] shrink-0 items-center justify-center rounded-full max-md:hidden',
           'bg-[color-mix(in_srgb,var(--nora-panel)_80%,transparent)]',
           'font-[family-name:var(--nora-font)] text-[11px] font-medium leading-none tabular-nums',
           filled ? 'text-[var(--nora-text)]' : 'text-[var(--nora-text-tertiary)]',
@@ -102,7 +102,7 @@ function RationSummaryPlaque({ ration }: { ration: SharedRation }) {
       <span
         aria-label={mealsCountLabel(mealsCount)}
         className={cn(
-          'inline-flex size-[20px] shrink-0 items-center justify-center rounded-full',
+          'inline-flex size-7 shrink-0 items-center justify-center rounded-full',
           'bg-[color-mix(in_srgb,var(--nora-panel)_80%,transparent)]',
           'font-[family-name:var(--nora-font)] text-[11px] font-medium leading-none tabular-nums',
           filled ? 'text-[var(--nora-text)]' : 'text-[var(--nora-text-tertiary)]',

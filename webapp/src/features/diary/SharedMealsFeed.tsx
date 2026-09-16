@@ -451,6 +451,7 @@ export function SharedMealsFeed({
         ))}
       </section>
       <Dialog
+        disablePointerDismissal
         open={!!openMeal}
         onOpenChange={(open) => {
           if (!open) {

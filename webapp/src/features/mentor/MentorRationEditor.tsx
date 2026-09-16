@@ -97,7 +97,7 @@ const EDITOR_COPY = {
     saveNew: 'Создать рацион',
     addMeal: 'Добавить',
     overviewTab: 'Рацион',
-    descriptionLabel: 'Рацион',
+    descriptionLabel: 'Описание',
     titlePlaceholder: 'Например, Офис без срывов',
     descriptionPlaceholder: 'Коротко, что в плане',
     emptyTitleError: 'Назовите план',
@@ -231,7 +231,7 @@ const HEADER_TITLE_FIELD_CLASS = cn(
 const HEADER_DESC_FIELD_CLASS = cn(
   FIELD_TYPE_CLASS,
   FIELD_CHIP_CLASS,
-  '!bg-[var(--nora-panel)] min-h-12 w-full px-3 py-2',
+  '!bg-[var(--nora-panel)] !min-h-36 w-full resize-y px-3 py-2.5 !h-auto !max-h-none',
 )
 const EDITOR_TABS_DOCK_CLASS = productSheetTabDockClass
 const MACRO_ICON_CLASS = 'size-[13px] shrink-0'
@@ -660,6 +660,7 @@ export function RationEditorDialog({
                       className={HEADER_DESC_FIELD_CLASS}
                       onChange={(event) => patch({ description: event.target.value })}
                       placeholder={copy.descriptionPlaceholder}
+                      rows={6}
                       value={form.description}
                     />
                   </label>

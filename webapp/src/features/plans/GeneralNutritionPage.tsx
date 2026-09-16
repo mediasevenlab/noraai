@@ -44,7 +44,7 @@ function GeneralViewSwitcher({
       aria-label="Раздел"
       className={cn(
         variant === 'fab'
-          ? 'ios-float-pill flex h-12 shrink-0 items-center rounded-full p-1'
+          ? 'ios-float-pill ios-float-pill-dock flex h-12 shrink-0 items-center rounded-full p-1'
           : cn(planToolbarPillClass, 'shrink-0 p-1'),
         className,
       )}
@@ -53,7 +53,7 @@ function GeneralViewSwitcher({
       {GENERAL_VIEWS.map((option) => (
         <button
           aria-pressed={view === option.value}
-          className={cn(PLAN_PILL_TAB_CLASS, 'gap-1')}
+          className={cn(PLAN_PILL_TAB_CLASS, 'gap-1', variant === 'fab' && 'font-medium')}
           data-active={view === option.value || undefined}
           key={option.value}
           onClick={() => {

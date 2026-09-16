@@ -1701,6 +1701,7 @@ export function NewsPage({
       </div>
 
       <Dialog
+        disablePointerDismissal
         open={!!openMeal}
         onOpenChange={(o) => {
           if (!o) {

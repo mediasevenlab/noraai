@@ -1154,6 +1154,85 @@ describe('MealsService', () => {
     expect(refined.meal.assumptions).toContain('Добавлено своё фото')
   })
 
+  test('refineMeal with attach photo keeps the current foods and adds the photo foods', async () => {
+    const existing = mealRecord({
+      title: 'Рецепт шашлыка из свинины в духовке',
+      ingredients: 'Свинина, лук',
+      category: 'Мясо',
+      mealSlot: 'Обед',
+      kcal: 715,
+      protein: 43,
+      fat: 56,
+      carbs: 9,
+      portionItems: [
+        { label: 'Свинина ~120 г', kcal: 320, protein: 28, fat: 22, carbs: 0 },
+        { label: 'Лук репчатый ~80 г', kcal: 32, protein: 1, fat: 0, carbs: 7 },
+      ],
+    })
+    let refineMessage = ''
+    const service = new MealsService({
+      analyzer: {
+        analyze: async () => {
+          throw new Error('unused')
+        },
+        refine: async (input) => {
+          refineMessage = input.message
+          return {
+            ok: true as const,
+            model: 'gemini-test',
+            meal: {
+              title: 'Шаурма',
+              excerpt: 'Шаурма',
+              body: '',
+              category: 'Мясо',
+              mealType: 'Ужин',
+              tags: [] as string[],
+              nutrition: { kcal: 400, protein: 20, fat: 12, carbs: 30 },
+              clientNoteStructured: '',
+              composition: [{ label: 'Шаурма ~200 г', kcal: 400, protein: 20, fat: 12, carbs: 30 }],
+              assumptions: [],
+              micronutrients: [],
+            },
+          }
+        },
+      },
+      imageStore: {
+        saveImage: async () => ({ imageKey: 'meals/extra.jpg', imageMime: 'image/jpeg' }),
+        readImage: async () => Buffer.from('cover-bytes'),
+      },
+      imageUrlBuilder: imageUrls(),
+      repository: repositoryStub({
+        findMealById: async () => existing,
+        updateMealContent: async (_id, content) =>
+          mealRecord({
+            ...content,
+            id: existing.id,
+            userId: existing.userId,
+            imageKey: existing.imageKey,
+            imageMime: existing.imageMime,
+          }),
+      }),
+    })
+
+    const refined = await service.refineMeal(
+      { id: existing.userId, role: 'user' },
+      existing.id,
+      { message: '', imageBase64: 'att', imageMime: 'image/jpeg' },
+    )
+
+    expect(refineMessage).toContain('Добавь к текущему составу')
+    expect(refineMessage).toContain('Существующие позиции не удаляй')
+    expect(refined.meal.title).toBe('Рецепт шашлыка из свинины в духовке')
+    expect(refined.meal.meal).toBe('Обед')
+    expect(refined.meal.portionItems.map((item) => item.label)).toEqual([
+      'Свинина ~120 г',
+      'Лук репчатый ~80 г',
+      'Шаурма ~200 г',
+    ])
+    expect(refined.meal.kcal).toBe(1115)
+    expect(refined.meal.protein).toBe(63)
+  })
+
   test('refineMeal skips extra slides when attach reuses the cover key', async () => {
     const existing = mealRecord({ imageKey: 'cover.jpg', imageMime: 'image/jpeg' })
     let savedVersions: MealRecord['versions'] = []

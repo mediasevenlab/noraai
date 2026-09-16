@@ -30,6 +30,10 @@ import {
   shouldNotifyMentorOfNewMeal,
 } from '../domain/mentor-meal-notify'
 import { detectMealImageMime } from '../domain/meal-image'
+import {
+  applyAdditivePhotoRefine,
+  REFINE_ATTACH_PHOTO_INSTRUCTION,
+} from '../domain/meal-composition'
 import { mapGeminiCardToMealFields } from '../domain/mapping'
 import { mealImageCardKey, parseMealImageSize } from '../domain/meal-image-variants'
 import {
@@ -662,7 +666,7 @@ export class MealsService {
     }
     const message =
       input.message.trim()
-      || (input.imageBase64 ? 'Пересчитай КБЖУ и состав по приложенному фото.' : '')
+      || (input.imageBase64 ? REFINE_ATTACH_PHOTO_INSTRUCTION : '')
     if (!message && !input.imageBase64) {
       throw new MealsFailure('bad_request', 'message or image required')
     }
@@ -686,12 +690,32 @@ export class MealsService {
       attachBase64: input.imageBase64,
       attachMime: input.imageMime,
     })
-    const fields = mapGeminiCardToMealFields(result.meal)
+    const analyzed = mapGeminiCardToMealFields(result.meal)
+    const current = this.toVersioned(ensured)
+    const fields = input.imageBase64
+      ? applyAdditivePhotoRefine(
+          {
+            title: current.title,
+            ingredients: current.ingredients,
+            category: current.category,
+            meal: current.mealSlot,
+            kcal: current.kcal,
+            protein: current.protein,
+            fat: current.fat,
+            carbs: current.carbs,
+            portionItems: current.portionItems,
+            clientComment: current.clientComment,
+            assumptions: analyzed.assumptions,
+            micronutrients: analyzed.micronutrients,
+          },
+          analyzed,
+        )
+      : analyzed
     const extraImageKeys = await this.extraImageKeysAfterRefine(ensured, mealId, input)
     let assumptions = preserveMealShareAssumptions(ensured.assumptions, fields.assumptions)
     if (input.imageBase64) assumptions = withAuthorPhotoMark(assumptions)
     const refinedBase = ensureMealVersions({
-      ...this.toVersioned(ensured),
+      ...current,
       title: fields.title,
       ingredients: fields.ingredients,
       category: fields.category,

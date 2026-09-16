@@ -4,6 +4,7 @@ import {
   MEAL_ASSUMPTION_RULES,
   MEAL_COMPOSITION_LINE_RULES,
   MEAL_MULTI_PHOTO_RULES,
+  MEAL_REFINE_PHOTO_RULES,
   isTransientGeminiNetworkError,
   parseGeminiCandidateText,
 } from './gemini-client'
@@ -42,6 +43,16 @@ describe('meal composition prompt', () => {
     expect(rules).toContain('каждый отдельный продукт своей строкой')
     expect(rules).toContain('Не склеивай разные продукты')
     expect(rules).toContain('Запеченная белая рыба с морковью')
+  })
+})
+
+describe('meal refine photo prompt', () => {
+  test('tells the model to add the extra photo to the current plate instead of rewriting it', () => {
+    const rules = MEAL_REFINE_PHOTO_RULES.join('\n')
+    expect(rules).toContain('ДОПОЛНЯЕТ текущую карточку')
+    expect(rules).toContain('не заменяет')
+    expect(rules).toContain('Существующие позиции сохрани')
+    expect(rules).toContain('Не переписывай состав только по новому кадру')
   })
 })
 

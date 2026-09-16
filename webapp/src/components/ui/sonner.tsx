@@ -10,7 +10,10 @@ import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 
 import { useTheme } from "@/components/theme-provider"
-import { toasterPositionForViewport } from "@/components/ui/toaster-position"
+import {
+  TOASTER_MOBILE_BOTTOM,
+  toasterPositionForViewport,
+} from "@/components/ui/toaster-position"
 
 function useToasterPosition(): ToasterProps["position"] {
   const [position, setPosition] = useState<ToasterProps["position"]>(() =>
@@ -51,6 +54,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-text": "var(--nora-toast-text)",
           "--normal-border": "transparent",
           "--border-radius": "var(--nora-radius-lg, 10px)",
+          ...(position === "bottom-left"
+            ? { "--offset-bottom": TOASTER_MOBILE_BOTTOM }
+            : {}),
         } as React.CSSProperties
       }
       toastOptions={{
@@ -67,11 +73,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
       {...(position === "bottom-left"
         ? {
             mobileOffset: {
-              bottom: "max(1rem, var(--app-safe-bottom, env(safe-area-inset-bottom)))",
+              bottom: TOASTER_MOBILE_BOTTOM,
               left: "0.75rem",
             },
             offset: {
-              bottom: "max(1rem, var(--app-safe-bottom, env(safe-area-inset-bottom)))",
+              bottom: TOASTER_MOBILE_BOTTOM,
               left: "0.75rem",
             },
           }

@@ -151,7 +151,7 @@ export function MobileNavFab({
           aria-label="Открыть меню"
           onClick={() => setOpen(true)}
           className={cn(
-            'ios-glass-fab',
+            'ios-float-pill ios-float-pill-dock',
             'fixed z-40 md:hidden',
             'right-4 bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]',
             'inline-flex size-12 cursor-pointer items-center justify-center rounded-full',

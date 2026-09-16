@@ -395,7 +395,7 @@ export function MealAddDraftDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog disablePointerDismissal open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className={MEAL_DIALOG_FRAME_CLASS}
         data-modal-frame="meal"

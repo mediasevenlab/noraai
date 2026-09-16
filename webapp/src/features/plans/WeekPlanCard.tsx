@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { BookmarkIcon, CircleCheckIcon, ListIcon, Share2Icon, ShoppingBagIcon, Trash2Icon } from 'lucide-react'
+import { BookmarkIcon, CircleCheckIcon, EllipsisIcon, ListIcon, Share2Icon, ShoppingBagIcon, Trash2Icon } from 'lucide-react'
 
 import { NoraButton, NoraIconButton } from '@/components/nora/primitives'
 import {
@@ -8,6 +8,12 @@ import {
   productCardGoalAnchorClass,
   productSheetOverlayChipClass,
 } from '@/components/nora/product-sheet'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { daysCountLabel, MealFeedPhoto } from '@/features/diary'
 import { cn } from '@/lib/utils'
 import { usePressWithoutScroll } from '@/platform/press-without-scroll'
@@ -24,6 +30,9 @@ const PLAN_COVER_BADGE_CLASS = cn(
   'font-[family-name:var(--nora-font)] text-[11.5px] font-medium leading-none backdrop-blur-[10px]',
   'bg-[color-mix(in_srgb,var(--nora-panel)_88%,transparent)] text-[var(--nora-text)]',
 )
+
+const PLAN_CARD_FOOTER_ICON_CLASS =
+  'nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4'
 
 function mealsCountAria(count: number) {
   const mod10 = count % 10
@@ -53,7 +62,7 @@ function PlanSummaryPlaque({
     >
       <span
         className={cn(
-          'inline-flex size-[20px] shrink-0 items-center justify-center rounded-full',
+          'inline-flex size-7 shrink-0 items-center justify-center rounded-full',
           filled
             ? fromMentor
               ? 'bg-[var(--nora-badge-green-bg)] text-[var(--nora-badge-green-text)]'
@@ -73,7 +82,7 @@ function PlanSummaryPlaque({
       </span>
       <span
         className={cn(
-          'inline-flex h-[20px] w-[4.25rem] shrink-0 items-center justify-center rounded-full max-md:hidden',
+          'inline-flex h-7 w-[4.25rem] shrink-0 items-center justify-center rounded-full max-md:hidden',
           'bg-[color-mix(in_srgb,var(--nora-panel)_80%,transparent)]',
           'font-[family-name:var(--nora-font)] text-[11px] font-medium leading-none tabular-nums',
           filled ? 'text-[var(--nora-text)]' : 'text-[var(--nora-text-tertiary)]',
@@ -84,7 +93,7 @@ function PlanSummaryPlaque({
       <span
         aria-label={mealsCountAria(plan.mealsCount)}
         className={cn(
-          'inline-flex size-[20px] shrink-0 items-center justify-center rounded-full',
+          'inline-flex size-7 shrink-0 items-center justify-center rounded-full',
           'bg-[color-mix(in_srgb,var(--nora-panel)_80%,transparent)]',
           'font-[family-name:var(--nora-font)] text-[11px] font-medium leading-none tabular-nums',
           filled ? 'text-[var(--nora-text)]' : 'text-[var(--nora-text-tertiary)]',
@@ -131,6 +140,13 @@ export function WeekPlanCard({
   const [shoppingOpen, setShoppingOpen] = React.useState(false)
   const shoppingMeals = plan.days.flatMap((day) => day.meals)
   const press = usePressWithoutScroll(onOpen)
+  const shareDisabled = !onShare || (!canShare && !shared)
+  const shareLabel = shared
+    ? 'Скрыть из ленты'
+    : canShare && onShare
+      ? 'Поделиться'
+      : 'Этот рацион нельзя отправить в ленту'
+  const saveLabel = saved ? 'Убрать из избранного' : 'В избранное'
 
   return (
     <>
@@ -233,45 +249,91 @@ export function WeekPlanCard({
               </NoraButton>
             ) : null}
             <div className="flex items-center gap-1">
+              <div className="hidden items-center gap-1 md:flex">
+                <NoraIconButton
+                  aria-label={shareLabel}
+                  active={shared}
+                  className={PLAN_CARD_FOOTER_ICON_CLASS}
+                  disabled={shareDisabled}
+                  onClick={onShare}
+                >
+                  <Share2Icon className="size-4" />
+                </NoraIconButton>
+                {onToggleSave ? (
+                  <NoraIconButton
+                    aria-label={saveLabel}
+                    active={saved}
+                    className={cn(
+                      PLAN_CARD_FOOTER_ICON_CLASS,
+                      saved
+                        ? 'text-[var(--nora-tint)] hover:!text-[var(--nora-tint)]'
+                        : undefined,
+                    )}
+                    onClick={onToggleSave}
+                  >
+                    <BookmarkIcon className={cn('size-4', saved && 'fill-current')} />
+                  </NoraIconButton>
+                ) : null}
+              </div>
               <NoraIconButton
-                aria-label={
-                  shared
-                    ? 'Скрыть из ленты'
-                    : canShare && onShare
-                      ? 'Поделиться'
-                      : 'Этот рацион нельзя отправить в ленту'
-                }
-                active={shared}
-                className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
-                disabled={!onShare || (!canShare && !shared)}
-                onClick={onShare}
+                aria-label="Корзина"
+                className={PLAN_CARD_FOOTER_ICON_CLASS}
+                disabled={shoppingMeals.length === 0}
+                onClick={() => setShoppingOpen(true)}
               >
-                <Share2Icon className="size-4" />
+                <ShoppingBagIcon className="size-4" />
               </NoraIconButton>
-              {onToggleSave ? (
-                <NoraIconButton
-                  aria-label={saved ? 'Убрать' : 'Сохранить'}
-                  active={saved}
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  aria-label="Ещё"
                   className={cn(
-                    'nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent active:!bg-transparent [&_svg]:size-4',
-                    saved
-                      ? 'text-[var(--nora-tint)] hover:!text-[var(--nora-tint)]'
-                      : 'hover:text-[var(--nora-text)]',
+                    'inline-flex cursor-pointer items-center justify-center border-0 text-[var(--nora-text-secondary)] md:hidden',
+                    PLAN_CARD_FOOTER_ICON_CLASS,
+                    'rounded-[var(--nora-radius-md)]',
                   )}
-                  onClick={onToggleSave}
+                  data-plan-card-more=""
+                  nativeButton
                 >
-                  <BookmarkIcon className={cn('size-4', saved && 'fill-current')} />
-                </NoraIconButton>
-              ) : null}
-              {shoppingMeals.length > 0 ? (
-                <NoraIconButton
-                  aria-label="Корзина"
-                  className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
-                  onClick={() => setShoppingOpen(true)}
+                  <EllipsisIcon aria-hidden className="size-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="account-workspace-menu min-w-44 rounded-[16px]!"
+                  side="top"
+                  sideOffset={6}
                 >
-                  <ShoppingBagIcon className="size-4" />
-                </NoraIconButton>
-              ) : null}
+                  {onToggleSave ? (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        onToggleSave()
+                      }}
+                    >
+                      <BookmarkIcon className={cn('size-4', saved && 'fill-current')} />
+                      В избранное
+                    </DropdownMenuItem>
+                  ) : null}
+                  <DropdownMenuItem
+                    disabled={shareDisabled}
+                    onClick={() => {
+                      onShare?.()
+                    }}
+                  >
+                    <Share2Icon className="size-4" />
+                    Поделиться
+                  </DropdownMenuItem>
+                  {onDelete ? (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        onDelete()
+                      }}
+                      variant="destructive"
+                    >
+                      <Trash2Icon className="size-4" />
+                      Удалить
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>

@@ -137,6 +137,8 @@ test('sidebar keeps Общее as the only diary and plan surface', () => {
   expect(generalPage).toContain("'Дневник'")
   expect(generalPage).toContain("'План'")
   expect(generalPage).toContain('ios-float-pill')
+  expect(generalPage).toContain('ios-float-pill-dock')
+  expect(generalPage).toContain("variant === 'fab' && 'font-medium'")
   expect(generalPage).toContain('PLAN_MOBILE_DOCK_EXTRA_ID')
   expect(generalPage).toContain('max-md:hidden')
   expect(generalPage).toContain('left-4')

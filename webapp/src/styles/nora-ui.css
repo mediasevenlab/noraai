@@ -570,6 +570,13 @@
     0 4px 10px color-mix(in srgb, var(--nora-text) 6%, transparent);
 }
 
+/* Mobile bottom dock only: Grok-like contrast against a light page. */
+.ios-float-pill-dock {
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--nora-text) 12%, transparent),
+    0 8px 20px color-mix(in srgb, var(--nora-text) 18%, transparent);
+}
+
 .ios-float-pill[data-search-open] {
   box-shadow:
     0 1px 1px color-mix(in srgb, var(--nora-text) 3%, transparent),
@@ -626,6 +633,15 @@
     inset 0 0 0 1px color-mix(in srgb, white 8%, transparent),
     0 1px 2px rgba(0, 0, 0, 0.18),
     0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.scheme-editor-dark .ios-float-pill-dock,
+[data-scheme="editor-dark"] .ios-float-pill-dock {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, white 8%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.28),
+    0 8px 22px rgba(0, 0, 0, 0.36);
 }
 
 .scheme-editor-dark .ios-float-pill[data-search-open],

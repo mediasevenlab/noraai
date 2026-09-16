@@ -30,6 +30,8 @@ import {
 } from '@/features/mentor'
 import {
   authoredCloneOfSharedRation,
+  daysCountLabel,
+  mealsCountLabel,
   mealsForWeekPlan,
   mealsQueryKeys,
   planOccurrenceDiaryAt,
@@ -85,7 +87,7 @@ import { useSyncedPlanLibrary } from './use-plan-library'
 import { PlanToolbar, visiblePlanCards, partitionPlanCards, PlanGroupPlaque, PLAN_GROUP_ICONS, planToolbarPillClass, type PlanFeedTab, type PlanLibrary } from './PlanToolbar'
 import { useCurrentWeekPlan } from './use-current-week-plan'
 import { WeekPlanCard, WeekPlanCardSkeleton } from './WeekPlanCard'
-import { buildWeekPlan, buildWeekPlanFromCatalog, buildWeekPlanFromRation, buildWeekPlanFromSharedRation, formatPlanActiveRange, rationDaysFromSharedRation, sharedRationSnapshotFromWeekPlan, type WeekPlan } from './week-plan'
+import { buildWeekPlan, buildWeekPlanFromCatalog, buildWeekPlanFromRation, buildWeekPlanFromSharedRation, formatPlanActiveRange, nextPlanDayCount, padPlanDaysForEditor, rationDaysFromSharedRation, removeEmptyPlanDay, sharedRationSnapshotFromWeekPlan, type WeekPlan } from './week-plan'
 
 export function PlanPage({
   heading,
@@ -767,6 +769,21 @@ export function CurrentPlanPage({
   const loadingPlan = isPending || Boolean(sharedRationId && sharedRationsQuery.isPending)
   const loadError = isError || Boolean(sharedRationId && sharedRationsQuery.isError)
   const backListLabel = sharedRationId ? 'К ленте' : 'К планам'
+  const headerFacts = React.useMemo(() => {
+    if (!plan) return []
+    const facts: Array<{ label: string; value: string }> = [
+      { label: 'Дней', value: daysCountLabel(Math.max(editorDayCount, plan.days.length)) },
+      { label: 'Приёмов', value: mealsCountLabel(plan.mealsCount) },
+      { label: 'Калорийность', value: `${plan.kcal} ккал` },
+    ]
+    if (planStart) {
+      facts.push({
+        label: 'Период',
+        value: formatPlanActiveRange(planStart, Math.max(1, editorDayCount, plan.days.length)),
+      })
+    }
+    return facts
+  }, [editorDayCount, plan, planStart])
 
   function goBack() {
     if (onBack) {
@@ -889,6 +906,51 @@ export function CurrentPlanPage({
     setEditing(true)
   }
 
+  function addEmptyDay() {
+    if (!plan) return
+    const occupied = padPlanDaysForEditor(
+      applyPlanMealLayout(scheduledDays, readPlanMealLayout(savedScope, plan.id)),
+      new Date(),
+      editorDayCount,
+    )
+    const nextCount = nextPlanDayCount(editorDayCount, occupied.length)
+    if (nextCount <= occupied.length && nextCount <= editorDayCount) return
+    const padded = padPlanDaysForEditor(occupied, new Date(), nextCount)
+    const authoredPlan = authored.find((item) => item.id === plan.id)
+    if (authoredPlan) {
+      persist(
+        withAuthoredPlan(snapshot, {
+          ...authoredPlan,
+          dayCount: nextCount,
+        }),
+      )
+    }
+    writePlanMealLayout(savedScope, plan.id, layoutFromDays(padded))
+    setLayoutRevision((current) => current + 1)
+  }
+
+  function removeEmptyDay(dayKey: string) {
+    if (!plan) return
+    const occupied = padPlanDaysForEditor(
+      applyPlanMealLayout(scheduledDays, readPlanMealLayout(savedScope, plan.id)),
+      new Date(),
+      editorDayCount,
+    )
+    const next = removeEmptyPlanDay(occupied, dayKey)
+    if (next.length === occupied.length) return
+    const authoredPlan = authored.find((item) => item.id === plan.id)
+    if (authoredPlan) {
+      persist(
+        withAuthoredPlan(snapshot, {
+          ...authoredPlan,
+          dayCount: next.length,
+        }),
+      )
+    }
+    writePlanMealLayout(savedScope, plan.id, layoutFromDays(next))
+    setLayoutRevision((current) => current + 1)
+  }
+
   const desktopEditButton = canEdit ? (
     <button
       className={`${planToolbarPillClass} nora-press-grow inline-flex shrink-0 flex-row items-center justify-center gap-1.5 whitespace-nowrap px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]`}
@@ -896,7 +958,7 @@ export function CurrentPlanPage({
       onClick={() => openEditor()}
       type="button"
     >
-      Редактировать
+      Изменить
     </button>
   ) : null
   const mobileEditButton = canEdit ? (
@@ -906,7 +968,7 @@ export function CurrentPlanPage({
       onClick={() => openEditor()}
       type="button"
     >
-      Редактировать
+      Изменить
     </button>
   ) : null
 
@@ -992,6 +1054,8 @@ export function CurrentPlanPage({
               ? 'План, которым поделились в ленте.'
               : 'Приёмы по дням, которые вы уже добавили из рационов.'
       }
+      facts={headerFacts}
+      coverImage={plan?.coverImage}
       showHeaderOnMobile
       title={plan?.title ?? 'План'}
     >
@@ -1062,7 +1126,9 @@ export function CurrentPlanPage({
             dayCount={editorDayCount}
             days={scheduledDays}
             layoutRevision={layoutRevision}
+            onAddEmptyDay={!feedPreview && !isAssignedPlanId(plan.id) ? addEmptyDay : undefined}
             onDetachPlanMeal={detachPlanMeal}
+            onRemoveEmptyDay={!feedPreview && !isAssignedPlanId(plan.id) ? removeEmptyDay : undefined}
             planId={plan.id}
             readOnly={catalogView || feedPreview}
           />

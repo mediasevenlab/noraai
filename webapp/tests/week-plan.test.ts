@@ -31,6 +31,9 @@ import {
   defaultPlanDayKey,
   formatPlanActiveRange,
   filledPlanBoardDays,
+  nextPlanDayCount,
+  padPlanDaysForEditor,
+  removeEmptyPlanDay,
   planDayTabParts,
   rationDaysFromSharedRation,
   buildWeekPlanFromSharedRation,
@@ -369,6 +372,22 @@ test('new plan cover uses the first real meal photo and skips the collage placeh
   expect(extrasOnly.coverImage).toBe('/diary/croissant.jpg')
 })
 
+test('mobile plan cards tuck share, favorite and delete into a more menu', () => {
+  const source = readFileSync(new URL('../src/features/plans/WeekPlanCard.tsx', import.meta.url), 'utf8')
+  expect(source).toContain('EllipsisIcon')
+  expect(source).toContain('DropdownMenu')
+  expect(source).toContain('data-plan-card-more=""')
+  expect(source).toContain('aria-label="Ещё"')
+  expect(source).toContain('В избранное')
+  expect(source).toContain('Поделиться')
+  expect(source).toContain("variant=\"destructive\"")
+  expect(source).toContain('account-workspace-menu min-w-44 rounded-[16px]!')
+  expect(source).toContain('hidden items-center gap-1 md:flex')
+  expect(source).toContain('md:hidden')
+  expect(source).toContain('sm:group-hover:opacity-100')
+  expect(source).toContain('ShoppingBagIcon')
+})
+
 test('week plan card paints a plan summary plaque and a taller preview', () => {
   const source = readFileSync(new URL('../src/features/plans/WeekPlanCard.tsx', import.meta.url), 'utf8')
   const page = readFileSync(new URL('../src/features/plans/pages.tsx', import.meta.url), 'utf8')
@@ -378,6 +397,8 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(source).toContain('mealsCountAria(plan.mealsCount)')
   expect(source).toContain('{plan.mealsCount}')
   expect(source).toContain('data-plan-summary=""')
+  expect(source).toContain('size-7')
+  expect(source).not.toContain('size-[20px]')
   expect(source).toContain('ListIcon')
   expect(source).toContain('CircleCheckIcon')
   expect(source).not.toContain('<CheckIcon')
@@ -420,7 +441,8 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('canShare={')
   expect(page).toContain('onShare={() => void toggleShare(plan)}')
   expect(page).not.toContain('onShare={isAuthoredPlanId(plan.id) ?')
-  expect(source).toContain('disabled={!onShare || (!canShare && !shared)}')
+  expect(source).toContain('const shareDisabled = !onShare || (!canShare && !shared)')
+  expect(source).toContain('disabled={shareDisabled}')
   expect(source).not.toContain('{onShare ? (')
   expect(source).toContain("'Этот рацион нельзя отправить в ленту'")
   expect(page).toContain('formatPlanActiveRange(')
@@ -428,6 +450,22 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('description: catalog.description')
   expect(page).toContain('plan?.description.trim()')
   expect(page).toContain('showHeaderOnMobile')
+  expect(page).toContain('onAddEmptyDay={!feedPreview && !isAssignedPlanId(plan.id) ? addEmptyDay : undefined}')
+  expect(page).toContain('onRemoveEmptyDay={!feedPreview && !isAssignedPlanId(plan.id) ? removeEmptyDay : undefined}')
+  expect(page).toContain('nextPlanDayCount(')
+  expect(page).toContain('removeEmptyPlanDay(')
+  const shell = readFileSync(new URL('../src/features/plans/PlanPageShell.tsx', import.meta.url), 'utf8')
+  expect(shell).toContain('max-md:max-w-[50%]')
+  expect(shell).toContain('max-md:truncate')
+  expect(shell).toContain('InfoIcon')
+  expect(shell).toContain('data-plan-info=""')
+  expect(shell).toContain('data-modal-frame="meal"')
+  expect(shell).toContain('productSheetOverlayChipClass')
+  expect(shell).toContain('aria-label="О рационе"')
+  expect(shell).toContain('Описание')
+  expect(shell).toContain("showHeaderOnMobile ? 'max-md:hidden'")
+  expect(shell).not.toContain('<NoraBadge variant="blue">{badge}</NoraBadge>')
+  expect(shell).toContain("fact.label !== 'Цель'")
   const coverBadge = source.slice(
     source.indexOf('productCardGoalAnchorClass'),
     source.indexOf('absolute inset-x-0 bottom-0'),
@@ -467,6 +505,8 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(source).toContain('productCardFooterCtaClass')
   expect(source).toContain("variant={selected ? 'primary' : 'default'}")
   expect(source).toContain('ShoppingBagIcon')
+  expect(source).toContain('disabled={shoppingMeals.length === 0}')
+  expect(source).not.toContain('shoppingMeals.length > 0 ?')
   const shopping = readFileSync(
     new URL('../src/features/plans/PlanShoppingDialog.tsx', import.meta.url),
     'utf8',
@@ -543,7 +583,8 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('aria-label="Назад"')
   expect(page).toContain('ArrowLeftIcon')
   expect(page).toContain('PlanOutlineDialog')
-  expect(page).toContain('Редактировать')
+  expect(page).toContain('Изменить')
+  expect(page).not.toContain('>Редактировать<')
   expect(page).toContain('PLAN_MOBILE_DOCK_EDIT_ID')
   expect(page).toContain('data-plan-outline-open=""')
   expect(page).toContain('canEdit')
@@ -552,6 +593,12 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('onOpenPlan')
   expect(page).toContain('showMobileBackDock')
   expect(page).toContain('MOBILE_DOCK_FAB_CLASS')
+  const dock = readFileSync(
+    new URL('../src/features/plans/mobile-dock.ts', import.meta.url),
+    'utf8',
+  )
+  expect(dock).toContain('ios-float-pill-dock')
+  expect(dock).toContain('font-medium')
   expect(page).toContain('createPortal')
   expect(page).toContain('PLAN_MOBILE_DOCK_EXTRA_ID')
   expect(page).toContain("cloned ? 'Открыть в «Мои»' : 'Добавить'")
@@ -693,6 +740,42 @@ test('filledPlanBoardDays hides a day that lost its last meal', () => {
   expect(filledPlanBoardDays([filled])).toHaveLength(1)
 })
 
+test('nextPlanDayCount appends an empty day up to the week slot cap', () => {
+  expect(nextPlanDayCount(0)).toBe(1)
+  expect(nextPlanDayCount(3)).toBe(4)
+  expect(nextPlanDayCount(7)).toBe(7)
+  expect(nextPlanDayCount(0, 4)).toBe(5)
+})
+
+test('removeEmptyPlanDay drops a trailing empty day and keeps filled meals', () => {
+  const now = new Date(2026, 8, 1)
+  const padded = padPlanDaysForEditor(
+    [
+      {
+        dayKey: '2026-08-31',
+        short: 'День 1',
+        label: 'День 1',
+        dayIso: '2026-08-31T12:00:00',
+        filled: true,
+        ration: null,
+        meals: [mealOn(new Date(2026, 7, 31), { id: 'mon', title: 'Круассан' })],
+        mealsCount: 1,
+        kcal: 784,
+        done: false,
+      },
+    ],
+    now,
+    3,
+  )
+  expect(padded).toHaveLength(3)
+  expect(removeEmptyPlanDay(padded, padded[0]!.dayKey, now)).toHaveLength(3)
+  const next = removeEmptyPlanDay(padded, padded[2]!.dayKey, now)
+  expect(next).toHaveLength(2)
+  expect(next.map((day) => day.short)).toEqual(['День 1', 'День 2'])
+  expect(next[0]?.meals.map((meal) => meal.id)).toEqual(['mon'])
+  expect(next[1]?.meals).toEqual([])
+})
+
 test('current plan lays meals under a diary-sized day badge', () => {
   const source = readFileSync(
     new URL('../src/features/plans/CurrentPlanMeals.tsx', import.meta.url),
@@ -702,7 +785,10 @@ test('current plan lays meals under a diary-sized day badge', () => {
     expect(source).toContain('{day.kcal} ккал')
     expect(source).toContain('mealsCountLabel(day.mealsCount)')
     expect(source).toContain('UtensilsIcon')
-    expect(source).toContain("'ml-auto'")
+    expect(source).toContain('ml-auto')
+    expect(source).toContain('Удалить')
+    expect(source).toContain('data-plan-remove-day')
+    expect(source).toContain('onRemoveEmptyDay')
     expect(source).toContain('calorieBalanceTone(day.kcal, dailyCalories)')
     expect(source).toContain('CALORIE_BALANCE_CHIP_CLASS')
     expect(source).toContain('ZapIcon')
@@ -711,6 +797,12 @@ test('current plan lays meals under a diary-sized day badge', () => {
     expect(source).toContain('hidden flex-col gap-6 md:flex')
     expect(source).toContain('filledPlanBoardDays(')
     expect(source).toContain('visibleDays')
+    expect(source).toContain('padPlanDaysForEditor(')
+    expect(source).toContain('PlusIcon')
+    expect(source).toContain('data-plan-add-day')
+    expect(source).toContain('onAddEmptyDay')
+    expect(source).toContain('picking && visibleDays.length < PLAN_DAY_TAB_SLOTS')
+    expect(source).toContain('active && !picking &&')
     expect(source).toContain('PLAN_DAY_TAB_SLOTS')
     expect(source).toContain('placeholderCount')
     expect(source).toContain('PLAN_DAY_TAB_PLACEHOLDER_CLASS')

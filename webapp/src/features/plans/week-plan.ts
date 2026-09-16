@@ -73,6 +73,16 @@ export function planDayOrdinal(day: Pick<WeekPlanDay, 'short' | 'label'>, fallba
 
 export const PLAN_DAY_TAB_SLOTS = 7
 
+/** Next authored day count when the mobile plus tab adds an empty day. */
+export function nextPlanDayCount(dayCount: number, occupiedDays = 0) {
+  const current = Math.max(
+    Number.isFinite(dayCount) ? Math.trunc(dayCount) : 0,
+    Number.isFinite(occupiedDays) ? Math.trunc(occupiedDays) : 0,
+    0,
+  )
+  return Math.min(PLAN_SLOT_COUNT, current + 1)
+}
+
 export function planDayTabParts(day: Pick<WeekPlanDay, 'short' | 'label'>, index = 0) {
   const ordinal = planDayOrdinal(day, index + 1)
   return {
@@ -132,7 +142,33 @@ export function padPlanDaysForEditor(
   return padded
 }
 
-/** Plan board hides days that currently have no meals; the editor still keeps them. */
+/** Drop an empty day and pack the rest into consecutive Day 1…N slots. */
+export function removeEmptyPlanDay(
+  days: readonly WeekPlanDay[],
+  dayKey: string,
+  now = new Date(),
+): WeekPlanDay[] {
+  const index = days.findIndex((day) => day.dayKey === dayKey)
+  if (index < 0 || days[index]!.meals.length > 0) {
+    return days.map((day) => ({ ...day, meals: [...day.meals] }))
+  }
+  const remaining = days.filter((_, itemIndex) => itemIndex !== index)
+  const weekDays = rationPlanWeekDays(now)
+  return remaining.map((day, slotIndex) => {
+    const slot = weekDays[slotIndex]
+    if (!slot) return { ...day, meals: [...day.meals] }
+    return {
+      ...day,
+      dayKey: slot.dayKey,
+      short: slot.short,
+      label: slot.label,
+      dayIso: dayIsoFromDate(slot.date),
+      meals: [...day.meals],
+    }
+  })
+}
+
+/** Desktop board hides empty days; mobile tabs keep padded empty days as move targets. */
 export function filledPlanBoardDays(days: readonly WeekPlanDay[]) {
   return days.filter((day) => day.meals.length > 0)
 }
