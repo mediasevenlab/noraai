@@ -41,23 +41,8 @@ const SOCIAL_ITEMS = [
   },
 ]
 
-type UserNavItem = (typeof GENERAL_ITEMS)[number] | (typeof SOCIAL_ITEMS)[number]
-
-function UserNavLink({
-  item,
-  onNavigate,
-}: {
-  item: UserNavItem
-  onNavigate: () => void
-}) {
-  if (item.to === '/app/feed') {
-    return <Link onClick={onNavigate} search={item.search} to="/app/feed" />
-  }
-  return <Link onClick={onNavigate} search={item.search} to="/app/general" />
-}
-
 function UserNavGroup<
-  T extends UserNavItem,
+  T extends (typeof GENERAL_ITEMS)[number] | (typeof SOCIAL_ITEMS)[number],
 >({
   disabled,
   items,
@@ -109,7 +94,21 @@ function UserNavGroup<
                   ) : (
                     <SidebarMenuButton
                       isActive={active}
-                      render={<UserNavLink item={item} onNavigate={() => setOpenMobile(false)} />}
+                      render={
+                        item.to === '/app/feed' ? (
+                          <Link
+                            onClick={() => setOpenMobile(false)}
+                            search={item.search}
+                            to="/app/feed"
+                          />
+                        ) : (
+                          <Link
+                            onClick={() => setOpenMobile(false)}
+                            search={item.search}
+                            to="/app/general"
+                          />
+                        )
+                      }
                       tooltip={item.label}
                     >
                       <Icon />
