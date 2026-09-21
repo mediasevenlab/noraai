@@ -57,10 +57,10 @@ import { putUserFavorites } from '@/platform/account-favorites'
 import { notifyHybridFavoriteAdded } from '@/platform/hybrid-notifications'
 import { mergeFavoriteIds } from '@/platform/saved-ids'
 
-import { defaultPlanDayKey, filledPlanBoardDays, padPlanDaysForEditor, PLAN_DAY_TAB_SLOTS, planDayTabParts, type WeekPlanDay } from './week-plan'
+import { defaultPlanDayKey, filledPlanBoardDays, mobilePlanDayTabs, padPlanDaysForEditor, PLAN_DAY_TAB_SLOTS, planDayTabParts, type WeekPlanDay } from './week-plan'
 import {
+  MOBILE_DOCK_FAB_CLASS,
   MOBILE_DOCK_FAB_ICON_CLASS,
-  MOBILE_DOCK_PILL_CLASS,
   PLAN_MOBILE_DOCK_MOVE_ID,
 } from './mobile-dock'
 import {
@@ -84,8 +84,7 @@ const PLAN_DAY_BADGE_CLASS =
 const PLAN_DAY_TAB_CLASS =
   'nora-press-grow relative flex h-[4.75rem] flex-col items-center justify-between rounded-full bg-[var(--nora-inset)] px-1 pb-2 pt-2.5 outline-none focus-visible:shadow-[var(--nora-shadow-focus)]'
 const PLAN_DAY_TAB_SELECTED_CLASS = 'bg-[#2C2C2E]'
-const PLAN_DAY_TAB_PLACEHOLDER_CLASS =
-  'relative flex h-[4.75rem] flex-col items-center justify-between rounded-full bg-[color-mix(in_srgb,var(--nora-inset)_46%,var(--nora-panel))] px-1 pb-2 pt-2.5'
+const PLAN_DAY_TAB_SIZE_CLASS = 'w-14 shrink-0'
 
 function pickerDaysFromPlan(days: readonly WeekPlanDay[], dayCount = 0): FeedPlanWeekDay[] {
   return padPlanDaysForEditor(days, new Date(), dayCount).map((day, index) => {
@@ -100,12 +99,16 @@ function pickerDaysFromPlan(days: readonly WeekPlanDay[], dayCount = 0): FeedPla
   })
 }
 
+const PLAN_MEALS_MOVE_HINT =
+  'Потяните за иконку, чтобы поменять порядок.\nНажмите карточку и день — чтобы перенести приём.'
+
 export function CurrentPlanMeals({
   completedIds,
   dayCount = 0,
   days,
   onAddEmptyDay,
   onDetachPlanMeal,
+  onPickingChange,
   onRemoveEmptyDay,
   planId,
   readOnly = false,
@@ -117,6 +120,7 @@ export function CurrentPlanMeals({
   days: readonly WeekPlanDay[]
   onAddEmptyDay?: () => void
   onDetachPlanMeal: (mealId: string) => void
+  onPickingChange?: (picking: boolean) => void
   onRemoveEmptyDay?: (dayKey: string) => void
   planId?: string
   readOnly?: boolean
@@ -153,7 +157,6 @@ export function CurrentPlanMeals({
   )
   const [previewDays, setPreviewDays] = React.useState<WeekPlanDay[] | null>(null)
   const boardDays = previewDays ?? appliedDays
-  const visibleDays = boardDays
   const filledDays = React.useMemo(() => filledPlanBoardDays(boardDays), [boardDays])
   const [openId, setOpenId] = React.useState<string | null>(null)
   const [openMacrosReveal, setOpenMacrosReveal] = React.useState<MealMacrosRevealState>({
@@ -186,33 +189,40 @@ export function CurrentPlanMeals({
   const [selectedDayKey, setSelectedDayKey] = React.useState(
     () => defaultPlanDayKey(filledPlanBoardDays(days)) ?? defaultPlanDayKey(days),
   )
-  const fillDayRow = visibleDays.length <= PLAN_DAY_TAB_SLOTS
-  const dayTabWidthClass = fillDayRow ? 'min-w-0 flex-1' : 'w-14 shrink-0'
-  const placeholderCount = fillDayRow ? PLAN_DAY_TAB_SLOTS - visibleDays.length : 0
+  const tabDays = React.useMemo(
+    () => mobilePlanDayTabs(boardDays, selectedDayKey),
+    [boardDays, selectedDayKey],
+  )
   const selectedDay =
-    visibleDays.find((day) => day.dayKey === selectedDayKey) ??
-    visibleDays.at(-1) ??
-    visibleDays[0] ??
+    tabDays.find((day) => day.dayKey === selectedDayKey) ??
+    tabDays.at(-1) ??
+    tabDays[0] ??
     null
   if (selectedDay && selectedDay.dayKey !== selectedDayKey) {
     setSelectedDayKey(selectedDay.dayKey)
   }
   const dayTabListRef = React.useRef<HTMLDivElement>(null)
+  const pendingSelectLastDay = React.useRef(false)
   const [picking, setPicking] = React.useState(false)
-  const canAddEmptyDay =
-    Boolean(onAddEmptyDay) && picking && visibleDays.length < PLAN_DAY_TAB_SLOTS
+  const canAddEmptyDay = Boolean(onAddEmptyDay) && picking
   const [pickedIds, setPickedIds] = React.useState<Set<string>>(() => new Set())
   const [dockMove, setDockMove] = React.useState<HTMLElement | null>(null)
   const drag = usePlanMealDrag({
-    canReorder: allowReorder && !picking,
+    canReorder: allowReorder,
     days: boardDays,
     onDaysChange: setPreviewDays,
-    onHoverDay: picking ? undefined : setSelectedDayKey,
+    onHoverDay: setSelectedDayKey,
   })
   const dragging = drag.drag
   React.useLayoutEffect(() => {
     setDockMove(allowReorder ? document.getElementById(PLAN_MOBILE_DOCK_MOVE_ID) : null)
   }, [allowReorder])
+  React.useEffect(() => {
+    onPickingChange?.(picking)
+  }, [onPickingChange, picking])
+  React.useEffect(() => {
+    return () => onPickingChange?.(false)
+  }, [onPickingChange])
 
   React.useEffect(() => {
     if (dragging || !previewDays) return
@@ -223,9 +233,22 @@ export function CurrentPlanMeals({
   }, [dragging, planId, previewDays, savedScope.email, savedScope.userId])
 
   React.useEffect(() => {
-    const selected = dayTabListRef.current?.querySelector('[aria-selected="true"]')
+    if (!pendingSelectLastDay.current) return
+    pendingSelectLastDay.current = false
+    const last = boardDays.at(-1)
+    if (last) setSelectedDayKey(last.dayKey)
+  }, [boardDays])
+
+  React.useEffect(() => {
+    const list = dayTabListRef.current
+    if (!list) return
+    if (picking) {
+      list.scrollTo({ left: 0, behavior: 'smooth' })
+      return
+    }
+    const selected = list.querySelector('[aria-selected="true"]')
     selected?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
-  }, [selectedDay?.dayKey])
+  }, [picking, selectedDay?.dayKey])
 
   React.useEffect(() => {
     if (!subjectId || !user) {
@@ -440,10 +463,13 @@ export function CurrentPlanMeals({
   }
 
   function togglePicking() {
-    setPicking((current) => {
-      if (current) setPickedIds(new Set())
-      return !current
-    })
+    if (picking) {
+      setPickedIds(new Set())
+      setPicking(false)
+      return
+    }
+    toast.info(PLAN_MEALS_MOVE_HINT, { duration: 6000, id: 'plan-meals-move-hint' })
+    setPicking(true)
   }
 
   function togglePick(mealId: string) {
@@ -482,8 +508,11 @@ export function CurrentPlanMeals({
       <MealCard
         completedIds={completedIds}
         footerStart={
-          allowReorder && !picking && dayKey ? (
-            <PlanMealDragHandle onPointerDown={(event) => drag.startDrag(event, meal, dayKey)} />
+          allowReorder && dayKey ? (
+            <PlanMealDragHandle
+              className={!picking ? 'max-md:hidden' : undefined}
+              onPointerDown={(event) => drag.startDrag(event, meal, dayKey)}
+            />
           ) : null
         }
         images={imagesForDiaryMeal(meal, EMPTY_GALLERIES)}
@@ -562,10 +591,7 @@ export function CurrentPlanMeals({
       <div className="flex flex-col gap-3 md:hidden">
         <div
           aria-label="Дни плана"
-          className={cn(
-            'flex w-full gap-1.5',
-            fillDayRow ? '' : 'no-scrollbar overflow-x-auto overscroll-x-contain',
-          )}
+          className="no-scrollbar flex w-full gap-1.5 overflow-x-auto overscroll-x-contain"
           ref={dayTabListRef}
           role="tablist"
         >
@@ -574,7 +600,12 @@ export function CurrentPlanMeals({
               aria-label="Добавить день"
               className={cn(PLAN_DAY_TAB_CLASS, 'w-12 shrink-0')}
               data-plan-add-day=""
-              onClick={() => onAddEmptyDay?.()}
+              disabled={tabDays.length >= PLAN_DAY_TAB_SLOTS}
+              onClick={() => {
+                if (tabDays.length >= PLAN_DAY_TAB_SLOTS) return
+                pendingSelectLastDay.current = true
+                onAddEmptyDay?.()
+              }}
               type="button"
             >
               <CalendarIcon
@@ -583,13 +614,13 @@ export function CurrentPlanMeals({
                 strokeWidth={1.75}
               />
               <span className="mt-auto inline-flex size-7 items-center justify-center">
-                <span className="flex size-7 items-center justify-center rounded-full bg-[var(--nora-tint-dimmed)] text-[var(--nora-tint)]">
+                <span className="flex size-7 items-center justify-center rounded-full bg-[var(--nora-text)] text-[var(--nora-panel)]">
                   <PlusIcon aria-hidden className="size-3.5" strokeWidth={2.25} />
                 </span>
               </span>
             </button>
           ) : null}
-          {visibleDays.map((day, index) => {
+          {tabDays.map((day, index) => {
               const parts = planDayTabParts(day, index)
               const active = day.dayKey === selectedDay?.dayKey
               const daysLocked = picking && pickedIds.size === 0
@@ -601,7 +632,7 @@ export function CurrentPlanMeals({
                   aria-selected={active}
                   className={cn(
                     PLAN_DAY_TAB_CLASS,
-                    dayTabWidthClass,
+                    PLAN_DAY_TAB_SIZE_CLASS,
                     active && !picking && !daysLocked && PLAN_DAY_TAB_SELECTED_CLASS,
                     daysLocked && 'pointer-events-none opacity-40',
                   )}
@@ -644,33 +675,12 @@ export function CurrentPlanMeals({
                 </button>
               )
             })}
-            {Array.from({ length: placeholderCount }, (_, index) => {
-              const ordinal = visibleDays.length + index + 1
-              return (
-                <span
-                  aria-hidden
-                  className={cn(PLAN_DAY_TAB_PLACEHOLDER_CLASS, dayTabWidthClass, 'pointer-events-none')}
-                  key={`plan-day-placeholder-${ordinal}`}
-                >
-                  <CalendarIcon
-                    aria-hidden
-                    className="size-3.5 text-[color-mix(in_srgb,var(--nora-text)_20%,var(--nora-panel))]"
-                    strokeWidth={1.75}
-                  />
-                  <span className="relative mt-auto inline-flex size-7 items-center justify-center">
-                    <span className="flex size-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--nora-inset)_28%,var(--nora-panel))] text-[13px] font-semibold leading-none tabular-nums text-[color-mix(in_srgb,var(--nora-text)_22%,var(--nora-panel))]">
-                      {ordinal}
-                    </span>
-                  </span>
-                </span>
-              )
-            })}
         </div>
         {selectedDay ? (
           <section className="flex flex-col gap-3">
             {dayMeta(selectedDay, Boolean(onRemoveEmptyDay) && selectedDay.meals.length === 0)}
             <PlanMealGrid
-              canReorder={allowReorder && !picking}
+              canReorder={allowReorder}
               day={selectedDay}
               drag={dragging}
               onOpenMeal={setOpenId}
@@ -702,8 +712,9 @@ export function CurrentPlanMeals({
       {dockMove && allowReorder
         ? createPortal(
             <button
+              aria-label={picking ? 'Отмена' : 'Переместить'}
               aria-pressed={picking}
-              className={MOBILE_DOCK_PILL_CLASS}
+              className={MOBILE_DOCK_FAB_CLASS}
               data-active={picking || undefined}
               onClick={togglePicking}
               type="button"
@@ -717,7 +728,6 @@ export function CurrentPlanMeals({
                   strokeWidth={1.75}
                 />
               )}
-              {picking ? 'Отмена' : 'Переместить'}
             </button>,
             dockMove,
           )

@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeftIcon, BookmarkIcon, CalendarRangeIcon, ListIcon } from 'lucide-react'
+import { ArrowLeftIcon, BookmarkIcon, CalendarRangeIcon, PencilIcon, UtensilsIcon } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru as dateFnsRu } from 'date-fns/locale'
 import { useNavigate } from '@tanstack/react-router'
@@ -84,7 +84,7 @@ import {
 } from './plan-outline'
 import { PlanStartDialog } from './PlanStartDialog'
 import { useSyncedPlanLibrary } from './use-plan-library'
-import { PlanToolbar, visiblePlanCards, partitionPlanCards, PlanGroupPlaque, PLAN_GROUP_ICONS, planToolbarPillClass, type PlanFeedTab, type PlanLibrary } from './PlanToolbar'
+import { PlanToolbar, visiblePlanCards, partitionPlanCards, PlanGroupHeading, PLAN_GROUP_ICONS, planToolbarPillClass, type PlanFeedTab, type PlanLibrary } from './PlanToolbar'
 import { useCurrentWeekPlan } from './use-current-week-plan'
 import { WeekPlanCard, WeekPlanCardSkeleton } from './WeekPlanCard'
 import { buildWeekPlan, buildWeekPlanFromCatalog, buildWeekPlanFromRation, buildWeekPlanFromSharedRation, formatPlanActiveRange, nextPlanDayCount, padPlanDaysForEditor, rationDaysFromSharedRation, removeEmptyPlanDay, sharedRationSnapshotFromWeekPlan, type WeekPlan } from './week-plan'
@@ -473,7 +473,7 @@ export function PlanPage({
       onClick={() => setCreateDraft(emptyRationDraft())}
       type="button"
     >
-      <ListIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_ACTIVE_CLASS} strokeWidth={1.75} />
+      <UtensilsIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_ACTIVE_CLASS} strokeWidth={1.75} />
     </button>
   ) : null
 
@@ -545,7 +545,12 @@ export function PlanPage({
         <div className="flex flex-col gap-5">
           {groupedCards.mine.length > 0 ? (
             <div className="flex flex-col gap-3">
-              <PlanGroupPlaque icon={PLAN_GROUP_ICONS.mine} label="Мои" tone="mine" />
+              <PlanGroupHeading
+                count={groupedCards.mine.length}
+                icon={PLAN_GROUP_ICONS.mine}
+                label="Мои"
+                tone="mine"
+              />
               <section className={productFeedGridClass}>
                 {groupedCards.mine.map(renderPlanCard)}
               </section>
@@ -553,7 +558,12 @@ export function PlanPage({
           ) : null}
           {groupedCards.mentor.length > 0 ? (
             <div className="flex flex-col gap-3">
-              <PlanGroupPlaque icon={PLAN_GROUP_ICONS.mentor} label="Наставник" tone="mentor" />
+              <PlanGroupHeading
+                count={groupedCards.mentor.length}
+                icon={PLAN_GROUP_ICONS.mentor}
+                label="Наставник"
+                tone="mentor"
+              />
               <section className={productFeedGridClass}>
                 {groupedCards.mentor.map(renderPlanCard)}
               </section>
@@ -738,9 +748,11 @@ export function CurrentPlanPage({
     return Math.max(stored, layoutCount, feedPreview ? sharedRation?.days ?? 0 : 0)
   }, [authored, feedPreview, layoutRevision, plan, savedScope.email, savedScope.userId, sharedRation?.days])
   const catalogView = Boolean(catalog)
+  const canMutateDays = Boolean(plan && !catalogView && !feedPreview)
   const canEdit = Boolean(plan && !catalogView && !feedPreview && !isAssignedPlanId(plan.id))
   const [dockExtra, setDockExtra] = React.useState<HTMLElement | null>(null)
   const [dockEdit, setDockEdit] = React.useState<HTMLElement | null>(null)
+  const [movingMeals, setMovingMeals] = React.useState(false)
   React.useLayoutEffect(() => {
     if (showMobileBackDock || !(catalogView || feedPreview)) {
       setDockExtra(null)
@@ -958,6 +970,7 @@ export function CurrentPlanPage({
       onClick={() => openEditor()}
       type="button"
     >
+      <PencilIcon aria-hidden className="size-4" strokeWidth={1.75} />
       Изменить
     </button>
   ) : null
@@ -965,9 +978,11 @@ export function CurrentPlanPage({
     <button
       className={MOBILE_DOCK_PILL_CLASS}
       data-plan-outline-open=""
+      disabled={movingMeals}
       onClick={() => openEditor()}
       type="button"
     >
+      <PencilIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_CLASS} strokeWidth={1.75} />
       Изменить
     </button>
   ) : null
@@ -1056,6 +1071,7 @@ export function CurrentPlanPage({
       }
       facts={headerFacts}
       coverImage={plan?.coverImage}
+      onEdit={canEdit ? openEditor : undefined}
       showHeaderOnMobile
       title={plan?.title ?? 'План'}
     >
@@ -1121,14 +1137,15 @@ export function CurrentPlanPage({
             </div>
           </section>
           <CurrentPlanMeals
-            canReorder={!feedPreview && !isAssignedPlanId(plan.id)}
+            canReorder={canMutateDays}
             completedIds={completedIds}
             dayCount={editorDayCount}
             days={scheduledDays}
             layoutRevision={layoutRevision}
-            onAddEmptyDay={!feedPreview && !isAssignedPlanId(plan.id) ? addEmptyDay : undefined}
+            onAddEmptyDay={canMutateDays ? addEmptyDay : undefined}
             onDetachPlanMeal={detachPlanMeal}
-            onRemoveEmptyDay={!feedPreview && !isAssignedPlanId(plan.id) ? removeEmptyDay : undefined}
+            onPickingChange={setMovingMeals}
+            onRemoveEmptyDay={canMutateDays ? removeEmptyDay : undefined}
             planId={plan.id}
             readOnly={catalogView || feedPreview}
           />

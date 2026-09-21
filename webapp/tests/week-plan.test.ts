@@ -31,6 +31,7 @@ import {
   defaultPlanDayKey,
   formatPlanActiveRange,
   filledPlanBoardDays,
+  mobilePlanDayTabs,
   nextPlanDayCount,
   padPlanDaysForEditor,
   removeEmptyPlanDay,
@@ -381,7 +382,10 @@ test('mobile plan cards tuck share, favorite and delete into a more menu', () =>
   expect(source).toContain('В избранное')
   expect(source).toContain('Поделиться')
   expect(source).toContain("variant=\"destructive\"")
-  expect(source).toContain('account-workspace-menu min-w-44 rounded-[16px]!')
+  expect(source).toContain('whitespace-nowrap')
+  expect(source).toContain('side="bottom"')
+  expect(source).not.toContain('side="top"')
+  expect(source).not.toContain('min-w-44')
   expect(source).toContain('hidden items-center gap-1 md:flex')
   expect(source).toContain('md:hidden')
   expect(source).toContain('sm:group-hover:opacity-100')
@@ -450,8 +454,10 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('description: catalog.description')
   expect(page).toContain('plan?.description.trim()')
   expect(page).toContain('showHeaderOnMobile')
-  expect(page).toContain('onAddEmptyDay={!feedPreview && !isAssignedPlanId(plan.id) ? addEmptyDay : undefined}')
-  expect(page).toContain('onRemoveEmptyDay={!feedPreview && !isAssignedPlanId(plan.id) ? removeEmptyDay : undefined}')
+  expect(page).toContain('const canMutateDays = Boolean(plan && !catalogView && !feedPreview)')
+  expect(page).toContain('onAddEmptyDay={canMutateDays ? addEmptyDay : undefined}')
+  expect(page).toContain('onRemoveEmptyDay={canMutateDays ? removeEmptyDay : undefined}')
+  expect(page).not.toContain('!feedPreview && !isAssignedPlanId(plan.id) ? addEmptyDay')
   expect(page).toContain('nextPlanDayCount(')
   expect(page).toContain('removeEmptyPlanDay(')
   const shell = readFileSync(new URL('../src/features/plans/PlanPageShell.tsx', import.meta.url), 'utf8')
@@ -459,10 +465,36 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(shell).toContain('max-md:truncate')
   expect(shell).toContain('InfoIcon')
   expect(shell).toContain('data-plan-info=""')
-  expect(shell).toContain('data-modal-frame="meal"')
+  expect(shell).not.toContain('data-modal-frame="meal"')
   expect(shell).toContain('productSheetOverlayChipClass')
   expect(shell).toContain('aria-label="О рационе"')
+  expect(shell).toContain('data-plan-info-open=""')
+  expect(shell).toContain("inline-flex size-8 shrink-0 items-center justify-center rounded-full")
+  expect(shell).toContain('h-auto max-h-[calc(100dvh-var(--modal-sheet-inset))]')
+  expect(shell).not.toContain('top-[var(--modal-sheet-inset)] bottom-0')
+  expect(shell).toContain('flex items-center justify-between gap-3')
+  expect(shell).toContain('INFO_SECTION_HEADING_CLASS')
+  expect(shell).toContain('text-[13px] font-medium leading-5 text-[var(--nora-text)]')
+  expect(shell).toContain('text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)]')
+  expect(shell).toContain('noraProductTitleClass')
+  expect(shell).not.toContain('items-start justify-between')
   expect(shell).toContain('Описание')
+  expect(shell).toContain('Показатели')
+  expect(shell).not.toContain('Сводка')
+  expect(shell).toContain('FACT_ICON_WRAP_CLASS')
+  expect(shell).toContain('rounded-full')
+  expect(shell).toContain("bg-[color-mix(in_srgb,var(--nora-text)_9%,var(--nora-panel))]")
+  expect(shell).toContain('data-plan-info-summary=""')
+  expect(shell).toContain('data-plan-info-edit=""')
+  expect(shell).toContain('CalendarDaysIcon')
+  expect(shell).toContain('UtensilsIcon')
+  expect(shell).toContain('FlameIcon')
+  expect(shell).toContain('onEdit')
+  expect(shell).toContain('aria-label="Изменить"')
+  expect(page).toContain('onEdit={canEdit ? openEditor : undefined}')
+  const infoBody = shell.slice(shell.indexOf('overflow-y-auto'))
+  expect(infoBody.indexOf('MealFeedPhoto')).toBeGreaterThan(-1)
+  expect(infoBody.indexOf('MealFeedPhoto')).toBeLessThan(infoBody.indexOf('Описание'))
   expect(shell).toContain("showHeaderOnMobile ? 'max-md:hidden'")
   expect(shell).not.toContain('<NoraBadge variant="blue">{badge}</NoraBadge>')
   expect(shell).toContain("fact.label !== 'Цель'")
@@ -496,7 +528,7 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(source).not.toContain('max-h-[108px]')
   expect(page).toContain('useSyncedPlanLibrary(')
   expect(page).toContain('persist(')
-  expect(page).toContain('canReorder={!feedPreview && !isAssignedPlanId(plan.id)}')
+  expect(page).toContain('canReorder={canMutateDays}')
   const savedPlans = readFileSync(
     new URL('../src/features/plans/saved-plans.ts', import.meta.url),
     'utf8',
@@ -513,12 +545,16 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   )
   expect(shopping).toContain('rounded-[16px] bg-[var(--nora-inset)]')
   expect(shopping).toContain('ShoppingBagIcon')
-  expect(shopping).toContain('Куплено')
+  expect(shopping).toContain('Продукты')
+  expect(shopping).toContain('data-plan-shopping-products=""')
+  expect(shopping).toContain('куплено')
   expect(shopping).toContain('productSheetOverlayChipClass')
   expect(shopping).toContain('data-plan-shopping-day=""')
   expect(shopping).toContain('planShoppingDayOptions(days.length)')
   expect(shopping).toContain('NoraSelect')
   expect(shopping).toContain('Все дни')
+  expect(shopping).toContain('bg-[var(--nora-inset)] text-[var(--nora-text-secondary)]')
+  expect(shopping).not.toContain('Куплено')
   const startDialog = readFileSync(
     new URL('../src/features/plans/PlanStartDialog.tsx', import.meta.url),
     'utf8',
@@ -542,12 +578,17 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).not.toContain('CreatePlanDialog')
   expect(page).toContain('PlanToolbar')
   const toolbar = readFileSync(new URL('../src/features/plans/PlanToolbar.tsx', import.meta.url), 'utf8')
-  expect(toolbar).toContain('ListIcon')
+  expect(toolbar).toContain('UtensilsIcon')
+  expect(toolbar).not.toContain('UtensilsCrossedIcon')
   expect(toolbar).not.toContain('PlusIcon')
+  expect(toolbar).not.toContain('ListIcon')
+  expect(toolbar).not.toContain('LayoutGridIcon')
   expect(toolbar).toContain('PlanGroupPlaque')
   expect(toolbar).toContain('PLAN_GROUP_PLAQUE_TONE')
-  expect(toolbar).toContain("bg-[var(--nora-text)] text-[var(--nora-panel)]")
-  expect(toolbar).toContain('bg-[var(--nora-success)] text-white')
+  expect(toolbar).toContain("bg-[var(--nora-inset)] text-[var(--nora-text-secondary)]")
+  expect(toolbar).toContain('bg-[var(--nora-success-dimmed)] text-[var(--nora-success)]')
+  expect(toolbar).not.toContain("bg-[var(--nora-text)] text-[var(--nora-panel)]")
+  expect(toolbar).not.toContain('bg-[var(--nora-success)] text-white')
   expect(toolbar).not.toContain('bg-[var(--nora-tint)] text-white')
   expect(toolbar).not.toContain('bg-[#16A34A] text-white')
   expect(toolbar).not.toContain('nora-tint-dimmed')
@@ -557,12 +598,17 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('onTabChange={setTab}')
   expect(page).toContain('Пока нет избранных планов')
   expect(page).toContain('visiblePlanCards(')
-  expect(page).toContain('PlanGroupPlaque')
+  expect(page).toContain('PlanGroupHeading')
   expect(page).toContain('label="Мои"')
   expect(page).toContain('tone="mine"')
   expect(page).toContain('label="Наставник"')
   expect(page).toContain('tone="mentor"')
   expect(page).toContain('label="Наставник"')
+  expect(page).toContain('count={groupedCards.mine.length}')
+  expect(page).toContain('count={groupedCards.mentor.length}')
+  expect(toolbar).toContain('UtensilsIcon')
+  expect(toolbar).not.toContain('UtensilsCrossedIcon')
+  expect(toolbar).toContain('PlanGroupHeading')
   expect(page).toContain('partitionPlanCards(')
   expect(page).toContain('PlanStartDialog')
   expect(page).toContain('void selectPlan(plan.id)')
@@ -572,7 +618,9 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('canCreate={canCreate}')
   expect(page).toContain("library !== 'catalog'")
   expect(page).toContain('PLAN_MOBILE_DOCK_ACTION_ID')
-  expect(page).toContain('ListIcon')
+  expect(page).toContain('UtensilsIcon')
+  expect(page).not.toContain('UtensilsCrossedIcon')
+  expect(page).not.toContain('PlusIcon')
   expect(page).toContain('MOBILE_DOCK_FAB_ICON_ACTIVE_CLASS')
   expect(page).toContain('buildWeekPlanFromCatalog')
   expect(page).toContain('buildWeekPlanFromSharedRation')
@@ -584,9 +632,13 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('ArrowLeftIcon')
   expect(page).toContain('PlanOutlineDialog')
   expect(page).toContain('Изменить')
+  expect(page).toContain('PencilIcon')
+  expect(page).toContain('<PencilIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_CLASS}')
   expect(page).not.toContain('>Редактировать<')
   expect(page).toContain('PLAN_MOBILE_DOCK_EDIT_ID')
   expect(page).toContain('data-plan-outline-open=""')
+  expect(page).toContain('disabled={movingMeals}')
+  expect(page).toContain('onPickingChange={setMovingMeals}')
   expect(page).toContain('canEdit')
   expect(page).toContain('writePlanOutline')
   expect(page).toContain('applyWeekOutline')
@@ -599,6 +651,7 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   )
   expect(dock).toContain('ios-float-pill-dock')
   expect(dock).toContain('font-medium')
+  expect(dock).toContain("size-4 text-[var(--nora-text-secondary)]")
   expect(page).toContain('createPortal')
   expect(page).toContain('PLAN_MOBILE_DOCK_EXTRA_ID')
   expect(page).toContain("cloned ? 'Открыть в «Мои»' : 'Добавить'")
@@ -740,6 +793,35 @@ test('filledPlanBoardDays hides a day that lost its last meal', () => {
   expect(filledPlanBoardDays([filled])).toHaveLength(1)
 })
 
+test('mobilePlanDayTabs drops trailing empty padded days unless selected', () => {
+  const monday = {
+    dayKey: '2026-08-31',
+    short: 'Пн 31',
+    label: 'Понедельник, 31 августа',
+    dayIso: '2026-08-31',
+    ration: null,
+    filled: true,
+    meals: [mealOn(new Date(2026, 7, 31), { id: 'a', title: 'Круассан' })],
+    mealsCount: 1,
+    kcal: 300,
+  }
+  const emptySunday = {
+    dayKey: '2026-09-06',
+    short: 'Вс 6',
+    label: 'Воскресенье, 6 сентября',
+    dayIso: '2026-09-06',
+    ration: null,
+    filled: false,
+    meals: [],
+    mealsCount: 0,
+    kcal: 0,
+  }
+  expect(mobilePlanDayTabs([monday, emptySunday]).map((day) => day.dayKey)).toEqual(['2026-08-31'])
+  expect(
+    mobilePlanDayTabs([monday, emptySunday], emptySunday.dayKey).map((day) => day.dayKey),
+  ).toEqual(['2026-08-31', '2026-09-06'])
+})
+
 test('nextPlanDayCount appends an empty day up to the week slot cap', () => {
   expect(nextPlanDayCount(0)).toBe(1)
   expect(nextPlanDayCount(3)).toBe(4)
@@ -795,19 +877,29 @@ test('current plan lays meals under a diary-sized day badge', () => {
     expect(source).toContain('role="tablist"')
     expect(source).toContain('md:hidden')
     expect(source).toContain('hidden flex-col gap-6 md:flex')
-    expect(source).toContain('filledPlanBoardDays(')
-    expect(source).toContain('visibleDays')
     expect(source).toContain('padPlanDaysForEditor(')
+    expect(source).toContain('filledPlanBoardDays(')
+    expect(source).toContain('mobilePlanDayTabs(')
+    expect(source).toContain('tabDays')
     expect(source).toContain('PlusIcon')
     expect(source).toContain('data-plan-add-day')
     expect(source).toContain('onAddEmptyDay')
-    expect(source).toContain('picking && visibleDays.length < PLAN_DAY_TAB_SLOTS')
+    expect(source).toContain('const canAddEmptyDay = Boolean(onAddEmptyDay) && picking')
+    expect(source).toContain('disabled={tabDays.length >= PLAN_DAY_TAB_SLOTS}')
+    expect(source).toContain("list.scrollTo({ left: 0, behavior: 'smooth' })")
+    const addDayChip = source.slice(
+      source.indexOf('data-plan-add-day'),
+      source.indexOf('tabDays.map'),
+    )
+    expect(addDayChip).toContain('bg-[var(--nora-text)] text-[var(--nora-panel)]')
+    expect(addDayChip).not.toContain('nora-tint')
     expect(source).toContain('active && !picking &&')
     expect(source).toContain('PLAN_DAY_TAB_SLOTS')
-    expect(source).toContain('placeholderCount')
-    expect(source).toContain('PLAN_DAY_TAB_PLACEHOLDER_CLASS')
+    expect(source).toContain('PLAN_DAY_TAB_SIZE_CLASS')
+    expect(source).toContain('no-scrollbar flex w-full gap-1.5 overflow-x-auto overscroll-x-contain')
+    expect(source).not.toContain('placeholderCount')
+    expect(source).not.toContain('PLAN_DAY_TAB_PLACEHOLDER_CLASS')
     expect(source).toContain('bg-[var(--nora-inset)]')
-    expect(source).toContain('bg-[color-mix(in_srgb,var(--nora-inset)_46%,var(--nora-panel))]')
     expect(source).not.toContain('shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-text)_5%,transparent)]')
     expect(source).not.toContain('PLAN_DAY_TAB_PLATE_CLASS')
     expect(source).toContain('rounded-full')
@@ -829,9 +921,13 @@ test('current plan lays meals under a diary-sized day badge', () => {
     expect(source).toContain('PlanMealGrid')
     expect(source).toContain('canReorder')
     expect(source).toContain('data-plan-day-tab')
-    expect(source).toContain('Переместить')
-    expect(source).toContain('ArrowLeftRightIcon')
-    expect(source).toContain('XIcon')
+  expect(source).toContain("aria-label={picking ? 'Отмена' : 'Переместить'}")
+  expect(source).toContain('MOBILE_DOCK_FAB_CLASS')
+  expect(source).toContain('ArrowLeftRightIcon')
+  expect(source).toContain('XIcon')
+  expect(source).toContain('PLAN_MEALS_MOVE_HINT')
+  expect(source).toContain("className={!picking ? 'max-md:hidden' : undefined}")
+  expect(source).toContain('onPickingChange')
     expect(source).toContain('orderBadge')
     expect(source).toContain('showPlanState={false}')
     expect(source).toContain('isRationPlanDone(')
@@ -876,6 +972,29 @@ test('mentee assigned plans drill into meal cards by day', () => {
   expect(mentee).toContain('<CurrentPlanMeals')
   expect(mentee).toContain('readOnly')
   expect(mentee).toContain('К планам')
+})
+
+test('plan shopping drops catalog garnish notes from grocery rows', () => {
+  const monday = new Date(2026, 7, 31)
+  const items = planShoppingItems([
+    mealOn(monday, {
+      id: 'shop-notes',
+      title: 'Вареники',
+      ingredients:
+        'Мука – 1 кг , в тесто, Яйцо – 2 шт. , СО, в тесто, Вода – 420 г , в тесто, Соль – 1 ч.л. , в тесто, Картофель – 1 кг, Масло сливочное – 50 г , 72,5%',
+      assumptions: [],
+      fromApi: false,
+    }),
+  ])
+  expect(items.map((item) => item.label)).toEqual([
+    'Мука – 1 кг',
+    'Яйцо – 2 шт',
+    'Вода – 420 г',
+    'Соль – 1 ч.л',
+    'Картофель – 1 кг',
+    'Масло сливочное – 50 г',
+  ])
+  expect(items.some((item) => /для подачи|в тесто|^со$|72/i.test(item.label))).toBe(false)
 })
 
 test('plan shopping lists unique groceries from every planned meal', () => {

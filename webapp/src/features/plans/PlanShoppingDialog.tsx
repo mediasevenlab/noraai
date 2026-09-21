@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { CircleCheckIcon, CircleIcon, ShoppingBagIcon, XIcon } from 'lucide-react'
+import { ShoppingBagIcon, XIcon } from 'lucide-react'
 
 import { NoraSelect } from '@/components/nora/primitives'
 import {
@@ -35,9 +35,9 @@ const FRAME_CLASS = cn(
 )
 
 const ROW_CLASS = cn(
-  'nora-press-grow ios-glass-glare-soft flex min-h-12 items-center gap-2.5 rounded-[14px] border-0 px-2.5 py-2 text-left',
-  'bg-[var(--nora-input-bg)]/72 text-[var(--nora-text-secondary)] backdrop-blur-[16px] outline-none',
-  'hover:bg-[var(--nora-input-bg)] hover:text-[var(--nora-text)]',
+  'nora-press-grow ios-glass-glare-soft flex min-h-12 items-center gap-3 rounded-[14px] border-0 px-3.5 py-2.5 text-left',
+  'bg-[var(--nora-inset)] text-[var(--nora-text-secondary)] outline-none',
+  'hover:bg-[color-mix(in_srgb,var(--nora-inset)_88%,var(--nora-text)_6%)] hover:text-[var(--nora-text)]',
   'focus-visible:shadow-[var(--nora-shadow-focus)]',
 )
 
@@ -45,6 +45,14 @@ const BADGE_CLASS = cn(
   'ios-glass-glare-soft inline-flex h-6 min-h-6 max-h-6 w-fit shrink-0 items-center rounded-full border-0 px-2.5',
   'font-[family-name:var(--nora-font)] text-[12px] font-medium leading-none tracking-normal backdrop-blur-[8px]',
 )
+
+function ShoppingHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
+      {children}
+    </p>
+  )
+}
 
 function shoppingDescription(title: string, dayValue: string) {
   if (dayValue === PLAN_SHOPPING_ALL_DAYS) {
@@ -133,9 +141,7 @@ export function PlanShoppingDialog({
               className="mt-2.5 border-t border-[var(--nora-divider)] pt-2.5"
               data-plan-shopping-day=""
             >
-              <p className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
-                День
-              </p>
+              <ShoppingHeading>День</ShoppingHeading>
               <NoraSelect
                 className="mt-2 !h-10 !min-h-10 !max-h-10 rounded-[12px] bg-[var(--nora-panel)] px-3.5 text-[13px] font-normal leading-5"
                 contentClassName={productToolbarSelectContentClass}
@@ -149,80 +155,82 @@ export function PlanShoppingDialog({
                 value={dayValue}
               />
             </div>
-            <div className="mt-2.5 flex items-center justify-between gap-2">
-              <p className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
-                Куплено
-              </p>
+          </DialogHeader>
+        </div>
+        <div
+          className="min-h-0 flex-1 overflow-y-auto px-3 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3.5"
+          data-plan-shopping-list=""
+        >
+          <div className="flex flex-col gap-2.5">
+            <div
+              className="flex items-center justify-between gap-2"
+              data-plan-shopping-products=""
+            >
+              <ShoppingHeading>Продукты</ShoppingHeading>
               <span
                 className={cn(
                   BADGE_CLASS,
                   items.length > 0 && boughtCount === items.length
-                    ? 'bg-[var(--nora-badge-green-bg)] text-[var(--nora-badge-green-text)]'
+                    ? 'bg-[var(--nora-success)] font-medium text-white'
                     : items.length > 0
                       ? 'bg-[var(--nora-tint-dimmed)] text-[var(--nora-tint)]'
-                      : 'bg-[var(--nora-input-bg)]/72 text-[var(--nora-text-secondary)]',
+                      : 'bg-[var(--nora-panel)]/80 text-[var(--nora-text-tertiary)]',
                 )}
               >
                 {boughtCount} из {items.length}
               </span>
             </div>
-          </DialogHeader>
-        </div>
-        <div
-          className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3.5"
-          data-plan-shopping-list=""
-        >
-          {items.length === 0 ? (
-            <p className="rounded-[14px] bg-[var(--nora-input-bg)]/72 px-2.5 py-3 font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)]">
-              {dayValue === PLAN_SHOPPING_ALL_DAYS
-                ? 'В этом плане пока нет продуктов для списка.'
-                : 'В этом дне пока нет продуктов для списка.'}
-            </p>
-          ) : (
-            items.map((item) => {
-              const done = bought.has(item.key)
-              return (
-                <button
-                  aria-pressed={done}
-                  className={ROW_CLASS}
-                  data-shopping-item={item.key}
-                  key={item.key}
-                  onClick={() => toggleItem(item.key)}
-                  type="button"
-                >
-                  <span
-                    className={cn(
-                      BADGE_CLASS,
-                      'w-8 justify-center px-0',
-                      done
-                        ? 'bg-[var(--nora-badge-green-bg)] text-[var(--nora-badge-green-text)]'
-                        : 'bg-[var(--nora-panel)]/80 text-[var(--nora-text)]',
-                    )}
+            {items.length === 0 ? (
+              <p className="rounded-[14px] bg-[var(--nora-inset)] px-3.5 py-2.5 font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)]">
+                {dayValue === PLAN_SHOPPING_ALL_DAYS
+                  ? 'В этом плане пока нет продуктов для списка.'
+                  : 'В этом дне пока нет продуктов для списка.'}
+              </p>
+            ) : (
+              items.map((item) => {
+                const done = bought.has(item.key)
+                return (
+                  <button
+                    aria-pressed={done}
+                    className={ROW_CLASS}
+                    data-shopping-item={item.key}
+                    key={item.key}
+                    onClick={() => toggleItem(item.key)}
+                    type="button"
                   >
-                    {done ? (
-                      <CircleCheckIcon aria-hidden className="size-3.5" strokeWidth={1.75} />
-                    ) : (
-                      <CircleIcon aria-hidden className="size-3.5" strokeWidth={1.75} />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1 font-[family-name:var(--nora-font)] text-[13px] font-normal text-[var(--nora-text)]">
-                    {item.label}
-                  </span>
-                  <span
-                    className={cn(
-                      BADGE_CLASS,
-                      'shrink-0 whitespace-nowrap font-normal',
-                      done
-                        ? 'bg-[var(--nora-badge-green-bg)] text-[var(--nora-badge-green-text)]'
-                        : 'bg-[var(--nora-panel)]/80',
-                    )}
-                  >
-                    {done ? 'куплено' : 'купить'}
-                  </span>
-                </button>
-              )
-            })
-          )}
+                    <span
+                      className={cn(
+                        'flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors',
+                        done
+                          ? 'border-[var(--nora-success)] bg-[var(--nora-panel)]'
+                          : 'border-[var(--nora-border-strong)] bg-[var(--nora-panel)]',
+                      )}
+                    >
+                      {done ? (
+                        <span
+                          aria-hidden
+                          className="size-2 rounded-full bg-[var(--nora-success)]"
+                        />
+                      ) : null}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text)]">
+                      {item.label}
+                    </span>
+                    <span
+                      className={cn(
+                        'shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 font-[family-name:var(--nora-font)] text-[11px] leading-none',
+                        done
+                          ? 'bg-[var(--nora-success)] font-medium text-white'
+                          : 'bg-[var(--nora-panel)]/80 text-[var(--nora-text-tertiary)]',
+                      )}
+                    >
+                      {done ? 'куплено' : 'купить'}
+                    </span>
+                  </button>
+                )
+              })
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

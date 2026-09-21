@@ -6,7 +6,6 @@ import {
   ImagesIcon,
   LayoutGridIcon,
   NewspaperIcon,
-  PlusIcon,
   SettingsIcon,
   UserIcon,
   UsersIcon,
@@ -36,7 +35,6 @@ import {
   secondaryNavigationItemsForRole,
   userGeneralSearch,
 } from '@/features/navigation'
-import { requestAddMeal } from '@/features/diary'
 import {
   MentorMealPlanNavigation,
   MentorMenteeNavigation,
@@ -107,6 +105,11 @@ export function WorkspaceShell({
 }>) {
   useDismissAppBootSplash()
   const pathname = useLocation({ select: (location) => location.pathname })
+  const catalogOpen = useLocation({
+    select: (location) =>
+      location.pathname === '/app/general' &&
+      (location.search as { library?: unknown }).library === 'catalog',
+  })
   const navigate = useNavigate()
   const showSidebarPromoCards = useSidebarPromoCards()
   const navigationItems = navigationItemsForRole(user.role)
@@ -165,6 +168,17 @@ export function WorkspaceShell({
         return true
       })
       .map((item) => ({
+        active:
+          !navigationLocked &&
+          !item.disabled &&
+          (item.to === '/app/general'
+            ? !catalogOpen &&
+              (pathname === '/app/general' ||
+                isUserPlanPath(pathname) ||
+                pathname.startsWith('/app/diary'))
+            : item.to === '/mentor/plans'
+              ? isMentorPlanPath(pathname)
+              : item.to === pathname),
         disabled: navigationLocked || item.disabled,
         icon: iconsByPath[item.to],
         label: item.label,
@@ -173,6 +187,7 @@ export function WorkspaceShell({
     ...(user.role === 'user' && !navigationLocked
       ? [
           {
+            active: catalogOpen,
             icon: LayoutGridIcon,
             label: 'Каталог',
             onSelect: () => {
@@ -183,17 +198,6 @@ export function WorkspaceShell({
             },
             to: '/app/general' as const,
           },
-          {
-          accent: true,
-          icon: PlusIcon,
-          label: 'Добавить',
-          onSelect: () => {
-            if (!requestAddMeal()) {
-              void navigate({ search: userGeneralSearch(), to: '/app/general' })
-            }
-          },
-          to: '/app/general' as const,
-        },
         ]
       : []),
   ]

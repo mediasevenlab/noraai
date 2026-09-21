@@ -33,6 +33,8 @@ import { cn } from '@/lib/utils'
 export type MobileNavItem = {
   /** Highlight as a call-to-action, even when the route is not active. */
   accent?: boolean
+  /** Fill the glyph circle so the current section is obvious. */
+  active?: boolean
   disabled?: boolean
   icon: LucideIcon
   label: string
@@ -47,12 +49,12 @@ type Panel = 'root' | 'mentor-users'
 function MobileNavGlassButton({
   ariaLabel,
   children,
-  className,
+  danger,
   onClick,
 }: {
   ariaLabel: string
   children: React.ReactNode
-  className?: string
+  danger?: boolean
   onClick: () => void
 }) {
   return (
@@ -61,9 +63,11 @@ function MobileNavGlassButton({
       aria-label={ariaLabel}
       onClick={onClick}
       className={cn(
-        'ios-glass-chip nora-press-grow inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 outline-none',
-        'text-[var(--nora-text-secondary)] focus-visible:shadow-[var(--nora-shadow-focus)]',
-        className,
+        'nora-press-grow inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 outline-none',
+        'focus-visible:shadow-[var(--nora-shadow-focus)]',
+        danger
+          ? 'bg-[var(--nora-badge-red-bg)] text-[var(--nora-badge-red-text)]'
+          : 'ios-glass-glyph text-[var(--nora-text-secondary)]',
       )}
     >
       {children}
@@ -73,9 +77,11 @@ function MobileNavGlassButton({
 
 function MobileNavTileIcon({
   accent,
+  active,
   icon: Icon,
 }: {
   accent?: boolean
+  active?: boolean
   icon: LucideIcon
 }) {
   return (
@@ -84,7 +90,9 @@ function MobileNavTileIcon({
         'inline-flex size-8 items-center justify-center rounded-full',
         accent
           ? 'bg-white/20 text-white'
-          : 'ios-glass-glyph text-[var(--nora-text-secondary)]',
+          : active
+            ? 'bg-[var(--nora-tint)] text-[var(--nora-on-accent)]'
+            : 'ios-glass-glyph text-[var(--nora-text-secondary)]',
       )}
     >
       <Icon aria-hidden className="size-[18px]" strokeWidth={1.5} />
@@ -161,7 +169,7 @@ export function MobileNavFab({
         >
           <MenuIcon
             aria-hidden
-            className="size-4 text-[var(--nora-text)]"
+            className="size-4 text-[var(--nora-text-secondary)]"
             strokeWidth={1.75}
           />
         </button>
@@ -198,7 +206,7 @@ export function MobileNavFab({
               ) : (
                 <MobileNavGlassButton
                   ariaLabel="Выйти"
-                  className="text-[var(--nora-error)]"
+                  danger
                   onClick={() => {
                     setOpen(false)
                     void onLogout()
@@ -253,9 +261,14 @@ export function MobileNavFab({
                       : item.disabled
                         ? 'Скоро'
                         : undefined
+                  const active = Boolean(item.active) && !locked
                   const tileBody = (
                     <>
-                      <MobileNavTileIcon accent={item.accent} icon={item.icon} />
+                      <MobileNavTileIcon
+                        accent={item.accent}
+                        active={active}
+                        icon={item.icon}
+                      />
                       <span className="min-w-0 truncate text-[13px] font-normal leading-4 tracking-normal">
                         {item.label}
                       </span>
@@ -276,6 +289,7 @@ export function MobileNavFab({
                       ) : isMentorUsers ? (
                         <button
                           type="button"
+                          aria-current={active ? 'page' : undefined}
                           onClick={() => setPanel('mentor-users')}
                           className={mobileNavTileClass(item.accent)}
                         >
@@ -284,6 +298,7 @@ export function MobileNavFab({
                       ) : item.onSelect ? (
                         <button
                           type="button"
+                          aria-current={active ? 'page' : undefined}
                           onClick={() => {
                             setOpen(false)
                             item.onSelect?.()
@@ -295,6 +310,7 @@ export function MobileNavFab({
                       ) : (
                         <Link
                           to={item.to}
+                          aria-current={active ? 'page' : undefined}
                           onClick={() => setOpen(false)}
                           className={mobileNavTileClass(item.accent)}
                         >

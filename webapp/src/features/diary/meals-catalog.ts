@@ -9,10 +9,17 @@ import {
   partitionMealMicronutrients,
 } from '@web-app-demo/contracts'
 
+import {
+  groceryShoppingLines,
+  isCulinaryNote,
+  splitIngredientParts,
+} from '@/platform/grocery-lines'
+
 import { visibleMealAssumptions } from './ration-import'
 
 export type { MealMicronutrient }
 export { partitionMealMicronutrients }
+export { groceryShoppingLines, isCulinaryNote, splitIngredientParts }
 
 export type FoodCategory = 'Все' | 'Птица' | 'Рыба' | 'Мясо' | 'Завтрак' | 'Перекус' | 'Каша'
 export type MealSlot = 'Завтрак' | 'Обед' | 'Ужин' | 'Перекус'
@@ -58,11 +65,17 @@ export type MealEntry = {
   unread?: boolean
 }
 
+/** Catalog blobs mix product commas with notes like `в тесто` and `для подачи`. */
 function splitIngredients(ingredients: string): string[] {
-  return ingredients
-    .split(/[\n;,]+/)
-    .map((part) => part.replace(/\.$/, '').trim())
-    .filter(Boolean)
+  const lines: string[] = []
+  for (const part of splitIngredientParts(ingredients)) {
+    if (isCulinaryNote(part)) {
+      if (lines.length > 0) lines[lines.length - 1] = `${lines[lines.length - 1]}, ${part}`
+      continue
+    }
+    lines.push(part)
+  }
+  return lines
 }
 
 /** One scannable line per ingredient for meal cards. */
@@ -76,6 +89,19 @@ export function mealCompositionLines(
     if (labels.length > 0) return labels
   }
   return splitIngredients(meal.ingredients)
+}
+
+/** Unique products to buy, never culinary notes like «для подачи» or «СО». */
+export function mealGroceryLines(
+  meal: Pick<MealEntry, 'ingredients' | 'portionItems'>,
+): string[] {
+  if (meal.portionItems && meal.portionItems.length > 0) {
+    const labels = meal.portionItems
+      .map((item) => (typeof item === 'string' ? item : item.label).trim())
+      .filter((label) => label && !isCulinaryNote(label))
+    if (labels.length > 0) return labels
+  }
+  return groceryShoppingLines(meal.ingredients)
 }
 
 /** Demo portion lines with rough weights when catalog omits `portionItems`. */

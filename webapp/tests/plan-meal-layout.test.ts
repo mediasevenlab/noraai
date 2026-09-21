@@ -93,14 +93,20 @@ test('unknown meal or day leaves the plan unchanged', () => {
   expect(movePlanMeal([monday], 'a', '2026-09-09', 0)[0]?.meals[0]?.id).toBe('a')
 })
 
-test('planLayoutDayCount uses the last week slot present in the layout', () => {
+test('planLayoutDayCount uses the last week slot that still has meals', () => {
   expect(planLayoutDayCount(null, ['2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03'])).toBe(0)
   expect(
     planLayoutDayCount(
       { '2026-08-31': ['a'], '2026-09-02': [] },
       ['2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03'],
     ),
-  ).toBe(3)
+  ).toBe(1)
+  expect(
+    planLayoutDayCount(
+      { '2026-08-31': ['a'], '2026-09-01': ['b'], '2026-09-02': [] },
+      ['2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03'],
+    ),
+  ).toBe(2)
 })
 
 test('reorderPlanDays keeps calendar slots and swaps meal groups', () => {
@@ -149,9 +155,16 @@ test('plan meals board starts a hold-to-drag reorder', () => {
   expect(source).toContain('PlanMealGrid')
   expect(source).toContain('canReorder')
   expect(source).toContain('PlanMealDragHandle')
-  expect(source).toContain('Переместить')
-  expect(source).toContain('Отмена')
+  expect(source).toContain("aria-label={picking ? 'Отмена' : 'Переместить'}")
+  expect(source).toContain('MOBILE_DOCK_FAB_CLASS')
   expect(source).toContain('Приёмы перемещены')
+  expect(source).toContain('toast.info(PLAN_MEALS_MOVE_HINT')
+  expect(source).toContain('порядок.\\nНажмите карточку')
+  expect(source).toContain("id: 'plan-meals-move-hint'")
+  expect(source).toContain("className={!picking ? 'max-md:hidden' : undefined}")
+  expect(source).toContain('onPickingChange')
+  expect(source).toContain('canReorder: allowReorder')
+  expect(source).not.toContain('allowReorder && !picking')
   expect(source).toContain('movePlanMeals')
   expect(source).toContain('PLAN_MOBILE_DOCK_MOVE_ID')
   expect(source).toContain('layoutRevision')
@@ -164,6 +177,7 @@ test('plan meals board starts a hold-to-drag reorder', () => {
   expect(board).toContain('data-plan-meal-slot')
   expect(board).toContain('data-plan-day-board')
   expect(board).toContain('data-slot="plan-meal-drag"')
+  expect(board).toContain("closest('[data-slot=\"plan-meal-drag\"]')")
   expect(board).toContain('data-plan-meal-picked')
   expect(board).toContain('startDrag')
   expect(board).toContain('GripVerticalIcon')

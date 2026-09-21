@@ -1,8 +1,11 @@
 import * as React from 'react'
-import { BookmarkIcon, GraduationCapIcon, ListIcon, UserIcon } from 'lucide-react'
+import { BookmarkIcon, GraduationCapIcon, UserIcon, UtensilsIcon } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-import { productFeedToolbarRowClass } from '@/components/nora/product-sheet'
+import {
+  productFeedToolbarRowClass,
+  productToolbarSearchCollapseClass,
+} from '@/components/nora/product-sheet'
 import { ProductToolbarSearch } from '@/components/nora/toolbar-search'
 import { cn } from '@/lib/utils'
 import { isAssignedPlanId } from '@/platform/authored-plans'
@@ -25,8 +28,8 @@ const PLAN_GROUP_PLAQUE_CLASS =
   'ios-glass-glare inline-flex h-7 min-h-7 max-h-7 w-fit shrink-0 items-center gap-1 rounded-full border-0 py-0 pr-2.5 pl-2 text-[12px] font-normal leading-none backdrop-blur-[16px]'
 
 const PLAN_GROUP_PLAQUE_TONE = {
-  mine: 'bg-[var(--nora-text)] text-[var(--nora-panel)]',
-  mentor: 'bg-[var(--nora-success)] text-white',
+  mine: 'bg-[var(--nora-inset)] text-[var(--nora-text-secondary)]',
+  mentor: 'bg-[var(--nora-success-dimmed)] text-[var(--nora-success)]',
 } as const
 
 export function PlanGroupPlaque({
@@ -42,6 +45,25 @@ export function PlanGroupPlaque({
     <div className={cn(PLAN_GROUP_PLAQUE_CLASS, PLAN_GROUP_PLAQUE_TONE[tone])}>
       <Icon aria-hidden className="size-[13px]" strokeWidth={1.75} />
       {label}
+    </div>
+  )
+}
+
+export function PlanGroupHeading({
+  count,
+  icon,
+  label,
+  tone,
+}: {
+  count: number
+  icon: LucideIcon
+  label: string
+  tone: keyof typeof PLAN_GROUP_PLAQUE_TONE
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2" data-plan-group-heading="">
+      <PlanGroupPlaque icon={icon} label={label} tone={tone} />
+      <PlanGroupPlaque icon={UtensilsIcon} label={String(count)} tone={tone} />
     </div>
   )
 }
@@ -109,7 +131,7 @@ export function PlanToolbar({
   return (
     <section className="flex flex-col">
       <div className="flex w-full min-w-0 items-center pt-1">
-        <div className={cn(productFeedToolbarRowClass, searchOpen && 'max-md:overflow-hidden')}>
+        <div className={productFeedToolbarRowClass}>
           {toolbarStart}
           <button
             aria-pressed={tab === 'Избранное'}
@@ -154,13 +176,12 @@ export function PlanToolbar({
                 toolbarPillClass,
                 'nora-press-grow inline-flex shrink-0 flex-row items-center justify-center gap-1.5 whitespace-nowrap px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] [&>svg]:size-3.5',
                 'max-md:hidden max-sm:size-9 max-sm:px-0',
-                searchOpen &&
-                  'max-md:pointer-events-none max-md:max-w-0 max-md:overflow-hidden max-md:opacity-0',
+                searchOpen && productToolbarSearchCollapseClass,
               )}
               onClick={onCreate}
               type="button"
             >
-              <ListIcon aria-hidden className="size-3.5" />
+              <UtensilsIcon aria-hidden className="size-3.5" />
               <span className="hidden sm:inline">Создать рацион</span>
             </button>
           ) : null}

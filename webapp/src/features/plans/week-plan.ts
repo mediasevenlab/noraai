@@ -168,9 +168,25 @@ export function removeEmptyPlanDay(
   })
 }
 
-/** Desktop board hides empty days; mobile tabs keep padded empty days as move targets. */
+/** Desktop board hides empty days; mobile tabs keep a selected empty day as a move target. */
 export function filledPlanBoardDays(days: readonly WeekPlanDay[]) {
   return days.filter((day) => day.meals.length > 0)
+}
+
+/** Drop trailing empty padded days so the plus tab can appear in move mode. */
+export function mobilePlanDayTabs(
+  days: readonly WeekPlanDay[],
+  selectedDayKey?: string | null,
+) {
+  let last = days.length - 1
+  while (
+    last > 0 &&
+    days[last]!.meals.length === 0 &&
+    days[last]!.dayKey !== selectedDayKey
+  ) {
+    last -= 1
+  }
+  return days.slice(0, last + 1)
 }
 
 /** Always open a plan on its first day (Day 1), not “today”. */

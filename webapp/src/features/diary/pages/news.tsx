@@ -29,6 +29,7 @@ import {
   productFeedGridClass,
   productFeedPageClass,
   productFeedToolbarRowClass,
+  productToolbarSearchCollapseClass,
 } from "@/components/nora/product-sheet";
 import { ProductToolbarSearch } from "@/components/nora/toolbar-search";
 import {
@@ -1262,6 +1263,9 @@ export function NewsPage({
   );
   const feedFiltersActive =
     tab !== "Все" || Boolean(query.trim()) || periodFilter != null;
+  const showPlanChip = Boolean(
+    isOwnAccount && !readOnly && tab !== "Избранное" && selectedPlanIds.size > 0,
+  );
   const visibleMealKey = filtered.map((meal) => meal.id).join("|");
 
   React.useEffect(() => {
@@ -1421,8 +1425,6 @@ export function NewsPage({
                         className={cn(
                           diaryToolbarPillClass,
                           "nora-press-grow shrink-0 gap-1 px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-active:text-[var(--nora-text)] [&>svg]:size-3.5",
-                          searchOpen &&
-                            "max-md:pointer-events-none max-md:max-w-0 max-md:overflow-hidden max-md:opacity-0",
                         )}
                         data-active={showWholePlan || undefined}
                         data-diary-whole-plan=""
@@ -1442,6 +1444,7 @@ export function NewsPage({
                       className={cn(
                         diaryToolbarPillClass,
                         "nora-press-grow shrink-0 gap-1 px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-active:text-[var(--nora-text)] [&>svg]:size-3.5",
+                        searchOpen && showPlanChip && productToolbarSearchCollapseClass,
                       )}
                       data-active={tab === "Избранное" || undefined}
                       onClick={() => {

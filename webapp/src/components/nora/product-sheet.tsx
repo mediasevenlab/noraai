@@ -119,7 +119,10 @@ export const productFeedPageClass =
   'flex w-full min-w-0 contain-inline-size flex-col gap-3 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4 md:gap-5 md:px-10 md:py-5 lg:px-12 lg:py-6'
 
 export const productFeedToolbarRowClass =
-  'flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain py-4 -my-4 no-scrollbar'
+  'flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain py-4 -my-4 no-scrollbar max-md:-mx-3 max-md:w-[calc(100%+1.5rem)] max-md:px-3 max-md:pb-8 max-md:-mb-8 md:overflow-visible'
+
+/** Mobile: remove trailing capsules so search grows up to the first remaining chip. */
+export const productToolbarSearchCollapseClass = 'max-md:hidden'
 
 /** Diary calorie menu is the reference for toolbar selects. */
 export const productToolbarSelectContentClass =
@@ -218,7 +221,7 @@ export function ProductFeedEmpty({
                 className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]"
               />
               <div
-                className="flex items-center py-3 [&_button]:rounded-full"
+                className="flex w-full items-center py-3 [&_button]:w-full [&_button]:justify-center [&_button]:rounded-[12px]"
                 data-slot="empty-card-footer"
               >
                 {action}

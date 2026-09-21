@@ -152,6 +152,37 @@ test('mobile calorie chip hugs its number instead of a fixed 118px width', () =>
   expect(toolbar).not.toContain('ml-auto gap-0.5')
 })
 
+test('mobile search grows up to the first remaining toolbar capsule', () => {
+  expect(news).toContain('export const productToolbarSearchCollapseClass')
+  expect(news).toContain("productToolbarSearchCollapseClass = 'max-md:hidden'")
+  expect(news).toContain('searchOpen && showPlanChip && productToolbarSearchCollapseClass')
+  expect(news).toContain('const showPlanChip = Boolean(')
+  const planChip = news.slice(
+    news.indexOf('data-diary-whole-plan=""') - 400,
+    news.indexOf('data-diary-whole-plan=""'),
+  )
+  expect(planChip).not.toContain('productToolbarSearchCollapseClass')
+  expect(planChip).not.toContain('max-md:max-w-0')
+  const feed = readFileSync(
+    new URL('../src/features/diary/pages/feed.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(feed).toContain("aria-label=\"Лента\"")
+  expect(feed).toContain('searchOpen && productToolbarSearchCollapseClass')
+  const kindGroup = feed.slice(
+    feed.indexOf('aria-label="Лента"'),
+    feed.indexOf('FEED_KINDS.map'),
+  )
+  expect(kindGroup).not.toContain('productToolbarSearchCollapseClass')
+  expect(kindGroup).not.toContain('max-md:max-w-0')
+  const planToolbar = readFileSync(
+    new URL('../src/features/plans/PlanToolbar.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(planToolbar).toContain("searchOpen && 'max-md:flex-1'")
+  expect(planToolbar).toContain('searchOpen && productToolbarSearchCollapseClass')
+})
+
 test('diary search expands the trailing pill without stretching across desktop', () => {
   const search = readFileSync(
     new URL('../src/components/nora/toolbar-search.tsx', import.meta.url),
@@ -265,7 +296,10 @@ test('feed empty messages use a placeholder card instead of a shopping plaque', 
   expect(feedEmpty).toContain('data-slot="meal-card"')
   expect(feedEmpty).toContain('data-empty-card=""')
   expect(feedEmpty).toContain('data-slot="meal-card-preview"')
-  expect(feedEmpty).toContain('data-slot="empty-description"')
+  expect(feedEmpty).toContain('data-slot="empty-card-footer"')
+  expect(feedEmpty).toContain('[&_button]:w-full')
+  expect(feedEmpty).toContain('[&_button]:rounded-[12px]')
+  expect(feedEmpty).not.toContain('[&_button]:rounded-full')
   expect(feedEmpty).not.toContain('<NoraEmpty')
   expect(empty).toContain('export const noraPlaqueClass')
   expect(empty).toContain('export const noraPlaqueIconClass')
@@ -491,6 +525,7 @@ test('diary toolbar uses floating white iOS pills with a drop shadow', () => {
   expect(css).toContain('.ios-float-pill-dock')
   expect(css).toContain('0 4px 10px')
   expect(css).toContain('0 8px 20px')
+  expect(css).toContain('@media (max-width: 767px)')
   expect(css).toContain('.ios-float-pill[data-search-open]')
   expect(css).toContain('.scheme-editor-dark .ios-float-pill')
   expect(css).toContain('background: var(--nora-input-bg)')
@@ -1007,7 +1042,7 @@ test('product feeds cannot expand past the viewport', () => {
   expect(news).toContain('contain-inline-size')
   expect(news).not.toContain('overflow-x-clip')
   expect(news).toContain(
-    'overflow-x-auto overscroll-x-contain py-4 -my-4 no-scrollbar',
+    'overflow-x-auto overscroll-x-contain py-4 -my-4 no-scrollbar max-md:-mx-3 max-md:w-[calc(100%+1.5rem)] max-md:px-3 max-md:pb-8 max-md:-mb-8 md:overflow-visible',
   )
   expect(news).toContain('min-w-0 w-full grid-cols-2')
   expect(news).toContain(
@@ -1150,6 +1185,11 @@ test('own diary meals can be copied into a chosen weekly plan day', () => {
   expect(newsPage).not.toContain('appendMealToUserAuthoredRation')
   expect(newsPage).not.toContain('onSelectRation=')
   expect(picker).toContain('data-diary-plan-picker=""')
+  expect(picker).not.toContain('data-modal-frame="meal"')
+  expect(picker).toContain('h-auto max-h-[calc(100dvh-var(--modal-sheet-inset))]')
+  expect(picker).toContain('top-auto')
+  expect(picker).not.toContain('top-[var(--modal-sheet-inset)] bottom-0')
+  expect(picker).toContain('min-h-0 overflow-y-auto')
   expect(picker).toContain('data-diary-plan-select=""')
   expect(picker).toContain('lockedPlan')
   expect(picker).toContain('allowPendingCopies')

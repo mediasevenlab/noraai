@@ -114,14 +114,19 @@ function lockPageScroll(from: Element | null): ScrollLock {
 }
 
 export function PlanMealDragHandle({
+  className,
   onPointerDown,
 }: {
+  className?: string
   onPointerDown: (event: React.PointerEvent<HTMLElement>) => void
 }) {
   return (
     <NoraIconButton
       aria-label="Переставить"
-      className="nora-press-grow size-6! shrink-0 cursor-grab touch-none !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:cursor-grabbing active:!bg-transparent [&_svg]:size-4"
+      className={cn(
+        'nora-press-grow size-6! shrink-0 cursor-grab touch-none !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:cursor-grabbing active:!bg-transparent [&_svg]:size-4',
+        className,
+      )}
       data-slot="plan-meal-drag"
       onClick={(event) => {
         event.preventDefault()
@@ -341,6 +346,12 @@ export function PlanMealGrid({
             data-plan-meal-slot={index}
             key={meal.id}
             onClickCapture={(event) => {
+              if (
+                event.target instanceof Element &&
+                event.target.closest('[data-slot="plan-meal-drag"]')
+              ) {
+                return
+              }
               if (picking) {
                 event.preventDefault()
                 event.stopPropagation()

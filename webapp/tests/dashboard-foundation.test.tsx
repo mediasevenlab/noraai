@@ -101,6 +101,10 @@ test('the site header is hidden on mobile', () => {
     new URL('../src/components/dashboard/MobileNavFab.tsx', import.meta.url),
     'utf8',
   )
+  const shell = readFileSync(
+    new URL('../src/components/WorkspaceShell.tsx', import.meta.url),
+    'utf8',
+  )
   const noraUi = readFileSync(
     new URL('../src/styles/nora-ui.css', import.meta.url),
     'utf8',
@@ -118,11 +122,13 @@ test('the site header is hidden on mobile', () => {
   expect(mobileNav).toContain('ios-float-pill-dock')
   expect(mobileNav).not.toContain('ios-glass-fab')
   expect(mobileNav).toContain('aria-label="Открыть меню"')
-  expect(mobileNav).toContain('className="size-4 text-[var(--nora-text)]"')
+  expect(mobileNav).toContain('className="size-4 text-[var(--nora-text-secondary)]"')
   expect(mobileNav).toContain('bg-[var(--nora-modal)]')
   expect(mobileNav).not.toContain('ios-glass-sheet')
-  expect(mobileNav).toContain('ios-glass-chip')
+  expect(mobileNav).not.toContain('ios-glass-chip')
   expect(mobileNav).toContain('ios-glass-tile')
+  expect(mobileNav).toContain('nora-badge-red-bg')
+  expect(mobileNav).toContain('danger')
   expect(mobileNav).toContain('<ul className="flex flex-col gap-1.5">')
   expect(mobileNav).toContain('flex h-14 items-center gap-3 rounded-[14px]')
   expect(mobileNav).not.toContain('ios-glass-tile divide-y')
@@ -131,7 +137,13 @@ test('the site header is hidden on mobile', () => {
   expect(mobileNav).toContain('truncate text-[13px] font-normal leading-4')
   expect(mobileNav).toContain('ios-glass-glyph')
   expect(mobileNav).toContain('ios-glass-glyph text-[var(--nora-text-secondary)]')
+  expect(mobileNav).toContain('item.active')
+  expect(mobileNav).toContain('bg-[var(--nora-tint)] text-[var(--nora-on-accent)]')
+  expect(mobileNav).toContain("aria-current={active ? 'page' : undefined}")
   expect(mobileNav).toContain('strokeWidth={1.5}')
+  expect(shell).not.toContain("label: 'Добавить'")
+  expect(shell).not.toContain('requestAddMeal')
+  expect(shell).toContain('active: catalogOpen')
   expect(mobileNav).not.toContain('text-[28px]')
   expect(mobileNav).not.toContain('truncate text-[13px] font-semibold')
   expect(mobileNav).toContain('data-[side=bottom]:inset-x-0')

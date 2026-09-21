@@ -17,7 +17,8 @@ export function planLayoutDayCount(
   if (!layout || weekDayKeys.length === 0) return 0
   let last = -1
   for (const [index, dayKey] of weekDayKeys.entries()) {
-    if (Object.prototype.hasOwnProperty.call(layout, dayKey)) last = index
+    const ids = layout[dayKey]
+    if (ids && ids.length > 0) last = index
   }
   return last + 1
 }

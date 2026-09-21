@@ -2,7 +2,7 @@ import * as React from 'react'
 import { HeartIcon } from 'lucide-react'
 
 import { noraPageDescriptionClass, noraPageTitleClass } from '@/components/PageLayout'
-import { productFeedPageClass, productFeedToolbarRowClass, productToolbarCapsuleSelectClass, productToolbarSelectContentClass, productToolbarSelectItemClass } from '@/components/nora/product-sheet'
+import { productFeedPageClass, productFeedToolbarRowClass, productToolbarCapsuleSelectClass, productToolbarSearchCollapseClass, productToolbarSelectContentClass, productToolbarSelectItemClass } from '@/components/nora/product-sheet'
 import { NoraBadge, NoraSelect } from '@/components/nora/primitives'
 import { ProductToolbarSearch } from '@/components/nora/toolbar-search'
 import { useAuth } from '@/features/auth'
@@ -92,12 +92,7 @@ export function SharedMealsFeedPage({
               <div className={productFeedToolbarRowClass}>
                 <div
                   aria-label="Лента"
-                  className={cn(
-                    diaryToolbarPillClass,
-                    'p-1',
-                    searchOpen &&
-                      'max-md:pointer-events-none max-md:max-w-0 max-md:overflow-hidden max-md:opacity-0',
-                  )}
+                  className={cn(diaryToolbarPillClass, 'p-1')}
                   role="group"
                 >
                   {FEED_KINDS.map((option) => (
@@ -118,8 +113,7 @@ export function SharedMealsFeedPage({
                   className={cn(
                     diaryToolbarPillClass,
                     'nora-press-grow shrink-0 gap-1 px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-active:text-[var(--nora-text)] [&>svg]:size-3.5',
-                    searchOpen &&
-                      'max-md:pointer-events-none max-md:max-w-0 max-md:overflow-hidden max-md:opacity-0',
+                    searchOpen && productToolbarSearchCollapseClass,
                   )}
                   data-active={likedOnly || undefined}
                   onClick={() => setLikedOnly((current) => !current)}
@@ -142,7 +136,7 @@ export function SharedMealsFeedPage({
                     className={cn(
                       'flex h-9 max-h-9 items-center transition-[max-width,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
                       searchOpen
-                        ? 'max-md:pointer-events-none max-md:max-w-0 max-md:overflow-hidden max-md:opacity-0 max-w-[12rem] overflow-visible'
+                        ? cn(productToolbarSearchCollapseClass, 'max-w-[12rem] overflow-visible')
                         : 'max-w-[12rem] overflow-visible',
                     )}
                   >

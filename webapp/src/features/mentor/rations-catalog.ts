@@ -1,3 +1,5 @@
+import { groceryShoppingLines } from '@/platform/grocery-lines'
+
 export type RationGoal = 'Похудение' | 'Набор' | 'Поддержание' | 'Здоровье'
 
 /** Fixed category ceiling shown in the group bar — not the max of visible cards. */
@@ -38,10 +40,7 @@ export type RationEntry = {
 }
 
 export function rationIngredientItems(ingredients: string): string[] {
-  return ingredients
-    .split(/[,;]/)
-    .map((part) => part.replace(/\.$/, '').trim())
-    .filter(Boolean)
+  return groceryShoppingLines(ingredients)
 }
 
 export function rationShoppingItems(meals: readonly RationMeal[]) {

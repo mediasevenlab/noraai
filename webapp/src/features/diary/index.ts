@@ -53,7 +53,7 @@ export {
   writeSkippedPlanMealIds,
 } from './plan-occurrence'
 export type { MealEntry } from './meals-catalog'
-export { mealCompositionLines } from './meals-catalog'
+export { groceryShoppingLines, mealCompositionLines, mealGroceryLines } from './meals-catalog'
 export { mergeDemoAndApiMeals, mealDtoToEntry } from './merge-meals'
 export { useMealsQuery, useSharedMealsQuery, useSharedRationsQuery, useUserFavoritesQuery, usePlanLibraryQuery, mealsQueryKeys, favoritesQueryKeys, planLibraryQueryKeys } from './queries'
 export { createMyMeal, deleteMyMeal, setMyMealPlanDone, shareMyMeal, shareMyRation, listSharedRations, likeSharedRation } from './api'

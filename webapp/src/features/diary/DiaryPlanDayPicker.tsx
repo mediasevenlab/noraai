@@ -39,9 +39,9 @@ import type { MealEntry } from "./meals-catalog";
 import { currentWeekPlanStampId } from "./ration-import";
 
 const PLAN_DAY_PICKER_FRAME_CLASS = cn(
-  "flex flex-col gap-0 overflow-hidden bg-[var(--nora-modal)] p-0",
-  "inset-x-0 top-[var(--modal-sheet-inset)] bottom-0 h-[calc(100dvh-var(--modal-sheet-inset))] max-h-[calc(100dvh-var(--modal-sheet-inset))] w-full max-w-none translate-x-0 translate-y-0 rounded-t-[var(--modal-sheet-radius)] rounded-b-none",
-  "md:inset-auto md:top-1/2 md:left-1/2 md:h-auto md:max-h-[min(760px,calc(100vh-2rem))] md:w-[min(100%-2rem,480px)] md:max-w-[480px] md:rounded-[24px]",
+  "!flex flex-col gap-0 overflow-hidden bg-[var(--nora-modal)] p-0",
+  "inset-x-0 bottom-0 top-auto h-auto max-h-[calc(100dvh-var(--modal-sheet-inset))] w-full max-w-none translate-x-0 translate-y-0 rounded-t-[var(--modal-sheet-radius)] rounded-b-none",
+  "md:inset-auto md:top-1/2 md:left-1/2 md:bottom-auto md:h-auto md:max-h-[min(760px,calc(100vh-2rem))] md:w-[min(100%-2rem,480px)] md:max-w-[480px] md:rounded-[24px]",
 );
 
 const PLAN_DAY_ROW_CLASS = cn(
@@ -204,7 +204,6 @@ export function DiaryPlanDayPicker({
       <DialogContent
         className={PLAN_DAY_PICKER_FRAME_CLASS}
         data-diary-plan-picker=""
-        data-modal-frame="meal"
         showCloseButton={false}
       >
         {selected.length > 0 ? (
@@ -293,7 +292,7 @@ export function DiaryPlanDayPicker({
               ) : null}
               </DialogHeader>
             </div>
-            <div className="flex flex-col px-3 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3.5">
+            <div className="min-h-0 overflow-y-auto flex flex-col px-3 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3.5">
               <div className="flex flex-col gap-2.5">
                 {days.map((day) => {
                   const occupancy = diaryPlanDayOccupancy(

@@ -1,4 +1,4 @@
-import { mealCompositionLines, type MealEntry } from '@/features/diary'
+import { mealGroceryLines, type MealEntry } from '@/features/diary'
 import { readSavedIdSet, writeSavedIdSet, type SavedAccountScope } from '@/platform/saved-ids'
 
 const STORAGE_PREFIX = 'nora:plan-shopping:v1:'
@@ -23,7 +23,7 @@ export function planShoppingItems(meals: readonly MealEntry[]): PlanShoppingItem
   const seen = new Set<string>()
   const items: PlanShoppingItem[] = []
   for (const meal of meals) {
-    for (const label of mealCompositionLines(meal)) {
+    for (const label of mealGroceryLines(meal)) {
       const key = shoppingItemKey(label)
       if (seen.has(key)) continue
       seen.add(key)

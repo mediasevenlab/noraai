@@ -298,12 +298,13 @@ export function WeekPlanCard({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="account-workspace-menu min-w-44 rounded-[16px]!"
-                  side="top"
+                  className="account-workspace-menu w-max min-w-0 rounded-[16px]!"
+                  side="bottom"
                   sideOffset={6}
                 >
                   {onToggleSave ? (
                     <DropdownMenuItem
+                      className="whitespace-nowrap"
                       onClick={() => {
                         onToggleSave()
                       }}
@@ -313,6 +314,7 @@ export function WeekPlanCard({
                     </DropdownMenuItem>
                   ) : null}
                   <DropdownMenuItem
+                    className="whitespace-nowrap"
                     disabled={shareDisabled}
                     onClick={() => {
                       onShare?.()
@@ -323,6 +325,7 @@ export function WeekPlanCard({
                   </DropdownMenuItem>
                   {onDelete ? (
                     <DropdownMenuItem
+                      className="whitespace-nowrap"
                       onClick={() => {
                         onDelete()
                       }}

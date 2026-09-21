@@ -23,10 +23,11 @@ test('desktop viewports keep toasts at the bottom-right', () => {
   expect(toasterPositionForViewport(1280)).toBe('bottom-right')
 })
 
-test('mobile toasts are two-thirds wide and sit on the left', () => {
+test('mobile toasts hug their copy and cap at the screen minus side insets', () => {
   expect(sonner).toContain('position === "bottom-left"')
   expect(sonner).toContain('TOASTER_MOBILE_BOTTOM')
   expect(css).toContain(TOASTER_MOBILE_WIDTH)
+  expect(css).toContain('width: max-content !important')
   expect(css).toContain('left: 0.75rem !important')
 })
 
@@ -45,7 +46,8 @@ test('mobile toasts sit above the dock instead of covering it', () => {
     'right-4 bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]',
   )
   expect(css).toContain('min-height: 48px')
-  expect(css).toContain('height: 48px')
+  expect(css).toContain('height: auto')
+  expect(css).toContain('white-space: pre-line')
   expect(css).toContain(TOASTER_MOBILE_BOTTOM)
   expect(sonner).toContain('TOASTER_MOBILE_BOTTOM')
 })

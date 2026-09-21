@@ -1,3 +1,4 @@
+import { groceryShoppingLines } from '@/platform/grocery-lines'
 import { readSavedIdSet, writeSavedIdSet, type SavedAccountScope } from '@/platform/saved-ids'
 
 import { activityDayKey } from './day-activity-rings'
@@ -27,10 +28,7 @@ export function shoppingItemKey(label: string) {
 }
 
 export function splitShoppingLabels(ingredients: string): string[] {
-  return ingredients
-    .split(/[,;]/)
-    .map((part) => part.replace(/\.$/, '').trim())
-    .filter(Boolean)
+  return groceryShoppingLines(ingredients)
 }
 
 /** Unique grocery lines from ration-imported meals on a diary day. */

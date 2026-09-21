@@ -38,6 +38,7 @@ import {
   fileToMealImage,
   isCoverPlaceholder,
   mealPhotoOriginalSrc,
+  MEAL_COVER_STUB_SRC,
   PLAN_COVER_PLACEHOLDER_SRC,
   usableMealCover,
 } from '@/features/diary'
@@ -95,7 +96,7 @@ const EDITOR_COPY = {
     untitled: 'Новый рацион',
     editing: 'Редактировать',
     saveNew: 'Создать рацион',
-    addMeal: 'Добавить',
+    addMeal: 'Добавить день',
     overviewTab: 'Рацион',
     descriptionLabel: 'Описание',
     titlePlaceholder: 'Например, Офис без срывов',
@@ -143,6 +144,14 @@ const COVER_CHANGE_CHIP_CLASS = cn(
   'group-hover:bg-[var(--nora-text)]',
   'group-active:bg-[var(--nora-text)]',
 )
+
+function CoverChangeChip() {
+  return (
+    <span className={COVER_CHANGE_CHIP_CLASS}>
+      <ImagePlusIcon aria-hidden className="size-4" strokeWidth={1.75} />
+    </span>
+  )
+}
 const SLOT_ROW_CLASS = cn(
   'ios-glass-glare-soft flex min-h-12 items-center gap-2 rounded-[14px] px-2 py-2',
   'bg-[var(--nora-inset)]',
@@ -180,7 +189,7 @@ const MEAL_INDEX_CLASS = cn(
   'text-[var(--nora-text-secondary)]',
 )
 const FIELD_LABEL_CLASS =
-  'font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]'
+  'font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
 const SECTION_HEADING_CLASS =
   'font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
 const ADD_MEAL_CLASS = cn(
@@ -214,7 +223,7 @@ const COMPOSER_ACTION_CLASS = cn(
   'outline-none focus-visible:shadow-[var(--nora-shadow-focus)]',
 )
 const COMPOSER_FOOTER_ACTION_CLASS = cn(
-  'nora-press-grow ios-glass-glare-soft inline-flex h-10 min-h-10 max-h-10 w-full shrink-0 items-center justify-center border-0 px-4 py-0',
+  'nora-press-grow ios-glass-glare-soft inline-flex h-10 min-h-10 max-h-10 shrink-0 items-center justify-center border-0 px-4 py-0',
   'rounded-[14px]',
   'font-[family-name:var(--nora-font)] text-[13px] font-medium leading-none',
   'bg-[var(--nora-tint)] text-[var(--nora-on-accent)] hover:bg-[var(--nora-tint-dark)]',
@@ -226,12 +235,12 @@ const SECTION_DIVIDER_CLASS = 'border-t border-[var(--nora-divider)]'
 const TITLE_GOAL_ROW_CLASS = 'grid grid-cols-[minmax(0,1fr)_10.5rem] items-start gap-3'
 const HEADER_TITLE_FIELD_CLASS = cn(
   FIELD_TYPE_CLASS,
-  '!bg-[var(--nora-panel)] w-full px-3 !py-0 !h-8 !min-h-8 !max-h-8 !rounded-[10px]',
+  '!bg-[var(--nora-inset)] w-full px-3 !py-0 !h-8 !min-h-8 !max-h-8 !rounded-[10px]',
 )
 const HEADER_DESC_FIELD_CLASS = cn(
   FIELD_TYPE_CLASS,
   FIELD_CHIP_CLASS,
-  '!bg-[var(--nora-panel)] !min-h-36 w-full resize-y px-3 py-2.5 !h-auto !max-h-none',
+  '!min-h-24 w-full resize-y px-3 py-2.5 !h-auto !max-h-none',
 )
 const EDITOR_TABS_DOCK_CLASS = productSheetTabDockClass
 const MACRO_ICON_CLASS = 'size-[13px] shrink-0'
@@ -312,7 +321,6 @@ export function RationEditorDialog({
   const [busyCover, setBusyCover] = React.useState(false)
   const [coverFailed, setCoverFailed] = React.useState(false)
   const inPlanDay = planDaysEnabled && viewingDay !== null
-  const showPlanDescriptionChrome = activeTab === DESCRIPTION_TAB && !inPlanDay
   const scrollRef = React.useRef<HTMLDivElement>(null)
   const draftKey = `${open ? 'open' : 'closed'}:${draft?.id ?? 'new'}:${initialDays?.length ?? 0}`
   const [loadedDraftKey, setLoadedDraftKey] = React.useState(draftKey)
@@ -538,6 +546,58 @@ export function RationEditorDialog({
     scrollRef.current?.scrollTo({ top: 0 })
   }
 
+  const showMealTabs = !planDaysEnabled || inPlanDay
+  const mealTabsBar = showMealTabs ? (
+    <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain no-scrollbar">
+      <TabsList className="h-8 gap-1.5 bg-transparent p-0">
+        {!planDaysEnabled ? (
+          <TabsTrigger className={DESCRIPTION_TAB_CLASS} value={DESCRIPTION_TAB}>
+            <FileTextIcon className="size-[15px]" strokeWidth={1.75} />
+            {copy.overviewTab}
+          </TabsTrigger>
+        ) : null}
+        {form.meals.map((meal) => {
+          const Icon = SLOT_TAB_ICONS[meal.slot]
+          return (
+            <TabsTrigger className={MEAL_TAB_CLASS} key={meal.key} value={meal.key}>
+              <Icon className="size-[15px]" strokeWidth={1.75} />
+              {meal.slot}
+            </TabsTrigger>
+          )
+        })}
+      </TabsList>
+    </div>
+  ) : null
+  const dayFooterActions = inPlanDay ? (
+    <>
+      <button
+        aria-label="Назад"
+        className={cn(PLAN_DAY_BACK_CLASS, 'size-10')}
+        data-plan-editor-back=""
+        onClick={leaveDay}
+        type="button"
+      >
+        <ChevronLeftIcon aria-hidden className="size-4" strokeWidth={1.7} />
+      </button>
+      <button
+        className={cn(COMPOSER_FOOTER_ACTION_CLASS, 'min-w-0 flex-1')}
+        onClick={() => void handleSave()}
+        type="button"
+      >
+        {saveLabel}
+      </button>
+      <button
+        aria-label={copy.addMeal}
+        className={cn(PLAN_DAY_BACK_CLASS, 'size-10')}
+        data-plan-editor-add-meal=""
+        onClick={addMeal}
+        type="button"
+      >
+        <PlusIcon aria-hidden className="size-4" strokeWidth={1.7} />
+      </button>
+    </>
+  ) : null
+
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent
@@ -586,86 +646,6 @@ export function RationEditorDialog({
                 </div>
               </div>
               <DialogDescription className="sr-only">{headerDescription}</DialogDescription>
-              {showPlanDescriptionChrome ? (
-                <div className="grid gap-2" data-plan-editor-identity="">
-                  <label className="grid min-w-0">
-                    <button
-                      aria-label="Сменить обложку"
-                      className={cn(
-                        PLAN_EDITOR_COVER_CLASS,
-                        'group nora-press-grow !bg-[var(--nora-panel)]',
-                      )}
-                      data-plan-editor-cover=""
-                      onClick={() => coverFileRef.current?.click()}
-                      type="button"
-                    >
-                      {coverSrc ? (
-                        <>
-                          <img
-                            alt=""
-                            className={cn(
-                              'absolute inset-0 size-full',
-                              isCoverPlaceholder(shownCover)
-                                ? COVER_PLACEHOLDER_IMAGE_CLASS
-                                : 'object-cover',
-                            )}
-                            data-display={coverDisplaySrc}
-                            data-original={coverOriginalSrc}
-                            onError={(event) => {
-                              applyMealPhotoFallback(
-                                event.currentTarget,
-                                PLAN_COVER_PLACEHOLDER_SRC,
-                              )
-                              if (event.currentTarget.dataset.fallback === '2') {
-                                setCoverFailed(true)
-                              }
-                            }}
-                            src={coverDisplaySrc}
-                          />
-                          <span className={COVER_CHANGE_CHIP_CLASS}>
-                            <ImagePlusIcon aria-hidden className="size-4" strokeWidth={1.75} />
-                          </span>
-                        </>
-                      ) : (
-                        <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 font-[family-name:var(--nora-font)] text-[12px] font-light text-[var(--nora-text-tertiary)]">
-                          <CameraIcon className="size-4" />
-                          {busyCover ? 'Обложка…' : 'Обложка'}
-                        </span>
-                      )}
-                    </button>
-                    <input
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0]
-                        event.target.value = ''
-                        void onPickCover(file)
-                      }}
-                      ref={coverFileRef}
-                      type="file"
-                    />
-                  </label>
-                  <label className="grid min-w-0 gap-1">
-                    <span className={FIELD_LABEL_CLASS}>Название</span>
-                    <NoraInput
-                      className={HEADER_TITLE_FIELD_CLASS}
-                      onChange={(event) => patch({ title: event.target.value })}
-                      placeholder={copy.titlePlaceholder}
-                      value={form.title}
-                    />
-                  </label>
-                  <label className="grid min-w-0 gap-1">
-                    <span className={FIELD_LABEL_CLASS}>{copy.descriptionLabel}</span>
-                    <NoraTextarea
-                      className={HEADER_DESC_FIELD_CLASS}
-                      onChange={(event) => patch({ description: event.target.value })}
-                      placeholder={copy.descriptionPlaceholder}
-                      rows={6}
-                      value={form.description}
-                    />
-                  </label>
-                </div>
-              ) : null}
             </DialogHeader>
           </div>
         ) : (
@@ -709,6 +689,84 @@ export function RationEditorDialog({
             <div className="flex flex-col gap-4 px-3 pt-3 pb-8 sm:px-4">
               <TabsContent className="mt-0" data-ration-tab="description" value={DESCRIPTION_TAB}>
                 <div className="flex flex-col gap-4">
+                  {mode === 'plan' ? (
+                    <div className="grid gap-2" data-plan-editor-identity="">
+                      <label className="grid min-w-0">
+                        <button
+                          aria-label="Сменить обложку"
+                          className={cn(
+                            PLAN_EDITOR_COVER_CLASS,
+                            'group nora-press-grow !bg-[var(--nora-panel)]',
+                          )}
+                          data-plan-editor-cover=""
+                          onClick={() => coverFileRef.current?.click()}
+                          type="button"
+                        >
+                          {coverSrc ? (
+                            <>
+                              <img
+                                alt=""
+                                className={cn(
+                                  'absolute inset-0 size-full',
+                                  isCoverPlaceholder(shownCover)
+                                    ? COVER_PLACEHOLDER_IMAGE_CLASS
+                                    : 'object-cover',
+                                )}
+                                data-display={coverDisplaySrc}
+                                data-original={coverOriginalSrc}
+                                onError={(event) => {
+                                  applyMealPhotoFallback(
+                                    event.currentTarget,
+                                    PLAN_COVER_PLACEHOLDER_SRC,
+                                  )
+                                  if (event.currentTarget.dataset.fallback === '2') {
+                                    setCoverFailed(true)
+                                  }
+                                }}
+                                src={coverDisplaySrc}
+                              />
+                              <CoverChangeChip />
+                            </>
+                          ) : (
+                            <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 font-[family-name:var(--nora-font)] text-[12px] font-light text-[var(--nora-text-tertiary)]">
+                              <CameraIcon className="size-4" />
+                              {busyCover ? 'Обложка…' : 'Обложка'}
+                            </span>
+                          )}
+                        </button>
+                        <input
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0]
+                            event.target.value = ''
+                            void onPickCover(file)
+                          }}
+                          ref={coverFileRef}
+                          type="file"
+                        />
+                      </label>
+                      <label className="grid min-w-0 gap-1">
+                        <span className={FIELD_LABEL_CLASS}>Название</span>
+                        <NoraInput
+                          className={HEADER_TITLE_FIELD_CLASS}
+                          onChange={(event) => patch({ title: event.target.value })}
+                          placeholder={copy.titlePlaceholder}
+                          value={form.title}
+                        />
+                      </label>
+                      <label className="grid min-w-0 gap-1">
+                        <span className={FIELD_LABEL_CLASS}>{copy.descriptionLabel}</span>
+                        <NoraTextarea
+                          className={HEADER_DESC_FIELD_CLASS}
+                          onChange={(event) => patch({ description: event.target.value })}
+                          placeholder={copy.descriptionPlaceholder}
+                          rows={4}
+                          value={form.description}
+                        />
+                      </label>
+                    </div>
+                  ) : null}
                   {mode === 'ration' ? (
                     <section>
                       <p className="whitespace-pre-line font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
@@ -815,70 +873,47 @@ export function RationEditorDialog({
               )) : null}
             </div>
           </div>
-          {(!planDaysEnabled || inPlanDay) ? (
-            <div className={cn(EDITOR_TABS_DOCK_CLASS, saveInFooter && 'pb-2 sm:pb-2')}>
+          {showMealTabs && !saveInFooter ? (
+            <div className={EDITOR_TABS_DOCK_CLASS}>
               <ProductSheetTabFade />
-              <div className="flex min-w-0 items-center gap-1.5">
-                {inPlanDay ? (
-                  <button
-                    aria-label="Назад"
-                    className={PLAN_DAY_BACK_CLASS}
-                    data-plan-editor-back=""
-                    onClick={leaveDay}
-                    type="button"
-                  >
-                    <ChevronLeftIcon aria-hidden className="size-4" strokeWidth={1.7} />
-                  </button>
-                ) : null}
-                <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain no-scrollbar">
-                  <TabsList className="h-8 gap-1.5 bg-transparent p-0">
-                    {!planDaysEnabled ? (
-                      <TabsTrigger className={DESCRIPTION_TAB_CLASS} value={DESCRIPTION_TAB}>
-                        <FileTextIcon className="size-[15px]" strokeWidth={1.75} />
-                        {copy.overviewTab}
-                      </TabsTrigger>
-                    ) : null}
-                    {form.meals.map((meal) => {
-                      const Icon = SLOT_TAB_ICONS[meal.slot]
-                      return (
-                        <TabsTrigger className={MEAL_TAB_CLASS} key={meal.key} value={meal.key}>
-                          <Icon className="size-[15px]" strokeWidth={1.75} />
-                          {meal.slot}
-                        </TabsTrigger>
-                      )
-                    })}
-                  </TabsList>
-                </div>
-                {inPlanDay ? (
-                  <button
-                    className={ADD_MEAL_CLASS}
-                    data-plan-editor-add-meal=""
-                    onClick={addMeal}
-                    type="button"
-                  >
-                    <span className={ADD_MEAL_PLUS_CLASS}>
-                      <PlusIcon aria-hidden className="size-3" strokeWidth={2.25} />
-                    </span>
-                    {copy.addMeal}
-                  </button>
-                ) : null}
-              </div>
+              <div className="flex min-w-0 items-center gap-1.5">{mealTabsBar}</div>
             </div>
           ) : null}
           {saveInFooter ? (
             <div
-              className="shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3.5"
+              className={cn(
+                'relative z-10 shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3.5',
+                showMealTabs && 'pt-3.5',
+              )}
               data-plan-editor-save=""
               data-plan-outline-save={outline ? '' : undefined}
             >
-              <div aria-hidden className={SECTION_DIVIDER_CLASS} />
-              <button
-                className={cn(COMPOSER_FOOTER_ACTION_CLASS, 'mt-3')}
-                onClick={() => void handleSave()}
-                type="button"
-              >
-                {saveLabel}
-              </button>
+              {showMealTabs ? (
+                <>
+                  <ProductSheetTabFade />
+                  {mealTabsBar}
+                </>
+              ) : null}
+              <div
+                aria-hidden
+                className={cn(SECTION_DIVIDER_CLASS, showMealTabs && 'mt-3')}
+              />
+              {inPlanDay ? (
+                <div
+                  className="mt-3 flex min-w-0 items-center gap-1.5"
+                  data-plan-editor-save-row=""
+                >
+                  {dayFooterActions}
+                </div>
+              ) : (
+                <button
+                  className={cn(COMPOSER_FOOTER_ACTION_CLASS, 'mt-3 w-full')}
+                  onClick={() => void handleSave()}
+                  type="button"
+                >
+                  {saveLabel}
+                </button>
+              )}
             </div>
           ) : null}
         </Tabs>
@@ -1181,13 +1216,26 @@ function MealDraftCard({
 }) {
   const fileRef = React.useRef<HTMLInputElement>(null)
   const [busyPhoto, setBusyPhoto] = React.useState(false)
+  const [photoFailed, setPhotoFailed] = React.useState(false)
   const mealCoverSrc = displayMealCover(meal.image)
+  React.useEffect(() => {
+    setPhotoFailed(false)
+  }, [meal.image])
+  const shownMealCover = photoFailed ? MEAL_COVER_STUB_SRC : mealCoverSrc
+  const mealCoverDisplaySrc = isCoverPlaceholder(shownMealCover)
+    ? shownMealCover
+    : displayMediaSrc(shownMealCover, 'card')
+  const mealCoverOriginalSrc =
+    shownMealCover && !isCoverPlaceholder(shownMealCover)
+      ? mealPhotoOriginalSrc(shownMealCover, 'card')
+      : shownMealCover
 
   async function onPickPhoto(file: File | undefined) {
     if (!file) return
     setBusyPhoto(true)
     try {
       const image = await fileToMealImage(file)
+      setPhotoFailed(false)
       onPatch({ image: `data:${image.mime};base64,${image.base64}` })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Не удалось добавить фото')
@@ -1215,13 +1263,20 @@ function MealDraftCard({
           alt=""
           className={cn(
             'absolute inset-0 size-full',
-            isCoverPlaceholder(mealCoverSrc) ? COVER_PLACEHOLDER_IMAGE_CLASS : 'object-cover',
+            isCoverPlaceholder(shownMealCover) ? COVER_PLACEHOLDER_IMAGE_CLASS : 'object-cover',
           )}
-          src={mealCoverSrc}
+          data-display={mealCoverDisplaySrc}
+          data-original={mealCoverOriginalSrc}
+          key={meal.image || shownMealCover}
+          onError={(event) => {
+            applyMealPhotoFallback(event.currentTarget, MEAL_COVER_STUB_SRC)
+            if (event.currentTarget.dataset.fallback === '2') {
+              setPhotoFailed(true)
+            }
+          }}
+          src={mealCoverDisplaySrc}
         />
-        <span className={COVER_CHANGE_CHIP_CLASS}>
-          <ImagePlusIcon aria-hidden className="size-4" strokeWidth={1.75} />
-        </span>
+        <CoverChangeChip />
         {busyPhoto ? (
           <span className="absolute inset-0 flex items-center justify-center font-[family-name:var(--nora-font)] text-[12px] font-light text-[var(--nora-text-tertiary)]">
             Фото…
