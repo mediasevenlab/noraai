@@ -1,4 +1,5 @@
 import { mealGroceryLines, type MealEntry } from '@/features/diary'
+import { mergeGroceryShoppingLines } from '@/platform/grocery-lines'
 import { readSavedIdSet, writeSavedIdSet, type SavedAccountScope } from '@/platform/saved-ids'
 
 const STORAGE_PREFIX = 'nora:plan-shopping:v1:'
@@ -18,19 +19,16 @@ function shoppingItemKey(label: string) {
   return label.trim().toLowerCase()
 }
 
-/** Unique grocery lines from every planned meal, including authored preview cards. */
+/** Grocery lines from every planned meal, with the same product amounts summed. */
 export function planShoppingItems(meals: readonly MealEntry[]): PlanShoppingItem[] {
-  const seen = new Set<string>()
-  const items: PlanShoppingItem[] = []
+  const labels: string[] = []
   for (const meal of meals) {
-    for (const label of mealGroceryLines(meal)) {
-      const key = shoppingItemKey(label)
-      if (seen.has(key)) continue
-      seen.add(key)
-      items.push({ key, label })
-    }
+    labels.push(...mealGroceryLines(meal))
   }
-  return items
+  return mergeGroceryShoppingLines(labels).map((label) => ({
+    key: shoppingItemKey(label),
+    label,
+  }))
 }
 
 export function planShoppingDayOptions(dayCount: number) {

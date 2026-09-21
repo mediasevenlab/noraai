@@ -52,6 +52,7 @@ import {
   type MealEntry,
   type MealMacrosRevealState,
 } from '@/features/diary'
+import { noraPageDescriptionClass } from '@/components/PageLayout'
 import { cn } from '@/lib/utils'
 import { putUserFavorites } from '@/platform/account-favorites'
 import { notifyHybridFavoriteAdded } from '@/platform/hybrid-notifications'
@@ -468,7 +469,6 @@ export function CurrentPlanMeals({
       setPicking(false)
       return
     }
-    toast.info(PLAN_MEALS_MOVE_HINT, { duration: 6000, id: 'plan-meals-move-hint' })
     setPicking(true)
   }
 
@@ -589,6 +589,14 @@ export function CurrentPlanMeals({
   return (
     <>
       <div className="flex flex-col gap-3 md:hidden">
+        {picking ? (
+          <p
+            className={cn(noraPageDescriptionClass, 'max-w-none whitespace-pre-line')}
+            data-plan-move-hint=""
+          >
+            {PLAN_MEALS_MOVE_HINT}
+          </p>
+        ) : null}
         <div
           aria-label="Дни плана"
           className="no-scrollbar flex w-full gap-1.5 overflow-x-auto overscroll-x-contain"

@@ -54,13 +54,6 @@ function ShoppingHeading({ children }: { children: React.ReactNode }) {
   )
 }
 
-function shoppingDescription(title: string, dayValue: string) {
-  if (dayValue === PLAN_SHOPPING_ALL_DAYS) {
-    return `${title}. Список продуктов на весь план — отметьте, что уже купили.`
-  }
-  return `${title}. Список продуктов на ${dayValue} день — отметьте, что уже купили.`
-}
-
 export function PlanShoppingDialog({
   days,
   onOpenChange,
@@ -112,8 +105,8 @@ export function PlanShoppingDialog({
       >
         <div className="shrink-0 px-2 pt-2">
           <DialogHeader className="min-w-0 gap-1 rounded-[16px] bg-[var(--nora-inset)] p-2.5 text-left">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 flex-1 items-start gap-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-2.5">
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--nora-text)] text-[var(--nora-modal)]">
                   <ShoppingBagIcon aria-hidden className="size-4" strokeWidth={1.7} />
                 </span>
@@ -121,8 +114,8 @@ export function PlanShoppingDialog({
                   <DialogTitle className="font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 tracking-normal text-[var(--nora-text)]">
                     Корзина
                   </DialogTitle>
-                  <DialogDescription className="mt-0.5 line-clamp-2 font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
-                    {shoppingDescription(title, dayValue)}
+                  <DialogDescription className="sr-only">
+                    Список продуктов плана {title}
                   </DialogDescription>
                 </div>
               </div>
@@ -137,13 +130,17 @@ export function PlanShoppingDialog({
                 <XIcon aria-hidden className="size-3.5" strokeWidth={1.75} />
               </DialogClose>
             </div>
-            <div
-              className="mt-2.5 border-t border-[var(--nora-divider)] pt-2.5"
-              data-plan-shopping-day=""
-            >
+          </DialogHeader>
+        </div>
+        <div
+          className="min-h-0 flex-1 overflow-y-auto px-3 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3.5"
+          data-plan-shopping-list=""
+        >
+          <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-1.5" data-plan-shopping-day="">
               <ShoppingHeading>День</ShoppingHeading>
               <NoraSelect
-                className="mt-2 !h-10 !min-h-10 !max-h-10 rounded-[12px] bg-[var(--nora-panel)] px-3.5 text-[13px] font-normal leading-5"
+                className="!h-10 !min-h-10 !max-h-10 rounded-[12px] bg-[var(--nora-inset)] px-3.5 text-[13px] font-normal leading-5"
                 contentClassName={productToolbarSelectContentClass}
                 itemClassName={productToolbarSelectItemClass}
                 items={dayOptions}
@@ -155,13 +152,6 @@ export function PlanShoppingDialog({
                 value={dayValue}
               />
             </div>
-          </DialogHeader>
-        </div>
-        <div
-          className="min-h-0 flex-1 overflow-y-auto px-3 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3.5"
-          data-plan-shopping-list=""
-        >
-          <div className="flex flex-col gap-2.5">
             <div
               className="flex items-center justify-between gap-2"
               data-plan-shopping-products=""

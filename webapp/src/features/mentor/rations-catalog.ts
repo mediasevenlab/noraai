@@ -1,4 +1,4 @@
-import { groceryShoppingLines } from '@/platform/grocery-lines'
+import { groceryShoppingLines, mergeGroceryShoppingLines } from '@/platform/grocery-lines'
 
 export type RationGoal = 'Похудение' | 'Набор' | 'Поддержание' | 'Здоровье'
 
@@ -44,17 +44,11 @@ export function rationIngredientItems(ingredients: string): string[] {
 }
 
 export function rationShoppingItems(meals: readonly RationMeal[]) {
-  const seen = new Set<string>()
-  const items: string[] = []
+  const labels: string[] = []
   for (const meal of meals) {
-    for (const label of rationIngredientItems(meal.ingredients)) {
-      const key = label.toLowerCase()
-      if (seen.has(key)) continue
-      seen.add(key)
-      items.push(label)
-    }
+    labels.push(...rationIngredientItems(meal.ingredients))
   }
-  return items
+  return mergeGroceryShoppingLines(labels)
 }
 
 export function rationMealImages(ration: Pick<RationEntry, 'meals'>) {

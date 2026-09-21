@@ -70,7 +70,7 @@ const buttonVariants: Record<NoraButtonVariant, string> = {
   default:
     "bg-[var(--nora-button-bg)] text-[var(--nora-button-text)] hover:bg-[var(--nora-button-bg-hover)]",
   primary:
-    "bg-[var(--nora-tint)] text-[var(--nora-on-accent)] hover:bg-[var(--nora-tint-dark)]",
+    "bg-[var(--nora-tint)] text-[var(--nora-on-accent)] hover:bg-[var(--nora-tint-dark)] hover:text-[var(--nora-on-accent)]",
   component:
     "bg-[var(--nora-component)] text-[var(--nora-on-accent)] hover:bg-[var(--nora-component-hover)]",
   destructive:

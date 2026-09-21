@@ -19,7 +19,7 @@ import {
   type RationEntry,
 } from '@/features/mentor'
 import type { PlanGoal } from '@/platform/authored-plans'
-import { addLocalDays, PLAN_SLOT_COUNT } from '@/platform/plan-slots'
+import { addLocalDays, PLAN_SLOT_COUNT, startOfLocalDay } from '@/platform/plan-slots'
 
 import type { CatalogPlan } from './plan-catalog'
 
@@ -46,11 +46,16 @@ function formatPlanRangeDay(date: Date) {
   return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
+/** Inclusive local range of a plan that starts on `start` and lasts `dayCount` days. */
+export function planRangeFromStart(start: Date, dayCount: number) {
+  const from = startOfLocalDay(start)
+  return { from, to: addLocalDays(from, Math.max(1, dayCount) - 1) }
+}
+
 /** Selected-plan cover badge: `07.09 - 15.09`. */
 export function formatPlanActiveRange(start: Date, dayCount: number) {
-  const days = Math.max(1, dayCount)
-  const end = addLocalDays(start, days - 1)
-  return `${formatPlanRangeDay(start)} - ${formatPlanRangeDay(end)}`
+  const { from, to } = planRangeFromStart(start, dayCount)
+  return `${formatPlanRangeDay(from)} - ${formatPlanRangeDay(to)}`
 }
 
 export type WeekPlanDay = {

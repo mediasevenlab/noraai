@@ -11,6 +11,7 @@ import {
   DropletIcon,
   FileTextIcon,
   FlameIcon,
+  GripVerticalIcon,
   MoonIcon,
   PlusIcon,
   Trash2Icon,
@@ -48,6 +49,8 @@ import {
   productSheetOverlayChipClass,
   productSheetTabDockClass,
   productSheetTabTriggerDarkClass,
+  productToolbarSelectContentClass,
+  productToolbarSelectItemClass,
 } from '@/components/nora/product-sheet'
 import { cn } from '@/lib/utils'
 
@@ -178,10 +181,6 @@ const PLAN_DAY_BACK_CLASS = cn(
   'nora-press-grow flex size-8 shrink-0 items-center justify-center rounded-full',
   'bg-[var(--nora-inset)] text-[var(--nora-text-secondary)]',
 )
-const PLAN_DAY_MOVE_CLASS = cn(
-  'nora-press-grow inline-flex size-8 items-center justify-center text-[var(--nora-text-secondary)]',
-  'disabled:pointer-events-none disabled:opacity-30',
-)
 const MEAL_INDEX_CLASS = cn(
   'inline-flex size-8 shrink-0 items-center justify-center rounded-full',
   FIELD_FACE_CLASS,
@@ -247,6 +246,11 @@ const MACRO_ICON_CLASS = 'size-[13px] shrink-0'
 const DESCRIPTION_TAB = 'description'
 
 const SLOT_ITEMS = RATION_MEAL_SLOTS.map((slot) => ({ value: slot, label: slot }))
+const SLOT_SELECT_CLASS = cn(
+  FIELD_TYPE_CLASS,
+  FIELD_FACE_CLASS,
+  '!h-8 !min-h-8 !max-h-8 w-[8.5rem] !rounded-full !px-2.5',
+)
 const GOAL_ITEMS = RATION_GOALS.map((goal) => ({ value: goal, label: goal }))
 const SLOT_TAB_ICONS = {
   Завтрак: CoffeeIcon,
@@ -267,6 +271,10 @@ function isGoal(value: string): value is RationGoal {
 
 function isSlot(value: string): value is RationMealSlot {
   return (RATION_MEAL_SLOTS as readonly string[]).includes(value)
+}
+
+function withColon(label: string) {
+  return label.endsWith(':') ? label : `${label}:`
 }
 
 function planEditorHeaderDescription(mealTitles: readonly string[], hint: string) {
@@ -368,14 +376,13 @@ export function RationEditorDialog({
   const editing = Boolean(form.id)
   const saveLabel = editing ? 'Сохранить' : copy.saveNew
   const activeMealIndex = form.meals.findIndex((meal) => meal.key === activeTab)
+  const activeMeal = activeMealIndex >= 0 ? form.meals[activeMealIndex] : undefined
   const headerTitle =
     viewingDay === null
       ? editing
         ? copy.editing
         : copy.untitled
-      : activeMealIndex >= 0
-        ? `День ${viewingDay + 1} · Приём ${activeMealIndex + 1}`
-        : `День ${viewingDay + 1}`
+      : `Приём ${Math.max(activeMealIndex, 0) + 1}`
   const headerDescription =
     mode === 'plan'
       ? planEditorHeaderDescription(
@@ -529,16 +536,40 @@ export function RationEditorDialog({
     setForm((current) => ({ ...current, meals: next[Math.max(0, nextActive)] ?? current.meals }))
   }
 
-  function moveDay(fromIndex: number, direction: -1 | 1) {
-    const toIndex = fromIndex + direction
+  function moveDay(fromIndex: number, toIndex: number) {
     const synced = currentDays()
-    if (toIndex < 0 || toIndex >= synced.length) return
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= synced.length ||
+      toIndex >= synced.length
+    ) {
+      return
+    }
     const next = reorderPlanDraftDays(synced, fromIndex, toIndex)
     setDayDrafts(next)
     const nextActive =
-      activeDay === fromIndex ? toIndex : activeDay === toIndex ? fromIndex : activeDay
+      activeDay === fromIndex
+        ? toIndex
+        : fromIndex < toIndex && activeDay > fromIndex && activeDay <= toIndex
+          ? activeDay - 1
+          : fromIndex > toIndex && activeDay >= toIndex && activeDay < fromIndex
+            ? activeDay + 1
+            : activeDay
     setActiveDay(nextActive)
     setForm((current) => ({ ...current, meals: next[nextActive] ?? current.meals }))
+    if (viewingDay !== null) {
+      setViewingDay(
+        viewingDay === fromIndex
+          ? toIndex
+          : fromIndex < toIndex && viewingDay > fromIndex && viewingDay <= toIndex
+            ? viewingDay - 1
+            : fromIndex > toIndex && viewingDay >= toIndex && viewingDay < fromIndex
+              ? viewingDay + 1
+              : viewingDay,
+      )
+    }
   }
 
   function changeTab(value: string) {
@@ -612,17 +643,34 @@ export function RationEditorDialog({
               className="min-w-0 gap-2 rounded-[16px] bg-[var(--nora-inset)] p-2.5 text-left"
               data-plan-editor-header=""
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--nora-text)] text-[var(--nora-panel)]">
-                    <CalendarDaysIcon aria-hidden className="size-4" strokeWidth={1.7} />
+                  <span className={PLAN_DAY_INDEX_CLASS}>
+                    {viewingDay !== null ? viewingDay + 1 : (
+                      <CalendarDaysIcon aria-hidden className="size-4" strokeWidth={1.7} />
+                    )}
                   </span>
                   <DialogTitle className="min-w-0 truncate font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 tracking-normal text-[var(--nora-text)]">
                     {headerTitle}
                   </DialogTitle>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
-                  {onDelete && form.id ? (
+                  {inPlanDay && activeMeal ? (
+                    <div className="shrink-0" data-plan-editor-header-slot="">
+                      <NoraSelect
+                        className={SLOT_SELECT_CLASS}
+                        contentClassName={productToolbarSelectContentClass}
+                        itemClassName={productToolbarSelectItemClass}
+                        items={[...SLOT_ITEMS]}
+                        modal
+                        onValueChange={(value) => {
+                          if (value && isSlot(value)) patchMeal(activeMeal.key, { slot: value })
+                        }}
+                        value={activeMeal.slot}
+                      />
+                    </div>
+                  ) : null}
+                  {!inPlanDay && onDelete && form.id ? (
                     <button
                       className="nora-press-grow inline-flex h-8 items-center rounded-full px-2.5 font-[family-name:var(--nora-font)] text-[13px] font-normal text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]"
                       onClick={() => {
@@ -633,16 +681,33 @@ export function RationEditorDialog({
                       Удалить
                     </button>
                   ) : null}
-                  <DialogClose
-                    aria-label="Закрыть"
-                    className={cn(
-                      productSheetOverlayChipClass,
-                      'nora-press-grow size-8 shrink-0 bg-[var(--nora-panel)] sm:size-8',
-                      'hover:text-[var(--nora-text)] focus-visible:shadow-[var(--nora-shadow-focus)]',
-                    )}
-                  >
-                    <XIcon aria-hidden className="size-3.5" strokeWidth={1.75} />
-                  </DialogClose>
+                  {inPlanDay && activeMeal ? (
+                    <button
+                      aria-label="Удалить приём"
+                      className={cn(
+                        productSheetOverlayChipClass,
+                        MEAL_TRASH_CLASS,
+                        'nora-press-grow size-8 shrink-0 bg-[var(--nora-panel)] sm:size-8',
+                      )}
+                      data-plan-editor-header-remove=""
+                      disabled={form.meals.length <= 1}
+                      onClick={() => removeMeal(activeMeal.key)}
+                      type="button"
+                    >
+                      <Trash2Icon aria-hidden className="size-3.5" />
+                    </button>
+                  ) : (
+                    <DialogClose
+                      aria-label="Закрыть"
+                      className={cn(
+                        productSheetOverlayChipClass,
+                        'nora-press-grow size-8 shrink-0 bg-[var(--nora-panel)] sm:size-8',
+                        'hover:text-[var(--nora-text)] focus-visible:shadow-[var(--nora-shadow-focus)]',
+                      )}
+                    >
+                      <XIcon aria-hidden className="size-3.5" strokeWidth={1.75} />
+                    </DialogClose>
+                  )}
                 </div>
               </div>
               <DialogDescription className="sr-only">{headerDescription}</DialogDescription>
@@ -747,7 +812,7 @@ export function RationEditorDialog({
                         />
                       </label>
                       <label className="grid min-w-0 gap-1">
-                        <span className={FIELD_LABEL_CLASS}>Название</span>
+                        <span className={FIELD_LABEL_CLASS}>{withColon('Название')}</span>
                         <NoraInput
                           className={HEADER_TITLE_FIELD_CLASS}
                           onChange={(event) => patch({ title: event.target.value })}
@@ -756,7 +821,7 @@ export function RationEditorDialog({
                         />
                       </label>
                       <label className="grid min-w-0 gap-1">
-                        <span className={FIELD_LABEL_CLASS}>{copy.descriptionLabel}</span>
+                        <span className={FIELD_LABEL_CLASS}>{withColon(copy.descriptionLabel)}</span>
                         <NoraTextarea
                           className={HEADER_DESC_FIELD_CLASS}
                           onChange={(event) => patch({ description: event.target.value })}
@@ -781,7 +846,7 @@ export function RationEditorDialog({
                   {showGoal ? (
                     <div className={TITLE_GOAL_ROW_CLASS}>
                       <label className="grid min-w-0 gap-1.5">
-                        <span className={FIELD_LABEL_CLASS}>Название</span>
+                        <span className={FIELD_LABEL_CLASS}>{withColon('Название')}</span>
                         <NoraInput
                           className={TITLE_FIELD_CLASS}
                           onChange={(event) => patch({ title: event.target.value })}
@@ -790,10 +855,13 @@ export function RationEditorDialog({
                         />
                       </label>
                       <label className="grid min-w-0 gap-1.5">
-                        <span className={FIELD_LABEL_CLASS}>Цель</span>
+                        <span className={FIELD_LABEL_CLASS}>{withColon('Цель')}</span>
                         <NoraSelect
                           className={GOAL_FIELD_CLASS}
+                          contentClassName={productToolbarSelectContentClass}
+                          itemClassName={productToolbarSelectItemClass}
                           items={[...GOAL_ITEMS]}
+                          modal
                           onValueChange={(value) => {
                             if (value && isGoal(value)) patch({ goal: value })
                           }}
@@ -804,7 +872,7 @@ export function RationEditorDialog({
                   ) : null}
                   {mode === 'ration' ? (
                     <label className="grid gap-1.5">
-                      <span className={FIELD_LABEL_CLASS}>{copy.descriptionLabel}</span>
+                      <span className={FIELD_LABEL_CLASS}>{withColon(copy.descriptionLabel)}</span>
                       <NoraTextarea
                         className={cn(FIELD_CLASS, 'min-h-16 px-3 py-2.5')}
                         onChange={(event) => patch({ description: event.target.value })}
@@ -866,7 +934,12 @@ export function RationEditorDialog({
                       index={index}
                       meal={meal}
                       onPatch={(next) => patchMeal(meal.key, next)}
-                      onRemove={form.meals.length > 1 ? () => removeMeal(meal.key) : undefined}
+                      onRemove={
+                        !inPlanDay && form.meals.length > 1
+                          ? () => removeMeal(meal.key)
+                          : undefined
+                      }
+                      slotChrome={!inPlanDay}
                     />
                   </div>
                 </TabsContent>
@@ -939,23 +1012,66 @@ function PlanDayPlaqueList({
 }: {
   days: readonly RationMealDraft[][]
   onAdd: () => void
-  onMove: (index: number, direction: -1 | 1) => void
+  onMove: (fromIndex: number, toIndex: number) => void
   onOpen: (index: number) => void
   onRemove: (index: number) => void
 }) {
+  const dragIndexRef = React.useRef<number | null>(null)
+  const [draggingIndex, setDraggingIndex] = React.useState<number | null>(null)
+
+  function finishDrag() {
+    dragIndexRef.current = null
+    setDraggingIndex(null)
+  }
+
+  function hoverReorder(clientX: number, clientY: number) {
+    const fromIndex = dragIndexRef.current
+    if (fromIndex == null) return
+    const node = document.elementFromPoint(clientX, clientY)?.closest('[data-plan-editor-day]')
+    const toValue = node?.getAttribute('data-plan-editor-day')
+    if (toValue == null) return
+    const toIndex = Number(toValue)
+    if (!Number.isFinite(toIndex) || toIndex === fromIndex) return
+    onMove(fromIndex, toIndex)
+    dragIndexRef.current = toIndex
+    setDraggingIndex(toIndex)
+  }
+
   return (
     <div className="grid gap-2" data-plan-editor-days="">
+      <p className={SECTION_HEADING_CLASS}>{withColon('Добавленные дни')}</p>
       {days.map((day, index) => {
         const mealCount = titledDraftMeals(day).length
         const empty = mealCount === 0
         return (
           <div
-            className={PLAN_DAY_ROW_CLASS}
+            className={cn(PLAN_DAY_ROW_CLASS, draggingIndex === index && 'opacity-70')}
             data-plan-editor-day={String(index)}
             data-plan-editor-day-empty={empty ? '' : undefined}
             data-plan-editor-day-meals={String(mealCount)}
             key={`plan-day-${index}`}
+            onPointerCancel={finishDrag}
+            onPointerDown={(event) => {
+              if (event.button !== 0) return
+              const target = event.target as HTMLElement
+              if (!target.closest('[data-plan-editor-day-drag]')) return
+              dragIndexRef.current = index
+              setDraggingIndex(index)
+              event.currentTarget.setPointerCapture(event.pointerId)
+            }}
+            onPointerMove={(event) => {
+              if (dragIndexRef.current != null) hoverReorder(event.clientX, event.clientY)
+            }}
+            onPointerUp={finishDrag}
           >
+            <span
+              aria-label={`Переставить день ${index + 1}`}
+              className="inline-flex size-8 shrink-0 cursor-grab touch-none items-center justify-center text-[var(--nora-text-secondary)] active:cursor-grabbing"
+              data-plan-editor-day-drag=""
+              role="img"
+            >
+              <GripVerticalIcon aria-hidden className="size-4" strokeWidth={1.75} />
+            </span>
             <button
               aria-label={`Открыть день ${index + 1}, ${planDayMealsLabel(mealCount)}`}
               className="nora-press-grow flex min-w-0 flex-1 items-center gap-3 text-left outline-none"
@@ -976,26 +1092,6 @@ function PlanDayPlaqueList({
               >
                 {mealCount}
               </span>
-            </button>
-            <button
-              aria-label={`День ${index + 1} выше`}
-              className={PLAN_DAY_MOVE_CLASS}
-              data-plan-editor-day-up={String(index)}
-              disabled={index === 0}
-              onClick={() => onMove(index, -1)}
-              type="button"
-            >
-              <ChevronUpIcon aria-hidden className="size-4" />
-            </button>
-            <button
-              aria-label={`День ${index + 1} ниже`}
-              className={PLAN_DAY_MOVE_CLASS}
-              data-plan-editor-day-down={String(index)}
-              disabled={index === days.length - 1}
-              onClick={() => onMove(index, 1)}
-              type="button"
-            >
-              <ChevronDownIcon aria-hidden className="size-4" />
             </button>
             <button
               aria-label={`Удалить день ${index + 1}`}
@@ -1046,7 +1142,7 @@ function MealsSectionHeading({
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <p className={cn(SECTION_HEADING_CLASS, 'min-w-0 truncate')}>{heading}</p>
+      <p className={cn(SECTION_HEADING_CLASS, 'min-w-0 truncate')}>{withColon(heading)}</p>
       <div className="flex min-w-0 shrink-0 items-center gap-1.5">
         <button className={ADD_MEAL_CLASS} onClick={onAdd} type="button">
           <span className={ADD_MEAL_PLUS_CLASS}>
@@ -1090,12 +1186,11 @@ function MealSlotToolbar({
         {index + 1}
       </span>
       <NoraSelect
-        className={cn(
-          FIELD_TYPE_CLASS,
-          FIELD_FACE_CLASS,
-          '!h-8 !min-h-8 !max-h-8 w-[8.5rem] !rounded-full !px-2.5',
-        )}
+        className={SLOT_SELECT_CLASS}
+        contentClassName={productToolbarSelectContentClass}
+        itemClassName={productToolbarSelectItemClass}
         items={[...SLOT_ITEMS]}
+        modal
         onValueChange={(value) => {
           if (value && isSlot(value)) onPatch({ slot: value })
         }}
@@ -1208,11 +1303,13 @@ function MealDraftCard({
   index,
   onPatch,
   onRemove,
+  slotChrome = true,
 }: {
   meal: RationMealDraft
   index: number
   onPatch: (next: Partial<RationMealDraft>) => void
   onRemove?: () => void
+  slotChrome?: boolean
 }) {
   const fileRef = React.useRef<HTMLInputElement>(null)
   const [busyPhoto, setBusyPhoto] = React.useState(false)
@@ -1246,12 +1343,14 @@ function MealDraftCard({
 
   return (
     <section className="flex flex-col gap-1.5">
-      <MealSlotToolbar
-        index={index}
-        meal={meal}
-        onPatch={onPatch}
-        onRemove={onRemove}
-      />
+      {slotChrome ? (
+        <MealSlotToolbar
+          index={index}
+          meal={meal}
+          onPatch={onPatch}
+          onRemove={onRemove}
+        />
+      ) : null}
       <button
         aria-label="Сменить фото"
         className={cn(MEAL_COVER_BUTTON_CLASS, 'group nora-press-grow !bg-[var(--nora-panel)]')}
@@ -1294,25 +1393,31 @@ function MealDraftCard({
         ref={fileRef}
         type="file"
       />
-      <div className={SLOT_ROW_CLASS}>
-        <NoraInput
-          className={LINE_INPUT_CLASS}
-          onChange={(event) => onPatch({ title: event.target.value })}
-          placeholder="Название блюда"
-          value={meal.title}
-        />
-      </div>
-      <div className="grid grid-cols-4 gap-1.5">
-        {MACRO_FIELDS.map((field) => (
-          <MacroField
-            ariaLabel={field.ariaLabel}
-            icon={field.icon}
-            key={field.key}
-            label={field.label}
-            onChange={(value) => onPatch({ [field.key]: value })}
-            value={meal[field.key]}
+      <div className="grid gap-1.5">
+        <p className={FIELD_LABEL_CLASS}>{withColon('Название')}</p>
+        <div className={SLOT_ROW_CLASS}>
+          <NoraInput
+            className={LINE_INPUT_CLASS}
+            onChange={(event) => onPatch({ title: event.target.value })}
+            placeholder="Название блюда"
+            value={meal.title}
           />
-        ))}
+        </div>
+      </div>
+      <div className="grid gap-1.5">
+        <p className={FIELD_LABEL_CLASS}>{withColon('Ценность')}</p>
+        <div className="grid grid-cols-4 gap-1.5">
+          {MACRO_FIELDS.map((field) => (
+            <MacroField
+              ariaLabel={field.ariaLabel}
+              icon={field.icon}
+              key={field.key}
+              label={field.label}
+              onChange={(value) => onPatch({ [field.key]: value })}
+              value={meal[field.key]}
+            />
+          ))}
+        </div>
       </div>
       <div className="grid gap-4">
         <DraftLineList
@@ -1353,7 +1458,7 @@ function DraftLineList({
 }) {
   return (
     <div className="grid gap-2" data-draft-line-list={label}>
-      <p className={SECTION_HEADING_CLASS}>{label}</p>
+      <p className={SECTION_HEADING_CLASS}>{withColon(label)}</p>
       {items.map((item, index) => (
         <div className="flex items-center gap-2" key={`${label}-${index}`}>
           <div className={cn(SLOT_ROW_CLASS, 'min-w-0 flex-1')}>

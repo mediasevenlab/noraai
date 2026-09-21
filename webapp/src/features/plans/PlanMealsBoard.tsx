@@ -299,7 +299,12 @@ export function usePlanMealDrag({
       event.preventDefault()
       return
     }
-    if (event.target instanceof Element && event.target.closest('[data-slot="plan-meal-drag"]')) {
+    if (
+      event.target instanceof Element &&
+      event.target.closest(
+        '[data-slot="plan-meal-drag"], [data-slot="meal-card-footer"]',
+      )
+    ) {
       return
     }
     onOpen()
@@ -348,7 +353,9 @@ export function PlanMealGrid({
             onClickCapture={(event) => {
               if (
                 event.target instanceof Element &&
-                event.target.closest('[data-slot="plan-meal-drag"]')
+                event.target.closest(
+                  '[data-slot="plan-meal-drag"], [data-slot="meal-card-footer"]',
+                )
               ) {
                 return
               }

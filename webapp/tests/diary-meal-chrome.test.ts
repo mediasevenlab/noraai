@@ -2,6 +2,10 @@ import { expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 
 import { formatDailyCalorieChip, formatDailyCalories } from '../src/features/diary/diary-feed'
+import {
+  periodPickerActions,
+  visibleMonthsForBounds,
+} from '../src/features/diary/DiaryPeriodPicker'
 
 function readJoined(paths: readonly string[]) {
   return paths
@@ -238,10 +242,102 @@ test('mobile calendar is an icon button without the period label', () => {
   )
   expect(picker).toContain('diaryToolbarIconButtonClass')
   expect(picker).toContain('aria-label={`Период: ${label}`}')
-  expect(picker).toContain('numberOfMonths={2}')
-  expect(picker).not.toContain('numberOfMonths={1}')
   expect(picker).not.toContain('max-md:hidden')
   expect(picker).not.toContain('{label}</span>')
+})
+
+test('mobile period calendar opens as a stacked two-month window', () => {
+  const picker = readFileSync(
+    new URL('../src/features/diary/DiaryPeriodPicker.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(picker).toContain('data-diary-period-dialog=""')
+  expect(picker).toContain('data-diary-period-calendar="top"')
+  expect(picker).toContain('data-diary-period-calendar="bottom"')
+  expect(picker).not.toContain('data-modal-frame="diary-period"')
+  expect(picker).toContain("'md:hidden'")
+  expect(picker).toContain("'hidden md:inline-flex'")
+  expect(picker).toContain('numberOfMonths={1}')
+  expect(picker).toContain('density="sheet"')
+  expect(picker).toContain('density="popover"')
+  expect(picker).toContain('data-diary-period-calendar="left"')
+  expect(picker).toContain('data-diary-period-calendar="right"')
+  expect(picker).toContain('data-diary-period-desktop=""')
+  expect(picker).toContain('h-[var(--nora-control-h)]')
+  expect(picker).toContain('mt-2 grid grid-cols-2 gap-1.5')
+  expect(picker).toContain('onMonthChange={onMonthChange}')
+  expect(picker).toContain('setVisibleMonths')
+  expect(picker).toContain('visibleMonthsForBounds')
+  expect(picker).toContain('periodPickerActions')
+  expect(picker).toContain('data-diary-period-actions=""')
+  expect(picker).toContain('data-diary-period-divider=""')
+  expect(picker).toContain('Сбросить')
+  expect(picker).toContain('Сохранить')
+  expect(picker).toContain('variant="primary"')
+  expect(picker).toContain('productCardFooterCtaClass')
+  expect(picker).toContain('RotateCcwIcon')
+  expect(picker).toContain('!h-10 !min-h-10 !max-h-10')
+  expect(picker).toContain('mt-3 grid grid-cols-2 gap-2')
+  expect(picker).toContain('border-t border-[var(--nora-divider)]')
+  expect(picker).toContain("'flex h-8 w-full items-center justify-center px-10'")
+  expect(picker).toContain('h-auto')
+  expect(picker).toContain('top-auto')
+  expect(picker).toContain('!pb-0')
+  expect(picker).not.toContain('max-w-[22rem]')
+  expect(picker).toContain("'relative flex w-full flex-col'")
+  expect(picker).not.toContain("'relative flex flex-row gap-4'")
+  expect(picker).toContain('[--cell-size:2.25rem]')
+  expect(picker).toContain('[--cell-radius:14px]')
+  expect(picker).toContain('rounded-full')
+  expect(picker).toContain('rdp-button_previous')
+  expect(picker).toContain('rdp-button_next')
+  expect(picker).toContain('PopoverContent')
+})
+
+test('period picker save and reset follow draft versus the full diary', () => {
+  const defaultRange = {
+    from: new Date(2026, 6, 28),
+    to: new Date(2026, 8, 21),
+  }
+  const custom = {
+    from: new Date(2026, 7, 1),
+    to: new Date(2026, 7, 10),
+  }
+  const other = {
+    from: new Date(2026, 8, 1),
+    to: new Date(2026, 8, 11),
+  }
+
+  expect(
+    periodPickerActions({ applied: null, defaultRange, draft: undefined }),
+  ).toEqual({ saveEnabled: false, resetEnabled: false })
+  expect(
+    periodPickerActions({ applied: null, defaultRange, draft: defaultRange }),
+  ).toEqual({ saveEnabled: false, resetEnabled: false })
+  expect(
+    periodPickerActions({ applied: null, defaultRange, draft: custom }),
+  ).toEqual({ saveEnabled: true, resetEnabled: true })
+  expect(
+    periodPickerActions({
+      applied: null,
+      defaultRange,
+      draft: { from: custom.from },
+    }),
+  ).toEqual({ saveEnabled: false, resetEnabled: true })
+  expect(
+    periodPickerActions({ applied: custom, defaultRange, draft: custom }),
+  ).toEqual({ saveEnabled: false, resetEnabled: true })
+  expect(
+    periodPickerActions({ applied: custom, defaultRange, draft: other }),
+  ).toEqual({ saveEnabled: true, resetEnabled: true })
+  expect(
+    periodPickerActions({ applied: custom, defaultRange, draft: defaultRange }),
+  ).toEqual({ saveEnabled: false, resetEnabled: true })
+
+  expect(visibleMonthsForBounds(defaultRange.from, defaultRange.to)).toEqual({
+    top: new Date(2026, 6, 1),
+    bottom: new Date(2026, 8, 1),
+  })
 })
 
 test('desktop add button stays inside the diary toolbar row', () => {
@@ -636,7 +732,8 @@ test('meal dialog buttons share frost and top glare', () => {
   expect(news).toContain('MEAL_MODAL_CHIP_CLASS')
   expect(news).toContain('ios-glass-glare-soft rounded-full border-0')
   expect(news).toContain('MEAL_DETAIL_TAB_CLASS')
-  expect(news).toContain('!bg-[var(--nora-input-bg)]/72')
+  expect(news).toContain('!bg-[var(--nora-inset)]')
+  expect(news).not.toContain('!bg-[var(--nora-input-bg)]/72')
   expect(news).not.toContain("!bg-[color-mix(in_srgb,var(--nora-text)_12%,var(--nora-input-bg))]")
   expect(news).toContain('ios-glass-glare-soft h-8 min-h-8 max-h-8')
   expect(news).toContain('MEAL_COMPOSER_FIELD_CLASS')
@@ -1042,8 +1139,9 @@ test('product feeds cannot expand past the viewport', () => {
   expect(news).toContain('contain-inline-size')
   expect(news).not.toContain('overflow-x-clip')
   expect(news).toContain(
-    'overflow-x-auto overscroll-x-contain py-4 -my-4 no-scrollbar max-md:-mx-3 max-md:w-[calc(100%+1.5rem)] max-md:px-3 max-md:pb-8 max-md:-mb-8 md:overflow-visible',
+    'overflow-x-auto overscroll-x-contain py-4 -my-4 no-scrollbar max-md:-mx-3 max-md:w-[calc(100%+1.5rem)] max-md:px-3 md:overflow-visible',
   )
+  expect(news).not.toContain('max-md:pb-8 max-md:-mb-8')
   expect(news).toContain('min-w-0 w-full grid-cols-2')
   expect(news).toContain(
     "'group flex h-full min-w-0 cursor-pointer flex-col transition-[filter] duration-700 ease-out motion-reduce:duration-0'",
@@ -1153,10 +1251,12 @@ test('own diary meals can be copied into a chosen weekly plan day', () => {
   expect(newsPage).toContain('diaryMealsFreshForPlanDay(')
   expect(newsPage).toContain('data-diary-day-pick')
   expect(newsPage).toContain('DIARY_MOBILE_DOCK_MOVE_ID')
-  expect(newsPage).toContain('Добавить в план')
+  expect(newsPage).toContain('В рацион')
+  expect(newsPage).not.toContain('Добавить в план')
   expect(newsPage).not.toContain('Запланировать')
   expect(newsPage).not.toContain('Переместить')
-  expect(newsPage).toContain('ListIcon')
+  expect(newsPage).toContain('PlusIcon')
+  expect(newsPage).not.toContain('ListIcon')
   expect(newsPage).not.toContain('ArrowLeftRightIcon')
   expect(newsPage).toContain('ios-float-pill')
   expect(newsPage).toContain('disabled:!text-[var(--nora-text-tertiary)]')
@@ -1307,7 +1407,8 @@ test('diary pick-mode add-to-plan chip is blue when meals are selected', () => {
     new URL('../src/features/diary/pages/news.tsx', import.meta.url),
     'utf8',
   )
-  expect(newsPage).toContain('Добавить в план')
+  expect(newsPage).toContain('В рацион')
+  expect(newsPage).not.toContain('Добавить в план')
   expect(newsPage).not.toContain('Запланировать')
   expect(newsPage).toContain('const DAY_PLAN_CHIP_CLASS =')
   expect(newsPage).not.toContain('const DAY_PAST_CHIP_CLASS =')

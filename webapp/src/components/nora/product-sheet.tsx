@@ -38,13 +38,13 @@ export const productSheetEditorFrameClass = cn(
 )
 
 export const productSheetTabTriggerClass = cn(
-  'nora-press-grow ios-glass-glare-soft h-8 min-h-8 max-h-8 flex-none gap-1.5 rounded-full border-0 py-0 pr-3 pl-2.5 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] backdrop-blur-[16px]',
-  '!bg-[var(--nora-input-bg)]/72 hover:!bg-[var(--nora-input-bg)]',
+  'nora-press-grow ios-glass-glare-soft h-8 min-h-8 max-h-8 flex-none gap-1.5 rounded-full border-0 py-0 pr-3 pl-2.5 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)]',
+  '!bg-[var(--nora-inset)] hover:!bg-[color-mix(in_srgb,var(--nora-inset)_88%,var(--nora-text)_6%)]',
   'data-active:!bg-[var(--nora-input-bg)] data-active:font-normal data-active:text-[var(--nora-text)]',
   'data-active:hover:!bg-[var(--nora-input-bg)]',
 )
 
-/** Selected section tab — dark pill when active, frost when idle. */
+/** Selected section tab — dark pill when active, solid inset well when idle. */
 export const productSheetTabTriggerDarkClass = cn(
   productSheetTabTriggerClass,
   '[&_svg]:text-current',
@@ -119,7 +119,7 @@ export const productFeedPageClass =
   'flex w-full min-w-0 contain-inline-size flex-col gap-3 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4 md:gap-5 md:px-10 md:py-5 lg:px-12 lg:py-6'
 
 export const productFeedToolbarRowClass =
-  'flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain py-4 -my-4 no-scrollbar max-md:-mx-3 max-md:w-[calc(100%+1.5rem)] max-md:px-3 max-md:pb-8 max-md:-mb-8 md:overflow-visible'
+  'flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain py-4 -my-4 no-scrollbar max-md:-mx-3 max-md:w-[calc(100%+1.5rem)] max-md:px-3 md:overflow-visible'
 
 /** Mobile: remove trailing capsules so search grows up to the first remaining chip. */
 export const productToolbarSearchCollapseClass = 'max-md:hidden'

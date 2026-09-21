@@ -30,6 +30,7 @@ import {
   currentWeekPlanId,
   defaultPlanDayKey,
   formatPlanActiveRange,
+  planRangeFromStart,
   filledPlanBoardDays,
   mobilePlanDayTabs,
   nextPlanDayCount,
@@ -95,6 +96,22 @@ describe('current week plan', () => {
     expect(formatPlanActiveRange(new Date(2026, 8, 7), 1)).toBe('07.09 - 07.09')
     expect(formatPlanActiveRange(new Date(2026, 8, 28), 6)).toBe('28.09 - 03.10')
     expect(formatPlanActiveRange(new Date(2026, 8, 7), 0)).toBe('07.09 - 07.09')
+  })
+
+  test('plan range from start covers the full day count', () => {
+    const start = new Date(2026, 8, 21)
+    expect(planRangeFromStart(start, 1)).toEqual({
+      from: new Date(2026, 8, 21),
+      to: new Date(2026, 8, 21),
+    })
+    expect(planRangeFromStart(start, 7)).toEqual({
+      from: new Date(2026, 8, 21),
+      to: new Date(2026, 8, 27),
+    })
+    expect(planRangeFromStart(start, 0)).toEqual({
+      from: new Date(2026, 8, 21),
+      to: new Date(2026, 8, 21),
+    })
   })
 
   test('collects ration days added this week and ignores meals outside it', () => {
@@ -398,6 +415,7 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(source).toContain('PlanSummaryPlaque')
   expect(source).toContain('daysCountLabel(plan.days.length)')
   expect(source).toContain('{plan.kcal} ккал')
+  expect(source).toContain('data-plan-cover-kcal=""')
   expect(source).toContain('mealsCountAria(plan.mealsCount)')
   expect(source).toContain('{plan.mealsCount}')
   expect(source).toContain('data-plan-summary=""')
@@ -433,7 +451,6 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(source).toContain('averageMealsPerDayLabel(plan.mealsCount, plan.days.length)')
   expect(source).not.toContain('Текущий план')
   expect(source).toContain('{activeRange}')
-  expect(source).toContain("'md:hidden'")
   expect(source).toContain('max-md:hidden')
   expect(source).toContain('productCardGoalAnchorClass')
   expect(source).toContain('fromMentor')
@@ -499,13 +516,14 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(shell).not.toContain('<NoraBadge variant="blue">{badge}</NoraBadge>')
   expect(shell).toContain("fact.label !== 'Цель'")
   const coverBadge = source.slice(
-    source.indexOf('productCardGoalAnchorClass'),
+    source.indexOf("cn(productCardGoalAnchorClass"),
     source.indexOf('absolute inset-x-0 bottom-0'),
   )
-  expect(coverBadge).toContain('{plan.kcal} ккал')
   expect(coverBadge).toContain('{activeRange}')
+  expect(coverBadge).toContain('{!selected ? (')
+  expect(coverBadge).toContain('{plan.kcal} ккал')
+  expect(coverBadge).toContain('data-plan-cover-kcal=""')
   expect(coverBadge).not.toContain('Текущий план')
-  expect(coverBadge).toContain('md:hidden')
   expect(coverBadge).not.toContain('{plan.days.length}')
   const coverCopy = source.slice(
     source.indexOf('absolute inset-x-0 bottom-0'),
@@ -518,9 +536,9 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(coverCopy).toContain('bg-gradient-to-t from-black/62 to-transparent')
   expect(source).not.toContain('PLAN_COVER_FADE_BLUR_CLASS')
   expect(coverCopy).toContain('averageMealsPerDayLabel(plan.mealsCount, plan.days.length)')
+  expect(coverCopy).not.toContain('{plan.kcal} ккал')
   expect(coverCopy).not.toContain('daysCountLabel(plan.days.length)')
   expect(coverCopy).not.toContain('mealsCountLabel(plan.mealsCount)')
-  expect(coverCopy).not.toContain('{plan.kcal} ккал')
   expect(source).toContain('WEEK_PLAN_CARD_SLOTS')
   expect(source).toContain('h-[204px]')
   expect(source).toContain('md:h-[224px]')
@@ -550,11 +568,16 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(shopping).toContain('куплено')
   expect(shopping).toContain('productSheetOverlayChipClass')
   expect(shopping).toContain('data-plan-shopping-day=""')
+  expect(shopping.indexOf('data-plan-shopping-list=""')).toBeLessThan(
+    shopping.indexOf('data-plan-shopping-day=""'),
+  )
   expect(shopping).toContain('planShoppingDayOptions(days.length)')
   expect(shopping).toContain('NoraSelect')
   expect(shopping).toContain('Все дни')
-  expect(shopping).toContain('bg-[var(--nora-inset)] text-[var(--nora-text-secondary)]')
-  expect(shopping).not.toContain('Куплено')
+  expect(shopping).toContain('sr-only')
+  expect(shopping).toContain('Список продуктов плана {title}')
+  expect(shopping).not.toContain('shoppingDescription')
+  expect(shopping).not.toContain('отметьте, что уже купили')
   const startDialog = readFileSync(
     new URL('../src/features/plans/PlanStartDialog.tsx', import.meta.url),
     'utf8',
@@ -562,7 +585,18 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(startDialog).toContain('rounded-[16px] bg-[var(--nora-inset)]')
   expect(startDialog).toContain('CalendarDaysIcon')
   expect(startDialog).toContain('data-plan-start-calendar=""')
-  expect(startDialog).toContain('[--cell-size:2.5rem]')
+  expect(startDialog).toContain('data-plan-start-dialog=""')
+  expect(startDialog).toContain('[--cell-size:2.25rem]')
+  expect(startDialog).toContain('mode="range"')
+  expect(startDialog).toContain('numberOfMonths={1}')
+  expect(startDialog).toContain('planRangeFromStart')
+  expect(startDialog).toContain('h-auto')
+  expect(startDialog).toContain('!pb-0')
+  expect(startDialog).toContain('data-plan-start-divider=""')
+  expect(startDialog).toContain('!h-10 !min-h-10 !max-h-10')
+  expect(startDialog).toContain('sr-only')
+  expect(startDialog).not.toContain('data-modal-frame')
+  expect(startDialog).not.toContain('День 1 начнётся')
   expect(startDialog).toContain('text-[var(--nora-text-tertiary)]')
   expect(startDialog).not.toContain('text-[13px] font-light leading-5 text-[var(--nora-text-secondary)]')
   expect(source).toContain('h-10 min-h-10')
@@ -611,6 +645,7 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(toolbar).toContain('PlanGroupHeading')
   expect(page).toContain('partitionPlanCards(')
   expect(page).toContain('PlanStartDialog')
+  expect(page).toContain('dayCount={Math.max(')
   expect(page).toContain('void selectPlan(plan.id)')
   expect(page).toContain('Добавить в мои')
   expect(page).toContain('addCatalogToMine')
@@ -638,6 +673,7 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('PLAN_MOBILE_DOCK_EDIT_ID')
   expect(page).toContain('data-plan-outline-open=""')
   expect(page).toContain('disabled={movingMeals}')
+  expect(page).toContain("'disabled:opacity-100'")
   expect(page).toContain('onPickingChange={setMovingMeals}')
   expect(page).toContain('canEdit')
   expect(page).toContain('writePlanOutline')
@@ -926,6 +962,10 @@ test('current plan lays meals under a diary-sized day badge', () => {
   expect(source).toContain('ArrowLeftRightIcon')
   expect(source).toContain('XIcon')
   expect(source).toContain('PLAN_MEALS_MOVE_HINT')
+  expect(source).toContain('data-plan-move-hint=""')
+  expect(source).toContain('noraPageDescriptionClass')
+  expect(source).not.toContain('toast.info(PLAN_MEALS_MOVE_HINT')
+  expect(source).not.toContain("id: 'plan-meals-move-hint'")
   expect(source).toContain("className={!picking ? 'max-md:hidden' : undefined}")
   expect(source).toContain('onPickingChange')
     expect(source).toContain('orderBadge')
@@ -995,6 +1035,29 @@ test('plan shopping drops catalog garnish notes from grocery rows', () => {
     'Масло сливочное – 50 г',
   ])
   expect(items.some((item) => /для подачи|в тесто|^со$|72/i.test(item.label))).toBe(false)
+})
+
+test('plan shopping sums the same product across meals and days', () => {
+  const monday = new Date(2026, 7, 31)
+  const tuesday = new Date(2026, 8, 1)
+  expect(
+    planShoppingItems([
+      mealOn(monday, {
+        id: 'flour-1',
+        title: 'Сырники',
+        ingredients: 'Мука – 30 г, Творог – 1 кг',
+        assumptions: [],
+        fromApi: false,
+      }),
+      mealOn(tuesday, {
+        id: 'flour-2',
+        title: 'Пирог',
+        ingredients: 'Мука – 400 г, Сахар – 70 г',
+        assumptions: [],
+        fromApi: false,
+      }),
+    ]).map((item) => item.label),
+  ).toEqual(['Мука – 430 г', 'Творог – 1 кг', 'Сахар – 70 г'])
 })
 
 test('plan shopping lists unique groceries from every planned meal', () => {

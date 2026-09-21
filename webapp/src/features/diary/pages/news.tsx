@@ -10,7 +10,7 @@ import {
   ChartNoAxesCombinedIcon,
   FlameIcon,
   LayersIcon,
-  ListIcon,
+  PlusIcon,
   SearchIcon,
   ShoppingBagIcon,
   UtensilsIcon,
@@ -202,7 +202,7 @@ function FeedAddToPlanChip({
       onClick={onMove}
       type="button"
     >
-      <ListIcon
+      <PlusIcon
         aria-hidden
         className={cn(
           "size-[13px]",
@@ -212,7 +212,7 @@ function FeedAddToPlanChip({
         )}
         strokeWidth={1.75}
       />
-      Добавить в план
+      В рацион
     </button>
   );
 }
@@ -1881,7 +1881,7 @@ export function NewsPage({
               onClick={openBulkPlanPicker}
               type="button"
             >
-              <ListIcon
+              <PlusIcon
                 aria-hidden
                 className={
                   pickedIds.size === 0
@@ -1890,7 +1890,7 @@ export function NewsPage({
                 }
                 strokeWidth={1.75}
               />
-              Добавить в план
+              В рацион
             </button>,
             dockMove,
           )

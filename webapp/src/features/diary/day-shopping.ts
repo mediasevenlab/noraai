@@ -1,4 +1,4 @@
-import { groceryShoppingLines } from '@/platform/grocery-lines'
+import { groceryShoppingLines, mergeGroceryShoppingLines } from '@/platform/grocery-lines'
 import { readSavedIdSet, writeSavedIdSet, type SavedAccountScope } from '@/platform/saved-ids'
 
 import { activityDayKey } from './day-activity-rings'
@@ -31,22 +31,20 @@ export function splitShoppingLabels(ingredients: string): string[] {
   return groceryShoppingLines(ingredients)
 }
 
-/** Unique grocery lines from ration-imported meals on a diary day. */
+/** Grocery lines from ration-imported meals on a diary day, with amounts summed. */
 export function dayShoppingItems(
   meals: readonly DayShoppingMeal[],
   limit?: number,
 ): DayShoppingItem[] {
-  const seen = new Set<string>()
-  const items: DayShoppingItem[] = []
+  const labels: string[] = []
   for (const meal of meals) {
     if (!isRationImportedMeal(meal)) continue
-    for (const label of splitShoppingLabels(meal.ingredients)) {
-      const key = shoppingItemKey(label)
-      if (seen.has(key)) continue
-      seen.add(key)
-      items.push({ key, label })
-    }
+    labels.push(...splitShoppingLabels(meal.ingredients))
   }
+  const items = mergeGroceryShoppingLines(labels).map((label) => ({
+    key: shoppingItemKey(label),
+    label,
+  }))
   if (limit != null && limit >= 0) return items.slice(0, limit)
   return items
 }

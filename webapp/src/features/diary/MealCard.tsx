@@ -833,6 +833,7 @@ export function MealCard({
               <NoraIconButton
                 aria-label={onAddToPlan ? 'В план' : onAddToDiary ? 'В дневник' : 'В план'}
                 className={MEAL_CARD_FOOTER_PLUS_CLASS}
+                data-slot="meal-card-add"
                 disabled={
                   onAddToPlan ? addingToPlan : onAddToDiary ? addingToDiary : true
                 }
@@ -841,6 +842,8 @@ export function MealCard({
                   if (onAddToPlan) onAddToPlan()
                   else onAddToDiary?.()
                 }}
+                onPointerDown={(event) => event.stopPropagation()}
+                onPointerUp={(event) => event.stopPropagation()}
               >
                 <PlusIcon className="size-4" />
               </NoraIconButton>
@@ -861,11 +864,14 @@ export function MealCard({
               <NoraIconButton
                 aria-label="В план"
                 className={MEAL_CARD_FOOTER_PLUS_CLASS}
+                data-slot="meal-card-add"
                 disabled={readOnly || !onAddToPlan || addingToPlan}
                 onClick={(event) => {
                   event.stopPropagation()
                   onAddToPlan?.()
                 }}
+                onPointerDown={(event) => event.stopPropagation()}
+                onPointerUp={(event) => event.stopPropagation()}
               >
                 <PlusIcon className="size-4" />
               </NoraIconButton>

@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { NoraButton } from '@/components/nora/primitives'
+import { cn } from '@/lib/utils'
 import {
   ProductFeedEmpty,
   ProductFeedSkeletonSlots,
@@ -588,6 +589,11 @@ export function PlanPage({
         ownerId={savedScope.userId}
       />
       <PlanStartDialog
+        dayCount={Math.max(
+          1,
+          startPickerPlan?.days.length ?? 0,
+          authored.find((item) => item.id === startPickerPlanId)?.dayCount ?? 0,
+        )}
         initialDate={
           (startPickerPlanId ? readPlanStartDate(savedScope, startPickerPlanId) : null) ?? new Date()
         }
@@ -976,7 +982,7 @@ export function CurrentPlanPage({
   ) : null
   const mobileEditButton = canEdit ? (
     <button
-      className={MOBILE_DOCK_PILL_CLASS}
+      className={cn(MOBILE_DOCK_PILL_CLASS, 'disabled:opacity-100')}
       data-plan-outline-open=""
       disabled={movingMeals}
       onClick={() => openEditor()}
