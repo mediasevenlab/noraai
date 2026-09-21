@@ -118,8 +118,9 @@ export function ProductSheetTabFade() {
 export const productFeedPageClass =
   'flex w-full min-w-0 contain-inline-size flex-col gap-3 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4 md:gap-5 md:px-10 md:py-5 lg:px-12 lg:py-6'
 
+/** Horizontal scroller. `py-8 -my-8` unclips the mobile 8/20 pill shadow without changing layout. */
 export const productFeedToolbarRowClass =
-  'flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain py-4 -my-4 no-scrollbar max-md:-mx-3 max-md:w-[calc(100%+1.5rem)] max-md:px-3 md:overflow-visible'
+  'pointer-events-none flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain py-8 -my-8 no-scrollbar max-md:-mx-3 max-md:w-[calc(100%+1.5rem)] max-md:px-3 md:overflow-visible [&>*]:pointer-events-auto'
 
 /** Mobile: remove trailing capsules so search grows up to the first remaining chip. */
 export const productToolbarSearchCollapseClass = 'max-md:hidden'

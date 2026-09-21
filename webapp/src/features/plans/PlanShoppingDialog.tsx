@@ -135,8 +135,7 @@ export function PlanShoppingDialog({
           data-plan-shopping-list=""
         >
           <div className="flex flex-col gap-2.5">
-            <div className="flex flex-col gap-1.5" data-plan-shopping-day="">
-              <ShoppingHeading>День</ShoppingHeading>
+            <div data-plan-shopping-day="">
               <div
                 aria-label="Дни корзины"
                 className="no-scrollbar flex w-full gap-1.5 overflow-x-auto overscroll-x-contain"

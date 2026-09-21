@@ -10,7 +10,7 @@ import {
   productCardFooterCtaClass,
   productSheetOverlayChipClass,
 } from '@/components/nora/product-sheet'
-import { Calendar } from '@/components/ui/calendar'
+import { Calendar, noraSheetCalendarClass } from '@/components/ui/calendar'
 import {
   Dialog,
   DialogClose,
@@ -107,12 +107,23 @@ export function sameLocalRange(
   )
 }
 
-/** Top month of the diary start, bottom month of today (or the saved bounds). */
+/** Top month is the previous month when the range lives in one month (so two calendars are never the same). */
 export function visibleMonthsForBounds(from: Date, to: Date) {
-  return {
-    top: startOfLocalMonth(from),
-    bottom: startOfLocalMonth(to),
+  const start = startOfLocalMonth(from)
+  const end = startOfLocalMonth(to)
+  if (start.getTime() === end.getTime()) {
+    return {
+      top: new Date(start.getFullYear(), start.getMonth() - 1, 1),
+      bottom: start,
+    }
   }
+  if (start.getTime() > end.getTime()) {
+    return {
+      top: new Date(end.getFullYear(), end.getMonth() - 1, 1),
+      bottom: end,
+    }
+  }
+  return { top: start, bottom: end }
 }
 
 export function periodPickerActions({
@@ -208,11 +219,8 @@ function PeriodCalendar({
       month={month}
       onMonthChange={onMonthChange}
       selected={range}
-      className={
-        sheet
-          ? 'w-full bg-transparent p-0 [--cell-radius:14px] [--cell-size:2.25rem]'
-          : 'bg-transparent p-0'
-      }
+      className={sheet ? noraSheetCalendarClass : 'bg-transparent p-0'}
+      compactDays={sheet}
       classNames={{
         months: 'relative flex w-full flex-col',
         root: sheet ? 'w-full' : 'w-fit',
@@ -457,16 +465,16 @@ export function DiaryPeriodPicker({
         >
           <div className="shrink-0 px-2 pt-2">
             <DialogHeader className="min-w-0 gap-1 rounded-[16px] bg-[var(--nora-inset)] p-2.5 text-left">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 flex-1 items-start gap-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--nora-text)] text-[var(--nora-modal)]">
                     <CalendarDaysIcon aria-hidden className="size-4" strokeWidth={1.7} />
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <DialogTitle className="font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 tracking-normal text-[var(--nora-text)]">
+                  <div className="flex min-w-0 flex-1 items-baseline gap-2">
+                    <DialogTitle className="shrink-0 font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 tracking-normal text-[var(--nora-text)]">
                       Период
                     </DialogTitle>
-                    <DialogDescription className="mt-0.5 line-clamp-2 font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
+                    <DialogDescription className="min-w-0 truncate font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
                       {periodLabel(pickerRange)}
                     </DialogDescription>
                   </div>

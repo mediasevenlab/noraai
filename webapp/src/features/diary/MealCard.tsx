@@ -37,6 +37,7 @@ import {
   mealCardOrigin,
 } from './ration-import'
 import { mealCarouselImages } from './merge-meals'
+import type { DiaryCardLayout } from './diary-card-layout'
 import { mealCompositionLines, type MealEntry } from './meals-catalog'
 import {
   MEAL_DIALOG_HERO_FRAME_CLASS,
@@ -49,9 +50,11 @@ import type { MealRevealMacroKey } from './meal-card-reveal'
 
 const MEAL_CARD_FOOTER_DIVIDER_CLASS =
   'border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]'
-const MEAL_CARD_FOOTER_CLASS = 'flex items-center justify-between gap-2 py-3'
+const MEAL_CARD_FOOTER_CLASS = 'flex items-center justify-between gap-2 py-2.5'
 const MEAL_CARD_FOOTER_PLUS_CLASS =
   'nora-press-grow size-6! shrink-0 rounded-full! bg-[var(--nora-input-bg)] text-[var(--nora-text-secondary)] shadow-none hover:bg-[color-mix(in_srgb,var(--nora-input-bg)_82%,var(--nora-text)_10%)] hover:text-[var(--nora-text)] active:bg-[color-mix(in_srgb,var(--nora-input-bg)_75%,var(--nora-text)_12%)] [&_svg]:size-4'
+const MEAL_CARD_FOOTER_PLUS_LABEL_CLASS =
+  'nora-press-grow inline-flex h-6 shrink-0 items-center gap-0.5 rounded-full bg-[var(--nora-input-bg)] py-0 pl-1.5 pr-2 font-[family-name:var(--nora-font)] text-[11px] font-normal leading-none text-[var(--nora-text-secondary)] shadow-none hover:bg-[color-mix(in_srgb,var(--nora-input-bg)_82%,var(--nora-text)_10%)] hover:text-[var(--nora-text)] active:bg-[color-mix(in_srgb,var(--nora-input-bg)_75%,var(--nora-text)_12%)]'
 const FEED_AUTHOR_CHIP_CLASS = cn(
   'ios-glass-glare-soft inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border-0 py-1 pr-2.5 pl-1',
   productSheetFrostFillClass,
@@ -65,7 +68,7 @@ function MacrosLine({ meal, className }: { meal: MealEntry; className?: string }
         className,
       )}
     >
-      <span className="font-medium text-[var(--nora-text)]">
+      <span className="font-normal text-[var(--nora-text)]">
         {meal.kcal} ккал
       </span>
       {' · Б: '}
@@ -420,6 +423,57 @@ export function Cover({
   )
 }
 
+function MealCardAddButton({
+  labeled,
+  label,
+  disabled,
+  onAdd,
+}: {
+  labeled?: boolean
+  label: string
+  disabled?: boolean
+  onAdd?: () => void
+}) {
+  const stopClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+    onAdd?.()
+  }
+  const stopPointer = (event: React.PointerEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+  }
+
+  return (
+    <>
+      <NoraIconButton
+        aria-label={label}
+        className={cn(MEAL_CARD_FOOTER_PLUS_CLASS, labeled && 'max-md:hidden')}
+        data-slot="meal-card-add"
+        disabled={disabled}
+        onClick={stopClick}
+        onPointerDown={stopPointer}
+        onPointerUp={stopPointer}
+      >
+        <PlusIcon className="size-4" />
+      </NoraIconButton>
+      {labeled ? (
+        <button
+          aria-label={label}
+          className={cn(MEAL_CARD_FOOTER_PLUS_LABEL_CLASS, 'md:hidden')}
+          data-slot="meal-card-add"
+          disabled={disabled}
+          onClick={stopClick}
+          onPointerDown={stopPointer}
+          onPointerUp={stopPointer}
+          type="button"
+        >
+          <PlusIcon aria-hidden className="size-3.5" strokeWidth={2} />
+          {label}
+        </button>
+      ) : null}
+    </>
+  )
+}
+
 function CardActions({
   saved,
   shared,
@@ -603,6 +657,7 @@ export function MealCard({
   readOnly = false,
   showPlanState = true,
   variant = 'diary',
+  layout = 'grid',
   unread = false,
   className,
   onOpen,
@@ -631,6 +686,7 @@ export function MealCard({
   readOnly?: boolean
   showPlanState?: boolean
   variant?: 'diary' | 'feed'
+  layout?: DiaryCardLayout
   unread?: boolean
   className?: string
   hideFooterShare?: boolean
@@ -665,6 +721,7 @@ export function MealCard({
   const done = showPlanState && isRationPlanDone(meal, completedIds)
   const logged = showPlanState && mealCanShareToFeed(meal)
   const origin = mealCardOrigin(meal)
+  const list = layout === 'list'
   const canShare = (mealCanShareToFeed(meal) || Boolean(meal.shared)) && !readOnly
   const titlePress = usePressWithoutScroll(onOpen)
   const [unreadMarkMounted, setUnreadMarkMounted] = React.useState(unread)
@@ -682,9 +739,11 @@ export function MealCard({
     <article
       className={cn(
         'group flex h-full min-w-0 cursor-pointer flex-col transition-[filter] duration-700 ease-out motion-reduce:duration-0',
+        list && 'max-md:flex-row max-md:items-stretch',
         grayscale && 'grayscale',
         className,
       )}
+      data-card-layout={layout}
       data-card-origin={origin}
       data-from-ration={fromRation ? '' : undefined}
       data-ration-done={done ? '' : undefined}
@@ -694,9 +753,17 @@ export function MealCard({
       data-slot="meal-card"
       onPointerDown={() => prefetchMealPhoto((images && images[0]) || meal.image)}
     >
-      <div className="relative shrink-0 px-2 pt-2">
+      <div
+        className={cn(
+          'relative shrink-0 px-2 pt-2',
+          list && 'max-md:flex max-md:self-stretch max-md:p-2',
+        )}
+      >
         <div
-          className="relative block w-full outline-none focus-visible:shadow-[var(--nora-shadow-focus)]"
+          className={cn(
+            'relative block w-full outline-none focus-visible:shadow-[var(--nora-shadow-focus)]',
+            list && 'max-md:aspect-square max-md:h-full',
+          )}
           data-slot="meal-card-preview"
         >
           <Cover
@@ -707,6 +774,7 @@ export function MealCard({
             className={cn(
               'shadow-[inset_0_0_0_1px_var(--nora-border)]',
               pending && RATION_PENDING_COVER_CLASS,
+              list && 'max-md:aspect-square max-md:h-full max-md:max-h-none',
             )}
           />
           {unreadMarkMounted || unread ? (
@@ -790,7 +858,12 @@ export function MealCard({
           </button>
         )}
       </div>
-      <div className="flex flex-1 flex-col px-3 pt-3 sm:px-4 sm:pt-3.5">
+      <div
+        className={cn(
+          'flex flex-1 flex-col px-3 pt-3 sm:px-4 sm:pt-3.5',
+          list && 'max-md:min-w-0 max-md:px-3 max-md:pt-2 max-md:pb-0',
+        )}
+      >
         <button
           className="min-w-0 cursor-pointer text-left outline-none focus-visible:rounded focus-visible:shadow-[var(--nora-shadow-focus)]"
           data-haptic="card"
@@ -808,9 +881,14 @@ export function MealCard({
               {meal.title}
             </h3>
           </div>
-          <ul className="mt-2 mb-2 h-[3.75rem] shrink-0 overflow-clip font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
+          <ul
+            className={cn(
+              'mt-2 mb-2 h-[3.75rem] shrink-0 overflow-clip font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]',
+              list && 'max-md:mt-1 max-md:mb-1 max-md:h-10',
+            )}
+          >
             {mealCompositionLines(meal)
-              .slice(0, 3)
+              .slice(0, list ? 2 : 3)
               .map((line, index) => (
               <li className="flex min-w-0 items-baseline gap-1.5" key={`${index}:${line}`}>
                 <span aria-hidden className="shrink-0">
@@ -822,7 +900,7 @@ export function MealCard({
           </ul>
           <MacrosLine className="shrink-0" meal={meal} />
         </button>
-        <div className="mt-auto pt-3">
+        <div className="mt-auto pt-2.5">
         <div aria-hidden className={MEAL_CARD_FOOTER_DIVIDER_CLASS} />
         <div
           className={MEAL_CARD_FOOTER_CLASS}
@@ -830,23 +908,13 @@ export function MealCard({
         >
           {variant === 'feed' ? (
             <>
-              <NoraIconButton
-                aria-label={onAddToPlan ? 'В план' : onAddToDiary ? 'В дневник' : 'В план'}
-                className={MEAL_CARD_FOOTER_PLUS_CLASS}
-                data-slot="meal-card-add"
+              <MealCardAddButton
                 disabled={
                   onAddToPlan ? addingToPlan : onAddToDiary ? addingToDiary : true
                 }
-                onClick={(event) => {
-                  event.stopPropagation()
-                  if (onAddToPlan) onAddToPlan()
-                  else onAddToDiary?.()
-                }}
-                onPointerDown={(event) => event.stopPropagation()}
-                onPointerUp={(event) => event.stopPropagation()}
-              >
-                <PlusIcon className="size-4" />
-              </NoraIconButton>
+                label={onAddToPlan ? 'В план' : onAddToDiary ? 'В дневник' : 'В план'}
+                onAdd={onAddToPlan ?? onAddToDiary}
+              />
               <div className="ml-auto flex items-center gap-1">
                 {onToggleLike ? (
                   <MealLikeButton
@@ -861,20 +929,12 @@ export function MealCard({
           ) : (
             <>
               {footerStart}
-              <NoraIconButton
-                aria-label="В план"
-                className={MEAL_CARD_FOOTER_PLUS_CLASS}
-                data-slot="meal-card-add"
+              <MealCardAddButton
                 disabled={readOnly || !onAddToPlan || addingToPlan}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onAddToPlan?.()
-                }}
-                onPointerDown={(event) => event.stopPropagation()}
-                onPointerUp={(event) => event.stopPropagation()}
-              >
-                <PlusIcon className="size-4" />
-              </NoraIconButton>
+                label={list ? 'В рацион' : 'В план'}
+                labeled={list}
+                onAdd={onAddToPlan}
+              />
               <div className="ml-auto flex items-center gap-1">
                 <CardActions
                   canShare={canShare}
@@ -895,20 +955,42 @@ export function MealCard({
   )
 }
 
-export function SkeletonMealCard() {
+export function SkeletonMealCard({
+  layout = 'grid',
+}: {
+  layout?: DiaryCardLayout
+} = {}) {
+  const list = layout === 'list'
   return (
     <article
       aria-label="Черновик записи"
-      className="flex h-full min-w-0 flex-col"
+      className={cn(
+        'flex h-full min-w-0 flex-col',
+        list && 'max-md:flex-row max-md:items-stretch',
+      )}
+      data-card-layout={layout}
       data-slot="meal-card-skeleton"
     >
-      <div className="shrink-0 px-2 pt-2">
+      <div
+        className={cn(
+          'shrink-0 px-2 pt-2',
+          list && 'max-md:flex max-md:self-stretch max-md:p-2',
+        )}
+      >
         <div
-          className="aspect-[4/3] w-full max-h-[132px] animate-pulse bg-[var(--nora-inset)] sm:max-h-[148px] md:aspect-auto md:h-[168px] md:max-h-none"
+          className={cn(
+            'aspect-[4/3] w-full max-h-[132px] animate-pulse bg-[var(--nora-inset)] sm:max-h-[148px] md:aspect-auto md:h-[168px] md:max-h-none',
+            list && 'max-md:aspect-square max-md:h-full max-md:max-h-none',
+          )}
           data-slot="meal-card-preview"
         />
       </div>
-      <div className="flex flex-1 flex-col px-3 pt-3 sm:px-4 sm:pt-3.5">
+      <div
+        className={cn(
+          'flex flex-1 flex-col px-3 pt-3 sm:px-4 sm:pt-3.5',
+          list && 'max-md:min-w-0 max-md:px-3 max-md:pt-2 max-md:pb-0',
+        )}
+      >
         <div>
           <div className="h-6 w-[80%] animate-pulse rounded bg-[var(--nora-inset)]" />
           <div className="mt-0.5 h-4 w-24 animate-pulse rounded bg-[var(--nora-inset)]" />
@@ -918,7 +1000,7 @@ export function SkeletonMealCard() {
           <div className="h-4 w-[90%] animate-pulse rounded bg-[var(--nora-inset)]" />
         </div>
         <div className="h-4 w-[60%] animate-pulse rounded bg-[var(--nora-inset)]" />
-        <div className="mt-auto pt-3">
+        <div className="mt-auto pt-2.5">
         <div aria-hidden className={MEAL_CARD_FOOTER_DIVIDER_CLASS} />
         <div
           className={MEAL_CARD_FOOTER_CLASS}

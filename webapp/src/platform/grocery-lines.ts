@@ -33,9 +33,15 @@ export function splitIngredientParts(ingredients: string): string[] {
   return parts
 }
 
+function unwrapGroceryQuotes(part: string) {
+  const text = part.trim()
+  const wrapped = text.match(/^["«„“'](.+)["»”“']$/)
+  return (wrapped?.[1] ?? text).trim()
+}
+
 /** Usage / grade / garnish fragments that are not store products. */
 export function isCulinaryNote(part: string) {
-  const text = part.trim().replace(/\.$/, '').replace(/\s+/g, ' ')
+  const text = unwrapGroceryQuotes(part).replace(/\.$/, '').replace(/\s+/g, ' ')
   if (!text) return true
   if (/^для(\s|$)/i.test(text)) return true
   if (/^в\s+(тесто|начинку|брикетах)(\s|$)/i.test(text)) return true
@@ -55,7 +61,9 @@ export function isCulinaryNote(part: string) {
 
 /** Store-buyable grocery lines: drops garnish notes, egg grades, and usage tails. */
 export function groceryShoppingLines(ingredients: string): string[] {
-  return splitIngredientParts(ingredients).filter((part) => !isCulinaryNote(part))
+  return splitIngredientParts(ingredients)
+    .map((part) => unwrapGroceryQuotes(part).replace(/\.$/, ''))
+    .filter((part) => !isCulinaryNote(part))
 }
 
 const GROCERY_UNIT_PATTERN =
@@ -67,6 +75,7 @@ const GROCERY_AMOUNT_PATTERN = new RegExp(
 )
 
 type GroceryUnitFamily = 'g' | 'ml' | 'pcs' | 'tsp' | 'tbsp' | 'clove' | 'pinch'
+type GroceryVolumeSource = 'ml' | 'tsp' | 'tbsp'
 
 type GroceryBucket = {
   displayName: string
@@ -74,6 +83,7 @@ type GroceryBucket = {
   baseQty: number | null
   original: string
   merged: boolean
+  volumeSources: Set<GroceryVolumeSource>
 }
 
 function foldGroceryUnit(raw: string) {
@@ -107,9 +117,34 @@ function formatGroceryQty(value: number) {
   return String(Math.round(value * 100) / 100).replace('.', ',')
 }
 
+function toVolumeMl(
+  family: GroceryUnitFamily,
+  qty: number,
+): { qty: number; source: GroceryVolumeSource } | null {
+  if (family === 'ml') return { qty, source: 'ml' }
+  if (family === 'tsp') return { qty: qty * 5, source: 'tsp' }
+  if (family === 'tbsp') return { qty: qty * 15, source: 'tbsp' }
+  return null
+}
+
+function formatVolumeQty(qtyMl: number, sources: ReadonlySet<GroceryVolumeSource>) {
+  const spoonOnly = !sources.has('ml') && (sources.has('tsp') || sources.has('tbsp'))
+  if (spoonOnly) {
+    if (!sources.has('tsp') && qtyMl % 15 === 0) {
+      return `${formatGroceryQty(qtyMl / 15)} ст.л`
+    }
+    if (qtyMl % 5 === 0) return `${formatGroceryQty(qtyMl / 5)} ч.л`
+  }
+  if (qtyMl >= 1000 && qtyMl % 1000 === 0) return `${formatGroceryQty(qtyMl / 1000)} л`
+  return `${formatGroceryQty(qtyMl)} мл`
+}
+
 function formatGroceryBucket(bucket: GroceryBucket) {
   if (!bucket.merged) return bucket.original
   if (bucket.baseQty == null || bucket.family == null) return bucket.displayName
+  if (bucket.family === 'ml') {
+    return `${bucket.displayName} – ${formatVolumeQty(bucket.baseQty, bucket.volumeSources)}`
+  }
   let qty = bucket.baseQty
   let unit = ''
   if (bucket.family === 'g') {
@@ -117,11 +152,6 @@ function formatGroceryBucket(bucket: GroceryBucket) {
       qty /= 1000
       unit = 'кг'
     } else unit = 'г'
-  } else if (bucket.family === 'ml') {
-    if (qty >= 1000 && qty % 1000 === 0) {
-      qty /= 1000
-      unit = 'л'
-    } else unit = 'мл'
   } else if (bucket.family === 'pcs') unit = 'шт'
   else if (bucket.family === 'tsp') unit = 'ч.л'
   else if (bucket.family === 'tbsp') unit = 'ст.л'
@@ -137,24 +167,56 @@ function parseGroceryLine(label: string) {
   const rest = dash >= 0 ? text.slice(dash).replace(/^\s*[–—-]\s*/, '') : text
   const match = rest.match(GROCERY_AMOUNT_PATTERN)
   if (!match?.[1] || !match[2]) {
-    return { displayName: text, family: null, baseQty: null, key: groceryNameKey(text) }
+    return {
+      displayName: text,
+      family: null,
+      baseQty: null,
+      sourceFamily: null,
+      key: groceryNameKey(text),
+    }
   }
   const info = groceryUnitInfo(match[2])
   if (!info) {
-    return { displayName: text, family: null, baseQty: null, key: groceryNameKey(text) }
+    return {
+      displayName: text,
+      family: null,
+      baseQty: null,
+      sourceFamily: null,
+      key: groceryNameKey(text),
+    }
   }
   const qty = Number(match[1].replace(',', '.'))
   if (!Number.isFinite(qty) || qty <= 0) {
-    return { displayName: text, family: null, baseQty: null, key: groceryNameKey(text) }
+    return {
+      displayName: text,
+      family: null,
+      baseQty: null,
+      sourceFamily: null,
+      key: groceryNameKey(text),
+    }
   }
   const name =
     nameFromDash ||
     rest.slice(0, match.index ?? 0).replace(/[\s–—-]+$/g, '').trim() ||
     text
+  const volume =
+    info.family === 'ml'
+      ? toVolumeMl('ml', qty * info.toBase)
+      : toVolumeMl(info.family, qty)
+  if (volume) {
+    return {
+      displayName: name,
+      family: 'ml' as const,
+      baseQty: volume.qty,
+      sourceFamily: volume.source,
+      key: `${groceryNameKey(name)}|volume`,
+    }
+  }
   return {
     displayName: name,
     family: info.family,
     baseQty: qty * info.toBase,
+    sourceFamily: info.family,
     key: `${groceryNameKey(name)}|${info.family}`,
   }
 }
@@ -182,6 +244,13 @@ export function mergeGroceryShoppingLines(labels: readonly string[]): string[] {
         baseQty: parsed.baseQty,
         original: label,
         merged: false,
+        volumeSources: new Set(
+          parsed.sourceFamily === 'ml' ||
+            parsed.sourceFamily === 'tsp' ||
+            parsed.sourceFamily === 'tbsp'
+            ? [parsed.sourceFamily]
+            : [],
+        ),
       })
       continue
     }
@@ -189,6 +258,13 @@ export function mergeGroceryShoppingLines(labels: readonly string[]): string[] {
     if (parsed.baseQty != null) {
       existing.baseQty = (existing.baseQty ?? 0) + parsed.baseQty
       if (existing.family == null) existing.family = parsed.family
+    }
+    if (
+      parsed.sourceFamily === 'ml' ||
+      parsed.sourceFamily === 'tsp' ||
+      parsed.sourceFamily === 'tbsp'
+    ) {
+      existing.volumeSources.add(parsed.sourceFamily)
     }
   }
   return order.map((key) => formatGroceryBucket(buckets.get(key)!))

@@ -479,6 +479,15 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('removeEmptyPlanDay(')
   const shell = readFileSync(new URL('../src/features/plans/PlanPageShell.tsx', import.meta.url), 'utf8')
   expect(shell).toContain('data-plan-mobile-header=""')
+  const mobileStart = shell.indexOf('data-plan-mobile-header=""')
+  const mobileHeader = shell.slice(
+    mobileStart,
+    shell.indexOf('noraPageTitleClass', mobileStart),
+  )
+  expect(mobileHeader).toContain('noraProductTitleClass')
+  expect(mobileHeader).toContain('aria-label="О рационе"')
+  expect(mobileHeader).not.toContain('bg-[var(--nora-inset)]')
+  expect(mobileHeader).not.toContain('CalendarDaysIcon')
   expect(shell).toContain('rounded-[16px] bg-[var(--nora-inset)] p-2.5')
   expect(shell).toContain('noraProductTitleClass')
   expect(shell).toContain("'hidden md:block'")
@@ -573,6 +582,7 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(shopping).toContain('куплено')
   expect(shopping).toContain('productSheetOverlayChipClass')
   expect(shopping).toContain('data-plan-shopping-day=""')
+  expect(shopping).not.toContain('<ShoppingHeading>День</ShoppingHeading>')
   expect(shopping.indexOf('data-plan-shopping-list=""')).toBeLessThan(
     shopping.indexOf('data-plan-shopping-day=""'),
   )
@@ -595,7 +605,8 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(startDialog).toContain('CalendarDaysIcon')
   expect(startDialog).toContain('data-plan-start-calendar=""')
   expect(startDialog).toContain('data-plan-start-dialog=""')
-  expect(startDialog).toContain('[--cell-size:2.25rem]')
+  expect(startDialog).toContain('noraSheetCalendarClass')
+  expect(startDialog).toContain('compactDays')
   expect(startDialog).toContain('mode="range"')
   expect(startDialog).toContain('numberOfMonths={1}')
   expect(startDialog).toContain('planRangeFromStart')
@@ -1030,7 +1041,7 @@ test('plan shopping drops catalog garnish notes from grocery rows', () => {
       id: 'shop-notes',
       title: 'Вареники',
       ingredients:
-        'Мука – 1 кг , в тесто, Яйцо – 2 шт. , СО, в тесто, Вода – 420 г , в тесто, Соль – 1 ч.л. , в тесто, Картофель – 1 кг, Масло сливочное – 50 г , 72,5%',
+        'Мука – 1 кг , в тесто, Яйцо – 2 шт. , СО, в тесто, Вода – 420 г , в тесто, Соль – 1 ч.л. , в тесто, Картофель – 1 кг, Масло сливочное – 50 г , 72,5%, Приправа – 1 ст.л. , "Для свинины"',
       assumptions: [],
       fromApi: false,
     }),
@@ -1042,8 +1053,9 @@ test('plan shopping drops catalog garnish notes from grocery rows', () => {
     'Соль – 1 ч.л',
     'Картофель – 1 кг',
     'Масло сливочное – 50 г',
+    'Приправа – 1 ст.л',
   ])
-  expect(items.some((item) => /для подачи|в тесто|^со$|72/i.test(item.label))).toBe(false)
+  expect(items.some((item) => /для подачи|в тесто|^со$|72|для свинины/i.test(item.label))).toBe(false)
 })
 
 test('plan shopping sums the same product across meals and days', () => {
@@ -1067,6 +1079,28 @@ test('plan shopping sums the same product across meals and days', () => {
       }),
     ]).map((item) => item.label),
   ).toEqual(['Мука – 430 г', 'Творог – 1 кг', 'Сахар – 70 г'])
+})
+
+test('plan shopping sums the same oil across millilitres and spoons', () => {
+  const monday = new Date(2026, 7, 31)
+  expect(
+    planShoppingItems([
+      mealOn(monday, {
+        id: 'oil-1',
+        title: 'Салат',
+        ingredients: 'Масло растительное – 110 мл, Соль – 1 ч.л',
+        assumptions: [],
+        fromApi: false,
+      }),
+      mealOn(monday, {
+        id: 'oil-2',
+        title: 'Жаркое',
+        ingredients: 'Масло растительное – 1 ч.л, Масло растительное – 5 ст.л',
+        assumptions: [],
+        fromApi: false,
+      }),
+    ]).map((item) => item.label),
+  ).toEqual(['Масло растительное – 190 мл', 'Соль – 1 ч.л'])
 })
 
 test('plan shopping lists unique groceries from every planned meal', () => {

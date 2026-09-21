@@ -115,7 +115,8 @@ test('diary toolbar can show the whole selected plan', () => {
   expect(toolbar).toContain('data-diary-whole-plan=""')
   expect(toolbar).toContain('План')
   expect(toolbar).not.toContain('Весь план')
-  expect(toolbar).toContain('tab !== "Избранное"')
+  expect(toolbar).toContain('disabled={tab === "Избранное"}')
+  expect(toolbar).not.toContain('tab !== "Избранное" && selectedPlanIds.size > 0')
   expect(toolbar).toContain('aria-pressed={tab === "Избранное"}')
   expect(toolbar).toContain('BookmarkIcon')
   expect(toolbar).toContain('Избранное')
@@ -123,9 +124,9 @@ test('diary toolbar can show the whole selected plan', () => {
     toolbar.indexOf('aria-pressed={tab === "Избранное"}'),
   )
   expect(toolbar).not.toContain('{FEED_TABS.map')
-  expect(toolbar).toContain('aria-pressed={showWholePlan}')
+  expect(toolbar).toContain('aria-pressed={tab !== "Избранное" && showWholePlan}')
   expect(toolbar).toContain('LayersIcon')
-  expect(toolbar).toContain('showWholePlan && "fill-current"')
+  expect(toolbar).toContain('tab !== "Избранное" && showWholePlan && "fill-current"')
   expect(toolbar).not.toContain('CircleIcon')
   expect(toolbar).not.toContain('CircleCheckIcon')
   expect(toolbar).not.toContain('CalendarRangeIcon')
@@ -235,6 +236,41 @@ test('diary search expands the trailing pill without stretching across desktop',
   expect(news).not.toContain('-translate-x-3 opacity-0')
 })
 
+test('mobile diary toolbar can switch cards to a one-row list', () => {
+  const page = readFileSync(
+    new URL('../src/features/diary/pages/news.tsx', import.meta.url),
+    'utf8',
+  )
+  const card = readFileSync(
+    new URL('../src/features/diary/MealCard.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(page).toContain('data-diary-card-layout=""')
+  expect(page).toContain('"size-9 justify-center p-0 md:hidden"')
+  expect(page).toContain('Rows2Icon')
+  expect(page).toContain('LayoutGridIcon')
+  expect(page).toContain('Показать карточки списком')
+  expect(page).toContain('Показать карточки сеткой')
+  expect(page).toContain('diaryFeedGridClass(cardLayout)')
+  expect(page).toContain('layout={cardLayout}')
+  expect(page).toContain('writeDiaryCardLayout(')
+  expect(page).toContain('readDiaryCardLayout')
+  expect(card).toContain("layout = 'grid'")
+  expect(card).toContain('max-md:flex-row max-md:items-stretch')
+  expect(card).toContain('max-md:aspect-square')
+  expect(card).toContain('max-md:h-full')
+  expect(card).toContain('max-md:flex max-md:self-stretch max-md:p-2')
+  expect(card).toContain('data-card-layout={layout}')
+  expect(card).toContain('.slice(0, list ? 2 : 3)')
+  expect(card).toContain('max-md:h-10')
+  expect(card).toContain('max-md:pt-2 max-md:pb-0')
+  expect(card).toContain("label={list ? 'В рацион' : 'В план'}")
+  expect(card).toContain('labeled={list}')
+  expect(card).toContain('MEAL_CARD_FOOTER_PLUS_LABEL_CLASS')
+  expect(card).toContain('text-[11px] font-normal leading-none text-[var(--nora-text-secondary)]')
+  expect(card).not.toContain('max-md:w-[8.25rem]')
+})
+
 test('mobile calendar is an icon button without the period label', () => {
   const picker = readFileSync(
     new URL('../src/features/diary/DiaryPeriodPicker.tsx', import.meta.url),
@@ -252,6 +288,8 @@ test('mobile period calendar opens as a stacked two-month window', () => {
     'utf8',
   )
   expect(picker).toContain('data-diary-period-dialog=""')
+  expect(picker).toContain('flex min-w-0 flex-1 items-baseline gap-2')
+  expect(picker).not.toContain('mt-0.5 line-clamp-2')
   expect(picker).toContain('data-diary-period-calendar="top"')
   expect(picker).toContain('data-diary-period-calendar="bottom"')
   expect(picker).not.toContain('data-modal-frame="diary-period"')
@@ -286,8 +324,15 @@ test('mobile period calendar opens as a stacked two-month window', () => {
   expect(picker).not.toContain('max-w-[22rem]')
   expect(picker).toContain("'relative flex w-full flex-col'")
   expect(picker).not.toContain("'relative flex flex-row gap-4'")
-  expect(picker).toContain('[--cell-size:2.25rem]')
-  expect(picker).toContain('[--cell-radius:14px]')
+  expect(picker).toContain('noraSheetCalendarClass')
+  const calendar = readFileSync(
+    new URL('../src/components/ui/calendar.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(calendar).toContain('[--cell-size:2.5rem]')
+  expect(calendar).toContain('[--cell-radius:14px]')
+  expect(calendar).toContain('compactDays')
+  expect(picker).toContain('compactDays={sheet}')
   expect(picker).toContain('rounded-full')
   expect(picker).toContain('rdp-button_previous')
   expect(picker).toContain('rdp-button_next')
@@ -338,6 +383,12 @@ test('period picker save and reset follow draft versus the full diary', () => {
     top: new Date(2026, 6, 1),
     bottom: new Date(2026, 8, 1),
   })
+  expect(
+    visibleMonthsForBounds(new Date(2026, 8, 11), new Date(2026, 8, 21)),
+  ).toEqual({
+    top: new Date(2026, 7, 1),
+    bottom: new Date(2026, 8, 1),
+  })
 })
 
 test('desktop add button stays inside the diary toolbar row', () => {
@@ -363,7 +414,8 @@ test('mobile diary hides the page title block', () => {
 })
 
 test('true empty diary feed shows a skeleton card grid', () => {
-  expect(news).toContain('<ProductFeedSkeletonSlots Card={SkeletonMealCard} />')
+  expect(news).toContain('<ProductFeedSkeletonSlots')
+  expect(news).toContain('<SkeletonMealCard layout={cardLayout} />')
   expect(news).toContain('PRODUCT_FEED_SKELETON_COUNT')
   expect(news).toContain('data-slot="feed-skeleton"')
   expect(news).toContain('Ничего не найдено')
@@ -451,9 +503,11 @@ test('day stats use modal-tab capsules in one scroll row', () => {
   expect(stats).toContain('className="size-[13px] text-white"')
   expect(stats).toContain('bg-[var(--nora-badge-yellow-bg)]')
   expect(stats).toContain('bg-[var(--nora-badge-red-bg)]')
-  expect(stats).toContain(
-    'flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain max-md:-mx-2 max-md:-mt-3 max-md:px-2 py-3 no-scrollbar md:overflow-visible',
+  expect(stats).toContain('DAY_CHIPS_ROW_CLASS')
+  expect(news).toContain(
+    'relative z-[1] flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain max-md:-mx-2 max-md:px-2 py-3 -my-3 no-scrollbar md:overflow-visible',
   )
+  expect(stats).not.toContain('max-md:-mt-3')
   expect(stats).toContain('flex w-max shrink-0 items-center gap-2')
   expect(stats).toContain('ml-auto flex w-max shrink-0 items-center gap-2')
   expect(stats.indexOf('FlameIcon')).toBeLessThan(stats.indexOf('UtensilsIcon'))
@@ -511,6 +565,14 @@ test('diary favorites tab can bulk-add meals to a plan like a diary day', () => 
   expect(page).toContain('{mealsCountLabel(mealCount)}')
   expect(page).not.toContain('Избранное · {mealsCountLabel(mealCount)}')
   expect(page).toContain('data-diary-favorites-pick=""')
+  const favoritesBar = page.slice(
+    page.indexOf('function FeedFavoritesPickBar('),
+    page.indexOf('function FeedDayStats('),
+  )
+  expect(favoritesBar).toContain('DAY_STAT_CHIP_CLASS')
+  expect(favoritesBar).toContain('UtensilsIcon')
+  expect(favoritesBar).not.toContain('DAY_DATE_CHIP_CLASS')
+  expect(favoritesBar).not.toContain('BookmarkIcon')
   expect(page).toContain('Выбрать избранные приёмы')
   expect(page).toContain('togglePickDay(FAVORITES_PICK_KEY)')
   expect(page).toContain('diaryMealCard(meal, FAVORITES_PICK_KEY)')
@@ -531,7 +593,11 @@ test('diary feed stamps pending plan meals from the live plan layout', () => {
   expect(page).toContain('planOccurrenceDiaryAtWithLayout')
   expect(page).toContain('readPlanMealLayout')
   expect(page).toContain('at: diaryAtForMeal(meal)')
-  expect(page).toContain('const stayAt = willComplete && meal ? diaryAtForMeal(meal) : undefined')
+  expect(page).toContain(
+    'const stayAt = meal ? diaryAtById[id] ?? diaryAtForMeal(meal) : undefined',
+  )
+  expect(page).not.toContain('delete nextAt[id]')
+  expect(page).toContain('new Set(Object.keys(diaryAtById))')
 })
 
 test('day activity dialog shows three iOS-style rings for the selected day', () => {
@@ -622,6 +688,8 @@ test('diary toolbar uses floating white iOS pills with a drop shadow', () => {
   expect(css).toContain('0 4px 10px')
   expect(css).toContain('0 8px 20px')
   expect(css).toContain('@media (max-width: 767px)')
+  expect(css).toContain('top toolbar pills use the same contrast as the bottom dock')
+  expect(css).not.toContain('0 3px 8px color-mix(in srgb, var(--nora-text) 8%, transparent)')
   expect(css).toContain('.ios-float-pill[data-search-open]')
   expect(css).toContain('.scheme-editor-dark .ios-float-pill')
   expect(css).toContain('background: var(--nora-input-bg)')
@@ -664,7 +732,7 @@ test('meal cards use frosted glass with the same top glare as diary chips', () =
   expect(css).toContain('@supports not ((backdrop-filter: blur(1px))')
   const card = news.slice(
     news.indexOf('function MealCard('),
-    news.indexOf('function SkeletonMealCard()'),
+    news.indexOf('function SkeletonMealCard('),
   )
   expect(card).not.toContain('bg-[var(--dash-card-bg)]')
   expect(card).not.toContain('overflow-hidden')
@@ -675,7 +743,7 @@ test('meal cards use frosted glass with the same top glare as diary chips', () =
 })
 
 test('feed skeleton preview fills the card width like a real cover', () => {
-  const skeleton = news.slice(news.indexOf('function SkeletonMealCard()'))
+  const skeleton = news.slice(news.indexOf('function SkeletonMealCard('))
   expect(skeleton).toContain('w-full')
   expect(skeleton).toContain('aspect-[4/3]')
 })
@@ -715,8 +783,12 @@ test('meal dialog closes from a close button in the tab row', () => {
     news.indexOf('function MealDetailTabRow'),
   )
   expect(closeBtn).toContain('aria-label="Закрыть"')
-  expect(closeBtn).toContain('text-[var(--nora-text)]')
+  expect(closeBtn).toContain('!bg-[var(--nora-inset)]')
+  expect(closeBtn).toContain('!text-[var(--nora-text-secondary)]')
+  expect(closeBtn).not.toContain('!bg-[var(--nora-text)]')
+  expect(closeBtn).not.toContain('!text-[var(--nora-panel)]')
   expect(closeBtn).not.toContain('text-[var(--nora-text-tertiary)]')
+  expect(closeBtn).toContain('strokeWidth={2.25}')
   expect(closeBtn).toContain('rounded-full')
   expect(closeBtn).toContain('[&_svg]:block')
   expect(closeBtn).not.toContain('sm:hidden')
@@ -787,7 +859,7 @@ test('meal dialog close, preview expand, and card actions grow on press', () => 
 test('diary card footer keeps bookmark and share without an overflow menu', () => {
   const card = news.slice(
     news.indexOf('function MealCard('),
-    news.indexOf('function SkeletonMealCard()'),
+    news.indexOf('function SkeletonMealCard('),
   )
   const actions = news.slice(
     news.indexOf('function CardActions('),
@@ -808,7 +880,9 @@ test('diary card footer keeps bookmark and share without an overflow menu', () =
   expect(actions).not.toContain('Открыть')
   expect(actions).toContain('Share2Icon')
   expect(actions.indexOf('Share2Icon')).toBeLessThan(actions.indexOf('BookmarkIcon'))
-  expect(card).toContain('MEAL_CARD_FOOTER_PLUS_CLASS')
+  expect(news).toContain('MEAL_CARD_FOOTER_PLUS_CLASS')
+  expect(news).toContain('MEAL_CARD_FOOTER_PLUS_LABEL_CLASS')
+  expect(card).toContain('MealCardAddButton')
   expect(news).toContain('rounded-full! bg-[var(--nora-input-bg)]')
   expect(actions).toContain('text-[var(--nora-tint)]')
   expect(actions).toContain('aria-label={shareLabel}')
@@ -827,7 +901,8 @@ test('diary card footer keeps bookmark and share without an overflow menu', () =
   expect(card).toContain('ml-auto flex items-center gap-1')
   expect(card).toContain('disabled={readOnly || !onAddToPlan || addingToPlan}')
   expect(card).not.toContain('readOnly || !onAddToPlan ? null')
-  expect(card.lastIndexOf('aria-label="В план"')).toBeLessThan(card.indexOf('<CardActions'))
+  expect(card).toContain("label={list ? 'В рацион' : 'В план'}")
+  expect(card.indexOf('MealCardAddButton')).toBeLessThan(card.indexOf('<CardActions'))
   const firstFeed = card.indexOf("{variant === 'feed' ? (")
   const secondFeed = card.indexOf("{variant === 'feed' ? (", firstFeed + 1)
   const overlay = card.slice(firstFeed, secondFeed)
@@ -835,9 +910,9 @@ test('diary card footer keeps bookmark and share without an overflow menu', () =
   expect(overlay).toContain('productCardAuthorAnchorClass')
   expect(overlay).toContain('authorInitials')
   expect(overlay).toContain('revealAuthor')
-  expect(feedFooter).toContain('PlusIcon')
+  expect(feedFooter).toContain('MealCardAddButton')
   expect(feedFooter).toContain('MealLikeButton')
-  expect(feedFooter.indexOf('PlusIcon')).toBeLessThan(feedFooter.indexOf('MealLikeButton'))
+  expect(feedFooter.indexOf('MealCardAddButton')).toBeLessThan(feedFooter.indexOf('MealLikeButton'))
   expect(feedFooter).toContain('ml-auto flex items-center gap-1')
   expect(feedFooter).not.toContain('MealAuthorByline')
   expect(news).toContain('bottom-2 left-2')
@@ -861,7 +936,8 @@ test('diary card footer keeps bookmark and share without an overflow menu', () =
   expect(card).toContain('hidden size-7 sm:inline-flex')
   expect(card).toContain('aria-label="Удалить"')
   expect(macros).toContain('font-light')
-  expect(macros).toContain('font-medium text-[var(--nora-text)]')
+  expect(macros).toContain('font-normal text-[var(--nora-text)]')
+  expect(macros).not.toContain('font-medium text-[var(--nora-text)]')
   expect(macros).toContain('{meal.kcal} ккал')
   expect(macros).toContain("{' · Б: '}")
   expect(macros).toContain("{' · Ж: '}")
@@ -908,7 +984,7 @@ test('card favorite bookmarks use blue when saved', () => {
 test('feed card trash uses the same frosted overlay as modal preview chips', () => {
   const card = news.slice(
     news.indexOf('function MealCard('),
-    news.indexOf('function SkeletonMealCard()'),
+    news.indexOf('function SkeletonMealCard('),
   )
   expect(card).toContain('MEAL_DIALOG_OVERLAY_CHIP_CLASS')
   expect(news).toContain(
@@ -921,14 +997,14 @@ test('feed card trash uses the same frosted overlay as modal preview chips', () 
 test('mobile meal cards follow the ration thumbnail type scale', () => {
   const card = news.slice(
     news.indexOf('function MealCard('),
-    news.indexOf('function SkeletonMealCard()'),
+    news.indexOf('function SkeletonMealCard('),
   )
   expect(card).toContain('px-2 pt-2')
   expect(card).toContain('px-3 pt-3 sm:px-4 sm:pt-3.5')
   expect(card).toContain('text-[15px] font-medium leading-6')
   expect(card).toContain('mt-2 mb-2 h-[3.75rem] shrink-0 overflow-clip')
   expect(card).toContain('MacrosLine className="shrink-0"')
-  expect(card).toContain('.slice(0, 3)')
+  expect(card).toContain('.slice(0, list ? 2 : 3)')
   expect(card).toContain('mealCompositionLines(meal)')
   expect(card).toContain('•')
   expect(card).not.toContain('line-clamp-3')
@@ -936,12 +1012,12 @@ test('mobile meal cards follow the ration thumbnail type scale', () => {
   expect(card).not.toContain('text-[14px] font-semibold')
   expect(card).not.toContain('font-[350]')
   expect(card).not.toContain('min-h-0')
-  expect(card).toContain('mt-auto pt-3')
+  expect(card).toContain('mt-auto pt-2.5')
   expect(card).not.toContain('min-h-11')
   expect(card).toContain('MEAL_CARD_FOOTER_DIVIDER_CLASS')
   expect(card).toContain('className={MEAL_CARD_FOOTER_CLASS}')
   expect(news).toContain("const MEAL_CARD_FOOTER_DIVIDER_CLASS =")
-  expect(news).toContain("const MEAL_CARD_FOOTER_CLASS = 'flex items-center justify-between gap-2 py-3'")
+  expect(news).toContain("const MEAL_CARD_FOOTER_CLASS = 'flex items-center justify-between gap-2 py-2.5'")
   expect(news).toContain(
     "'border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]'",
   )
@@ -953,7 +1029,7 @@ test('mobile meal cards follow the ration thumbnail type scale', () => {
 test('meal cards keep origin in data attributes without a preview badge', () => {
   const card = news.slice(
     news.indexOf('function MealCard('),
-    news.indexOf('function SkeletonMealCard()'),
+    news.indexOf('function SkeletonMealCard('),
   )
   expect(news).toContain('NewspaperIcon')
   expect(news).toContain('UtensilsCrossedIcon')
@@ -973,7 +1049,7 @@ test('meal cards keep origin in data attributes without a preview badge', () => 
 test('unread meal cards overlay a fading mark on the preview', () => {
   const card = news.slice(
     news.indexOf('function MealCard('),
-    news.indexOf('function SkeletonMealCard()'),
+    news.indexOf('function SkeletonMealCard('),
   )
   expect(card).toContain('data-slot="meal-card-unread"')
   expect(card).toContain('SparklesIcon')
@@ -988,7 +1064,7 @@ test('unread meal cards overlay a fading mark on the preview', () => {
 test('ration-imported diary cards are muted but stay openable', () => {
   const card = news.slice(
     news.indexOf('function MealCard('),
-    news.indexOf('function SkeletonMealCard()'),
+    news.indexOf('function SkeletonMealCard('),
   )
   const done = news.slice(
     news.indexOf('function RationPlanDoneButton('),
@@ -996,7 +1072,7 @@ test('ration-imported diary cards are muted but stay openable', () => {
   )
   expect(card).toContain('isRationPlanPending(')
   expect(card).toContain('isRationPlanDone(')
-  expect(card).toContain("aria-label={onAddToPlan ? 'В план' : onAddToDiary ? 'В дневник' : 'В план'}")
+  expect(card).toContain("label={onAddToPlan ? 'В план' : onAddToDiary ? 'В дневник' : 'В план'}")
   expect(card).toContain('data-from-ration={fromRation ? \'\' : undefined}')
   expect(card).toContain('data-ration-done={done ? \'\' : undefined}')
   expect(card).toContain("grayscale && 'grayscale'")
@@ -1122,7 +1198,7 @@ test('self-uploaded diary cards do not get a cover badge', () => {
 
 test('mentee questionnaire keeps the view switcher clickable and hides diary filters', () => {
   const toolbar = news.slice(
-    news.indexOf('<div className="flex w-full min-w-0 items-center pt-1">'),
+    news.indexOf('<div className="relative z-10 flex w-full min-w-0 items-center pt-1">'),
     news.indexOf('{body ?? ('),
   )
   expect(toolbar.indexOf('{toolbarExtra ?')).toBeGreaterThan(-1)
@@ -1140,8 +1216,10 @@ test('product feeds cannot expand past the viewport', () => {
   expect(news).toContain('contain-inline-size')
   expect(news).not.toContain('overflow-x-clip')
   expect(news).toContain(
-    'overflow-x-auto overscroll-x-contain py-4 -my-4 no-scrollbar max-md:-mx-3 max-md:w-[calc(100%+1.5rem)] max-md:px-3 md:overflow-visible',
+    'overflow-x-auto overscroll-x-contain py-8 -my-8 no-scrollbar max-md:-mx-3 max-md:w-[calc(100%+1.5rem)] max-md:px-3 md:overflow-visible',
   )
+  expect(news).toContain('pointer-events-none')
+  expect(news).toContain('[&>*]:pointer-events-auto')
   expect(news).not.toContain('max-md:pb-8 max-md:-mb-8')
   expect(news).toContain('min-w-0 w-full grid-cols-2')
   expect(news).toContain(
@@ -1238,7 +1316,7 @@ test('own diary meals can be copied into a chosen weekly plan day', () => {
     new URL('../src/features/diary/pages/news.tsx', import.meta.url),
     'utf8',
   )
-  expect(news).toContain('aria-label="В план"')
+  expect(news).toContain("'В план'")
   expect(newsPage).toContain('diaryMealCanCopyToPlan(meal, completedIds)')
   expect(newsPage).not.toContain('diaryMealCanCopyToPlan(openMeal, completedIds)')
   const detail = readFileSync(
@@ -1292,6 +1370,18 @@ test('own diary meals can be copied into a chosen weekly plan day', () => {
   expect(picker).not.toContain('top-[var(--modal-sheet-inset)] bottom-0')
   expect(picker).toContain('min-h-0 overflow-y-auto')
   expect(picker).toContain('data-diary-plan-select=""')
+  expect(picker).toContain('flex shrink-0 flex-col gap-2 px-2 pt-2')
+  expect(picker).not.toContain('mt-2.5 border-t border-[var(--nora-divider)] pt-2.5')
+  expect(picker.indexOf('</DialogHeader>')).toBeLessThan(
+    picker.indexOf('data-diary-plan-select=""'),
+  )
+  expect(picker.indexOf('План назначения')).toBeLessThan(
+    picker.indexOf('data-diary-plan-select=""'),
+  )
+  expect(picker).toContain('Дни плана')
+  expect(picker.indexOf('data-diary-plan-select=""')).toBeLessThan(
+    picker.indexOf('Дни плана'),
+  )
   expect(picker).toContain('lockedPlan')
   expect(picker).toContain('allowPendingCopies')
   expect(picker).toContain('planDays')
@@ -1327,9 +1417,9 @@ test('own diary meals can be copied into a chosen weekly plan day', () => {
   expect(picker).not.toContain('w-8 justify-center')
   expect(picker).not.toContain('{day.short}')
   expect(picker).not.toContain('CheckIcon')
-  expect(picker).toContain('shrink-0 px-2 pt-2')
+  expect(picker).toContain('flex shrink-0 flex-col gap-2 px-2 pt-2')
   expect(picker).toContain('rounded-[16px] bg-[var(--nora-inset)] p-2.5')
-  expect(picker).toContain('flex flex-col px-3 pt-3')
+  expect(picker).toContain('flex flex-col gap-2 px-2 pt-2')
   expect(picker).toContain('sr-only')
   expect(picker).not.toContain('line-clamp-2')
   expect(picker).toContain('Можно поставить в выбранный план, в один или несколько дней.')
@@ -1364,9 +1454,10 @@ test('plan day picker stays open and occupied days can be toggled off', () => {
     new URL('../src/features/diary/SharedMealsFeed.tsx', import.meta.url),
     'utf8',
   )
-  expect(picker).toContain('shrink-0 px-2 pt-2')
+  expect(picker).toContain('flex shrink-0 flex-col gap-2 px-2 pt-2')
   expect(picker).toContain('rounded-[16px] bg-[var(--nora-inset)] p-2.5')
-  expect(picker).toContain('flex flex-col px-3 pt-3')
+  expect(picker).toContain('flex flex-col gap-2 px-2 pt-2')
+  expect(picker).toContain('Дни плана')
   expect(picker).not.toContain('CheckIcon')
   expect(picker).not.toContain("shadow-[0_1px_3px_color-mix(in_srgb,var(--nora-success)")
   expect(picker).toContain('disabled={dayBusy || busy}')

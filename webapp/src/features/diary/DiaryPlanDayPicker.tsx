@@ -208,91 +208,94 @@ export function DiaryPlanDayPicker({
       >
         {selected.length > 0 ? (
           <>
-            <div className="shrink-0 px-2 pt-2">
+            <div className="flex shrink-0 flex-col gap-2 px-2 pt-2">
               <DialogHeader className="min-w-0 gap-1 rounded-[16px] bg-[var(--nora-inset)] p-2.5 text-left">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--nora-text)] text-[var(--nora-modal)]">
-                    <CalendarDaysIcon
-                      aria-hidden
-                      className="size-4"
-                      strokeWidth={1.7}
-                    />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <DialogTitle className="font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 tracking-normal text-[var(--nora-text)]">
-                      Добавить рацион
-                    </DialogTitle>
-                    <DialogDescription className="sr-only">
-                      {description}
-                    </DialogDescription>
-                  </div>
-                </div>
-                <DialogClose
-                  aria-label="Закрыть"
-                  className={cn(
-                    MEAL_DIALOG_OVERLAY_CHIP_CLASS,
-                    "nora-press-grow size-8 shrink-0 bg-[var(--nora-panel)]/80 sm:size-8",
-                    "hover:text-[var(--nora-text)] focus-visible:shadow-[var(--nora-shadow-focus)]",
-                  )}
-                >
-                  <XIcon
-                    aria-hidden
-                    className="size-3.5"
-                    strokeWidth={1.75}
-                  />
-                </DialogClose>
-              </div>
-              {!lockedPlan ? (
-              <div
-                className="mt-2.5 border-t border-[var(--nora-divider)] pt-2.5"
-                data-diary-plan-select=""
-              >
-                <MealDetailHeading>План назначения</MealDetailHeading>
-                <NoraSelect
-                  className="mt-2 !h-10 !min-h-10 !max-h-10 rounded-[12px] bg-[var(--nora-panel)] px-3.5 text-[13px] font-normal leading-5"
-                  contentClassName={productToolbarSelectContentClass}
-                  disabled={busy}
-                  itemClassName={productToolbarSelectItemClass}
-                  items={planItems}
-                  onValueChange={(value) => {
-                    if (value) setPlanId(value);
-                  }}
-                  placeholder="План"
-                  value={planId}
-                />
-                {creatingNew ? (
-                  <div className="mt-2.5" data-diary-new-plan="">
-                    <MealDetailHeading>Название</MealDetailHeading>
-                    <NoraInput
-                      className={PLAN_TITLE_FIELD_CLASS}
-                      data-diary-plan-title=""
-                      disabled={busy}
-                      onChange={(event) => setDraftTitle(event.target.value)}
-                      placeholder="Например, Офис без срывов"
-                      value={draftTitle}
-                    />
-                    <div className="mt-2.5">
-                      <MealDetailHeading>Описание</MealDetailHeading>
-                      <NoraTextarea
-                        className={PLAN_DESC_FIELD_CLASS}
-                        data-diary-plan-description=""
-                        disabled={busy}
-                        onChange={(event) =>
-                          setDraftDescription(event.target.value)
-                        }
-                        placeholder="Коротко, что в плане"
-                        rows={3}
-                        value={draftDescription}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--nora-text)] text-[var(--nora-modal)]">
+                      <CalendarDaysIcon
+                        aria-hidden
+                        className="size-4"
+                        strokeWidth={1.7}
                       />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <DialogTitle className="font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 tracking-normal text-[var(--nora-text)]">
+                        Добавить рацион
+                      </DialogTitle>
+                      <DialogDescription className="sr-only">
+                        {description}
+                      </DialogDescription>
                     </div>
                   </div>
-                ) : null}
-              </div>
-              ) : null}
+                  <DialogClose
+                    aria-label="Закрыть"
+                    className={cn(
+                      MEAL_DIALOG_OVERLAY_CHIP_CLASS,
+                      "nora-press-grow size-8 shrink-0 bg-[var(--nora-panel)]/80 sm:size-8",
+                      "hover:text-[var(--nora-text)] focus-visible:shadow-[var(--nora-shadow-focus)]",
+                    )}
+                  >
+                    <XIcon
+                      aria-hidden
+                      className="size-3.5"
+                      strokeWidth={1.75}
+                    />
+                  </DialogClose>
+                </div>
               </DialogHeader>
+              {!lockedPlan ? (
+                <div className="flex flex-col gap-2">
+                  <MealDetailHeading>План назначения</MealDetailHeading>
+                  <div
+                    className="rounded-[16px] bg-[var(--nora-inset)] p-2.5"
+                    data-diary-plan-select=""
+                  >
+                    <NoraSelect
+                      className="!h-10 !min-h-10 !max-h-10 rounded-[12px] bg-[var(--nora-panel)] px-3.5 text-[13px] font-normal leading-5"
+                      contentClassName={productToolbarSelectContentClass}
+                      disabled={busy}
+                      itemClassName={productToolbarSelectItemClass}
+                      items={planItems}
+                      onValueChange={(value) => {
+                        if (value) setPlanId(value);
+                      }}
+                      placeholder="План"
+                      value={planId}
+                    />
+                  {creatingNew ? (
+                    <div className="mt-2.5" data-diary-new-plan="">
+                      <MealDetailHeading>Название</MealDetailHeading>
+                      <NoraInput
+                        className={PLAN_TITLE_FIELD_CLASS}
+                        data-diary-plan-title=""
+                        disabled={busy}
+                        onChange={(event) => setDraftTitle(event.target.value)}
+                        placeholder="Например, Офис без срывов"
+                        value={draftTitle}
+                      />
+                      <div className="mt-2.5">
+                        <MealDetailHeading>Описание</MealDetailHeading>
+                        <NoraTextarea
+                          className={PLAN_DESC_FIELD_CLASS}
+                          data-diary-plan-description=""
+                          disabled={busy}
+                          onChange={(event) =>
+                            setDraftDescription(event.target.value)
+                          }
+                          placeholder="Коротко, что в плане"
+                          rows={3}
+                          value={draftDescription}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                  </div>
+                </div>
+              ) : null}
             </div>
-            <div className="min-h-0 overflow-y-auto flex flex-col px-3 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3.5">
+            <div className="min-h-0 overflow-y-auto flex flex-col gap-2 px-2 pt-2 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-2 sm:pb-3.5">
+              <MealDetailHeading>Дни плана</MealDetailHeading>
               <div className="flex flex-col gap-2.5">
                 {days.map((day) => {
                   const occupancy = diaryPlanDayOccupancy(

@@ -258,12 +258,14 @@ export function isDiaryFeedMealVisible(
   completedIds?: ReadonlySet<string>,
   now = new Date(),
   showWholePlan = false,
+  pinnedIds?: ReadonlySet<string>,
 ): boolean {
   const pendingPlan =
     isRationImportedMeal(meal) && isRationPlanPending(meal, completedIds)
   const dayKey = localDayKey(meal.at)
   const todayKey = localCalendarDayKey(now)
-  if (pendingPlan && dayKey < todayKey) return false
+  const pinned = Boolean(meal.id && pinnedIds?.has(meal.id))
+  if (pendingPlan && dayKey < todayKey && !pinned) return false
   if (!pendingPlan && !isDiaryMealInVisibleDay(meal, now)) return false
   if (!showWholePlan && pendingPlan && dayKey > todayKey) return false
   return isPendingPlanMealShownInDiary(meal, selectedPlanIds, completedIds, now)

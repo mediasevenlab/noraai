@@ -88,19 +88,26 @@ function CalendarCaptionDropdown({
 /**
  * Calendar (DayPicker) под Nora UI:
  * плотность контролов 22–26px, tint selection, Nora Select для caption.
+ * Mobile sheets keep full-width day plaques and only shorten their height
+ * so two months fit the viewport.
  */
+export const noraSheetCalendarClass =
+  'w-full bg-transparent p-0 [--cell-radius:14px] [--cell-size:2.5rem]'
+
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
   captionLayout = "label",
   buttonVariant = "ghost",
+  compactDays = false,
   locale,
   formatters,
   components,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
+  compactDays?: boolean
 }) {
   const defaultClassNames = getDefaultClassNames()
 
@@ -168,7 +175,10 @@ function Calendar({
           "flex-1 rounded-(--cell-radius) text-[10px] font-medium text-[var(--nora-text-tertiary)] select-none",
           defaultClassNames.weekday
         ),
-        week: cn("mt-1 flex w-full", defaultClassNames.week),
+        week: cn(
+          compactDays ? "mt-0.5 flex w-full" : "mt-1 flex w-full",
+          defaultClassNames.week
+        ),
         week_number_header: cn(
           "w-(--cell-size) select-none",
           defaultClassNames.week_number_header
@@ -178,7 +188,9 @@ function Calendar({
           defaultClassNames.week_number
         ),
         day: cn(
-          "group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-e-(--cell-radius)",
+          compactDays
+            ? "group/day relative h-(--cell-size) w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-e-(--cell-radius)"
+            : "group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-e-(--cell-radius)",
           props.showWeekNumber
             ? "[&:nth-child(2)[data-selected=true]_button]:rounded-s-(--cell-radius)"
             : "[&:first-child[data-selected=true]_button]:rounded-s-(--cell-radius)",
@@ -238,7 +250,7 @@ function Calendar({
         },
         Dropdown: CalendarCaptionDropdown,
         DayButton: ({ ...props }) => (
-          <CalendarDayButton locale={locale} {...props} />
+          <CalendarDayButton compactDays={compactDays} locale={locale} {...props} />
         ),
         WeekNumber: ({ children, ...props }) => {
           return (
@@ -258,11 +270,15 @@ function Calendar({
 
 function CalendarDayButton({
   className,
+  compactDays = false,
   day,
   modifiers,
   locale,
   ...props
-}: React.ComponentProps<typeof DayButton> & { locale?: Partial<Locale> }) {
+}: React.ComponentProps<typeof DayButton> & {
+  compactDays?: boolean
+  locale?: Partial<Locale>
+}) {
   const defaultClassNames = getDefaultClassNames()
 
   const ref = React.useRef<HTMLButtonElement>(null)
@@ -286,7 +302,9 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-0.5 border-0 leading-none font-normal",
+        compactDays
+          ? "relative isolate z-10 flex !size-auto !h-(--cell-size) !w-full min-w-0 flex-col gap-0.5 border-0 leading-none font-normal"
+          : "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-0.5 border-0 leading-none font-normal",
         "rounded-(--cell-radius) text-xs text-[var(--nora-text)]",
         "hover:bg-[var(--nora-row-hover)] hover:text-[var(--nora-text)]",
         "group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:shadow-[var(--nora-shadow-focus)]",

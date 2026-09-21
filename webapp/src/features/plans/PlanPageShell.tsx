@@ -105,27 +105,23 @@ export function PlanPageShell({
       <div className={productFeedPageClass}>
         <header className={showHeaderOnMobile ? undefined : 'hidden md:block'}>
           {showHeaderOnMobile ? (
-            <div className="md:hidden" data-plan-mobile-header="">
-              <div className="mb-3 flex items-center justify-between gap-3 rounded-[16px] bg-[var(--nora-inset)] p-2.5">
-                <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                  <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--nora-text)] text-[var(--nora-panel)]">
-                    <CalendarDaysIcon aria-hidden className="size-4" strokeWidth={1.7} />
-                  </span>
-                  <h1 className={cn(noraProductTitleClass, 'min-w-0 flex-1 truncate')}>{title}</h1>
-                </div>
-                <button
-                  aria-label="О рационе"
-                  className={cn(
-                    'ios-glass-glare inline-flex size-8 shrink-0 items-center justify-center rounded-full border-0',
-                    'bg-[var(--nora-tint-dimmed)] text-[var(--nora-tint)]',
-                  )}
-                  data-plan-info-open=""
-                  onClick={() => setInfoOpen(true)}
-                  type="button"
-                >
-                  <InfoIcon aria-hidden className="size-4" strokeWidth={2} />
-                </button>
-              </div>
+            <div
+              className="mb-3 flex items-center justify-between gap-2 md:hidden"
+              data-plan-mobile-header=""
+            >
+              <h1 className={cn(noraProductTitleClass, 'min-w-0 flex-1 truncate')}>{title}</h1>
+              <button
+                aria-label="О рационе"
+                className={cn(
+                  'ios-glass-glare inline-flex size-8 shrink-0 items-center justify-center rounded-full border-0',
+                  'bg-[var(--nora-tint-dimmed)] text-[var(--nora-tint)]',
+                )}
+                data-plan-info-open=""
+                onClick={() => setInfoOpen(true)}
+                type="button"
+              >
+                <InfoIcon aria-hidden className="size-4" strokeWidth={2} />
+              </button>
             </div>
           ) : null}
           <div className={showHeaderOnMobile ? 'hidden md:block' : undefined}>

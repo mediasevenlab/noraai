@@ -135,12 +135,14 @@ export function MealDialogCloseButton({ className }: { className?: string }) {
     <DialogClose
       aria-label="Закрыть"
       className={cn(
-        MEAL_MODAL_CHIP_CLASS,
-        'nora-press-grow inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full p-0 leading-none text-[var(--nora-text)] outline-none hover:bg-[var(--nora-input-bg)] hover:text-[var(--nora-text)] [&_svg]:block [&_svg]:shrink-0',
+        'nora-press-grow ios-glass-glare-soft inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 p-0 leading-none outline-none',
+        '!bg-[var(--nora-inset)] !text-[var(--nora-text-secondary)]',
+        'hover:!bg-[color-mix(in_srgb,var(--nora-inset)_88%,var(--nora-text)_6%)] hover:!text-[var(--nora-text)]',
+        '[&_svg]:block [&_svg]:shrink-0 [&_svg]:text-current',
         className,
       )}
     >
-      <XIcon aria-hidden className="size-3.5" strokeWidth={1.75} />
+      <XIcon aria-hidden className="size-3.5" strokeWidth={2.25} />
     </DialogClose>
   )
 }

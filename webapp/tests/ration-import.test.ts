@@ -235,6 +235,16 @@ describe('ration-imported diary meals', () => {
     expect(isPendingPlanMealShownInDiary(pendingYesterday, weekId, undefined, now)).toBe(true)
     expect(isDiaryFeedMealVisible(pendingToday, weekId, undefined, now)).toBe(true)
     expect(isDiaryFeedMealVisible(pendingYesterday, weekId, undefined, now)).toBe(false)
+    expect(
+      isDiaryFeedMealVisible(
+        pendingYesterday,
+        weekId,
+        undefined,
+        now,
+        false,
+        new Set([pendingYesterday.id]),
+      ),
+    ).toBe(true)
     expect(isDiaryFeedMealVisible(pendingTomorrow, weekId, undefined, now)).toBe(false)
     expect(isDiaryFeedMealVisible(doneYesterday, weekId, undefined, now)).toBe(true)
     expect(isDiaryFeedMealVisible(ownYesterday, weekId, undefined, now)).toBe(true)

@@ -6,7 +6,7 @@ import { CalendarDaysIcon, XIcon } from 'lucide-react'
 
 import { NoraButton } from '@/components/nora/primitives'
 import { productSheetOverlayChipClass } from '@/components/nora/product-sheet'
-import { Calendar } from '@/components/ui/calendar'
+import { Calendar, noraSheetCalendarClass } from '@/components/ui/calendar'
 import {
   Dialog,
   DialogClose,
@@ -112,7 +112,8 @@ export function PlanStartDialog({
         <div className="min-h-0 overflow-y-auto px-3 pt-3 pb-3 sm:px-4">
           <div className="rounded-[16px] bg-[var(--nora-inset)] p-2 sm:p-3" data-plan-start-calendar="">
             <Calendar
-              className="w-full bg-transparent p-0 [--cell-radius:14px] [--cell-size:2.25rem]"
+              className={noraSheetCalendarClass}
+              compactDays
               classNames={{
                 root: 'w-full',
                 months: 'relative flex w-full flex-col',

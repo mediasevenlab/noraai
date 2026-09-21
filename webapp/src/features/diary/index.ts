@@ -38,6 +38,12 @@ export {
 } from './ration-import'
 export { readCompletedRationMealIds, readDiaryPlanAtById, writeCompletedRationMealIds, writeDiaryPlanAtById } from './ration-done'
 export {
+  diaryFeedGridClass,
+  readDiaryCardLayout,
+  writeDiaryCardLayout,
+  type DiaryCardLayout,
+} from './diary-card-layout'
+export {
   clearSkippedPlanMealIds,
   keepsWeeklyPlanOnDiaryDelete,
   planOccurrenceDiaryAt,

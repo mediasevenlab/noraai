@@ -10,7 +10,9 @@ import {
   ChartNoAxesCombinedIcon,
   FlameIcon,
   LayersIcon,
+  LayoutGridIcon,
   PlusIcon,
+  Rows2Icon,
   SearchIcon,
   ShoppingBagIcon,
   UtensilsIcon,
@@ -26,7 +28,6 @@ import {
 import {
   ProductFeedEmpty,
   ProductFeedSkeletonSlots,
-  productFeedGridClass,
   productFeedPageClass,
   productFeedToolbarRowClass,
   productToolbarSearchCollapseClass,
@@ -77,6 +78,12 @@ import {
   shoppingDayKey,
 } from "../day-shopping";
 import { mealsInMondayWeek } from "../day-activity-rings";
+import {
+  diaryFeedGridClass,
+  readDiaryCardLayout,
+  writeDiaryCardLayout,
+  type DiaryCardLayout,
+} from "../diary-card-layout";
 import {
   readCompletedRationMealIds,
   readDiaryPlanAtById,
@@ -181,6 +188,8 @@ const DAY_DATE_CHIP_CLASS =
   "ios-glass-glare inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0 bg-[#2C2C2E] py-0 pr-2.5 pl-2 text-[12px] font-normal leading-none text-white backdrop-blur-[16px]";
 const DAY_PLAN_CHIP_CLASS =
   "ios-glass-glare inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0 bg-[var(--nora-tint)] py-0 pr-2.5 pl-2 text-[12px] font-normal leading-none text-white backdrop-blur-[16px]";
+const DAY_CHIPS_ROW_CLASS =
+  "relative z-[1] flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain max-md:-mx-2 max-md:px-2 py-3 -my-3 no-scrollbar md:overflow-visible";
 const FAVORITES_PICK_KEY = "favorites";
 const DIARY_MOVE_PILL_CLASS =
   "ios-float-pill inline-flex h-12 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[13px] font-normal leading-none text-[var(--nora-text)] outline-none transition-[transform,opacity] active:scale-95 focus-visible:shadow-[var(--nora-shadow-focus)] disabled:pointer-events-none disabled:opacity-100 disabled:!text-[var(--nora-text-tertiary)]";
@@ -231,13 +240,13 @@ function FeedFavoritesPickBar({
   onPick: () => void;
 }) {
   return (
-    <div className="flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain max-md:-mx-2 max-md:-mt-3 max-md:px-2 py-3 no-scrollbar md:overflow-visible">
+    <div className={DAY_CHIPS_ROW_CLASS}>
       <div className="flex w-max shrink-0 items-center gap-2">
         <button
           aria-label="Выбрать избранные приёмы"
           aria-pressed={picking}
           className={cn(
-            DAY_DATE_CHIP_CLASS,
+            DAY_STAT_CHIP_CLASS,
             "nora-press-grow",
             picking && "ring-1 ring-[var(--nora-tint)]",
           )}
@@ -245,9 +254,9 @@ function FeedFavoritesPickBar({
           onClick={onPick}
           type="button"
         >
-          <BookmarkIcon
+          <UtensilsIcon
             aria-hidden
-            className="size-[13px] text-white"
+            className="size-[13px]"
             strokeWidth={1.75}
           />
           {mealsCountLabel(mealCount)}
@@ -333,7 +342,7 @@ function FeedDayStats({
   );
 
   return (
-    <div className="flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain max-md:-mx-2 max-md:-mt-3 max-md:px-2 py-3 no-scrollbar md:overflow-visible">
+    <div className={DAY_CHIPS_ROW_CLASS}>
       <div className="flex w-max shrink-0 items-center gap-2">
         {pickable && onPickDay ? (
           <button
@@ -558,6 +567,9 @@ export function NewsPage({
   const [periodFilter, setPeriodFilter] =
     React.useState<DiaryPeriodFilter | null>(null);
   const [showWholePlan, setShowWholePlan] = React.useState(false);
+  const [cardLayout, setCardLayout] = React.useState<DiaryCardLayout>(
+    readDiaryCardLayout,
+  );
   const [planMeals, setPlanMeals] = React.useState<MealEntry[]>([]);
   const [pickerPlanId, setPickerPlanId] = React.useState("");
   const [addingPlanDayKey, setAddingPlanDayKey] = React.useState<string | null>(
@@ -825,7 +837,7 @@ export function NewsPage({
     const willComplete = !next.has(id);
     if (willComplete) next.add(id);
     else next.delete(id);
-    const stayAt = willComplete && meal ? diaryAtForMeal(meal) : undefined;
+    const stayAt = meal ? diaryAtById[id] ?? diaryAtForMeal(meal) : undefined;
     const previousMeals = queryClient.getQueryData<{
       items: Array<{ id: string; recordedAt: string; assumptions?: string[] }>;
     }>(mealsQueryKeys.forSubject(subjectId));
@@ -849,13 +861,8 @@ export function NewsPage({
     }
     setCompletedIds(next);
     writeCompletedRationMealIds(savedScope, next);
-    if (willComplete && stayAt) {
+    if (stayAt) {
       const nextAt = { ...diaryAtById, [id]: stayAt };
-      setDiaryAtById(nextAt);
-      writeDiaryPlanAtById(savedScope, nextAt);
-    } else if (!willComplete) {
-      const nextAt = { ...diaryAtById };
-      delete nextAt[id];
       setDiaryAtById(nextAt);
       writeDiaryPlanAtById(savedScope, nextAt);
     }
@@ -1215,6 +1222,7 @@ export function NewsPage({
             completedIds,
             undefined,
             showWholePlan && selectedIds.size > 0,
+            new Set(Object.keys(diaryAtById)),
           ),
         );
       }
@@ -1264,7 +1272,7 @@ export function NewsPage({
   const feedFiltersActive =
     tab !== "Все" || Boolean(query.trim()) || periodFilter != null;
   const showPlanChip = Boolean(
-    isOwnAccount && !readOnly && tab !== "Избранное" && selectedPlanIds.size > 0,
+    isOwnAccount && !readOnly && selectedPlanIds.size > 0,
   );
   const visibleMealKey = filtered.map((meal) => meal.id).join("|");
 
@@ -1342,6 +1350,7 @@ export function NewsPage({
         completedIds={completedIds}
         readOnly={readOnly}
         showPlanState={tab !== "Избранное"}
+        layout={cardLayout}
         picking={Boolean(pickingDayKey)}
         unread={Boolean(
           onMealsViewed &&
@@ -1409,7 +1418,7 @@ export function NewsPage({
 
         <div className="flex flex-col gap-5 max-md:mb-2.5">
           <section className="flex flex-col">
-            <div className="flex w-full min-w-0 items-center pt-1">
+            <div className="relative z-10 flex w-full min-w-0 items-center pt-1">
               <div className={productFeedToolbarRowClass}>
                 {toolbarStart}
                 {toolbarExtra ? (
@@ -1419,21 +1428,23 @@ export function NewsPage({
                 ) : null}
                 {toolbarDisabled ? null : (
                   <div className="diary-toolbar-press flex min-w-0 flex-1 items-center gap-2">
-                    {isOwnAccount && !readOnly && tab !== "Избранное" && selectedPlanIds.size > 0 ? (
+                    {isOwnAccount && !readOnly && selectedPlanIds.size > 0 ? (
                       <button
-                        aria-pressed={showWholePlan}
+                        aria-pressed={tab !== "Избранное" && showWholePlan}
                         className={cn(
                           diaryToolbarPillClass,
                           "nora-press-grow shrink-0 gap-1 px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-active:text-[var(--nora-text)] [&>svg]:size-3.5",
+                          "disabled:pointer-events-none disabled:text-[var(--nora-text-tertiary)] disabled:hover:text-[var(--nora-text-tertiary)]",
                         )}
-                        data-active={showWholePlan || undefined}
+                        data-active={tab !== "Избранное" && showWholePlan ? "" : undefined}
                         data-diary-whole-plan=""
+                        disabled={tab === "Избранное"}
                         onClick={() => setShowWholePlan((current) => !current)}
                         type="button"
                       >
                         <LayersIcon
                           aria-hidden
-                          className={cn(showWholePlan && "fill-current")}
+                          className={cn(tab !== "Избранное" && showWholePlan && "fill-current")}
                           strokeWidth={1.75}
                         />
                         План
@@ -1520,6 +1531,38 @@ export function NewsPage({
                         value={query}
                       />
                     </div>
+                    <div
+                      className={cn(
+                        diaryToolbarPillClass,
+                        "size-9 justify-center p-0 md:hidden",
+                      )}
+                    >
+                      <button
+                        aria-label={
+                          cardLayout === "list"
+                            ? "Показать карточки сеткой"
+                            : "Показать карточки списком"
+                        }
+                        aria-pressed={cardLayout === "list"}
+                        className={cn(
+                          diaryToolbarIconButtonClass,
+                          cardLayout === "list" && "text-[var(--nora-text)]",
+                        )}
+                        data-diary-card-layout=""
+                        onClick={() => {
+                          const next = cardLayout === "list" ? "grid" : "list";
+                          setCardLayout(next);
+                          writeDiaryCardLayout(next);
+                        }}
+                        type="button"
+                      >
+                        {cardLayout === "list" ? (
+                          <LayoutGridIcon aria-hidden strokeWidth={1.75} />
+                        ) : (
+                          <Rows2Icon aria-hidden strokeWidth={1.75} />
+                        )}
+                      </button>
+                    </div>
                     {user?.role === "user" ? (
                       <button
                         className={cn(
@@ -1571,7 +1614,9 @@ export function NewsPage({
               />
             ) : mealsQuery.isPending ||
               (filtered.length === 0 && !feedFiltersActive) ? (
-              <ProductFeedSkeletonSlots Card={SkeletonMealCard} />
+              <ProductFeedSkeletonSlots
+                Card={() => <SkeletonMealCard layout={cardLayout} />}
+              />
             ) : filtered.length === 0 ? (
               <ProductFeedEmpty
                 action={
@@ -1615,7 +1660,7 @@ export function NewsPage({
                       />
                     )}
                     <div
-                      className={productFeedGridClass}
+                      className={diaryFeedGridClass(cardLayout)}
                       onClickCapture={(event) => {
                         if (pickingDayKey !== FAVORITES_PICK_KEY) return;
                         const target = event.target;
@@ -1671,7 +1716,7 @@ export function NewsPage({
                       )}
                       <div
                         className={cn(
-                          productFeedGridClass,
+                          diaryFeedGridClass(cardLayout),
                           pickingDayKey &&
                             pickingDayKey !== group.dayKey &&
                             "pointer-events-none",
