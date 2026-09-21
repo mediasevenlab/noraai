@@ -1,4 +1,8 @@
-import { groceryShoppingLines, mergeGroceryShoppingLines } from '@/platform/grocery-lines'
+import {
+  capitalizeShoppingLabel,
+  groceryShoppingLines,
+  mergeGroceryShoppingLines,
+} from '@/platform/grocery-lines'
 import { readSavedIdSet, writeSavedIdSet, type SavedAccountScope } from '@/platform/saved-ids'
 
 import { activityDayKey } from './day-activity-rings'
@@ -43,7 +47,7 @@ export function dayShoppingItems(
   }
   const items = mergeGroceryShoppingLines(labels).map((label) => ({
     key: shoppingItemKey(label),
-    label,
+    label: capitalizeShoppingLabel(label),
   }))
   if (limit != null && limit >= 0) return items.slice(0, limit)
   return items

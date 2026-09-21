@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 
-import { mergeGroceryShoppingLines } from '../src/platform/grocery-lines'
+import { capitalizeShoppingLabel, mergeGroceryShoppingLines } from '../src/platform/grocery-lines'
 
 test('merges the same grocery by name and sums compatible amounts', () => {
   expect(
@@ -17,4 +17,11 @@ test('merges the same grocery by name and sums compatible amounts', () => {
   ])
   expect(mergeGroceryShoppingLines(['яблоко 150 г', 'Яблоко – 50 г'])).toEqual(['яблоко – 200 г'])
   expect(mergeGroceryShoppingLines(['кефир 1%', 'кефир 1%'])).toEqual(['кефир 1%'])
+})
+
+test('shopping labels start with a capital letter', () => {
+  expect(capitalizeShoppingLabel('булгур – 260 г')).toBe('Булгур – 260 г')
+  expect(capitalizeShoppingLabel('яблоко 150 г')).toBe('Яблоко 150 г')
+  expect(capitalizeShoppingLabel('Филе – 400 г')).toBe('Филе – 400 г')
+  expect(capitalizeShoppingLabel('  салат с – 10 г')).toBe('Салат с – 10 г')
 })

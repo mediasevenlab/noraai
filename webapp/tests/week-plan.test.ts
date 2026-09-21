@@ -478,8 +478,10 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('nextPlanDayCount(')
   expect(page).toContain('removeEmptyPlanDay(')
   const shell = readFileSync(new URL('../src/features/plans/PlanPageShell.tsx', import.meta.url), 'utf8')
-  expect(shell).toContain('max-md:max-w-[50%]')
-  expect(shell).toContain('max-md:truncate')
+  expect(shell).toContain('data-plan-mobile-header=""')
+  expect(shell).toContain('rounded-[16px] bg-[var(--nora-inset)] p-2.5')
+  expect(shell).toContain('noraProductTitleClass')
+  expect(shell).toContain("'hidden md:block'")
   expect(shell).toContain('InfoIcon')
   expect(shell).toContain('data-plan-info=""')
   expect(shell).not.toContain('data-modal-frame="meal"')
@@ -512,8 +514,8 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   const infoBody = shell.slice(shell.indexOf('overflow-y-auto'))
   expect(infoBody.indexOf('MealFeedPhoto')).toBeGreaterThan(-1)
   expect(infoBody.indexOf('MealFeedPhoto')).toBeLessThan(infoBody.indexOf('Описание'))
-  expect(shell).toContain("showHeaderOnMobile ? 'max-md:hidden'")
-  expect(shell).not.toContain('<NoraBadge variant="blue">{badge}</NoraBadge>')
+  expect(shell).toContain('data-plan-info-edit=""')
+  expect(shell).toContain('CalendarDaysIcon')
   expect(shell).toContain("fact.label !== 'Цель'")
   const coverBadge = source.slice(
     source.indexOf("cn(productCardGoalAnchorClass"),
@@ -523,6 +525,9 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(coverBadge).toContain('{!selected ? (')
   expect(coverBadge).toContain('{plan.kcal} ккал')
   expect(coverBadge).toContain('data-plan-cover-kcal=""')
+  expect(coverBadge.indexOf('ProductCardOriginBadge')).toBeLessThan(
+    coverBadge.indexOf('data-plan-cover-kcal=""'),
+  )
   expect(coverBadge).not.toContain('Текущий план')
   expect(coverBadge).not.toContain('{plan.days.length}')
   const coverCopy = source.slice(
@@ -572,8 +577,12 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
     shopping.indexOf('data-plan-shopping-day=""'),
   )
   expect(shopping).toContain('planShoppingDayOptions(days.length)')
-  expect(shopping).toContain('NoraSelect')
-  expect(shopping).toContain('Все дни')
+  expect(shopping).toContain('data-plan-shopping-day-tab')
+  expect(shopping).toContain('data-plan-shopping-all-days')
+  expect(shopping).toContain('CalendarDaysIcon')
+  expect(shopping).toContain('PLAN_SHOPPING_ALL_DAYS')
+  expect(shopping).toContain('aria-label={option.label}')
+  expect(shopping).not.toContain('NoraSelect')
   expect(shopping).toContain('sr-only')
   expect(shopping).toContain('Список продуктов плана {title}')
   expect(shopping).not.toContain('shoppingDescription')
@@ -1078,7 +1087,7 @@ test('plan shopping lists unique groceries from every planned meal', () => {
       fromApi: false,
     }),
   ])
-  expect(items.map((item) => item.label)).toEqual(['яйца', 'хлеб', 'морковь'])
+  expect(items.map((item) => item.label)).toEqual(['Яйца', 'Хлеб', 'Морковь'])
 })
 
 test('plan shopping splits newline ingredients and portion lines', () => {
@@ -1093,7 +1102,7 @@ test('plan shopping splits newline ingredients and portion lines', () => {
         fromApi: false,
       }),
     ]).map((item) => item.label),
-  ).toEqual(['кефир 1%', 'яблоко 150 г'])
+  ).toEqual(['Кефир 1%', 'Яблоко 150 г'])
   expect(
     planShoppingItems([
       mealOn(monday, {
@@ -1105,7 +1114,7 @@ test('plan shopping splits newline ingredients and portion lines', () => {
         fromApi: false,
       }),
     ]).map((item) => item.label),
-  ).toEqual(['треска 150 г', 'кабачок'])
+  ).toEqual(['Треска 150 г', 'Кабачок'])
 })
 
 test('plan shopping can list groceries for one plan day', () => {
@@ -1141,12 +1150,12 @@ test('plan shopping can list groceries for one plan day', () => {
     '2 день',
   ])
   expect(planShoppingItemsForDay(days, 'all').map((item) => item.label)).toEqual([
-    'яйца',
-    'хлеб',
-    'морковь',
+    'Яйца',
+    'Хлеб',
+    'Морковь',
   ])
-  expect(planShoppingItemsForDay(days, '1').map((item) => item.label)).toEqual(['яйца', 'хлеб'])
-  expect(planShoppingItemsForDay(days, '2').map((item) => item.label)).toEqual(['хлеб', 'морковь'])
+  expect(planShoppingItemsForDay(days, '1').map((item) => item.label)).toEqual(['Яйца', 'Хлеб'])
+  expect(planShoppingItemsForDay(days, '2').map((item) => item.label)).toEqual(['Хлеб', 'Морковь'])
 })
 
 test('week plan preview meals fill the shopping list without a diary stamp', () => {
@@ -1160,12 +1169,12 @@ test('week plan preview meals fill the shopping list without a diary stamp', () 
   expect(plan.days[0]?.meals[0]?.fromApi).toBe(false)
   expect(
     planShoppingItems(plan.days.flatMap((day) => day.meals)).map((item) => item.label),
-  ).toEqual(['яйца', 'кабачок', 'помидор', 'огурец'])
+  ).toEqual(['Яйца', 'Кабачок', 'Помидор', 'Огурец'])
   expect(planShoppingItemsForDay(plan.days, '1').map((item) => item.label)).toEqual([
-    'яйца',
-    'кабачок',
-    'помидор',
-    'огурец',
+    'Яйца',
+    'Кабачок',
+    'Помидор',
+    'Огурец',
   ])
 })
 
@@ -1175,7 +1184,8 @@ test('plan shopping dialog keeps the day filter usable inside the cart', () => {
     'utf8',
   )
   expect(source).toContain('disablePointerDismissal')
-  expect(source).toMatch(/<NoraSelect[\s\S]*?\bmodal\b/)
+  expect(source).toContain('data-plan-shopping-day-tab')
+  expect(source).not.toMatch(/<NoraSelect[\s\S]*?\bmodal\b/)
   expect(source).toContain('planShoppingItemsForDay')
 })
 

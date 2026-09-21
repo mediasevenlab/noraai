@@ -33,14 +33,14 @@ describe('day shopping list', () => {
     ])
     expect(items.map((item) => item.label)).toEqual([
       'Тунец гриль 140 г',
-      'пекинская капуста',
-      'огурец',
-      'натуральный йогурт',
+      'Пекинская капуста',
+      'Огурец',
+      'Натуральный йогурт',
     ])
     expect(dayShoppingItems([
       planned('a', 'Тунец гриль 140 г, пекинская капуста, огурец.'),
       planned('b', 'Огурец, натуральный йогурт'),
-    ], 2).map((item) => item.label)).toEqual(['Тунец гриль 140 г', 'пекинская капуста'])
+    ], 2).map((item) => item.label)).toEqual(['Тунец гриль 140 г', 'Пекинская капуста'])
     expect(items.map((item) => item.key)).toEqual([
       'тунец гриль 140 г',
       'пекинская капуста',

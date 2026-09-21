@@ -1341,7 +1341,7 @@ export function NewsPage({
         saved={saved.has(meal.id)}
         completedIds={completedIds}
         readOnly={readOnly}
-        showPlanState
+        showPlanState={tab !== "Избранное"}
         picking={Boolean(pickingDayKey)}
         unread={Boolean(
           onMealsViewed &&
@@ -1737,7 +1737,9 @@ export function NewsPage({
                     images={openMealImages}
                     className={cn(
                       MEAL_DIALOG_COVER_CLASS,
-                      openMealPending && RATION_PENDING_COVER_CLASS,
+                      openMealPending &&
+                        tab !== "Избранное" &&
+                        RATION_PENDING_COVER_CLASS,
                     )}
                   />
                 }

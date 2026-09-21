@@ -1,5 +1,5 @@
 import { mealGroceryLines, type MealEntry } from '@/features/diary'
-import { mergeGroceryShoppingLines } from '@/platform/grocery-lines'
+import { capitalizeShoppingLabel, mergeGroceryShoppingLines } from '@/platform/grocery-lines'
 import { readSavedIdSet, writeSavedIdSet, type SavedAccountScope } from '@/platform/saved-ids'
 
 const STORAGE_PREFIX = 'nora:plan-shopping:v1:'
@@ -27,7 +27,7 @@ export function planShoppingItems(meals: readonly MealEntry[]): PlanShoppingItem
   }
   return mergeGroceryShoppingLines(labels).map((label) => ({
     key: shoppingItemKey(label),
-    label,
+    label: capitalizeShoppingLabel(label),
   }))
 }
 

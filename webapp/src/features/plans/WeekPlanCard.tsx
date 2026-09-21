@@ -167,6 +167,12 @@ export function WeekPlanCard({
           >
             <MealFeedPhoto priority sizes="md" src={plan.coverImage} />
             <div className={cn(productCardGoalAnchorClass, 'gap-1.5')}>
+              {fromMentor ? (
+                <ProductCardOriginBadge
+                  className="bg-[var(--nora-success)] text-white"
+                  origin="mentor-rations"
+                />
+              ) : null}
               {!selected ? (
                 <span
                   className={cn(PLAN_COVER_BADGE_CLASS, 'tabular-nums')}
@@ -174,12 +180,6 @@ export function WeekPlanCard({
                 >
                   {plan.kcal} ккал
                 </span>
-              ) : null}
-              {fromMentor ? (
-                <ProductCardOriginBadge
-                  className="bg-[var(--nora-success)] text-white"
-                  origin="mentor-rations"
-                />
               ) : null}
               {activeRange ? (
                 <span

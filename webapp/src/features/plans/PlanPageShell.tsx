@@ -104,42 +104,39 @@ export function PlanPageShell({
       />
       <div className={productFeedPageClass}>
         <header className={showHeaderOnMobile ? undefined : 'hidden md:block'}>
-          <div className="mb-1.5 flex items-center gap-2">
-            <h1
-              className={cn(
-                noraPageTitleClass,
-                showHeaderOnMobile && 'min-w-0 max-md:max-w-[50%] max-md:truncate',
-              )}
-            >
-              {title}
-            </h1>
-            <NoraBadge className={showHeaderOnMobile ? 'max-md:hidden' : undefined} variant="blue">
-              {badge}
-            </NoraBadge>
-            {showHeaderOnMobile ? (
-              <button
-                aria-label="О рационе"
-                className={cn(
-                  'ios-glass-glare inline-flex size-8 shrink-0 items-center justify-center rounded-full border-0',
-                  'bg-[var(--nora-tint-dimmed)] text-[var(--nora-tint)] md:hidden',
-                )}
-                data-plan-info-open=""
-                onClick={() => setInfoOpen(true)}
-                type="button"
-              >
-                <InfoIcon aria-hidden className="size-4" strokeWidth={2} />
-              </button>
-            ) : null}
+          {showHeaderOnMobile ? (
+            <div className="md:hidden" data-plan-mobile-header="">
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-[16px] bg-[var(--nora-inset)] p-2.5">
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--nora-text)] text-[var(--nora-panel)]">
+                    <CalendarDaysIcon aria-hidden className="size-4" strokeWidth={1.7} />
+                  </span>
+                  <h1 className={cn(noraProductTitleClass, 'min-w-0 flex-1 truncate')}>{title}</h1>
+                </div>
+                <button
+                  aria-label="О рационе"
+                  className={cn(
+                    'ios-glass-glare inline-flex size-8 shrink-0 items-center justify-center rounded-full border-0',
+                    'bg-[var(--nora-tint-dimmed)] text-[var(--nora-tint)]',
+                  )}
+                  data-plan-info-open=""
+                  onClick={() => setInfoOpen(true)}
+                  type="button"
+                >
+                  <InfoIcon aria-hidden className="size-4" strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          ) : null}
+          <div className={showHeaderOnMobile ? 'hidden md:block' : undefined}>
+            <div className="mb-1.5 flex items-center gap-2">
+              <h1 className={noraPageTitleClass}>{title}</h1>
+              <NoraBadge variant="blue">{badge}</NoraBadge>
+            </div>
+            <p className={cn('mt-1.5 whitespace-pre-line', noraPageDescriptionClass)}>
+              {description}
+            </p>
           </div>
-          <p
-            className={cn(
-              'mt-1.5 whitespace-pre-line',
-              noraPageDescriptionClass,
-              showHeaderOnMobile && 'max-md:hidden',
-            )}
-          >
-            {description}
-          </p>
         </header>
         {children}
       </div>

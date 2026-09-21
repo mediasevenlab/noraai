@@ -1,12 +1,7 @@
 import * as React from 'react'
-import { ShoppingBagIcon, XIcon } from 'lucide-react'
+import { CalendarDaysIcon, CalendarIcon, ShoppingBagIcon, XIcon } from 'lucide-react'
 
-import { NoraSelect } from '@/components/nora/primitives'
-import {
-  productSheetOverlayChipClass,
-  productToolbarSelectContentClass,
-  productToolbarSelectItemClass,
-} from '@/components/nora/product-sheet'
+import { productSheetOverlayChipClass } from '@/components/nora/product-sheet'
 import {
   Dialog,
   DialogClose,
@@ -45,6 +40,9 @@ const BADGE_CLASS = cn(
   'ios-glass-glare-soft inline-flex h-6 min-h-6 max-h-6 w-fit shrink-0 items-center rounded-full border-0 px-2.5',
   'font-[family-name:var(--nora-font)] text-[12px] font-medium leading-none tracking-normal backdrop-blur-[8px]',
 )
+const DAY_TAB_CLASS =
+  'nora-press-grow relative flex h-[4.75rem] w-14 shrink-0 flex-col items-center justify-between rounded-full bg-[var(--nora-inset)] px-1 pb-2 pt-2.5 outline-none focus-visible:shadow-[var(--nora-shadow-focus)]'
+const DAY_TAB_SELECTED_CLASS = 'bg-[#2C2C2E]'
 
 function ShoppingHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -139,18 +137,55 @@ export function PlanShoppingDialog({
           <div className="flex flex-col gap-2.5">
             <div className="flex flex-col gap-1.5" data-plan-shopping-day="">
               <ShoppingHeading>День</ShoppingHeading>
-              <NoraSelect
-                className="!h-10 !min-h-10 !max-h-10 rounded-[12px] bg-[var(--nora-inset)] px-3.5 text-[13px] font-normal leading-5"
-                contentClassName={productToolbarSelectContentClass}
-                itemClassName={productToolbarSelectItemClass}
-                items={dayOptions}
-                modal
-                onValueChange={(value) => {
-                  if (value) setDayValue(value)
-                }}
-                placeholder="Все дни"
-                value={dayValue}
-              />
+              <div
+                aria-label="Дни корзины"
+                className="no-scrollbar flex w-full gap-1.5 overflow-x-auto overscroll-x-contain"
+                role="tablist"
+              >
+                {dayOptions.map((option) => {
+                  const active = option.value === dayValue
+                  const allDays = option.value === PLAN_SHOPPING_ALL_DAYS
+                  return (
+                    <button
+                      aria-label={option.label}
+                      aria-pressed={active}
+                      aria-selected={active}
+                      className={cn(DAY_TAB_CLASS, active && DAY_TAB_SELECTED_CLASS)}
+                      data-plan-shopping-all-days={allDays ? '' : undefined}
+                      data-plan-shopping-day-tab={option.value}
+                      key={option.value}
+                      onClick={() => setDayValue(option.value)}
+                      role="tab"
+                      type="button"
+                    >
+                      <CalendarIcon
+                        aria-hidden
+                        className={cn(
+                          'size-3.5',
+                          active ? 'text-[#888888]' : 'text-[var(--nora-text-secondary)]',
+                        )}
+                        strokeWidth={1.75}
+                      />
+                      <span className="mt-auto inline-flex size-7 items-center justify-center">
+                        <span
+                          className={cn(
+                            'flex size-7 items-center justify-center rounded-full text-[13px] font-semibold leading-none tabular-nums',
+                            active
+                              ? 'bg-[var(--nora-tint)] text-white'
+                              : 'bg-[var(--nora-panel)] text-[var(--nora-text)]',
+                          )}
+                        >
+                          {allDays ? (
+                            <CalendarDaysIcon aria-hidden className="size-3.5" strokeWidth={1.75} />
+                          ) : (
+                            option.value
+                          )}
+                        </span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
             <div
               className="flex items-center justify-between gap-2"

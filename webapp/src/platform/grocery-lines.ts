@@ -159,6 +159,14 @@ function parseGroceryLine(label: string) {
   }
 }
 
+/** Cart rows start with a capital letter even when the catalog wrote them lowercase. */
+export function capitalizeShoppingLabel(label: string) {
+  const trimmed = label.trim()
+  if (!trimmed) return trimmed
+  const [first = '', ...rest] = [...trimmed]
+  return `${first.toLocaleUpperCase('ru-RU')}${rest.join('')}`
+}
+
 /** One cart row per product: same name and unit family are summed. */
 export function mergeGroceryShoppingLines(labels: readonly string[]): string[] {
   const order: string[] = []

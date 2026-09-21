@@ -210,8 +210,8 @@ export function DiaryPlanDayPicker({
           <>
             <div className="shrink-0 px-2 pt-2">
               <DialogHeader className="min-w-0 gap-1 rounded-[16px] bg-[var(--nora-inset)] p-2.5 text-left">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 flex-1 items-start gap-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--nora-text)] text-[var(--nora-modal)]">
                     <CalendarDaysIcon
                       aria-hidden
@@ -221,9 +221,9 @@ export function DiaryPlanDayPicker({
                   </span>
                   <div className="min-w-0 flex-1">
                     <DialogTitle className="font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 tracking-normal text-[var(--nora-text)]">
-                      Добавить в план
+                      Добавить рацион
                     </DialogTitle>
-                    <DialogDescription className="mt-0.5 line-clamp-2 font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
+                    <DialogDescription className="sr-only">
                       {description}
                     </DialogDescription>
                   </div>
@@ -309,9 +309,9 @@ export function DiaryPlanDayPicker({
                   const dayBusy = addingDayKey === day.dayKey;
                   const marked = already || mixed;
                   const status = already
-                    ? "уже в плане"
+                    ? "уже в рационе"
                     : mixed
-                      ? `${occupancy.already} уже в плане`
+                      ? `${occupancy.already} уже в рационе`
                       : "свободен";
                   return (
                     <button

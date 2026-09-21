@@ -715,7 +715,8 @@ test('meal dialog closes from a close button in the tab row', () => {
     news.indexOf('function MealDetailTabRow'),
   )
   expect(closeBtn).toContain('aria-label="Закрыть"')
-  expect(closeBtn).toContain('text-[var(--nora-text-tertiary)]')
+  expect(closeBtn).toContain('text-[var(--nora-text)]')
+  expect(closeBtn).not.toContain('text-[var(--nora-text-tertiary)]')
   expect(closeBtn).toContain('rounded-full')
   expect(closeBtn).toContain('[&_svg]:block')
   expect(closeBtn).not.toContain('sm:hidden')
@@ -842,7 +843,7 @@ test('diary card footer keeps bookmark and share without an overflow menu', () =
   expect(news).toContain('bottom-2 left-2')
   expect(news).toContain('mealCanShareToFeed(meal) && !meal.shared')
   expect(news).toContain('tab !== "Избранное"')
-  expect(news).toContain('showPlanState')
+  expect(news).toContain('showPlanState={tab !== "Избранное"}')
   expect(news).not.toContain('showPlanState={!favoritesTab}')
   expect(news).toContain('picking={Boolean(pickingDayKey)}')
   expect(news).toContain('tab === "Избранное" ? undefined')
@@ -1073,7 +1074,7 @@ test('ration-imported diary cards are muted but stay openable', () => {
   )
   const openDialog = news.slice(news.indexOf('open={!!openMeal}'))
   expect(oneLine(openDialog)).toContain(
-    'openMealPending && RATION_PENDING_COVER_CLASS',
+    'openMealPending && tab !== "Избранное" && RATION_PENDING_COVER_CLASS',
   )
 })
 
@@ -1296,6 +1297,8 @@ test('own diary meals can be copied into a chosen weekly plan day', () => {
   expect(picker).toContain('planDays')
   expect(picker).not.toContain('data-diary-add-destination=""')
   expect(picker).not.toContain("label: 'В рацион'")
+  expect(picker).toContain('Добавить рацион')
+  expect(picker).not.toContain('Добавить в план')
   expect(picker).not.toContain('День назначения')
   expect(picker).not.toContain('Без повторов')
   expect(picker).toContain('placeholder="План"')
@@ -1327,8 +1330,11 @@ test('own diary meals can be copied into a chosen weekly plan day', () => {
   expect(picker).toContain('shrink-0 px-2 pt-2')
   expect(picker).toContain('rounded-[16px] bg-[var(--nora-inset)] p-2.5')
   expect(picker).toContain('flex flex-col px-3 pt-3')
-  expect(picker).toContain('line-clamp-2')
+  expect(picker).toContain('sr-only')
+  expect(picker).not.toContain('line-clamp-2')
   expect(picker).toContain('Можно поставить в выбранный план, в один или несколько дней.')
+  expect(picker).toContain('уже в рационе')
+  expect(picker).not.toContain('уже в плане')
   expect(picker).toContain('size-2 rounded-full bg-[var(--nora-success)]')
   expect(picker).not.toContain('border-[var(--nora-success)] bg-[var(--nora-success)] text-white')
   expect(newsPage).toContain('meals={userMeals}')

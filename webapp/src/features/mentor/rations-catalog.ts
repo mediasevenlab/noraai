@@ -1,4 +1,8 @@
-import { groceryShoppingLines, mergeGroceryShoppingLines } from '@/platform/grocery-lines'
+import {
+  capitalizeShoppingLabel,
+  groceryShoppingLines,
+  mergeGroceryShoppingLines,
+} from '@/platform/grocery-lines'
 
 export type RationGoal = 'Похудение' | 'Набор' | 'Поддержание' | 'Здоровье'
 
@@ -48,7 +52,7 @@ export function rationShoppingItems(meals: readonly RationMeal[]) {
   for (const meal of meals) {
     labels.push(...rationIngredientItems(meal.ingredients))
   }
-  return mergeGroceryShoppingLines(labels)
+  return mergeGroceryShoppingLines(labels).map(capitalizeShoppingLabel)
 }
 
 export function rationMealImages(ration: Pick<RationEntry, 'meals'>) {

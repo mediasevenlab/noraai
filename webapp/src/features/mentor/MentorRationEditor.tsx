@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { createPortal } from 'react-dom'
 import {
   CalendarDaysIcon,
   CameraIcon,
@@ -159,9 +160,14 @@ const SLOT_ROW_CLASS = cn(
   'ios-glass-glare-soft flex min-h-12 items-center gap-2 rounded-[14px] px-2 py-2',
   'bg-[var(--nora-inset)]',
 )
+const PLAN_DAY_ROW_SURFACE_CLASS = cn(
+  'ios-glass-glare-soft flex min-h-12 items-center gap-2 rounded-[14px] border-0 px-3.5 py-2.5 text-left',
+  'bg-[var(--nora-inset)] text-[var(--nora-text-secondary)]',
+)
 const PLAN_DAY_ROW_CLASS = cn(
-  'nora-press-grow ios-glass-glare-soft flex min-h-12 items-center gap-3 rounded-[14px] border-0 px-3.5 py-2.5 text-left',
-  'bg-[var(--nora-inset)] text-[var(--nora-text-secondary)] outline-none',
+  'nora-press-grow',
+  PLAN_DAY_ROW_SURFACE_CLASS,
+  'outline-none',
   'hover:bg-[color-mix(in_srgb,var(--nora-inset)_88%,var(--nora-text)_6%)] hover:text-[var(--nora-text)]',
   'focus-visible:shadow-[var(--nora-shadow-focus)]',
 )
@@ -173,6 +179,8 @@ const PLAN_DAY_INDEX_CLASS = cn(
 const PLAN_DAY_INDEX_EMPTY_CLASS = cn(
   '!bg-[var(--nora-panel)] !text-[var(--nora-text-secondary)]',
 )
+const PLAN_DAY_GRIP_CLASS =
+  'inline-flex h-8 w-4 shrink-0 items-center justify-center text-[var(--nora-text-secondary)]'
 const PLAN_DAY_ADD_ICON_CLASS = cn(
   'flex size-8 shrink-0 items-center justify-center rounded-full',
   'bg-[var(--nora-tint)] text-[var(--nora-on-accent)]',
@@ -271,10 +279,6 @@ function isGoal(value: string): value is RationGoal {
 
 function isSlot(value: string): value is RationMealSlot {
   return (RATION_MEAL_SLOTS as readonly string[]).includes(value)
-}
-
-function withColon(label: string) {
-  return label.endsWith(':') ? label : `${label}:`
 }
 
 function planEditorHeaderDescription(mealTitles: readonly string[], hint: string) {
@@ -445,15 +449,6 @@ export function RationEditorDialog({
     commitMeals(reorderMealDrafts(form.meals, fromKey, toKey))
   }
 
-  function removeMeal(key: string) {
-    if (form.meals.length <= 1) return
-    const next = form.meals.filter((meal) => meal.key !== key)
-    commitMeals(next)
-    if (activeTab === key) {
-      setActiveTab(inPlanDay ? (next[0]?.key ?? DESCRIPTION_TAB) : DESCRIPTION_TAB)
-    }
-  }
-
   async function handleSave() {
     const options = {
       ...finalizeOptions,
@@ -525,15 +520,31 @@ export function RationEditorDialog({
     const next = removePlanDraftDay(synced, index)
     if (next.length === synced.length) return
     setDayDrafts(next)
-    if (viewingDay === index) {
+    if (viewingDay === index || next.length === 0) {
       setViewingDay(null)
       setActiveTab(DESCRIPTION_TAB)
     } else if (viewingDay !== null && viewingDay > index) {
       setViewingDay(viewingDay - 1)
     }
-    const nextActive = Math.min(activeDay > index ? activeDay - 1 : activeDay, next.length - 1)
+    const nextActive = Math.min(activeDay > index ? activeDay - 1 : activeDay, Math.max(next.length - 1, 0))
     setActiveDay(Math.max(0, nextActive))
-    setForm((current) => ({ ...current, meals: next[Math.max(0, nextActive)] ?? current.meals }))
+    setForm((current) => ({
+      ...current,
+      meals: next[Math.max(0, nextActive)] ?? emptyPlanDayMeals(),
+    }))
+  }
+
+  function removeMeal(key: string) {
+    if (planDaysEnabled && form.meals.length <= 1) {
+      removeDay(activeDay)
+      return
+    }
+    if (form.meals.length <= 1) return
+    const next = form.meals.filter((meal) => meal.key !== key)
+    commitMeals(next)
+    if (activeTab === key) {
+      setActiveTab(inPlanDay ? (next[0]?.key ?? DESCRIPTION_TAB) : DESCRIPTION_TAB)
+    }
   }
 
   function moveDay(fromIndex: number, toIndex: number) {
@@ -690,7 +701,6 @@ export function RationEditorDialog({
                         'nora-press-grow size-8 shrink-0 bg-[var(--nora-panel)] sm:size-8',
                       )}
                       data-plan-editor-header-remove=""
-                      disabled={form.meals.length <= 1}
                       onClick={() => removeMeal(activeMeal.key)}
                       type="button"
                     >
@@ -812,7 +822,7 @@ export function RationEditorDialog({
                         />
                       </label>
                       <label className="grid min-w-0 gap-1">
-                        <span className={FIELD_LABEL_CLASS}>{withColon('Название')}</span>
+                        <span className={FIELD_LABEL_CLASS}>Название</span>
                         <NoraInput
                           className={HEADER_TITLE_FIELD_CLASS}
                           onChange={(event) => patch({ title: event.target.value })}
@@ -821,7 +831,7 @@ export function RationEditorDialog({
                         />
                       </label>
                       <label className="grid min-w-0 gap-1">
-                        <span className={FIELD_LABEL_CLASS}>{withColon(copy.descriptionLabel)}</span>
+                        <span className={FIELD_LABEL_CLASS}>{copy.descriptionLabel}</span>
                         <NoraTextarea
                           className={HEADER_DESC_FIELD_CLASS}
                           onChange={(event) => patch({ description: event.target.value })}
@@ -846,7 +856,7 @@ export function RationEditorDialog({
                   {showGoal ? (
                     <div className={TITLE_GOAL_ROW_CLASS}>
                       <label className="grid min-w-0 gap-1.5">
-                        <span className={FIELD_LABEL_CLASS}>{withColon('Название')}</span>
+                        <span className={FIELD_LABEL_CLASS}>Название</span>
                         <NoraInput
                           className={TITLE_FIELD_CLASS}
                           onChange={(event) => patch({ title: event.target.value })}
@@ -855,7 +865,7 @@ export function RationEditorDialog({
                         />
                       </label>
                       <label className="grid min-w-0 gap-1.5">
-                        <span className={FIELD_LABEL_CLASS}>{withColon('Цель')}</span>
+                        <span className={FIELD_LABEL_CLASS}>Цель</span>
                         <NoraSelect
                           className={GOAL_FIELD_CLASS}
                           contentClassName={productToolbarSelectContentClass}
@@ -872,7 +882,7 @@ export function RationEditorDialog({
                   ) : null}
                   {mode === 'ration' ? (
                     <label className="grid gap-1.5">
-                      <span className={FIELD_LABEL_CLASS}>{withColon(copy.descriptionLabel)}</span>
+                      <span className={FIELD_LABEL_CLASS}>{copy.descriptionLabel}</span>
                       <NoraTextarea
                         className={cn(FIELD_CLASS, 'min-h-16 px-3 py-2.5')}
                         onChange={(event) => patch({ description: event.target.value })}
@@ -1003,6 +1013,82 @@ function planDayMealsLabel(count: number) {
   return `${count} приёмов`
 }
 
+function planDayIdentity(day: readonly RationMealDraft[], index: number) {
+  return day[0]?.key || `plan-day-${index}`
+}
+
+type PlanDayDrag = {
+  labelIndex: number
+  width: number
+  height: number
+  offsetY: number
+  originLeft: number
+  axisX: number
+}
+
+function planDayGhostTransform(originLeft: number, clientY: number, offsetY: number) {
+  return `translate3d(${originLeft}px, ${clientY - offsetY}px, 0) scale(1.03)`
+}
+
+function PlanDayPlaqueFace({
+  empty,
+  index,
+  mealCount,
+  onOpen,
+  onRemove,
+}: {
+  empty: boolean
+  index: number
+  mealCount: number
+  onOpen?: (index: number) => void
+  onRemove?: (index: number) => void
+}) {
+  return (
+    <>
+      <span
+        aria-label={`Переставить день ${index + 1}`}
+        className={cn(PLAN_DAY_GRIP_CLASS, 'cursor-grab touch-none active:cursor-grabbing')}
+        data-plan-editor-day-drag=""
+        role="img"
+      >
+        <GripVerticalIcon aria-hidden className="size-4" strokeWidth={1.75} />
+      </span>
+      <button
+        aria-label={`Открыть день ${index + 1}, ${planDayMealsLabel(mealCount)}`}
+        className="nora-press-grow flex min-w-0 flex-1 items-center gap-3 text-left outline-none"
+        data-plan-editor-open-day={String(index)}
+        onClick={onOpen ? () => onOpen(index) : undefined}
+        tabIndex={onOpen ? undefined : -1}
+        type="button"
+      >
+        <span className={cn(PLAN_DAY_INDEX_CLASS, empty && PLAN_DAY_INDEX_EMPTY_CLASS)}>
+          {index + 1}
+        </span>
+        <span className="min-w-0 flex-1 truncate font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text)]">
+          День {index + 1}
+        </span>
+        <span
+          aria-hidden
+          className={MEAL_INDEX_CLASS}
+          data-plan-editor-day-meals={String(mealCount)}
+        >
+          {mealCount}
+        </span>
+      </button>
+      <button
+        aria-label={`Удалить день ${index + 1}`}
+        className={MEAL_TRASH_CLASS}
+        data-plan-editor-day-remove={String(index)}
+        onClick={onRemove ? () => onRemove(index) : undefined}
+        tabIndex={onRemove ? undefined : -1}
+        type="button"
+      >
+        <Trash2Icon aria-hidden className="size-4" />
+      </button>
+    </>
+  )
+}
+
 function PlanDayPlaqueList({
   days,
   onAdd,
@@ -1017,95 +1103,158 @@ function PlanDayPlaqueList({
   onRemove: (index: number) => void
 }) {
   const dragIndexRef = React.useRef<number | null>(null)
+  const ghostRef = React.useRef<HTMLDivElement>(null)
+  const pointerRef = React.useRef({ y: 0 })
+  const dragMetricsRef = React.useRef<PlanDayDrag | null>(null)
   const [draggingIndex, setDraggingIndex] = React.useState<number | null>(null)
+  const [drag, setDrag] = React.useState<PlanDayDrag | null>(null)
 
   function finishDrag() {
     dragIndexRef.current = null
+    dragMetricsRef.current = null
     setDraggingIndex(null)
+    setDrag(null)
   }
 
-  function hoverReorder(clientX: number, clientY: number) {
+  function pinGhost(clientY: number) {
+    pointerRef.current = { y: clientY }
+    const ghost = ghostRef.current
+    const current = dragMetricsRef.current
+    if (!ghost || !current) return
+    ghost.style.transform = planDayGhostTransform(current.originLeft, clientY, current.offsetY)
+  }
+
+  React.useLayoutEffect(() => {
+    if (!drag) return
+    pinGhost(pointerRef.current.y)
+  })
+
+  React.useEffect(() => {
+    if (!drag) return
+    const onMove = (event: PointerEvent) => {
+      if (event.cancelable) event.preventDefault()
+      pinGhost(event.clientY)
+      hoverReorder(event.clientY)
+    }
+    const onUp = () => finishDrag()
+    window.addEventListener('pointermove', onMove, { passive: false })
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+    }
+  }, [drag])
+
+  function hoverReorder(clientY: number) {
     const fromIndex = dragIndexRef.current
-    if (fromIndex == null) return
-    const node = document.elementFromPoint(clientX, clientY)?.closest('[data-plan-editor-day]')
-    const toValue = node?.getAttribute('data-plan-editor-day')
+    const axisX = dragMetricsRef.current?.axisX
+    if (fromIndex == null || axisX == null) return
+    const node = document.elementFromPoint(axisX, clientY)?.closest('[data-plan-editor-day]')
+    if (!(node instanceof HTMLElement)) return
+    const toValue = node.getAttribute('data-plan-editor-day')
     if (toValue == null) return
     const toIndex = Number(toValue)
     if (!Number.isFinite(toIndex) || toIndex === fromIndex) return
+    const rect = node.getBoundingClientRect()
+    const mid = rect.top + rect.height / 2
+    if (fromIndex < toIndex && clientY < mid) return
+    if (fromIndex > toIndex && clientY > mid) return
     onMove(fromIndex, toIndex)
     dragIndexRef.current = toIndex
     setDraggingIndex(toIndex)
   }
 
+  const draggingDay = draggingIndex != null ? days[draggingIndex] : undefined
+  const draggingMeals = draggingDay ? titledDraftMeals(draggingDay).length : 0
+
   return (
     <div className="grid gap-2" data-plan-editor-days="">
-      <p className={SECTION_HEADING_CLASS}>{withColon('Добавленные дни')}</p>
+      <p className={SECTION_HEADING_CLASS}>Добавленные дни</p>
       {days.map((day, index) => {
         const mealCount = titledDraftMeals(day).length
         const empty = mealCount === 0
+        const identity = planDayIdentity(day, index)
+        const dragging = draggingIndex === index
         return (
           <div
-            className={cn(PLAN_DAY_ROW_CLASS, draggingIndex === index && 'opacity-70')}
+            className={cn(PLAN_DAY_ROW_CLASS, dragging && 'opacity-0 !transform-none')}
             data-plan-editor-day={String(index)}
             data-plan-editor-day-empty={empty ? '' : undefined}
+            data-plan-editor-day-id={identity}
             data-plan-editor-day-meals={String(mealCount)}
-            key={`plan-day-${index}`}
+            key={identity}
+            onLostPointerCapture={finishDrag}
             onPointerCancel={finishDrag}
             onPointerDown={(event) => {
               if (event.button !== 0) return
               const target = event.target as HTMLElement
               if (!target.closest('[data-plan-editor-day-drag]')) return
+              const rect = event.currentTarget.getBoundingClientRect()
+              pointerRef.current = { y: event.clientY }
               dragIndexRef.current = index
               setDraggingIndex(index)
+              const nextDrag = {
+                labelIndex: index,
+                width: rect.width,
+                height: rect.height,
+                offsetY: event.clientY - rect.top,
+                originLeft: rect.left,
+                axisX: rect.left + rect.width / 2,
+              }
+              dragMetricsRef.current = nextDrag
+              setDrag(nextDrag)
+              if (event.cancelable) event.preventDefault()
               event.currentTarget.setPointerCapture(event.pointerId)
             }}
             onPointerMove={(event) => {
-              if (dragIndexRef.current != null) hoverReorder(event.clientX, event.clientY)
+              if (dragIndexRef.current == null) return
+              pinGhost(event.clientY)
+              hoverReorder(event.clientY)
             }}
             onPointerUp={finishDrag}
           >
-            <span
-              aria-label={`Переставить день ${index + 1}`}
-              className="inline-flex size-8 shrink-0 cursor-grab touch-none items-center justify-center text-[var(--nora-text-secondary)] active:cursor-grabbing"
-              data-plan-editor-day-drag=""
-              role="img"
-            >
-              <GripVerticalIcon aria-hidden className="size-4" strokeWidth={1.75} />
-            </span>
-            <button
-              aria-label={`Открыть день ${index + 1}, ${planDayMealsLabel(mealCount)}`}
-              className="nora-press-grow flex min-w-0 flex-1 items-center gap-3 text-left outline-none"
-              data-plan-editor-open-day={String(index)}
-              onClick={() => onOpen(index)}
-              type="button"
-            >
-              <span className={cn(PLAN_DAY_INDEX_CLASS, empty && PLAN_DAY_INDEX_EMPTY_CLASS)}>
-                {index + 1}
-              </span>
-              <span className="min-w-0 flex-1 truncate font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text)]">
-                День {index + 1}
-              </span>
-              <span
-                aria-hidden
-                className={MEAL_INDEX_CLASS}
-                data-plan-editor-day-meals={String(mealCount)}
-              >
-                {mealCount}
-              </span>
-            </button>
-            <button
-              aria-label={`Удалить день ${index + 1}`}
-              className={MEAL_TRASH_CLASS}
-              data-plan-editor-day-remove={String(index)}
-              disabled={days.length <= 1}
-              onClick={() => onRemove(index)}
-              type="button"
-            >
-              <Trash2Icon aria-hidden className="size-4" />
-            </button>
+            <PlanDayPlaqueFace
+              empty={empty}
+              index={index}
+              mealCount={mealCount}
+              onOpen={onOpen}
+              onRemove={onRemove}
+            />
           </div>
         )
       })}
+      {drag && draggingIndex != null && draggingDay && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              aria-hidden
+              className={cn(
+                PLAN_DAY_ROW_SURFACE_CLASS,
+                'pointer-events-none fixed left-0 top-0 z-[80] origin-top-left cursor-grabbing will-change-transform',
+                'shadow-[0_12px_28px_rgba(0,0,0,0.18)]',
+              )}
+              data-plan-editor-day-ghost=""
+              ref={ghostRef}
+              style={{
+                width: drag.width,
+                height: drag.height,
+                transform: planDayGhostTransform(
+                  drag.originLeft,
+                  pointerRef.current.y,
+                  drag.offsetY,
+                ),
+              }}
+            >
+              <PlanDayPlaqueFace
+                empty={draggingMeals === 0}
+                index={drag.labelIndex}
+                mealCount={draggingMeals}
+              />
+            </div>,
+            document.body,
+          )
+        : null}
       {days.length < PLAN_DRAFT_MAX_DAYS ? (
         <button
           className={PLAN_DAY_ROW_CLASS}
@@ -1113,6 +1262,9 @@ function PlanDayPlaqueList({
           onClick={onAdd}
           type="button"
         >
+          <span aria-hidden className={cn(PLAN_DAY_GRIP_CLASS, 'pointer-events-none opacity-35')}>
+            <GripVerticalIcon aria-hidden className="size-4" strokeWidth={1.75} />
+          </span>
           <span className={PLAN_DAY_ADD_ICON_CLASS}>
             <PlusIcon aria-hidden className="size-4" strokeWidth={2} />
           </span>
@@ -1142,7 +1294,7 @@ function MealsSectionHeading({
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <p className={cn(SECTION_HEADING_CLASS, 'min-w-0 truncate')}>{withColon(heading)}</p>
+      <p className={cn(SECTION_HEADING_CLASS, 'min-w-0 truncate')}>{heading}</p>
       <div className="flex min-w-0 shrink-0 items-center gap-1.5">
         <button className={ADD_MEAL_CLASS} onClick={onAdd} type="button">
           <span className={ADD_MEAL_PLUS_CLASS}>
@@ -1394,7 +1546,7 @@ function MealDraftCard({
         type="file"
       />
       <div className="grid gap-1.5">
-        <p className={FIELD_LABEL_CLASS}>{withColon('Название')}</p>
+        <p className={FIELD_LABEL_CLASS}>Название</p>
         <div className={SLOT_ROW_CLASS}>
           <NoraInput
             className={LINE_INPUT_CLASS}
@@ -1405,7 +1557,7 @@ function MealDraftCard({
         </div>
       </div>
       <div className="grid gap-1.5">
-        <p className={FIELD_LABEL_CLASS}>{withColon('Ценность')}</p>
+        <p className={FIELD_LABEL_CLASS}>Ценность</p>
         <div className="grid grid-cols-4 gap-1.5">
           {MACRO_FIELDS.map((field) => (
             <MacroField
@@ -1458,7 +1610,7 @@ function DraftLineList({
 }) {
   return (
     <div className="grid gap-2" data-draft-line-list={label}>
-      <p className={SECTION_HEADING_CLASS}>{withColon(label)}</p>
+      <p className={SECTION_HEADING_CLASS}>{label}</p>
       {items.map((item, index) => (
         <div className="flex items-center gap-2" key={`${label}-${index}`}>
           <div className={cn(SLOT_ROW_CLASS, 'min-w-0 flex-1')}>
