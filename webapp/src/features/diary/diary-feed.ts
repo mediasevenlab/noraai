@@ -55,6 +55,12 @@ export function mealsCountLabel(count: number) {
   return `${count} приёмов`
 }
 
+/** Whole meals per day, same wording as the ration card subtitle. */
+export function mealsPerDayLabel(mealsCount: number, daysCount: number) {
+  const perDay = daysCount > 0 ? Math.round(mealsCount / daysCount) : 0
+  return `${mealsCountLabel(perDay)} в день`
+}
+
 export function daysCountLabel(count: number) {
   const mod10 = count % 10
   const mod100 = count % 100

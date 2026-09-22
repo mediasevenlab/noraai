@@ -5,6 +5,7 @@ import { Dialog as SheetPrimitive } from "@base-ui/react/dialog"
 import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { MobileSheetGrabber } from "@/components/ui/mobile-sheet-grabber"
 
 function Sheet({ ...props }: SheetPrimitive.Root.Props) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
@@ -65,6 +66,18 @@ function SheetContent({
         )}
         {...props}
       >
+        {side === "bottom" ? (
+          <MobileSheetGrabber
+            dismiss={
+              <SheetPrimitive.Close
+                aria-hidden
+                className="sr-only"
+                data-sheet-dismiss=""
+                tabIndex={-1}
+              />
+            }
+          />
+        ) : null}
         {children}
         {showCloseButton && (
           <SheetPrimitive.Close

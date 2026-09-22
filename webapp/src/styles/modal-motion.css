@@ -371,3 +371,51 @@ html[data-modal-motion]:has([data-slot='sheet-content'][data-ending-style]) #roo
     transition-duration: 1ms;
   }
 }
+
+/* Phone sheet follows the grabber. Android otherwise forces transform: none. */
+@media (max-width: 767px) {
+  [data-slot='dialog-content'][data-sheet-dragging='true'],
+  [data-slot='sheet-content'][data-sheet-dragging='true'] {
+    animation: none !important;
+    transition: none !important;
+    transform: translateY(var(--sheet-drag-y, 0px)) !important;
+  }
+
+  [data-slot='dialog-content'][data-sheet-drag-release='true'],
+  [data-slot='sheet-content'][data-sheet-drag-release='true'] {
+    animation: none !important;
+    transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1) !important;
+    transform: translateY(var(--sheet-drag-y, 0px)) !important;
+  }
+
+  [data-slot='dialog-content'][data-sheet-dismissed='true'],
+  [data-slot='sheet-content'][data-sheet-dismissed='true'] {
+    animation: none !important;
+    transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1) !important;
+    transform: translateY(110%) !important;
+  }
+}
+
+html[data-android] [data-slot='dialog-content'][data-sheet-dragging='true'],
+html[data-android] [data-slot='sheet-content'][data-sheet-dragging='true'] {
+  animation: none !important;
+  transition: none !important;
+  translate: none !important;
+  transform: translateY(var(--sheet-drag-y, 0px)) !important;
+}
+
+html[data-android] [data-slot='dialog-content'][data-sheet-drag-release='true'],
+html[data-android] [data-slot='sheet-content'][data-sheet-drag-release='true'] {
+  animation: none !important;
+  translate: none !important;
+  transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1) !important;
+  transform: translateY(var(--sheet-drag-y, 0px)) !important;
+}
+
+html[data-android] [data-slot='dialog-content'][data-sheet-dismissed='true'],
+html[data-android] [data-slot='sheet-content'][data-sheet-dismissed='true'] {
+  animation: none !important;
+  translate: none !important;
+  transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1) !important;
+  transform: translateY(110%) !important;
+}

@@ -16,7 +16,10 @@ import {
 
 import {
   productCardAuthorAnchorClass,
+  productCardCoverKcalBadgeClass,
+  productCardGoalAnchorClass,
   productCardOriginAnchorClass,
+  productListCardHeightClass,
   productSheetFrostFillClass,
 } from '@/components/nora/product-sheet'
 import {
@@ -528,6 +531,18 @@ function CardActions({
   )
 }
 
+export function FeedListAuthorLabel({ name }: { name: string }) {
+  const label = name.trim() || 'Пользователь'
+  return (
+    <span className="flex min-w-0 flex-1 items-center gap-1.5 md:hidden">
+      <NoraAvatar size="sm">{authorInitials(label)}</NoraAvatar>
+      <span className="min-w-0 truncate font-[family-name:var(--nora-font)] text-[12px] font-medium leading-none text-[var(--nora-text)]">
+        {label}
+      </span>
+    </span>
+  )
+}
+
 export function authorInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
@@ -745,6 +760,8 @@ export function MealCard({
       className={cn(
         'group flex h-full min-w-0 cursor-pointer flex-col transition-[filter] duration-700 ease-out motion-reduce:duration-0',
         list && 'max-md:flex-row max-md:items-stretch',
+        list && productListCardHeightClass,
+        variant === 'feed' && !list && 'max-md:min-h-[327px]',
         grayscale && 'grayscale',
         className,
       )}
@@ -824,8 +841,13 @@ export function MealCard({
               </span>
             </div>
           ) : null}
+          {variant === 'feed' && list ? (
+            <div className={cn(productCardGoalAnchorClass, 'md:hidden')}>
+              <span className={productCardCoverKcalBadgeClass}>{meal.kcal} ккал</span>
+            </div>
+          ) : null}
           {variant === 'feed' ? (
-            <div className={productCardAuthorAnchorClass}>
+            <div className={cn(productCardAuthorAnchorClass, list && 'max-md:hidden')}>
               <div
                 className={FEED_AUTHOR_CHIP_CLASS}
                 style={
@@ -887,11 +909,12 @@ export function MealCard({
           <ul
             className={cn(
               'mt-2 mb-2 h-[3.75rem] shrink-0 overflow-clip font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]',
-              list && 'max-md:mt-1 max-md:mb-1 max-md:h-10',
+              list && 'max-md:mt-1 max-md:mb-1',
+              list && variant !== 'feed' && 'max-md:h-10',
             )}
           >
             {mealCompositionLines(meal)
-              .slice(0, list ? 2 : 3)
+              .slice(0, list && variant !== 'feed' ? 2 : 3)
               .map((line, index) => (
               <li className="flex min-w-0 items-baseline gap-1.5" key={`${index}:${line}`}>
                 <span aria-hidden className="shrink-0">
@@ -902,7 +925,7 @@ export function MealCard({
             ))}
           </ul>
           <MacrosLine
-            className={cn('shrink-0', list && variant !== 'feed' && 'max-md:hidden')}
+            className={cn('shrink-0', list && 'max-md:hidden')}
             meal={meal}
           />
           {list && variant !== 'feed' ? (
@@ -918,13 +941,27 @@ export function MealCard({
           {variant === 'feed' ? (
             <>
               <MealCardAddButton
+                className={cn(list && 'max-md:hidden')}
                 disabled={
                   onAddToPlan ? addingToPlan : onAddToDiary ? addingToDiary : true
                 }
                 label={onAddToPlan ? 'В план' : onAddToDiary ? 'В дневник' : 'В план'}
                 onAdd={onAddToPlan ?? onAddToDiary}
               />
-              <div className="ml-auto flex items-center gap-1">
+              {list ? (
+                <FeedListAuthorLabel name={meal.authorName ?? 'Пользователь'} />
+              ) : null}
+              <div className="ml-auto flex shrink-0 items-center gap-1">
+                {list ? (
+                  <MealCardAddButton
+                    className="md:hidden"
+                    disabled={
+                      onAddToPlan ? addingToPlan : onAddToDiary ? addingToDiary : true
+                    }
+                    label={onAddToPlan ? 'В план' : onAddToDiary ? 'В дневник' : 'В план'}
+                    onAdd={onAddToPlan ?? onAddToDiary}
+                  />
+                ) : null}
                 {onToggleLike ? (
                   <MealLikeButton
                     liked={Boolean(meal.liked)}
@@ -976,8 +1013,10 @@ export function MealCard({
 }
 
 export function SkeletonMealCard({
+  className,
   layout = 'grid',
 }: {
+  className?: string
   layout?: DiaryCardLayout
 } = {}) {
   const list = layout === 'list'
@@ -987,6 +1026,8 @@ export function SkeletonMealCard({
       className={cn(
         'flex h-full min-w-0 flex-col',
         list && 'max-md:flex-row max-md:items-stretch',
+        list && productListCardHeightClass,
+        className,
       )}
       data-card-layout={layout}
       data-slot="meal-card-skeleton"

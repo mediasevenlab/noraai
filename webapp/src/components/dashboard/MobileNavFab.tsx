@@ -33,7 +33,7 @@ import { cn } from '@/lib/utils'
 export type MobileNavItem = {
   /** Highlight as a call-to-action, even when the route is not active. */
   accent?: boolean
-  /** Fill the glyph circle so the current section is obvious. */
+  /** Fill the tile when this section is the current one. */
   active?: boolean
   disabled?: boolean
   icon: LucideIcon
@@ -84,15 +84,14 @@ function MobileNavTileIcon({
   active?: boolean
   icon: LucideIcon
 }) {
+  const filled = Boolean(accent || active)
   return (
     <span
       className={cn(
         'inline-flex size-8 items-center justify-center rounded-full',
-        accent
+        filled
           ? 'bg-white/20 text-white'
-          : active
-            ? 'bg-[var(--nora-tint)] text-[var(--nora-on-accent)]'
-            : 'ios-glass-glyph text-[var(--nora-text-secondary)]',
+          : 'ios-glass-glyph text-[var(--nora-text-secondary)]',
       )}
     >
       <Icon aria-hidden className="size-[18px]" strokeWidth={1.5} />
@@ -100,14 +99,15 @@ function MobileNavTileIcon({
   )
 }
 
-function mobileNavTileClass(accent?: boolean, locked?: boolean) {
+function mobileNavTileClass(accent?: boolean, locked?: boolean, active?: boolean) {
+  const filled = !locked && Boolean(accent || active)
   return cn(
     'flex h-[4.75rem] w-full flex-col items-start justify-center gap-1.5 rounded-[22px] border-0 px-3.5 text-left outline-none',
     locked
       ? 'cursor-default text-[var(--nora-text-tertiary)] opacity-70 ios-glass-tile'
       : cn(
           'nora-press-grow cursor-pointer focus-visible:shadow-[var(--nora-shadow-focus)]',
-          accent
+          filled
             ? 'bg-[var(--nora-tint)] text-white shadow-[inset_0_1px_0_color-mix(in_srgb,white_32%,transparent)]'
             : 'ios-glass-tile text-[var(--nora-text)]',
         ),
@@ -283,7 +283,7 @@ export function MobileNavFab({
                   return (
                     <li key={item.onSelect ? `${item.to}:${item.label}` : item.to} className="min-w-0">
                       {locked ? (
-                        <div aria-disabled className={mobileNavTileClass(item.accent, true)}>
+                        <div aria-disabled className={mobileNavTileClass(item.accent, true, active)}>
                           {tileBody}
                         </div>
                       ) : isMentorUsers ? (
@@ -291,7 +291,7 @@ export function MobileNavFab({
                           type="button"
                           aria-current={active ? 'page' : undefined}
                           onClick={() => setPanel('mentor-users')}
-                          className={mobileNavTileClass(item.accent)}
+                          className={mobileNavTileClass(item.accent, false, active)}
                         >
                           {tileBody}
                         </button>
@@ -303,7 +303,7 @@ export function MobileNavFab({
                             setOpen(false)
                             item.onSelect?.()
                           }}
-                          className={mobileNavTileClass(item.accent)}
+                          className={mobileNavTileClass(item.accent, false, active)}
                         >
                           {tileBody}
                         </button>
@@ -312,7 +312,7 @@ export function MobileNavFab({
                           to={item.to}
                           aria-current={active ? 'page' : undefined}
                           onClick={() => setOpen(false)}
-                          className={mobileNavTileClass(item.accent)}
+                          className={mobileNavTileClass(item.accent, false, active)}
                         >
                           {tileBody}
                         </Link>

@@ -71,6 +71,13 @@ export const productCardGoalAnchorClass =
 export const productCardAuthorAnchorClass =
   'pointer-events-none absolute bottom-2 left-2 z-[2] flex max-w-[calc(100%-1rem)] items-center'
 
+/** Calorie pill on a feed list cover — same frost as ration cover badges. */
+export const productCardCoverKcalBadgeClass = cn(
+  'ios-glass-glare-soft inline-flex h-[22px] min-h-[22px] max-h-[22px] min-w-[22px] items-center justify-center rounded-full border-0 px-[9px]',
+  'font-[family-name:var(--nora-font)] text-[11.5px] font-medium leading-none tabular-nums backdrop-blur-[10px]',
+  'bg-[color-mix(in_srgb,var(--nora-panel)_88%,transparent)] text-[var(--nora-text)]',
+)
+
 /** Inset into the modal hero, aligned with the close chip. */
 export const productCardOriginModalAnchorClass =
   'pointer-events-none absolute top-3.5 left-3.5 z-[2] flex items-center gap-1.5'
@@ -138,6 +145,10 @@ export const productToolbarCapsuleSelectClass =
 
 export const productFeedGridClass =
   'grid min-w-0 w-full grid-cols-2 items-stretch gap-2 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+
+/** Phone one-row cards in the diary, rations, and the feed share this height. */
+export const productListCardHeightClass =
+  'max-md:h-[155px] max-md:min-h-[155px] max-md:max-h-[155px] max-md:overflow-hidden'
 
 /** Inverted black/white CTA in ration and plan card footers. */
 export const productCardFooterCtaClass =

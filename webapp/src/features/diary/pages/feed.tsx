@@ -1,40 +1,33 @@
 import * as React from 'react'
-import { HeartIcon } from 'lucide-react'
+import { LayoutGridIcon, Rows2Icon, HeartIcon } from 'lucide-react'
 
 import { noraPageDescriptionClass, noraPageTitleClass } from '@/components/PageLayout'
-import { productFeedPageClass, productFeedToolbarRowClass, productToolbarCapsuleSelectClass, productToolbarSearchCollapseClass, productToolbarSelectContentClass, productToolbarSelectItemClass } from '@/components/nora/product-sheet'
-import { NoraBadge, NoraSelect } from '@/components/nora/primitives'
+import { productFeedPageClass, productFeedToolbarRowClass, productToolbarSearchCollapseClass } from '@/components/nora/product-sheet'
+import { NoraBadge } from '@/components/nora/primitives'
 import { ProductToolbarSearch } from '@/components/nora/toolbar-search'
 import { useAuth } from '@/features/auth'
 import { cn } from '@/lib/utils'
 
 import {
-  diaryToolbarChipClass,
+  diaryToolbarIconButtonClass,
   diaryToolbarPillClass,
   DiaryPeriodPicker,
   type DiaryPeriodFilter,
 } from '../DiaryPeriodPicker'
 import {
-  FEED_GOALS,
+  readFeedCardLayout,
+  writeFeedCardLayout,
+  type FeedCardLayout,
+} from '../feed-card-layout'
+import {
   FEED_KINDS,
-  type FeedGoal,
   type FeedKind,
 } from '../feed-filters'
 import { SharedMealsFeed } from '../SharedMealsFeed'
 import { SharedRationsFeed } from '../SharedRationsFeed'
 
-const FEED_GOAL_FILTERS = [
-  { value: 'all', label: 'Все цели' },
-  ...FEED_GOALS.map((goal) => ({ value: goal, label: goal })),
-]
 const FEED_PILL_TAB_CLASS =
   'ios-float-seg nora-press-grow inline-flex h-full flex-none items-center justify-center rounded-full px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-active:text-[var(--nora-text)]'
-const COMPACT_SELECT_CONTENT_CLASS = productToolbarSelectContentClass
-const COMPACT_SELECT_ITEM_CLASS = productToolbarSelectItemClass
-
-function isFeedGoal(value: string): value is FeedGoal {
-  return (FEED_GOALS as readonly string[]).includes(value)
-}
 
 export function SharedMealsFeedPage({
   onOpenRation,
@@ -46,8 +39,8 @@ export function SharedMealsFeedPage({
   const [searchOpen, setSearchOpen] = React.useState(false)
   const [kind, setKind] = React.useState<FeedKind>('Приёмы')
   const [likedOnly, setLikedOnly] = React.useState(false)
-  const [goal, setGoal] = React.useState<FeedGoal | null>(null)
   const [period, setPeriod] = React.useState<DiaryPeriodFilter | null>(null)
+  const [cardLayout, setCardLayout] = React.useState<FeedCardLayout>(readFeedCardLayout)
   const periodStart = auth.user?.createdAt ?? new Date(Date.now() - 1000 * 60 * 60 * 24 * 180)
 
   React.useEffect(() => {
@@ -86,7 +79,7 @@ export function SharedMealsFeedPage({
             Приёмы и рационы, которыми поделились пользователи: состав, КБЖУ и лайки.
           </p>
         </header>
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 max-md:mb-2.5">
           <section className="flex flex-col">
             <div className="flex w-full min-w-0 items-center pt-1">
               <div className={productFeedToolbarRowClass}>
@@ -124,7 +117,7 @@ export function SharedMealsFeedPage({
                     className={cn(likedOnly && 'fill-current')}
                     strokeWidth={1.75}
                   />
-                  Мои лайки
+                  Лайки
                 </button>
                 <div
                   className={cn(
@@ -132,33 +125,6 @@ export function SharedMealsFeedPage({
                     searchOpen && 'max-md:min-w-0 max-md:flex-1',
                   )}
                 >
-                  <div
-                    className={cn(
-                      'flex h-9 max-h-9 items-center transition-[max-width,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
-                      searchOpen
-                        ? cn(productToolbarSearchCollapseClass, 'max-w-[12rem] overflow-visible')
-                        : 'max-w-[12rem] overflow-visible',
-                    )}
-                  >
-                    <div className={cn(diaryToolbarPillClass, 'h-9 max-h-9')}>
-                      <NoraSelect
-                        chevron="circle"
-                        className={cn(productToolbarCapsuleSelectClass, diaryToolbarChipClass)}
-                        contentClassName={COMPACT_SELECT_CONTENT_CLASS}
-                        itemClassName={COMPACT_SELECT_ITEM_CLASS}
-                        itemIndicator="end"
-                        items={[...FEED_GOAL_FILTERS]}
-                        onValueChange={(value) => {
-                          if (value == null || value === 'all') {
-                            setGoal(null)
-                            return
-                          }
-                          if (isFeedGoal(value)) setGoal(value)
-                        }}
-                        value={goal ?? 'all'}
-                      />
-                    </div>
-                  </div>
                   <div
                     className={cn(
                       diaryToolbarPillClass,
@@ -192,12 +158,39 @@ export function SharedMealsFeedPage({
                     />
                   </div>
                 </div>
+                <div className={cn(diaryToolbarPillClass, 'size-9 justify-center p-0 md:hidden')}>
+                  <button
+                    aria-label={
+                      cardLayout === 'list'
+                        ? 'Показать карточки сеткой'
+                        : 'Показать карточки списком'
+                    }
+                    aria-pressed={cardLayout === 'list'}
+                    className={cn(
+                      diaryToolbarIconButtonClass,
+                      cardLayout === 'list' && 'text-[var(--nora-text)]',
+                    )}
+                    data-feed-card-layout=""
+                    onClick={() => {
+                      const next = cardLayout === 'list' ? 'grid' : 'list'
+                      setCardLayout(next)
+                      writeFeedCardLayout(next)
+                    }}
+                    type="button"
+                  >
+                    {cardLayout === 'list' ? (
+                      <LayoutGridIcon aria-hidden strokeWidth={1.75} />
+                    ) : (
+                      <Rows2Icon aria-hidden strokeWidth={1.75} />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </section>
           {kind === 'Рационы' ? (
             <SharedRationsFeed
-              goal={goal}
+              layout={cardLayout}
               likedOnly={likedOnly}
               onOpenRation={onOpenRation}
               origin="feed"
@@ -206,7 +199,7 @@ export function SharedMealsFeedPage({
             />
           ) : (
             <SharedMealsFeed
-              goal={goal}
+              layout={cardLayout}
               likedOnly={likedOnly}
               origin="feed"
               period={period}

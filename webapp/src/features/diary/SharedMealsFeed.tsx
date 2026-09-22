@@ -7,7 +7,6 @@ import type { ListMealsResponse } from "@web-app-demo/contracts";
 import {
   ProductFeedEmpty,
   ProductFeedSkeletonSlots,
-  productFeedGridClass,
   type ProductCardOrigin,
 } from "@/components/nora/product-sheet";
 import { NoraButton } from "@/components/nora/primitives";
@@ -44,6 +43,7 @@ import {
   type FeedGoal,
 } from "./feed-filters";
 import type { FeedPlanWeekDay } from "./feed-import";
+import { feedGridClass, type FeedCardLayout } from "./feed-card-layout";
 import { mealImageFromUrl } from "./meal-image-pick";
 import { preferredMealPhotoSrc } from "./meal-cover";
 import type { MealEntry } from "./meals-catalog";
@@ -103,12 +103,14 @@ export function SharedMealsFeed({
   origin = "feed",
   likedOnly = false,
   goal = null,
+  layout = "grid",
   period = null,
 }: {
   query?: string;
   origin?: ProductCardOrigin;
   likedOnly?: boolean;
   goal?: FeedGoal | null;
+  layout?: FeedCardLayout;
   period?: DiaryPeriodFilter | null;
 }) {
   const auth = useAuth();
@@ -402,7 +404,17 @@ export function SharedMealsFeed({
   }
 
   if (mealsQuery.isLoading || (meals.length === 0 && !filtersActive)) {
-    return <ProductFeedSkeletonSlots Card={SkeletonMealCard} />;
+    return (
+      <ProductFeedSkeletonSlots
+        className={layout === "list" ? "max-md:grid-cols-1" : undefined}
+        Card={() => (
+          <SkeletonMealCard
+            className={layout === "list" ? "max-md:min-h-[155px]" : "max-md:min-h-[327px]"}
+            layout={layout}
+          />
+        )}
+      />
+    );
   }
 
   if (visible.length === 0) {
@@ -427,12 +439,13 @@ export function SharedMealsFeed({
 
   return (
     <>
-      <section className={productFeedGridClass}>
+      <section className={feedGridClass(layout)}>
         {visible.map((meal) => (
           <MealCard
             completedIds={EMPTY_COMPLETED_IDS}
             images={imagesForDiaryMeal(meal, EMPTY_GALLERIES)}
             key={meal.id}
+            layout={layout}
             meal={meal}
             onDelete={() => undefined}
             onOpen={() => setOpenId(meal.id)}

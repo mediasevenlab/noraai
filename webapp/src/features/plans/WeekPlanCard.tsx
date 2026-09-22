@@ -6,6 +6,7 @@ import {
   ProductCardOriginBadge,
   productCardFooterCtaClass,
   productCardGoalAnchorClass,
+  productListCardHeightClass,
   productSheetOverlayChipClass,
 } from '@/components/nora/product-sheet'
 import {
@@ -157,7 +158,8 @@ export function WeekPlanCard({
       <article
         className={cn(
           'group flex h-full min-w-0 cursor-pointer flex-col',
-          list && 'max-md:flex-row max-md:items-stretch max-md:min-h-[155px]',
+          list && 'max-md:flex-row max-md:items-stretch',
+          list && productListCardHeightClass,
           // Phone two-up height matches the diary meal card.
           !list && 'max-md:min-h-[327px]',
         )}

@@ -4,6 +4,7 @@ import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { MobileSheetGrabber } from "@/components/ui/mobile-sheet-grabber"
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
@@ -58,6 +59,16 @@ function DialogContent({
         )}
         {...props}
       >
+        <MobileSheetGrabber
+          dismiss={
+            <DialogPrimitive.Close
+              aria-hidden
+              className="sr-only"
+              data-sheet-dismiss=""
+              tabIndex={-1}
+            />
+          }
+        />
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close
