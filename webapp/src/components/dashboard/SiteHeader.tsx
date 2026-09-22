@@ -87,6 +87,7 @@ export function SiteHeader({
         <CardShadowMenu />
         <PlannedCoverWashMenu />
         <PlannedCoverBlurMenu />
+        <PlannedCoverGradeMenu />
         <Button
           aria-label={isDark ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
           className="size-7"

@@ -61,15 +61,15 @@ export function plannedCoverGradeTable(grade: PlannedCoverGrade) {
 export function applyPlannedCoverGradeToDocument(grade: PlannedCoverGrade) {
   if (typeof document === 'undefined') return
   const table = plannedCoverGradeTable(grade)
-  let filter = document.getElementById(PLANNED_COVER_GRADE_FILTER_ID)
-  if (!filter || filter.namespaceURI !== SVG_NS) {
+  const existing = document.getElementById(PLANNED_COVER_GRADE_FILTER_ID)
+  if (!(existing instanceof SVGFilterElement)) {
     const svg = document.createElementNS(SVG_NS, 'svg')
     svg.setAttribute('id', 'nora-planned-cover-grade-svg')
     svg.setAttribute('aria-hidden', 'true')
     svg.setAttribute('width', '0')
     svg.setAttribute('height', '0')
     svg.style.position = 'absolute'
-    filter = document.createElementNS(SVG_NS, 'filter')
+    const filter = document.createElementNS(SVG_NS, 'filter')
     filter.setAttribute('id', PLANNED_COVER_GRADE_FILTER_ID)
     filter.setAttribute('color-interpolation-filters', 'sRGB')
     const transfer = document.createElementNS(SVG_NS, 'feComponentTransfer')
@@ -85,6 +85,6 @@ export function applyPlannedCoverGradeToDocument(grade: PlannedCoverGrade) {
     return
   }
   for (const channel of ['feFuncR', 'feFuncG', 'feFuncB']) {
-    filter.getElementsByTagName(channel)[0]?.setAttribute('tableValues', table)
+    existing.getElementsByTagName(channel)[0]?.setAttribute('tableValues', table)
   }
 }

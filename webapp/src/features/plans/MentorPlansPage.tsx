@@ -21,7 +21,6 @@ import {
   rationToUpsertRequest,
   RationUserPicker,
   useCreateMentorPlanMutation,
-  useDeleteMentorPlanMutation,
   useMentorPlansQuery,
   useMentorUsersQuery,
   type RationDraft,
@@ -49,7 +48,6 @@ export function MentorPlansPage() {
     [sharedRationsQuery.data?.items],
   )
   const createPlan = useCreateMentorPlanMutation()
-  const deletePlan = useDeleteMentorPlanMutation()
   const [draft, setDraft] = React.useState<RationDraft | null>(null)
   const [sendPlan, setSendPlan] = React.useState<RationEntry | null>(null)
   const [assigningUserId, setAssigningUserId] = React.useState<string | null>(null)

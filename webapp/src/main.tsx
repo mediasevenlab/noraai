@@ -57,6 +57,7 @@ flushSync(() => {
             <CardShadowSync />
             <PlannedCoverWashSync />
             <PlannedCoverBlurSync />
+            <PlannedCoverGradeSync />
             <AuthProvider>
               <App />
             </AuthProvider>
