@@ -15,7 +15,7 @@ import {
   productSheetFrostFillClass,
   type ProductCardOrigin,
 } from '@/components/nora/product-sheet'
-import { NoraAvatar, NoraIconButton } from '@/components/nora/primitives'
+import { NoraAvatar, NoraButton, NoraIconButton } from '@/components/nora/primitives'
 import { useAuth } from '@/features/auth'
 import { cn } from '@/lib/utils'
 
