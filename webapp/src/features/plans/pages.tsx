@@ -12,7 +12,6 @@ import { cn } from '@/lib/utils'
 import {
   ProductFeedEmpty,
   ProductFeedSkeletonSlots,
-  productFeedGridClass,
   productFeedToolbarRowClass,
 } from '@/components/nora/product-sheet'
 import { useAuth } from '@/features/auth'
@@ -83,6 +82,7 @@ import {
   WEEK_PLAN_OUTLINE_KEY,
   writePlanOutline,
 } from './plan-outline'
+import { planFeedGridClass, readPlanCardLayout, writePlanCardLayout, type PlanCardLayout } from './plan-card-layout'
 import { PlanStartDialog } from './PlanStartDialog'
 import { useSyncedPlanLibrary } from './use-plan-library'
 import { PlanToolbar, visiblePlanCards, partitionPlanCards, PlanGroupHeading, PLAN_GROUP_ICONS, planToolbarPillClass, type PlanFeedTab, type PlanLibrary } from './PlanToolbar'
@@ -136,6 +136,7 @@ export function PlanPage({
     onLibraryChange?.(next)
   }
   const [tab, setTab] = React.useState<PlanFeedTab>('Все')
+  const [cardLayout, setCardLayout] = React.useState<PlanCardLayout>(readPlanCardLayout)
   const [query, setQuery] = React.useState('')
   const [searchOpen, setSearchOpen] = React.useState(false)
   const [createDraft, setCreateDraft] = React.useState<RationDraft | null>(null)
@@ -432,6 +433,7 @@ export function PlanPage({
         }
         fromMentor={isAssignedPlanId(plan.id)}
         key={plan.id}
+        layout={cardLayout}
         onOpen={() => {
           const nextId = plan.id === weekPlan.id ? 'current' : plan.id
           if (onOpenPlan) {
@@ -488,8 +490,14 @@ export function PlanPage({
       }
       title={heading?.title ?? 'План'}
     >
+      <div className="flex flex-col gap-5">
       <PlanToolbar
         canCreate={canCreate}
+        cardLayout={cardLayout}
+        onCardLayoutChange={(next) => {
+          setCardLayout(next)
+          writePlanCardLayout(next)
+        }}
         onCreate={() => setCreateDraft(emptyRationDraft())}
         onQueryChange={setQuery}
         onSearchOpenChange={setSearchOpen}
@@ -506,8 +514,8 @@ export function PlanPage({
           title="Не удалось загрузить план"
         />
       ) : isPending ? (
-        <section className={productFeedGridClass}>
-          <WeekPlanCardSkeleton />
+        <section className={planFeedGridClass(cardLayout)}>
+          <WeekPlanCardSkeleton layout={cardLayout} />
         </section>
       ) : cards.length === 0 ? (
         <ProductFeedEmpty
@@ -541,37 +549,38 @@ export function PlanPage({
           title={favoritesEmpty ? 'Пока нет избранных планов' : 'Нет таких планов'}
         />
       ) : library === 'catalog' ? (
-        <section className={productFeedGridClass}>{cards.map(renderPlanCard)}</section>
+        <section className={planFeedGridClass(cardLayout)}>{cards.map(renderPlanCard)}</section>
       ) : (
         <div className="flex flex-col gap-5">
           {groupedCards.mine.length > 0 ? (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-5">
               <PlanGroupHeading
                 count={groupedCards.mine.length}
                 icon={PLAN_GROUP_ICONS.mine}
                 label="Мои"
                 tone="mine"
               />
-              <section className={productFeedGridClass}>
+              <section className={planFeedGridClass(cardLayout)}>
                 {groupedCards.mine.map(renderPlanCard)}
               </section>
             </div>
           ) : null}
           {groupedCards.mentor.length > 0 ? (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-5">
               <PlanGroupHeading
                 count={groupedCards.mentor.length}
                 icon={PLAN_GROUP_ICONS.mentor}
                 label="Наставник"
                 tone="mentor"
               />
-              <section className={productFeedGridClass}>
+              <section className={planFeedGridClass(cardLayout)}>
                 {groupedCards.mentor.map(renderPlanCard)}
               </section>
             </div>
           ) : null}
         </div>
       )}
+      </div>
       <RationEditorDialog
         draft={createDraft}
         finalizeOptions={{ idPrefix: AUTHORED_PLAN_ID_PREFIX, source: 'План' }}

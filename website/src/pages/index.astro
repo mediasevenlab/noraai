@@ -28,6 +28,73 @@ const signupHref = webappHref('/signup')
 ---
 
 <BaseLayout canonicalUrl={canonicalUrl} description={description} title={title}>
+  <Fragment slot="head">
+    <style is:inline>
+      html.landing-session-check body { visibility: hidden; }
+    </style>
+    <script is:inline define:vars={{ publicWebappUrl }}>
+      ;(function () {
+        var appBase = publicWebappUrl || ''
+        var root = document.documentElement
+        var settled = false
+        root.classList.add('landing-session-check')
+
+        function reveal() {
+          if (settled) return
+          settled = true
+          root.classList.remove('landing-session-check')
+        }
+
+        function destination(user) {
+          if (!user) return '/app/general'
+          if (user.role === 'admin') return '/admin/users'
+          if (user.role === 'mentor') return '/mentor'
+          if (user.questionnaireCompleted === false) return '/app/onboarding'
+          return '/app/general'
+        }
+
+        function probe() {
+          return fetch(appBase + '/api/auth/refresh', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'content-type': 'application/json' },
+            body: '{}',
+          })
+            .then(function (response) {
+              if (!response.ok) return null
+              return response.json()
+            })
+            .then(function (session) {
+              if (!session || typeof session.accessToken !== 'string') return null
+              return fetch(appBase + '/api/auth/me', {
+                credentials: 'include',
+                headers: { authorization: 'Bearer ' + session.accessToken },
+              }).then(function (response) {
+                if (!response.ok) return { user: null }
+                return response.json()
+              })
+            })
+            .then(function (body) {
+              if (!body) {
+                reveal()
+                return
+              }
+              settled = true
+              window.location.replace(appBase + destination(body.user))
+            })
+        }
+
+        var timer = window.setTimeout(reveal, 2500)
+        var locks = navigator.locks
+        var pending = locks
+          ? locks.request('web_app_demo:auth-cookie-mutation', { mode: 'exclusive' }, probe)
+          : probe()
+        pending.catch(reveal).then(function () {
+          window.clearTimeout(timer)
+        })
+      })()
+    </script>
+  </Fragment>
   <SiteHeader loginHref={loginHref} signupHref={signupHref} />
   <main id="main-content">
     <MosaicShowcase />

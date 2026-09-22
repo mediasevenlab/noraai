@@ -1567,7 +1567,7 @@ export function NewsPage({
                       <button
                         className={cn(
                           diaryToolbarPillClass,
-                          "nora-press-grow max-md:hidden p-1",
+                          "nora-press-grow max-md:hidden gap-1 px-3 text-[13px] font-normal leading-none text-[var(--nora-text)]",
                         )}
                         type="button"
                         onClick={() => {
@@ -1575,13 +1575,8 @@ export function NewsPage({
                           setAddMealOpen(true);
                         }}
                       >
-                        <span
-                          className="ios-float-seg inline-flex h-full items-center justify-center gap-1 rounded-full px-3 text-[13px] font-normal leading-none text-[var(--nora-text)] [&>svg]:size-3.5"
-                          data-active=""
-                        >
-                          <CameraIcon aria-hidden className="size-3.5 shrink-0" strokeWidth={1.75} />
-                          Добавить
-                        </span>
+                        <CameraIcon aria-hidden className="size-3.5 shrink-0" strokeWidth={1.75} />
+                        Добавить
                       </button>
                     ) : null}
                   </div>
@@ -1615,6 +1610,7 @@ export function NewsPage({
             ) : mealsQuery.isPending ||
               (filtered.length === 0 && !feedFiltersActive) ? (
               <ProductFeedSkeletonSlots
+                className={cardLayout === 'list' ? 'max-md:grid-cols-1' : undefined}
                 Card={() => <SkeletonMealCard layout={cardLayout} />}
               />
             ) : filtered.length === 0 ? (
@@ -1685,7 +1681,7 @@ export function NewsPage({
                   dayGroups.map((group) => (
                     <section
                       className={cn(
-                        "flex flex-col gap-3",
+                        "flex flex-col gap-5",
                         pickingDayKey &&
                           pickingDayKey !== group.dayKey &&
                           "opacity-45",

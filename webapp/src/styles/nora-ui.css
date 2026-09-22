@@ -658,10 +658,15 @@
   background: color-mix(in srgb, white 12%, transparent);
 }
 
-/* Phone: top toolbar pills use the same contrast as the bottom dock. */
+/* Phone: top toolbar pills are 30% lighter than the bottom dock. */
 @media (max-width: 767px) {
   .ios-float-pill,
-  .ios-float-pill[data-search-open],
+  .ios-float-pill[data-search-open] {
+    box-shadow:
+      0 1px 2px color-mix(in srgb, var(--nora-text) 8.4%, transparent),
+      0 8px 20px color-mix(in srgb, var(--nora-text) 12.6%, transparent);
+  }
+
   .ios-float-pill-dock {
     box-shadow:
       0 1px 2px color-mix(in srgb, var(--nora-text) 12%, transparent),
@@ -671,7 +676,14 @@
   .scheme-editor-dark .ios-float-pill,
   [data-scheme="editor-dark"] .ios-float-pill,
   .scheme-editor-dark .ios-float-pill[data-search-open],
-  [data-scheme="editor-dark"] .ios-float-pill[data-search-open],
+  [data-scheme="editor-dark"] .ios-float-pill[data-search-open] {
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+      inset 0 0 0 1px color-mix(in srgb, white 8%, transparent),
+      0 1px 2px rgba(0, 0, 0, 0.196),
+      0 8px 22px rgba(0, 0, 0, 0.252);
+  }
+
   .scheme-editor-dark .ios-float-pill-dock,
   [data-scheme="editor-dark"] .ios-float-pill-dock {
     box-shadow:

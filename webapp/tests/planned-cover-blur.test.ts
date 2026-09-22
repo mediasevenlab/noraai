@@ -8,6 +8,7 @@ import {
   PLANNED_COVER_BLURS,
   parsePlannedCoverBlurId,
 } from '../src/components/planned-cover-blur'
+import { plannedCoverGradeTable, DEFAULT_PLANNED_COVER_GRADE } from '../src/components/planned-cover-grade'
 import { PLANNED_COVER_WASHES } from '../src/components/planned-cover-wash'
 
 const css = readFileSync(
@@ -67,7 +68,9 @@ describe('planned cover blur', () => {
   })
 
   test('planned covers blur the photo, not the status overlay', () => {
-    expect(sheet).toContain('[&_img]:[filter:grayscale(1)_blur(var(--planned-cover-blur))]')
+    expect(sheet).toContain('ration-pending-cover')
+    expect(css).toContain('url("#nora-planned-cover-grade")')
+    expect(css).toContain('blur(var(--planned-cover-blur))')
     expect(sheet).not.toContain("'[&_img]:grayscale'")
   })
 
@@ -76,6 +79,20 @@ describe('planned cover blur', () => {
     expect(menu).toContain('Блюр запланированных')
     expect(menu).toContain('setPlannedCoverBlur(value)')
     expect(header).toContain('<PlannedCoverBlurMenu />')
+    expect(header).toContain('<PlannedCoverGradeMenu />')
     expect(main).toContain('<PlannedCoverBlurSync />')
+    expect(main).toContain('<PlannedCoverGradeSync />')
   })
-})
+
+  test('zero grade leaves the black-and-white curve unchanged', () => {
+    const identity = plannedCoverGradeTable({ exposure: 0, contrast: 0, highlights: 0 })
+      .split(' ')
+      .map(Number)
+    expect(identity[0]).toBe(0)
+    expect(identity[8]).toBeCloseTo(0.5, 3)
+    expect(identity.at(-1)).toBe(1)
+    expect(DEFAULT_PLANNED_COVER_GRADE).toEqual({
+      exposure: -7,
+      contrast: 11,
+      highlights: -17,
+    })

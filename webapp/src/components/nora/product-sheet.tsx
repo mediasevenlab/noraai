@@ -148,11 +148,13 @@ export const PRODUCT_FEED_SKELETON_COUNT = 10
 /** True-empty and pending feeds — shimmering card grid, not an empty plaque. */
 export function ProductFeedSkeletonSlots({
   Card,
+  className,
 }: {
   Card: ComponentType
+  className?: string
 }) {
   return (
-    <section className={productFeedGridClass} data-slot="feed-skeleton">
+    <section className={cn(productFeedGridClass, className)} data-slot="feed-skeleton">
       {Array.from({ length: PRODUCT_FEED_SKELETON_COUNT }, (_, index) => (
         <Card key={index} />
       ))}

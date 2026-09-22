@@ -32,6 +32,7 @@ const { canonicalUrl, description, title } = Astro.props
     <meta property="og:description" content={description} />
     {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
     <meta name="twitter:card" content="summary" />
+    <slot name="head" />
     <script is:inline>
       ;(function () {
         try {

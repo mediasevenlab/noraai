@@ -8,7 +8,6 @@ import { NoraButton } from '@/components/nora/primitives'
 import {
   ProductFeedEmpty,
   ProductFeedSkeletonSlots,
-  productFeedGridClass,
 } from '@/components/nora/product-sheet'
 import { useAuth } from '@/features/auth'
 import { daysCountLabel, mealsCountLabel, mealsQueryKeys, shareMyRation, SkeletonMealCard, useSharedRationsQuery } from '@/features/diary'
@@ -32,6 +31,7 @@ import { parsePlanGoal } from '@/platform/authored-plans'
 
 import { CurrentPlanMeals } from './CurrentPlanMeals'
 import { PlanPageShell } from './PlanPageShell'
+import { planFeedGridClass, readPlanCardLayout, writePlanCardLayout, type PlanCardLayout } from './plan-card-layout'
 import { PlanToolbar, visiblePlanCards, type PlanFeedTab } from './PlanToolbar'
 import { WeekPlanCard, WeekPlanCardSkeleton } from './WeekPlanCard'
 import { buildWeekPlanFromRation, sharedRationSnapshotFromWeekPlan } from './week-plan'
@@ -54,6 +54,7 @@ export function MentorPlansPage() {
   const [sendPlan, setSendPlan] = React.useState<RationEntry | null>(null)
   const [assigningUserId, setAssigningUserId] = React.useState<string | null>(null)
   const [tab, setTab] = React.useState<PlanFeedTab>('Все')
+  const [cardLayout, setCardLayout] = React.useState<PlanCardLayout>(readPlanCardLayout)
   const [query, setQuery] = React.useState('')
   const [searchOpen, setSearchOpen] = React.useState(false)
   const mentees = useMentorUsersQuery({ page: 1, pageSize: 100 })
@@ -138,6 +139,11 @@ export function MentorPlansPage() {
       title="План"
     >
       <PlanToolbar
+        cardLayout={cardLayout}
+        onCardLayoutChange={(next) => {
+          setCardLayout(next)
+          writePlanCardLayout(next)
+        }}
         onCreate={() => setDraft(emptyRationDraft())}
         onQueryChange={setQuery}
         onSearchOpenChange={setSearchOpen}
@@ -158,8 +164,8 @@ export function MentorPlansPage() {
           title="Не удалось загрузить планы"
         />
       ) : plansQuery.isPending ? (
-        <section className={productFeedGridClass}>
-          <WeekPlanCardSkeleton />
+        <section className={planFeedGridClass(cardLayout)}>
+          <WeekPlanCardSkeleton layout={cardLayout} />
         </section>
       ) : cards.length === 0 ? (
         <ProductFeedEmpty
@@ -168,17 +174,12 @@ export function MentorPlansPage() {
           title="Пока нет планов"
         />
       ) : (
-        <section className={productFeedGridClass}>
+        <section className={planFeedGridClass(cardLayout)}>
           {cards.map((plan) => (
             <WeekPlanCard
               actionLabel="Отправить"
               key={plan.id}
-              onDelete={() => {
-                void deletePlan.mutateAsync(plan.id).then(
-                  () => toast.success('План удалён'),
-                  () => toast.error('Не удалось удалить план'),
-                )
-              }}
+              layout={cardLayout}
               onOpen={() => {
                 void navigate({ to: '/mentor/plans/$planId', params: { planId: plan.id } })
               }}

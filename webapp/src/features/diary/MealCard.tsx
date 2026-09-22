@@ -53,14 +53,36 @@ const MEAL_CARD_FOOTER_DIVIDER_CLASS =
 const MEAL_CARD_FOOTER_CLASS = 'flex items-center justify-between gap-2 py-2.5'
 const MEAL_CARD_FOOTER_PLUS_CLASS =
   'nora-press-grow size-6! shrink-0 rounded-full! bg-[var(--nora-input-bg)] text-[var(--nora-text-secondary)] shadow-none hover:bg-[color-mix(in_srgb,var(--nora-input-bg)_82%,var(--nora-text)_10%)] hover:text-[var(--nora-text)] active:bg-[color-mix(in_srgb,var(--nora-input-bg)_75%,var(--nora-text)_12%)] [&_svg]:size-4'
-const MEAL_CARD_FOOTER_PLUS_LABEL_CLASS =
-  'nora-press-grow inline-flex h-6 shrink-0 items-center gap-0.5 rounded-full bg-[var(--nora-input-bg)] py-0 pl-1.5 pr-2 font-[family-name:var(--nora-font)] text-[11px] font-normal leading-none text-[var(--nora-text-secondary)] shadow-none hover:bg-[color-mix(in_srgb,var(--nora-input-bg)_82%,var(--nora-text)_10%)] hover:text-[var(--nora-text)] active:bg-[color-mix(in_srgb,var(--nora-input-bg)_75%,var(--nora-text)_12%)]'
 const FEED_AUTHOR_CHIP_CLASS = cn(
   'ios-glass-glare-soft inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border-0 py-1 pr-2.5 pl-1',
   productSheetFrostFillClass,
 )
 
-function MacrosLine({ meal, className }: { meal: MealEntry; className?: string }) {
+function MacrosLine({
+  meal,
+  part = 'all',
+  className,
+}: {
+  meal: MealEntry
+  part?: 'all' | 'kcal' | 'bju'
+  className?: string
+}) {
+  const kcal = (
+    <span className="font-normal text-[var(--nora-text)]">
+      {meal.kcal} ккал
+    </span>
+  )
+  const bju = (
+    <>
+      {part === 'bju' ? 'Б: ' : null}
+      {part === 'all' ? ' · Б: ' : null}
+      {meal.protein}
+      {' · Ж: '}
+      {meal.fat}
+      {' · У: '}
+      {meal.carbs}
+    </>
+  )
   return (
     <p
       className={cn(
@@ -68,15 +90,14 @@ function MacrosLine({ meal, className }: { meal: MealEntry; className?: string }
         className,
       )}
     >
-      <span className="font-normal text-[var(--nora-text)]">
-        {meal.kcal} ккал
-      </span>
-      {' · Б: '}
-      {meal.protein}
-      {' · Ж: '}
-      {meal.fat}
-      {' · У: '}
-      {meal.carbs}
+      {part === 'kcal' ? kcal : null}
+      {part === 'bju' ? bju : null}
+      {part === 'all' ? (
+        <>
+          {kcal}
+          {bju}
+        </>
+      ) : null}
     </p>
   )
 }
@@ -424,14 +445,14 @@ export function Cover({
 }
 
 function MealCardAddButton({
-  labeled,
   label,
   disabled,
+  className,
   onAdd,
 }: {
-  labeled?: boolean
   label: string
   disabled?: boolean
+  className?: string
   onAdd?: () => void
 }) {
   const stopClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -443,34 +464,17 @@ function MealCardAddButton({
   }
 
   return (
-    <>
-      <NoraIconButton
-        aria-label={label}
-        className={cn(MEAL_CARD_FOOTER_PLUS_CLASS, labeled && 'max-md:hidden')}
-        data-slot="meal-card-add"
-        disabled={disabled}
-        onClick={stopClick}
-        onPointerDown={stopPointer}
-        onPointerUp={stopPointer}
-      >
-        <PlusIcon className="size-4" />
-      </NoraIconButton>
-      {labeled ? (
-        <button
-          aria-label={label}
-          className={cn(MEAL_CARD_FOOTER_PLUS_LABEL_CLASS, 'md:hidden')}
-          data-slot="meal-card-add"
-          disabled={disabled}
-          onClick={stopClick}
-          onPointerDown={stopPointer}
-          onPointerUp={stopPointer}
-          type="button"
-        >
-          <PlusIcon aria-hidden className="size-3.5" strokeWidth={2} />
-          {label}
-        </button>
-      ) : null}
-    </>
+    <NoraIconButton
+      aria-label={label}
+      className={cn(MEAL_CARD_FOOTER_PLUS_CLASS, className)}
+      data-slot="meal-card-add"
+      disabled={disabled}
+      onClick={stopClick}
+      onPointerDown={stopPointer}
+      onPointerUp={stopPointer}
+    >
+      <PlusIcon className="size-4" />
+    </NoraIconButton>
   )
 }
 
@@ -515,6 +519,7 @@ function CardActions({
             : 'hover:text-[var(--nora-text)]',
         )}
         data-demo-pressed={savePressed ? '' : undefined}
+        data-slot="meal-card-bookmark"
         onClick={onToggleSave}
       >
         <BookmarkIcon className={cn('size-4', saved && 'fill-current')} />
@@ -860,7 +865,7 @@ export function MealCard({
       </div>
       <div
         className={cn(
-          'flex flex-1 flex-col px-3 pt-3 sm:px-4 sm:pt-3.5',
+          'relative flex flex-1 flex-col px-3 pt-3 sm:px-4 sm:pt-3.5',
           list && 'max-md:min-w-0 max-md:px-3 max-md:pt-2 max-md:pb-0',
         )}
       >
@@ -875,9 +880,7 @@ export function MealCard({
           type="button"
         >
           <div className="min-w-0">
-            <h3
-              className="truncate shrink-0 font-[family-name:var(--nora-font)] text-[15px] font-medium leading-6 tracking-normal text-[var(--nora-text)]"
-            >
+            <h3 className="truncate shrink-0 font-[family-name:var(--nora-font)] text-[15px] font-medium leading-6 tracking-normal text-[var(--nora-text)]">
               {meal.title}
             </h3>
           </div>
@@ -898,7 +901,13 @@ export function MealCard({
               </li>
             ))}
           </ul>
-          <MacrosLine className="shrink-0" meal={meal} />
+          <MacrosLine
+            className={cn('shrink-0', list && variant !== 'feed' && 'max-md:hidden')}
+            meal={meal}
+          />
+          {list && variant !== 'feed' ? (
+            <MacrosLine className="shrink-0 md:hidden" meal={meal} part="bju" />
+          ) : null}
         </button>
         <div className="mt-auto pt-2.5">
         <div aria-hidden className={MEAL_CARD_FOOTER_DIVIDER_CLASS} />
@@ -930,12 +939,23 @@ export function MealCard({
             <>
               {footerStart}
               <MealCardAddButton
+                className={cn(list && 'max-md:hidden')}
                 disabled={readOnly || !onAddToPlan || addingToPlan}
                 label={list ? 'В рацион' : 'В план'}
-                labeled={list}
                 onAdd={onAddToPlan}
               />
-              <div className="ml-auto flex items-center gap-1">
+              {list ? (
+                <MacrosLine className="min-w-0 flex-1 md:hidden" meal={meal} part="kcal" />
+              ) : null}
+              <div className="ml-auto flex shrink-0 items-center gap-1">
+                {list ? (
+                  <MealCardAddButton
+                    className="md:hidden"
+                    disabled={readOnly || !onAddToPlan || addingToPlan}
+                    label="В рацион"
+                    onAdd={onAddToPlan}
+                  />
+                ) : null}
                 <CardActions
                   canShare={canShare}
                   hideFooterShare={hideFooterShare}

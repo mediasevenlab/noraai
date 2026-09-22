@@ -263,7 +263,7 @@ export const RATION_PICKED_CARD_BADGE_CLASS = cn(
 
 /** Planned covers stay black-and-white with a light blue wash until done. */
 export const RATION_PENDING_COVER_CLASS = cn(
-  '[&_img]:[filter:grayscale(1)_blur(var(--planned-cover-blur))]',
+  'ration-pending-cover',
   'after:pointer-events-none after:absolute after:inset-0 after:z-[1] after:bg-[var(--planned-cover-wash)] after:content-[""]',
 )
 

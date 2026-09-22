@@ -113,9 +113,23 @@ function isNoraSchemeAligned(root: HTMLElement, isDark: boolean) {
   )
 }
 
+let appliedStatusBarDark: boolean | null = null
+
+function resampleStandaloneStatusBar() {
+  const scroller = document.scrollingElement
+  if (!scroller) return
+  const top = scroller.scrollTop
+  scroller.scrollTop = top + 1
+  scroller.scrollTop = top
+}
+
 function syncBrowserChrome(isDark: boolean) {
   const themeMeta = document.querySelector('meta[name="theme-color"]')
-  if (themeMeta) themeMeta.setAttribute('content', isDark ? '#111111' : '#fbfbfa')
+  if (themeMeta) themeMeta.setAttribute('content', isDark ? '#171717' : '#fbfbfa')
+  if (appliedStatusBarDark === isDark) return
+  const shouldResample = appliedStatusBarDark !== null
+  appliedStatusBarDark = isDark
+  if (shouldResample) requestAnimationFrame(resampleStandaloneStatusBar)
 }
 
 /** Apply Nora scheme classes to match next-themes `.dark` / light. */

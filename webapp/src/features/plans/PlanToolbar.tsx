@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { BookmarkIcon, GraduationCapIcon, UserIcon, UtensilsIcon } from 'lucide-react'
+import { BookmarkIcon, GraduationCapIcon, LayoutGridIcon, Rows2Icon, UserIcon, UtensilsIcon } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import {
@@ -11,10 +11,13 @@ import { cn } from '@/lib/utils'
 import { isAssignedPlanId } from '@/platform/authored-plans'
 
 import { isCatalogPlanId } from './plan-catalog'
+import type { PlanCardLayout } from './plan-card-layout'
 import type { WeekPlan } from './week-plan'
 
 const toolbarPillClass = 'ios-float-pill flex h-9 shrink-0 items-center'
 export const planToolbarPillClass = toolbarPillClass
+const planToolbarIconButtonClass =
+  'nora-press-grow inline-flex size-9 shrink-0 items-center justify-center !rounded-full !border-0 !bg-transparent !shadow-none text-[var(--nora-text-secondary)] outline-none disabled:pointer-events-none disabled:opacity-50 [&>svg]:size-3.5'
 
 export type PlanLibrary = 'mine' | 'catalog' | 'mentor'
 
@@ -109,20 +112,24 @@ export function visiblePlanCards(
 
 export function PlanToolbar({
   canCreate = true,
+  cardLayout,
   query,
   searchOpen,
   tab,
   toolbarStart,
+  onCardLayoutChange,
   onCreate,
   onQueryChange,
   onSearchOpenChange,
   onTabChange,
 }: {
   canCreate?: boolean
+  cardLayout: PlanCardLayout
   query: string
   searchOpen: boolean
   tab: PlanFeedTab
   toolbarStart?: React.ReactNode
+  onCardLayoutChange: (layout: PlanCardLayout) => void
   onCreate: () => void
   onQueryChange: (query: string) => void
   onSearchOpenChange: (open: boolean) => void
@@ -167,6 +174,27 @@ export function PlanToolbar({
                 onValueChange={onQueryChange}
                 value={query}
               />
+            </div>
+            <div className={cn(toolbarPillClass, 'size-9 justify-center p-0 md:hidden')}>
+              <button
+                aria-label={
+                  cardLayout === 'list' ? 'Показать карточки сеткой' : 'Показать карточки списком'
+                }
+                aria-pressed={cardLayout === 'list'}
+                className={cn(
+                  planToolbarIconButtonClass,
+                  cardLayout === 'list' && 'text-[var(--nora-text)]',
+                )}
+                data-plan-card-layout=""
+                onClick={() => onCardLayoutChange(cardLayout === 'list' ? 'grid' : 'list')}
+                type="button"
+              >
+                {cardLayout === 'list' ? (
+                  <LayoutGridIcon aria-hidden strokeWidth={1.75} />
+                ) : (
+                  <Rows2Icon aria-hidden strokeWidth={1.75} />
+                )}
+              </button>
             </div>
           </div>
           {canCreate ? (

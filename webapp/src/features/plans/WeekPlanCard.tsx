@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import { usePressWithoutScroll } from '@/platform/press-without-scroll'
 import type { SavedAccountScope } from '@/platform/saved-ids'
 
+import type { PlanCardLayout } from './plan-card-layout'
 import { PlanShoppingDialog } from './PlanShoppingDialog'
 import { WEEK_PLAN_CARD_SLOTS, averageMealsPerDayLabel, type WeekPlan } from './week-plan'
 
@@ -109,6 +110,7 @@ export function WeekPlanCard({
   actionLabel,
   activeRange,
   fromMentor = false,
+  layout = 'grid',
   plan,
   saved = false,
   selected = false,
@@ -125,6 +127,7 @@ export function WeekPlanCard({
   /** Cover badge for the live selected plan, e.g. `07.09 - 15.09`. */
   activeRange?: string
   fromMentor?: boolean
+  layout?: PlanCardLayout
   plan: WeekPlan
   saved?: boolean
   selected?: boolean
@@ -139,6 +142,7 @@ export function WeekPlanCard({
 }) {
   const [shoppingOpen, setShoppingOpen] = React.useState(false)
   const shoppingMeals = plan.days.flatMap((day) => day.meals)
+  const list = layout === 'list'
   const press = usePressWithoutScroll(onOpen)
   const shareDisabled = !onShare || (!canShare && !shared)
   const shareLabel = shared
@@ -151,7 +155,13 @@ export function WeekPlanCard({
   return (
     <>
       <article
-        className="group flex h-full min-w-0 cursor-pointer flex-col"
+        className={cn(
+          'group flex h-full min-w-0 cursor-pointer flex-col',
+          list && 'max-md:flex-row max-md:items-stretch max-md:min-h-[155px]',
+          // Phone two-up height matches the diary meal card.
+          !list && 'max-md:min-h-[327px]',
+        )}
+        data-card-layout={layout}
         data-slot="meal-card"
         onClick={press.onClick}
         onPointerCancel={press.onPointerCancel}
@@ -159,9 +169,18 @@ export function WeekPlanCard({
         onPointerMove={press.onPointerMove}
         onPointerUp={press.onPointerUp}
       >
-        <div className="relative shrink-0 px-2 pt-2">
+        <div
+          className={cn(
+            'relative shrink-0 px-2 pt-2',
+            list && 'max-md:flex max-md:self-stretch max-md:p-2',
+          )}
+        >
           <div
-            className={cn('relative', PLAN_CARD_PREVIEW_SIZE_CLASS)}
+            className={cn(
+              'relative',
+              PLAN_CARD_PREVIEW_SIZE_CLASS,
+              list && 'max-md:aspect-square max-md:!h-full max-md:!w-auto max-md:!max-h-none',
+            )}
             data-haptic="card"
             data-slot="meal-card-preview"
           >
@@ -192,7 +211,12 @@ export function WeekPlanCard({
                 </span>
               ) : null}
             </div>
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/62 to-transparent px-3 pt-7 pb-2 text-left">
+            <div
+              className={cn(
+                'pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-gradient-to-t from-black/62 to-transparent px-3 pt-7 pb-2 text-left',
+                list && 'max-md:hidden',
+              )}
+            >
               <h3 className="truncate font-[family-name:var(--nora-font)] text-[15px] font-medium leading-5 text-white">
                 {plan.title}
               </h3>
@@ -222,16 +246,35 @@ export function WeekPlanCard({
             </button>
           ) : null}
         </div>
-        <div className="flex flex-col gap-2 px-3 pt-2.5">
+        <div
+          className={cn(
+            'flex min-w-0 flex-1 flex-col',
+            list && 'max-md:min-w-0 max-md:pr-1',
+          )}
+        >
+          {list ? (
+            <div className="hidden px-3 pt-2.5 max-md:block">
+              <h3 className="truncate font-[family-name:var(--nora-font)] text-[15px] font-medium leading-5 text-[var(--nora-text)]">
+                {plan.title}
+              </h3>
+              <p className="mt-0.5 truncate font-[family-name:var(--nora-font)] text-[12px] font-light leading-4 text-[var(--nora-text-tertiary)] tabular-nums">
+                {averageMealsPerDayLabel(plan.mealsCount, plan.days.length)}
+              </p>
+            </div>
+          ) : null}
+        <div className={cn('flex flex-col gap-2 px-3 pt-2.5', list && 'max-md:pt-3')}>
           <PlanSummaryPlaque fromMentor={fromMentor} plan={plan} />
         </div>
-        <div className="mt-auto flex flex-col px-4 pt-2">
+        <div className={cn('mt-auto flex flex-col px-4 pt-2', list && 'max-md:px-3 max-md:pt-1.5 max-md:pb-0')}>
           <div
             aria-hidden
-            className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]"
+            className={cn(
+              'border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]',
+              list && 'max-md:hidden',
+            )}
           />
           <div
-            className="flex items-center gap-2 py-3"
+            className={cn('flex items-center gap-2 py-3', list && 'max-md:pt-[5px] max-md:pb-[13px]')}
             data-slot="meal-card-footer"
             onClick={(event) => event.stopPropagation()}
           >
@@ -341,6 +384,7 @@ export function WeekPlanCard({
             </div>
           </div>
         </div>
+        </div>
       </article>
       <PlanShoppingDialog
         days={plan.days}
@@ -354,19 +398,35 @@ export function WeekPlanCard({
   )
 }
 
-export function WeekPlanCardSkeleton() {
+export function WeekPlanCardSkeleton({
+  layout = 'grid',
+}: {
+  layout?: PlanCardLayout
+} = {}) {
+  const list = layout === 'list'
   return (
     <article
       aria-label="Черновик плана"
-      className="flex h-full flex-col"
+      className={cn('flex h-full flex-col', list && 'max-md:flex-row max-md:items-stretch')}
+      data-card-layout={layout}
       data-slot="meal-card-skeleton"
     >
-      <div className="relative shrink-0 px-2 pt-2">
+      <div
+        className={cn(
+          'relative shrink-0 px-2 pt-2',
+          list && 'max-md:flex max-md:self-stretch max-md:p-2',
+        )}
+      >
         <div
-          className={cn(PLAN_CARD_PREVIEW_SIZE_CLASS, 'animate-pulse')}
+          className={cn(
+            PLAN_CARD_PREVIEW_SIZE_CLASS,
+            'animate-pulse',
+            list && 'max-md:aspect-square max-md:h-full max-md:w-auto max-md:max-h-none',
+          )}
           data-slot="meal-card-preview"
         />
       </div>
+      <div className="flex min-w-0 flex-1 flex-col">
       <div className="flex flex-col gap-1.5 px-3 pt-2.5">
           {Array.from({ length: WEEK_PLAN_CARD_SLOTS }, (_, index) => (
             <div
@@ -378,7 +438,10 @@ export function WeekPlanCardSkeleton() {
       <div className="mt-auto flex flex-col px-4 pt-2">
         <div
           aria-hidden
-          className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]"
+          className={cn(
+            'border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]',
+            list && 'max-md:hidden',
+          )}
         />
         <div className="flex items-center gap-2 py-3" data-slot="meal-card-footer">
           <div className="h-[30px] min-w-0 flex-1 animate-pulse rounded-[8px] bg-[var(--nora-inset)]" />
@@ -387,6 +450,7 @@ export function WeekPlanCardSkeleton() {
             <div className="size-4 animate-pulse rounded bg-[var(--nora-inset)]" />
           </div>
         </div>
+      </div>
       </div>
     </article>
   )

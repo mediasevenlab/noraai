@@ -2,6 +2,11 @@
   --planned-cover-blur: 0px;
 }
 
+/* Temporary grade from the desktop header sliders. Identity at 0/0/0. */
+.ration-pending-cover img {
+  filter: grayscale(1) url("#nora-planned-cover-grade") blur(var(--planned-cover-blur));
+}
+
 html[data-planned-cover-blur='0'] {
   --planned-cover-blur: 0px;
 }

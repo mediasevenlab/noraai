@@ -13,6 +13,8 @@ describe('home-screen boot splash', () => {
     expect(html).toContain('rel="manifest"')
     expect(html).toContain('/site.webmanifest')
     expect(html).toContain('apple-mobile-web-app-capable')
+    expect(html).toContain('html.dark body')
+    expect(html).toContain('html.scheme-editor-dark body')
     expect(html).toContain('name="theme-color"')
     expect(existsSync(new URL('../public/apple-touch-icon.png', import.meta.url))).toBe(true)
     expect(existsSync(new URL('../public/icon-192.png', import.meta.url))).toBe(true)
