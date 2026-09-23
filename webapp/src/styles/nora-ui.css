@@ -138,9 +138,9 @@
   --nora-popover: #ffffff;
   --nora-modal: #ffffff;
   --nora-inset: #f3f3f3;
-  /* На тон темнее плитки меню (4% чёрного), без заметного скачка. */
-  --settings-substrate: color-mix(in srgb, black 5%, var(--nora-panel));
-  --settings-divider: color-mix(in srgb, black 3%, var(--settings-substrate));
+  /* Прежняя подложка настроек, до совпадения с плиткой меню. */
+  --settings-substrate: #f1f2f1;
+  --settings-divider: color-mix(in srgb, black 4%, var(--settings-substrate));
 
   --nora-text: #222222;
   --nora-text-secondary: #666666;
@@ -242,6 +242,7 @@
 .scheme-editor-light.light-palette-aluminum { --light-bg: #f4f4f5; --light-canvas: #ebeced; --light-panel: #f9f9fa; --light-surface: #f0f1f2; --light-popover: #f9f9fa; --light-inset: #e0e1e3; --light-border: #d3d5d7; }
 .scheme-editor-light.light-palette-rain { --light-bg: #f1f3f4; --light-canvas: #e8eaec; --light-panel: #f7f8f9; --light-surface: #eef0f1; --light-popover: #f7f8f9; --light-inset: #dde0e3; --light-border: #d0d4d8; }
 .scheme-editor-light.light-palette-breath { --light-bg: #fbfcfb; --light-canvas: #f0f2f1; --light-panel: #ffffff; --light-surface: #f7f8f7; --light-popover: #ffffff; --light-inset: #f5f7f6; --light-border: #e4e8e6; }
+.scheme-editor-light.light-palette-breathtwo { --light-bg: #fbfcfb; --light-canvas: #f0f2f1; --light-panel: #ffffff; --light-surface: #f7f8f7; --light-popover: #ffffff; --light-inset: #f5f7f6; --light-border: #e4e8e6; }
 .scheme-editor-light.light-palette-limestone { --light-bg: #f6f7f7; --light-canvas: #eceeed; --light-panel: #fafbfb; --light-surface: #f1f3f2; --light-popover: #fafbfb; --light-inset: #e4e6e5; --light-border: #d6d9d8; }
 .scheme-editor-light.light-palette-plaster { --light-bg: #fbfbf9; --light-canvas: #f2f3f1; --light-panel: #ffffff; --light-surface: #f7f7f5; --light-popover: #ffffff; --light-inset: #eceeea; --light-border: #dfe2dc; }
 .scheme-editor-light.light-palette-limewash { --light-bg: #fbfbfb; --light-canvas: #f2f2f2; --light-panel: #ffffff; --light-surface: #f7f7f7; --light-popover: #ffffff; --light-inset: #ececec; --light-border: #dfdfdf; }
@@ -317,7 +318,8 @@
   --nora-divider: color-mix(in srgb, var(--light-canvas) 94%, var(--nora-text) 6%);
 }
 
-.scheme-editor-light.light-palette-breath {
+.scheme-editor-light.light-palette-breath,
+.scheme-editor-light.light-palette-breathtwo {
   /* Wells must read against white modal/panel; the shared 64/36 input mix is too close. */
   --nora-input-bg: var(--light-inset);
   --nora-button-bg: var(--light-inset);

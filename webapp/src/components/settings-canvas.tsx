@@ -28,7 +28,7 @@ const settingsBodyClass =
  * Высота на узком экране 40px у кнопок (зона нажатия), у полей после масштаба 32px.
  */
 const settingsControlsClass = cn(
-  'mt-4 rounded-[16px] bg-[var(--settings-substrate,var(--nora-inset))] px-5 py-5',
+  'mt-4 rounded-[16px] bg-[var(--settings-substrate,var(--nora-inset))] px-[17px] py-[17px]',
   '[&_form]:!gap-2.5',
   '[&_[data-slot=field-group]]:!mt-0',
   '[&_[data-slot=field-label]]:!mb-0.5 [&_[data-slot=field-label]]:!font-[family-name:var(--nora-font)] [&_[data-slot=field-label]]:!text-[13px] [&_[data-slot=field-label]]:!font-medium [&_[data-slot=field-label]]:!leading-5 [&_[data-slot=field-label]]:!text-[var(--nora-text)]',
@@ -145,7 +145,7 @@ export function SettingsEntry({
 }
 
 const readRowClass =
-  'font-[family-name:var(--nora-font)] text-[13px] leading-5 text-[var(--nora-text)]'
+  'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5'
 
 export function SettingsReadRows({
   rows,
@@ -163,8 +163,8 @@ export function SettingsReadRows({
           )}
           key={row.label}
         >
-          <span className={cn(readRowClass, 'font-medium')}>{row.label}</span>
-          <span className={cn(readRowClass, 'min-w-0 break-words text-right font-normal')}>
+          <span className={cn(readRowClass, 'font-[450] text-[var(--nora-text)]')}>{row.label}</span>
+          <span className={cn(readRowClass, 'min-w-0 break-words text-right text-[var(--nora-text-secondary)]')}>
             {row.value || '—'}
           </span>
         </div>

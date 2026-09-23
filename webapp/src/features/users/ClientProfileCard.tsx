@@ -89,7 +89,7 @@ function EditFieldBlock({
     <span
       className={
         entry
-          ? 'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
+          ? 'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-[450] leading-5 text-[var(--nora-text)]'
           : 'text-[12px] text-[var(--nora-text-secondary)]'
       }
     >
@@ -277,12 +277,12 @@ function ProfileSectionEntry({
                 )}
                 key={field.key}
               >
-                <span className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
+                <span className="font-[family-name:var(--nora-font)] text-[13px] font-[450] leading-5 text-[var(--nora-text)]">
                   {field.unit ? measureLabel(field) : field.label}
                 </span>
                 <span
                   className={cn(
-                    'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 break-words text-[var(--nora-text)]',
+                    'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 break-words text-[var(--nora-text-secondary)]',
                     extended ? 'whitespace-pre-wrap' : 'text-right',
                   )}
                 >

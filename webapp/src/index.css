@@ -210,6 +210,10 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
     --sidebar: color-mix(in srgb, var(--nora-panel) 98.5%, var(--nora-text) 1.5%);
 }
 
+.scheme-editor-light.light-palette-breathtwo {
+    --sidebar: #f1f2f1;
+}
+
 .scheme-editor-light :is([data-sidebar="sidebar"], [data-slot="sidebar-inner"]) {
     --nora-input-bg: var(--nora-sidebar-search-bg);
     --nora-row-hover: var(--nora-sidebar-item-hover);

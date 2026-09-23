@@ -10,6 +10,7 @@ export const LIGHT_PALETTES = [
   { id: 'aluminum', label: 'Алюминий', panel: '#f9f9fa', canvas: '#ebeced' },
   { id: 'rain', label: 'Дождь', panel: '#f7f8f9', canvas: '#e8eaec' },
   { id: 'breath', label: 'Дыхание', panel: '#ffffff', canvas: '#f0f2f1' },
+  { id: 'breathtwo', label: 'Дыхание 2', panel: '#ffffff', canvas: '#f0f2f1' },
   { id: 'limestone', label: 'Известняк', panel: '#fafbfb', canvas: '#eceeed' },
   { id: 'plaster', label: 'Штукатурка', panel: '#ffffff', canvas: '#f2f3f1' },
   { id: 'limewash', label: 'Известь', panel: '#ffffff', canvas: '#f2f2f2' },

@@ -146,8 +146,8 @@ describe('light palette', () => {
   test('lists every palette class so dark sync can strip them', () => {
     expect(allLightPaletteClassNames()).toContain(lightPaletteClassName('default'))
     expect(allLightPaletteClassNames()).toContain(lightPaletteClassName('aluminum'))
-    expect(allLightPaletteClassNames()).toHaveLength(30)
-    expect(LIGHT_PALETTES).toHaveLength(30)
+    expect(allLightPaletteClassNames()).toHaveLength(31)
+    expect(LIGHT_PALETTES).toHaveLength(31)
     for (const id of ADDED_PALETTE_IDS) {
       expect(allLightPaletteClassNames()).toContain(lightPaletteClassName(id))
     }
