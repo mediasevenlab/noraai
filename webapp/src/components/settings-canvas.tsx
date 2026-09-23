@@ -43,6 +43,7 @@ export function SettingsCanvas({
   description,
   eyebrow,
   meta,
+  divided = true,
   panelsId = 'settings-panels',
   title,
 }: {
@@ -50,6 +51,7 @@ export function SettingsCanvas({
   children: ReactNode
   ctaLabel?: string
   description: string
+  divided?: boolean
   eyebrow: string
   meta?: string
   panelsId?: string
@@ -86,7 +88,7 @@ export function SettingsCanvas({
       </aside>
 
       <section className="min-w-0 flex-1" aria-label={title} id={panelsId}>
-        <ul className="flex flex-col divide-y divide-border/70">
+        <ul className={cn('flex flex-col', divided && 'divide-y divide-border/70')}>
           {children}
         </ul>
         {actions ? <div aria-hidden className="h-16 lg:hidden" /> : null}
@@ -117,7 +119,7 @@ export function SettingsEntry({
 }) {
   return (
     <li className="w-full py-6 first:pt-0 lg:ml-auto lg:w-lg lg:max-w-full">
-      <div className="flex items-center justify-between gap-x-4">
+      <div className="flex items-center justify-start gap-2 lg:justify-between lg:gap-x-4">
         <h2 className="min-w-0 font-heading text-[22px] leading-tight font-bold tracking-[-0.02em] text-foreground md:text-[24px]">
           {title}
         </h2>

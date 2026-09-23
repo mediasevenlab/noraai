@@ -280,7 +280,7 @@ function ProfileSectionEntry({
                 </span>
                 <span
                   className={cn(
-                    'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 break-words text-[var(--nora-text-secondary)]',
+                    'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 break-words text-[var(--nora-text)]',
                     extended ? 'whitespace-pre-wrap' : 'text-right',
                   )}
                 >

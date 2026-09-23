@@ -37,7 +37,7 @@ export function SexChoiceField({
               'font-[family-name:var(--nora-font)] font-medium text-[var(--nora-text)]',
               'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
               'has-focus-visible:shadow-[inset_0_0_0_1px_var(--nora-tint)]',
-              'has-data-checked:bg-[var(--nora-tint-dimmed)] has-data-checked:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)] has-data-checked:[&_[data-option-note]]:text-[color-mix(in_srgb,var(--nora-tint)_32%,var(--nora-text-secondary))]',
+              'has-data-checked:bg-[var(--nora-tint-dimmed)] has-data-checked:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)] has-data-checked:[&_[data-option-note]]:text-[var(--nora-text-secondary)]',
             )}
             htmlFor={id}
             key={option.value}

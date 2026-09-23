@@ -28,6 +28,7 @@ export function UserProfile({ user }: { user: UserDto }) {
       actions={profile.actions}
       ctaLabel="Профиль"
       description="Анкета, которую вы заполнили: пол, цель, активность и ограничения. Пустые необязательные ответы здесь не показываются."
+      divided={false}
       eyebrow="Анкета"
       meta={user.email}
       panelsId="profile-panels"
