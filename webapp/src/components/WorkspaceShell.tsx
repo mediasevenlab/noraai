@@ -213,11 +213,11 @@ export function WorkspaceShell({
             ? (
                 <>
                   <AdminDesignSystemNavigation />
-                  <SidebarSeparator />
+                  <SidebarSeparator className="my-3" />
                   <AdminComponentsNavigation />
-                  <SidebarSeparator />
+                  <SidebarSeparator className="my-3" />
                   <AdminBlocksNavigation />
-                  <SidebarSeparator />
+                  <SidebarSeparator className="my-3" />
                   <AdminStackNavigation />
                 </>
               )
@@ -268,7 +268,7 @@ export function WorkspaceShell({
           user={user}
           workspaceItems={navigationLocked ? [] : secondaryItems}
         />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto max-md:[-ms-overflow-style:none] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto lg:[scrollbar-gutter:stable] max-md:[-ms-overflow-style:none] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden">
           {children}
         </div>
         <MobileNavFab

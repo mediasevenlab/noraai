@@ -548,7 +548,7 @@ export function CurrentPlanMeals({
 
   function dayMeta(day: WeekPlanDay, canRemove = false) {
     return (
-      <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 py-3">
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 py-3 md:-my-3">
         <div className={PLAN_DAY_BADGE_CLASS}>
           <CalendarIcon aria-hidden className="size-[13px]" strokeWidth={1.75} />
           {day.short}
@@ -685,7 +685,7 @@ export function CurrentPlanMeals({
             })}
         </div>
         {selectedDay ? (
-          <section className="flex flex-col gap-3">
+          <section className="flex flex-col gap-3 md:gap-5">
             {dayMeta(selectedDay, Boolean(onRemoveEmptyDay) && selectedDay.meals.length === 0)}
             <PlanMealGrid
               canReorder={allowReorder}
@@ -703,7 +703,7 @@ export function CurrentPlanMeals({
       </div>
       <div className="hidden flex-col gap-6 md:flex">
         {filledDays.map((day) => (
-          <section className="flex flex-col gap-3" key={day.dayKey}>
+          <section className="flex flex-col gap-3 md:gap-5" key={day.dayKey}>
             {dayMeta(day)}
             <PlanMealGrid
               canReorder={allowReorder}

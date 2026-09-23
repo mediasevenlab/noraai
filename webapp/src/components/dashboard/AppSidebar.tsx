@@ -132,10 +132,10 @@ export function AppSidebar({
           Footer dock: relation card, subscription card, then a plain profile row.
         */}
         <SidebarFooter className="mt-auto gap-0 p-0 group-data-[collapsible=icon]:gap-2.5 group-data-[collapsible=icon]:pb-2.5">
-          <SidebarSeparator />
+          <SidebarSeparator className="my-0" />
           <div
             className={cn(
-              'flex flex-col gap-3 px-2 py-2.5',
+              'flex flex-col gap-3 px-2 py-3',
               'group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:gap-2.5 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pb-2.5 group-data-[collapsible=icon]:pt-0',
             )}
           >

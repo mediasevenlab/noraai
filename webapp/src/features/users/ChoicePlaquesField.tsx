@@ -8,9 +8,10 @@ import type { ChoiceOption } from './questionnaire-sections'
 const DETAIL_SEP = ' — '
 const MULTI_SEPARATOR = ', '
 
-function plaqueClassName(checked: boolean) {
+function plaqueClassName(checked: boolean, entry: boolean) {
   return cn(
-    'flex cursor-pointer items-start gap-2 rounded-[var(--nora-radius-md)] bg-[var(--nora-input-bg)] px-2.5 py-2',
+    'flex cursor-pointer items-start gap-2 rounded-[var(--nora-radius-md)] px-2.5 py-2',
+    entry ? 'bg-[var(--nora-panel)] px-3' : 'bg-[var(--nora-input-bg)]',
     'font-[family-name:var(--nora-font)] text-[var(--nora-text)]',
     'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
     'has-focus-visible:shadow-[inset_0_0_0_1px_var(--nora-tint)]',
@@ -38,17 +39,27 @@ function RoundChoiceMark({ checked }: { checked: boolean }) {
 }
 
 function OptionCopy({
+  entry,
   label,
   description,
 }: {
+  entry: boolean
   label: string
   description?: string
 }) {
   return (
     <span className="min-w-0 grid gap-px text-left">
-      <span className="text-[12px] font-medium leading-snug">{label}</span>
+      <span className={entry ? 'text-[13px] font-medium leading-5' : 'text-[12px] font-medium leading-snug'}>
+        {label}
+      </span>
       {description ? (
-        <span className="text-[10px] leading-snug text-[var(--nora-text-tertiary)]">
+        <span
+          className={
+            entry
+              ? 'text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]'
+              : 'text-[10px] leading-snug text-[var(--nora-text-tertiary)]'
+          }
+        >
           {description}
         </span>
       ) : null}
@@ -95,6 +106,7 @@ export function ChoicePlaquesField({
   onChange,
   options,
   value,
+  variant = 'card',
 }: {
   allowCustom?: boolean
   customPlaceholder?: string
@@ -103,7 +115,9 @@ export function ChoicePlaquesField({
   onChange: (value: string) => void
   options: ReadonlyArray<ChoiceOption>
   value: string
+  variant?: 'card' | 'entry'
 }) {
+  const entry = variant === 'entry'
   const reactId = useId()
   const prefix = idPrefix ?? reactId
   const { option: selectedOption, text: detailText } = parseChoiceValue(
@@ -129,7 +143,7 @@ export function ChoicePlaquesField({
           const checked = selectedOption === option.value
           return (
             <label
-              className={plaqueClassName(checked)}
+              className={plaqueClassName(checked, entry)}
               htmlFor={id}
               key={option.value}
               onClick={(event) => {
@@ -144,7 +158,7 @@ export function ChoicePlaquesField({
                 id={id}
                 value={option.value}
               />
-              <OptionCopy description={option.description} label={option.label} />
+              <OptionCopy description={option.description} entry={entry} label={option.label} />
             </label>
           )
         })}
@@ -152,7 +166,11 @@ export function ChoicePlaquesField({
       {allowCustom ? (
         <NoraInput
           aria-label={inputLabel ?? 'Уточнение'}
-          className="h-10 text-[13px]"
+          className={
+            entry
+              ? 'h-10 bg-[var(--nora-panel)] px-3 text-[16px] leading-5 lg:h-8 lg:text-[13px]'
+              : 'h-10 text-[13px]'
+          }
           onChange={(event) => emit(selectedOption, event.target.value)}
           placeholder={customPlaceholder}
           value={detailText}
@@ -179,13 +197,16 @@ export function MultiChoicePlaquesField({
   onChange,
   options,
   value,
+  variant = 'card',
 }: {
   exclusiveValue?: string
   idPrefix?: string
   onChange: (value: string) => void
   options: ReadonlyArray<ChoiceOption>
   value: string
+  variant?: 'card' | 'entry'
 }) {
+  const entry = variant === 'entry'
   const selected = new Set(splitMulti(value))
 
   const toggle = (optionValue: string) => {
@@ -208,14 +229,15 @@ export function MultiChoicePlaquesField({
         return (
           <button
             aria-checked={checked}
-            className={cn(plaqueClassName(checked), 'text-left')}
+            className={cn(plaqueClassName(checked, entry), 'h-auto min-h-0 text-left')}
+            data-choice-plaque=""
             key={option.value}
             onClick={() => toggle(option.value)}
-            type="button"
             role="checkbox"
+            type="button"
           >
             <RoundChoiceMark checked={checked} />
-            <OptionCopy description={option.description} label={option.label} />
+            <OptionCopy description={option.description} entry={entry} label={option.label} />
           </button>
         )
       })}

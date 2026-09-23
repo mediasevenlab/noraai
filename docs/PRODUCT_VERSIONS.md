@@ -30,4 +30,6 @@ Do not rewrite past entries. Do not jump to `v1.0` unless the user explicitly as
 
 `STEPS_META.subtitle`, `itemCount`, `historyLabel`, and `currentVersion` are derived from `STEP_ITEMS` — do not hard-code them.
 
+`STEPS_META.description` stays a short intro paragraph. Do not append version details to it; those belong only in `STEP_ITEMS`.
+
 After adding a step, run `bun test tests/steps-model.test.ts` from `webapp`. In the completion report, say that **Разработка** was updated and name the new current version. If the work was not version-worthy, say the log was left unchanged.

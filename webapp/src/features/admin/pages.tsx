@@ -1,6 +1,7 @@
 import type { UserDto } from '@web-app-demo/contracts'
 
 import { NoraPageHeader, PageContainer, PageHeader } from '@/components/PageLayout'
+import { SettingsCanvas } from '@/components/settings-canvas'
 import { AppearancePanel } from '@/features/settings'
 import { AdminMetrics } from './AdminMetrics'
 import { NicknamePanel } from '@/features/users'
@@ -35,18 +36,14 @@ export function AdminUsers({ currentUser }: { currentUser: UserDto }) {
 
 export function AdminSettings({ user }: { user: UserDto }) {
   return (
-    <PageContainer>
-      <NoraPageHeader
-        badge="Настройки"
-        description="Управляйте идентичностью администратора и внешним видом рабочей области."
-        showBrand
-        title="Настройки"
-        titleSize="display"
-      />
-      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-        <NicknamePanel user={user} />
-        <AppearancePanel />
-      </div>
-    </PageContainer>
+    <SettingsCanvas
+      description="Имя администратора и тема рабочей области. Оформление можно оставить как в системе или выбрать светлую или тёмную тему."
+      eyebrow="Администратор"
+      meta={user.email}
+      title="Настройки"
+    >
+      <NicknamePanel user={user} />
+      <AppearancePanel />
+    </SettingsCanvas>
   )
 }

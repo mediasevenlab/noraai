@@ -6,6 +6,7 @@ import {
 import { useId, useState, type FormEvent } from 'react'
 
 import { NoraToast } from '@/components/nora'
+import { SettingsEntry } from '@/components/settings-canvas'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -43,17 +44,12 @@ export function NicknamePanel({ user }: { user: UserDto }) {
     : mutation.error?.message
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-[var(--nora-radius-lg)] bg-[var(--dash-card-bg,var(--nora-panel))] shadow-[inset_0_0_0_1px_var(--dash-card-ring,var(--nora-border))]">
-      <div className="border-b border-[var(--nora-divider)] p-3.5">
-        <h2 className="text-[13px] font-semibold text-[var(--nora-text)]">
-          Никнейм
-        </h2>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--nora-text-tertiary)]">
-          Уникальное имя для будущих реферальных ссылок и публичных функций.
-        </p>
-      </div>
-
-      <form className="grid gap-3.5 p-3.5" noValidate onSubmit={submit}>
+    <SettingsEntry
+      badge="Публично"
+      description="Для ссылок и публичного профиля."
+      title="Никнейм"
+    >
+      <form className="grid gap-3.5" noValidate onSubmit={submit}>
         <Field data-invalid={!validation.success}>
           <FieldLabel
             className="font-normal text-[var(--nora-text-secondary)]"
@@ -79,8 +75,8 @@ export function NicknamePanel({ user }: { user: UserDto }) {
           />
           <FieldDescription className="font-normal">
             {isDefaultUser
-              ? 'Этот никнейм закреплён за дефолтным пользователем и не может быть изменён.'
-              : 'От 3 до 32 символов: латинские буквы, цифры и _. Первый символ — буква.'}
+              ? 'Закреплён, изменить нельзя.'
+              : '3–32 символа: латиница, цифры и _.'}
           </FieldDescription>
           {!validation.success && (
             <FieldError id={errorId}>
@@ -111,10 +107,10 @@ export function NicknamePanel({ user }: { user: UserDto }) {
             }
             type="submit"
           >
-            {mutation.isPending ? 'Сохраняем…' : 'Сохранить никнейм'}
+            {mutation.isPending ? 'Сохраняем…' : 'Сохранить'}
           </Button>
         </div>
       </form>
-    </div>
+    </SettingsEntry>
   )
 }

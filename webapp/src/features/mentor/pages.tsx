@@ -6,6 +6,7 @@ import {
   noraPageDescriptionClass,
   noraPageTitleClass,
 } from '@/components/PageLayout'
+import { SettingsCanvas } from '@/components/settings-canvas'
 import { NoraBadge, NoraSelect } from '@/components/nora/primitives'
 import { productFeedPageClass, productToolbarSelectContentClass, productToolbarSelectItemClass } from '@/components/nora/product-sheet'
 import { DiaryNewsPage } from '@/features/diary'
@@ -168,18 +169,16 @@ export function MentorMenteePlaceholder({ userId }: { userId: string }) {
 
 export function MentorSettings({ user }: { user: UserDto }) {
   return (
-    <PageContainer>
-      <NoraPageHeader
-        badge="Настройки"
-        description="Настройки профиля наставника и ссылка для подключения пользователей."
-        title="Настройки"
-      />
-      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-        <NicknamePanel user={user} />
-        <TelegramUsernamePanel user={user} variant="notify" />
-        <ReferralLinkPanel user={user} variant="mentor" />
-      </div>
-    </PageContainer>
+    <SettingsCanvas
+      description="Имя наставника и уведомления в Telegram, когда подопечный добавляет приём. Ниже ссылка, по которой пользователи подключаются к вам."
+      eyebrow="Наставник"
+      meta={user.email}
+      title="Настройки"
+    >
+      <NicknamePanel user={user} />
+      <TelegramUsernamePanel user={user} variant="notify" />
+      <ReferralLinkPanel layout="entry" user={user} variant="mentor" />
+    </SettingsCanvas>
   )
 }
 

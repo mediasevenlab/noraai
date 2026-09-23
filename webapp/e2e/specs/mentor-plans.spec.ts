@@ -25,7 +25,7 @@ test('mentor sends a plan and the mentee sees it', async ({ browser, page }) => 
   await expect(page).toHaveURL(/\/mentor$/)
   await page.goto('/mentor/settings')
   await page.getByLabel('Ваш никнейм').fill(mentorNickname)
-  await page.getByRole('button', { name: 'Сохранить никнейм' }).click()
+  await page.locator('form').filter({ has: page.getByLabel('Ваш никнейм') }).getByRole('button', { name: 'Сохранить', exact: true }).click()
   await expect(page.getByText('Никнейм сохранён')).toBeVisible()
 
   const userContext = await browser.newContext()

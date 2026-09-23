@@ -9,6 +9,7 @@ import {
 import { useId, useState, type FormEvent } from 'react'
 
 import { NoraToast } from '@/components/nora'
+import { SettingsEntry } from '@/components/settings-canvas'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -108,20 +109,17 @@ export function TelegramUsernamePanel({
   const unlinkError = unlinkMutation.error?.message
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-[var(--nora-radius-lg)] bg-[var(--dash-card-bg,var(--nora-panel))] shadow-[inset_0_0_0_1px_var(--dash-card-ring,var(--nora-border))]">
-      <div className="border-b border-[var(--nora-divider)] p-3.5">
-        <h2 className="text-[13px] font-semibold text-[var(--nora-text)]">
-          {variant === 'notify' ? 'Telegram-уведомления' : 'Telegram'}
-        </h2>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--nora-text-tertiary)]">
-          {variant === 'notify'
-            ? 'Привяжите бота уведомлений. Когда подопечный добавит приём в дневник, вам придёт сообщение с составом и КБЖУ.'
-            : 'Ник или телефон подтверждается через бота. Так дневник получает приёмы из Telegram.'}
-        </p>
-      </div>
-
+    <SettingsEntry
+      badge="Бот"
+      description={
+        variant === 'notify'
+          ? 'Сообщение, когда подопечный добавит приём.'
+          : 'Приёмы из Telegram через бота.'
+      }
+      title={variant === 'notify' ? 'Telegram-уведомления' : 'Telegram'}
+    >
       {bound ? (
-        <div className="grid gap-3.5 p-3.5">
+        <div className="grid gap-3.5">
           <Field>
             <FieldLabel className="font-normal text-[var(--nora-text-secondary)]">
               Подтверждённый контакт
@@ -133,7 +131,7 @@ export function TelegramUsernamePanel({
               value={displayTelegramContact(user)}
             />
             <FieldDescription className="font-normal">
-              Чтобы сменить контакт, сначала отвяжите текущий и подтвердите новый в боте.
+              Сначала отвяжите текущий.
             </FieldDescription>
           </Field>
           {unlinkMutation.isError && (
@@ -159,7 +157,7 @@ export function TelegramUsernamePanel({
           </div>
         </div>
       ) : (
-        <form className="grid gap-3.5 p-3.5" noValidate onSubmit={startLink}>
+        <form className="grid gap-3.5" noValidate onSubmit={startLink}>
           <Field data-invalid={!validation.success}>
             <FieldLabel
               className="font-normal text-[var(--nora-text-secondary)]"
@@ -186,8 +184,8 @@ export function TelegramUsernamePanel({
             />
             <FieldDescription className="font-normal">
               {validation.telegramPhone
-                ? 'После кода бот попросит отправить контакт Telegram — номер не приходит с /start.'
-                : 'Можно указать @ник (5–32 символа) или мобильный телефон +7.'}
+                ? 'Бот попросит отправить контакт.'
+                : '@ник или телефон +7.'}
             </FieldDescription>
             {!validation.success && (
               <FieldError id={errorId}>
@@ -244,7 +242,7 @@ export function TelegramUsernamePanel({
           </div>
         </form>
       )}
-    </div>
+    </SettingsEntry>
   )
 }
 

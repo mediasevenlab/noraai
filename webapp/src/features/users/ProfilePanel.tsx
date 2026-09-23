@@ -1,6 +1,7 @@
 import type { UserDto } from '@web-app-demo/contracts'
 import { useId, useState, type FormEvent } from 'react'
 
+import { SettingsEntry } from '@/components/settings-canvas'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -22,17 +23,12 @@ export function ProfilePanel({ user }: { user: UserDto }) {
   }
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-[var(--nora-radius-lg)] bg-[var(--dash-card-bg,var(--nora-panel))] shadow-[inset_0_0_0_1px_var(--dash-card-ring,var(--nora-border))]">
-      <div className="border-b border-[var(--nora-divider)] p-3.5">
-        <h2 className="text-[13px] font-semibold text-[var(--nora-text)]">
-          Данные профиля
-        </h2>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--nora-text-tertiary)]">
-          Обновите имя, которое видно в рабочей области. Email меняется отдельно.
-        </p>
-      </div>
-
-      <form className="grid gap-3.5 p-3.5" noValidate onSubmit={submit}>
+    <SettingsEntry
+      badge="Аккаунт"
+      description="Имя в приложении."
+      title="Данные профиля"
+    >
+      <form className="grid gap-3.5" noValidate onSubmit={submit}>
         <FieldGroup>
           <Field data-invalid={displayNameInvalid}>
             <FieldLabel
@@ -57,7 +53,7 @@ export function ProfilePanel({ user }: { user: UserDto }) {
               value={displayName}
             />
             <FieldDescription className="font-normal">
-              Оставьте пустым, чтобы использовать email.
+              Пусто — покажем email.
             </FieldDescription>
             {displayNameInvalid && (
               <FieldError id={displayNameErrorId}>
@@ -80,7 +76,7 @@ export function ProfilePanel({ user }: { user: UserDto }) {
               value={user.email}
             />
             <FieldDescription className="font-normal">
-              Смена email в этом шаблоне пока недоступна.
+              Пока нельзя сменить.
             </FieldDescription>
           </Field>
         </FieldGroup>
@@ -104,10 +100,10 @@ export function ProfilePanel({ user }: { user: UserDto }) {
             disabled={mutation.isPending || displayNameInvalid}
             type="submit"
           >
-            {mutation.isPending ? 'Сохраняем…' : 'Сохранить профиль'}
+            {mutation.isPending ? 'Сохраняем…' : 'Сохранить'}
           </Button>
         </div>
       </form>
-    </div>
+    </SettingsEntry>
   )
 }

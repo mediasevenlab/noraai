@@ -3,9 +3,9 @@ import {
   type QuestionnaireAnswers,
   type UserDto,
 } from '@web-app-demo/contracts'
-import { useEffect, useState } from 'react'
-
-import { NoraButton } from '@/components/nora/primitives'
+import { CheckIcon, PencilIcon, XIcon, type LucideIcon } from 'lucide-react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { SettingsEntry } from '@/components/settings-canvas'
 import { cn } from '@/lib/utils'
 import { QuestionnaireFieldControl } from './QuestionnaireFieldControl'
 import {
@@ -59,15 +59,9 @@ function ViewFieldRow({
         {field.label}
       </span>
       <div className="flex h-5 min-w-0 items-center justify-end">
-        {field.layout === 'extended' ? (
-          <span className="min-w-0 truncate text-right text-[12px] leading-5 font-normal text-[var(--nora-text-secondary)]">
-            {value}
-          </span>
-        ) : (
-          <span className="min-w-0 truncate text-right text-[12px] leading-5 font-normal text-[var(--nora-text-secondary)]">
-            {value || '—'}
-          </span>
-        )}
+        <span className="min-w-0 truncate text-right text-[12px] leading-5 font-normal text-[var(--nora-text-secondary)]">
+          {value || '—'}
+        </span>
       </div>
     </div>
   )
@@ -78,31 +72,84 @@ function EditFieldBlock({
   invalid,
   value,
   onChange,
+  variant = 'card',
 }: {
   field: ProfileField
   invalid?: boolean
   value: string
   onChange: (key: FieldKey, value: string) => void
+  variant?: 'card' | 'entry'
 }) {
+  const entry = variant === 'entry'
+  const inline =
+    entry && field.layout !== 'extended' && field.control == null
+  const label = (
+    <span
+      className={
+        entry
+          ? 'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
+          : 'text-[12px] text-[var(--nora-text-secondary)]'
+      }
+    >
+      {field.label}
+      {field.optional ? (
+        <span className="font-normal text-[12px] text-[var(--nora-text-tertiary)]">
+          {' '}
+          · необязательно
+        </span>
+      ) : null}
+    </span>
+  )
+  const control = (
+    <QuestionnaireFieldControl
+      field={field}
+      idPrefix="profile"
+      invalid={invalid}
+      onChange={onChange}
+      value={value}
+      variant={variant}
+    />
+  )
+
+  if (inline) {
+    return (
+      <div className="grid grid-cols-[minmax(0,1fr)_9rem] items-center gap-x-4">
+        {label}
+        {control}
+      </div>
+    )
+  }
+
   return (
-    <div className={cn('grid gap-1.5', !field.halfWidth && 'col-span-2')}>
-      <span className="text-[12px] text-[var(--nora-text-secondary)]">
-        {field.label}
-        {field.optional ? (
-          <span className="text-[var(--nora-text-tertiary)]"> · необязательно</span>
-        ) : null}
-      </span>
-      <QuestionnaireFieldControl
-        field={field}
-        idPrefix="profile"
-        invalid={invalid}
-        onChange={onChange}
-        value={value}
-      />
+    <div className={cn(entry ? 'grid gap-2' : 'grid gap-1.5', !entry && !field.halfWidth && 'col-span-2')}>
+      {label}
+      {control}
     </div>
   )
 }
 
+function ProfileSectionMarker({
+  section,
+  sectionIndex,
+}: {
+  section: ProfileSection
+  sectionIndex: number
+}) {
+  const Icon = section.icon
+  const iconTone = CARD_ICON_TONES[sectionIndex % CARD_ICON_TONES.length]!
+
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'inline-flex size-7 shrink-0 items-center justify-center rounded-full',
+        iconTone,
+      )}
+    >
+      <Icon className="size-3.5" strokeWidth={2} />
+    </span>
+  )
+}
 function ProfileSectionCard({
   section,
   sectionIndex,
@@ -117,8 +164,6 @@ function ProfileSectionCard({
   onChange: (key: FieldKey, value: string) => void
 }) {
   const rows = visibleFields(values, section.fields, editing)
-  const Icon = section.icon
-  const iconTone = CARD_ICON_TONES[sectionIndex % CARD_ICON_TONES.length]!
 
   return (
     <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-[var(--nora-radius-lg)] bg-[var(--dash-card-bg,var(--nora-panel))] shadow-[inset_0_0_0_1px_var(--dash-card-ring,var(--nora-border))]">
@@ -131,15 +176,7 @@ function ProfileSectionCard({
             {section.description}
           </p>
         </div>
-        <span
-          aria-hidden
-          className={cn(
-            'inline-flex size-7 shrink-0 items-center justify-center rounded-full',
-            iconTone,
-          )}
-        >
-          <Icon className="size-3.5" strokeWidth={2} />
-        </span>
+        <ProfileSectionMarker section={section} sectionIndex={sectionIndex} />
       </div>
       {editing ? (
         <div className="grid min-w-0 flex-1 grid-cols-2 content-start gap-x-3 gap-y-4 p-3.5">
@@ -166,6 +203,120 @@ function ProfileSectionCard({
         </div>
       )}
     </article>
+  )
+}
+
+const PROFILE_ENTRY_BADGE: Record<string, string> = {
+  'Базовые данные': 'Тело',
+  Цель: 'Фокус',
+  Активность: 'Движение',
+  Быт: 'Быт',
+  Ограничения: 'Фильтр',
+  Контекст: 'Фон',
+}
+
+function ProfileSectionEntry({
+  editing,
+  onChange,
+  section,
+  values,
+}: {
+  editing: boolean
+  onChange: (key: FieldKey, value: string) => void
+  section: ProfileSection
+  values: Record<FieldKey, string>
+}) {
+  const rows = visibleFields(values, section.fields, editing)
+
+  return (
+    <SettingsEntry
+      badge={PROFILE_ENTRY_BADGE[section.title]}
+      description={section.description}
+      title={section.title}
+    >
+      {editing ? (
+        <div className="px-2">
+          {rows.map((field, index) => (
+            <div
+              className={cn(
+                'border-t border-[var(--nora-divider)] py-2.5',
+                index === 0 && 'border-t-0 pt-0',
+                index === rows.length - 1 && 'pb-0',
+              )}
+              key={field.key}
+            >
+              <EditFieldBlock
+                field={field}
+                invalid={!field.optional && !isFilled(values[field.key])}
+                onChange={onChange}
+                value={values[field.key]}
+                variant="entry"
+              />
+            </div>
+          ))}
+        </div>
+      ) : rows.length === 0 ? (
+        <p className="font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 text-[var(--nora-text-tertiary)]">
+          Пока ничего не указано.
+        </p>
+      ) : (
+        <div className="px-2">
+          {rows.map((field, index) => (
+            <div
+              className={cn(
+                'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 border-t border-[var(--nora-divider)] py-2.5',
+                index === 0 && 'border-t-0 pt-0',
+                index === rows.length - 1 && 'pb-0',
+              )}
+              key={field.key}
+            >
+              <span className="min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
+                {field.label}
+              </span>
+              <span className="font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)]">
+                {values[field.key] || '—'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </SettingsEntry>
+  )
+}
+
+function ProfileBarButton({
+  children,
+  disabled,
+  icon: Icon,
+  onClick,
+  tone = 'primary',
+}: {
+  children: ReactNode
+  disabled?: boolean
+  icon: LucideIcon
+  onClick: () => void
+  tone?: 'primary' | 'quiet'
+}) {
+  return (
+    <button
+      className="group inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card py-1.5 pr-1.5 pl-4 text-[13px] font-medium text-foreground shadow-xs transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+      disabled={disabled}
+      onClick={onClick}
+      type="button"
+    >
+      <Icon aria-hidden className="size-4 shrink-0 lg:hidden" strokeWidth={1.75} />
+      {children}
+      <span
+        className={cn(
+          'hidden size-7 items-center justify-center rounded-full transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 lg:flex',
+          tone === 'primary'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-muted text-foreground',
+        )}
+      >
+        <Icon aria-hidden className="size-3.5" />
+      </span>
+    </button>
   )
 }
 
@@ -218,34 +369,32 @@ export function useClientProfileEditor() {
 
   const actions = editing ? (
     <>
-      <NoraButton
+      <ProfileBarButton
         disabled={saveMutation.isPending}
+        icon={XIcon}
         onClick={cancelEdit}
-        size="sm"
-        variant="ghost"
+        tone="quiet"
       >
         Отмена
-      </NoraButton>
-      <NoraButton
+      </ProfileBarButton>
+      <ProfileBarButton
         disabled={saveMutation.isPending}
+        icon={CheckIcon}
         onClick={() => {
           void saveEdit()
         }}
-        size="sm"
-        variant="primary"
       >
         {saveMutation.isPending ? 'Сохраняем…' : 'Сохранить'}
-      </NoraButton>
+      </ProfileBarButton>
     </>
   ) : (
-    <NoraButton
+    <ProfileBarButton
       disabled={questionnaire.isLoading || !serverAnswers}
+      icon={PencilIcon}
       onClick={startEdit}
-      size="sm"
-      variant="default"
     >
-      Редактировать
-    </NoraButton>
+      Изменить
+    </ProfileBarButton>
   )
 
   return {
@@ -267,6 +416,7 @@ export function useClientProfileEditor() {
 export function ClientProfileCard({
   columns = 2,
   editing,
+  layout = 'card',
   onChange,
   values,
 }: {
@@ -274,9 +424,26 @@ export function ClientProfileCard({
   /** Desktop column count; mentor mentee view uses 3. */
   columns?: 2 | 3
   editing: boolean
+  layout?: 'card' | 'entry'
   onChange: (key: FieldKey, value: string) => void
   values: Record<FieldKey, string>
 }) {
+  if (layout === 'entry') {
+    return (
+      <>
+        {PROFILE_SECTIONS.map((section) => (
+          <ProfileSectionEntry
+            editing={editing}
+            key={section.title}
+            onChange={onChange}
+            section={section}
+            values={values}
+          />
+        ))}
+      </>
+    )
+  }
+
   return (
     <div
       className={cn(

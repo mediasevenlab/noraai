@@ -6,6 +6,7 @@ import {
   ProductCardOriginBadge,
   productCardFooterCtaClass,
   productCardGoalAnchorClass,
+  productDesktopCardMinHeightClass,
   productListCardHeightClass,
   productSheetOverlayChipClass,
 } from '@/components/nora/product-sheet'
@@ -84,7 +85,7 @@ function PlanSummaryPlaque({
       </span>
       <span
         className={cn(
-          'inline-flex h-7 w-[4.25rem] shrink-0 items-center justify-center rounded-full max-md:hidden',
+          'inline-flex h-7 shrink-0 items-center justify-center rounded-full px-2.5 max-md:hidden',
           'bg-[color-mix(in_srgb,var(--nora-panel)_80%,transparent)]',
           'font-[family-name:var(--nora-font)] text-[11px] font-medium leading-none tabular-nums',
           filled ? 'text-[var(--nora-text)]' : 'text-[var(--nora-text-tertiary)]',
@@ -162,6 +163,7 @@ export function WeekPlanCard({
           list && productListCardHeightClass,
           // Phone two-up height matches the diary meal card.
           !list && 'max-md:min-h-[327px]',
+          productDesktopCardMinHeightClass,
         )}
         data-card-layout={layout}
         data-slot="meal-card"
@@ -173,7 +175,8 @@ export function WeekPlanCard({
       >
         <div
           className={cn(
-            'relative shrink-0 px-2 pt-2',
+            'relative px-2 pt-2 max-md:shrink-0',
+            'md:flex md:min-h-0 md:flex-1 md:flex-col',
             list && 'max-md:flex max-md:self-stretch max-md:p-2',
           )}
         >
@@ -181,6 +184,7 @@ export function WeekPlanCard({
             className={cn(
               'relative',
               PLAN_CARD_PREVIEW_SIZE_CLASS,
+              'md:h-auto md:min-h-0 md:flex-1',
               list && 'max-md:aspect-square max-md:!h-full max-md:!w-auto max-md:!max-h-none',
             )}
             data-haptic="card"
@@ -250,7 +254,7 @@ export function WeekPlanCard({
         </div>
         <div
           className={cn(
-            'flex min-w-0 flex-1 flex-col',
+            'flex min-w-0 flex-col max-md:flex-1',
             list && 'max-md:min-w-0 max-md:pr-1',
           )}
         >
@@ -409,7 +413,13 @@ export function WeekPlanCardSkeleton({
   return (
     <article
       aria-label="Черновик плана"
-      className={cn('flex h-full flex-col', list && 'max-md:flex-row max-md:items-stretch')}
+      className={cn(
+        'flex h-full flex-col',
+        list && 'max-md:flex-row max-md:items-stretch',
+        list && productListCardHeightClass,
+        !list && 'max-md:min-h-[327px]',
+        productDesktopCardMinHeightClass,
+      )}
       data-card-layout={layout}
       data-slot="meal-card-skeleton"
     >

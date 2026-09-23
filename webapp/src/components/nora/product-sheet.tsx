@@ -150,6 +150,9 @@ export const productFeedGridClass =
 export const productListCardHeightClass =
   'max-md:h-[155px] max-md:min-h-[155px] max-md:max-h-[155px] max-md:overflow-hidden'
 
+/** Desktop cards share the diary meal card. Phone keeps the 155px row and the 327px tile. */
+export const productDesktopCardMinHeightClass = 'md:min-h-[365px]'
+
 /** Inverted black/white CTA in ration and plan card footers. */
 export const productCardFooterCtaClass =
   'bg-[var(--nora-text)] text-[var(--nora-panel)] hover:bg-[color-mix(in_srgb,var(--nora-text)_88%,var(--nora-panel))] hover:text-[var(--nora-panel)]'

@@ -4,9 +4,9 @@ import type { UserDto } from '@web-app-demo/contracts'
 import { userGeneralSearch } from '@/features/navigation'
 
 import { NoraPageHeader, PageContainer } from '@/components/PageLayout'
+import { SettingsCanvas } from '@/components/settings-canvas'
 import { AccountProfileCard } from './AccountProfileCard'
 import { ClientProfileCard, useClientProfileEditor } from './ClientProfileCard'
-import { ContactsPlaceholder } from './ContactsPlaceholder'
 import { MentorConnectionPanel } from './MentorConnectionPanel'
 import { NicknamePanel } from './NicknamePanel'
 import { ProfilePanel } from './ProfilePanel'
@@ -24,38 +24,38 @@ export function UserProfile({ user }: { user: UserDto }) {
   const profile = useClientProfileEditor()
 
   return (
-    <PageContainer>
-      <NoraPageHeader
-        actions={profile.actions}
-        badge="Профиль"
-        description="Данные анкеты и прогресс заполнения профиля."
-        title="Профиль"
-      />
+    <SettingsCanvas
+      actions={profile.actions}
+      ctaLabel="Профиль"
+      description="Анкета, которую вы заполнили: пол, цель, активность и ограничения. Пустые необязательные ответы здесь не показываются."
+      eyebrow="Анкета"
+      meta={user.email}
+      panelsId="profile-panels"
+      title="Профиль"
+    >
       {profile.isLoading ? (
-        <p className="text-[12px] text-[var(--nora-text-tertiary)]">Загрузка анкеты…</p>
+        <li className="font-[family-name:var(--nora-font)] text-[13px] font-light text-[var(--nora-text-tertiary)] lg:ml-auto lg:w-lg">
+          Загрузка анкеты…
+        </li>
       ) : profile.isError ? (
-        <p className="text-[12px] text-[var(--nora-error)]">
+        <li className="font-[family-name:var(--nora-font)] text-[13px] text-[var(--nora-error)] lg:ml-auto lg:w-lg">
           Не удалось загрузить анкету.
-        </p>
+        </li>
       ) : (
         <ClientProfileCard
           editing={profile.editing}
+          layout="entry"
           onChange={profile.onChange}
           user={user}
           values={profile.values}
         />
       )}
       {profile.saveError ? (
-        <p className="text-[12px] text-[var(--nora-error)]">
+        <li className="pt-4 font-[family-name:var(--nora-font)] text-[13px] text-[var(--nora-error)] lg:ml-auto lg:w-lg">
           Не удалось сохранить анкету. Попробуйте ещё раз.
-        </p>
+        </li>
       ) : null}
-      <p className="text-[11px] leading-relaxed text-[var(--nora-text-tertiary)]">
-        Карточка заполняется по мере прохождения опроса. На части шагов можно
-        оставить расширенный комментарий — он появится в карточке отдельным
-        блоком. Пустые опциональные ответы скрыты.
-      </p>
-    </PageContainer>
+    </SettingsCanvas>
   )
 }
 
@@ -95,37 +95,32 @@ export function UserSettings({
   user: UserDto
 }) {
   return (
-    <PageContainer>
-      <NoraPageHeader
-        badge="Настройки"
-        description="Управляйте профилем и подключением к наставнику."
-        title="Настройки"
-      />
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        <ProfilePanel user={user} />
-        <NicknamePanel user={user} />
-        <TelegramUsernamePanel user={user} />
-        <MentorConnectionPanel />
-        <ContactsPlaceholder />
-      </div>
-    </PageContainer>
+    <SettingsCanvas
+      description="Имя, которое видно в рабочей области, публичный никнейм и связь с Telegram собраны в этом разделе. Здесь же можно подключиться к наставнику."
+      eyebrow="Аккаунт"
+      meta={user.email}
+      title="Настройки"
+    >
+      <ProfilePanel user={user} />
+      <NicknamePanel user={user} />
+      <TelegramUsernamePanel user={user} />
+      <MentorConnectionPanel />
+    </SettingsCanvas>
   )
 }
 
 export function UserReferrals({ user }: { user: UserDto }) {
   return (
-    <PageContainer>
-      <NoraPageHeader
-        badge="Рефералы"
-        description="Реферальная ссылка и люди, которые зарегистрировались по ней."
-        title="Рефералы"
-      />
-      <div className="grid gap-4">
-        <div className="grid max-w-xl items-start gap-4">
-          <ReferralLinkPanel user={user} />
-        </div>
-        <ReferralsDirectory />
-      </div>
-    </PageContainer>
+    <SettingsCanvas
+      ctaLabel="Рефералы"
+      description="Ссылка запоминает людей, которые зарегистрировались по ней. В каталоге видно, кто пришёл, и бонус за каждого."
+      eyebrow="Социальная сеть"
+      meta={user.email}
+      panelsId="referrals-panels"
+      title="Рефералы"
+    >
+      <ReferralLinkPanel layout="entry" user={user} />
+      <ReferralsDirectory layout="entry" />
+    </SettingsCanvas>
   )
 }

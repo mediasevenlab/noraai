@@ -2,6 +2,7 @@ import { registrationMentorIdentifierSchema } from '@web-app-demo/contracts'
 import { CircleCheckIcon, CircleXIcon } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 
+import { SettingsEntry } from '@/components/settings-canvas'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
@@ -71,17 +72,12 @@ export function MentorConnectionPanel() {
       : null
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-[var(--nora-radius-lg)] bg-[var(--dash-card-bg,var(--nora-panel))] shadow-[inset_0_0_0_1px_var(--dash-card-ring,var(--nora-border))]">
-      <div className="border-b border-[var(--nora-divider)] p-3.5">
-        <h2 className="text-[13px] font-semibold text-[var(--nora-text)]">
-          Подключение к наставнику
-        </h2>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--nora-text-tertiary)]">
-          Укажите никнейм или ID наставника, чтобы подключиться к нему.
-        </p>
-      </div>
-
-      <div className="grid gap-3.5 p-3.5">
+    <SettingsEntry
+      badge="Доступ"
+      description="Никнейм или ID наставника."
+      title="Подключение к наставнику"
+    >
+      <div className="grid gap-3.5">
         {currentMentor.data?.mentor ? (
           <Field>
             <FieldLabel
@@ -103,8 +99,8 @@ export function MentorConnectionPanel() {
               />
             </div>
             <FieldDescription className="font-normal text-green-700">
-              Вы подключены к наставнику: {currentMentor.data.mentor.displayName
-                ?? currentMentor.data.mentor.email}. Отключить вас может только наставник.
+              Подключены к {currentMentor.data.mentor.displayName
+                ?? currentMentor.data.mentor.email}. Отключить может наставник.
             </FieldDescription>
           </Field>
         ) : (
@@ -194,6 +190,6 @@ export function MentorConnectionPanel() {
           </Alert>
         )}
       </div>
-    </div>
+    </SettingsEntry>
   )
 }

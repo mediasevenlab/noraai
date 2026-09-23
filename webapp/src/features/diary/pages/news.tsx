@@ -1641,7 +1641,7 @@ export function NewsPage({
                 ref={feedRootRef}
               >
                 {tab === "Избранное" ? (
-                  <section className="flex flex-col gap-3">
+                  <section className="flex flex-col gap-5">
                     {toolbarDisabled || !canAddToPlan ? null : (
                       <FeedFavoritesPickBar
                         mealCount={filtered.length}

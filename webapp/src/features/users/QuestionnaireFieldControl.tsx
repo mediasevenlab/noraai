@@ -6,18 +6,24 @@ import {
 import type { FieldKey, ProfileField } from './questionnaire-sections'
 import { SexChoiceField } from './SexChoiceField'
 
+const entryControlClass =
+  'bg-[var(--nora-panel)] text-[16px] leading-5 lg:text-[13px]'
+const entryTextareaClass = `min-h-16 resize-y px-3 py-2 ${entryControlClass}`
+
 export function QuestionnaireFieldControl({
   field,
   idPrefix,
   invalid = false,
   onChange,
   value,
+  variant = 'card',
 }: {
   field: ProfileField
   idPrefix: string
   invalid?: boolean
   onChange: (key: FieldKey, value: string) => void
   value: string
+  variant?: 'card' | 'entry'
 }) {
   if (field.control === 'sex') {
     return (
@@ -26,6 +32,7 @@ export function QuestionnaireFieldControl({
         invalid={invalid}
         onChange={(next) => onChange(field.key, next)}
         value={value}
+        variant={variant}
       />
     )
   }
@@ -41,6 +48,7 @@ export function QuestionnaireFieldControl({
           onChange={(next) => onChange(field.key, next)}
           options={field.options}
           value={value}
+          variant={variant}
         />
       </div>
     )
@@ -55,6 +63,7 @@ export function QuestionnaireFieldControl({
           onChange={(next) => onChange(field.key, next)}
           options={field.options}
           value={value}
+          variant={variant}
         />
       </div>
     )
@@ -65,7 +74,11 @@ export function QuestionnaireFieldControl({
       <NoraTextarea
         aria-invalid={invalid || undefined}
         aria-label={field.label}
-        className="min-h-[3.75rem] resize-y px-3 py-2 text-[12px] leading-relaxed"
+        className={
+          variant === 'entry'
+            ? entryTextareaClass
+            : 'min-h-[3.75rem] resize-y px-3 py-2 text-[12px] leading-relaxed'
+        }
         onChange={(event) => onChange(field.key, event.target.value)}
         placeholder={field.placeholder}
         rows={3}
@@ -78,10 +91,15 @@ export function QuestionnaireFieldControl({
     <NoraInput
       aria-invalid={invalid || undefined}
       aria-label={field.label}
-      className="h-8 text-[13px]"
+      className={
+        variant === 'entry'
+          ? `h-10 w-full px-3 lg:h-8 ${entryControlClass}`
+          : 'h-8 text-[13px]'
+      }
       onChange={(event) => onChange(field.key, event.target.value)}
       placeholder={field.placeholder}
       value={value}
     />
   )
 }
+

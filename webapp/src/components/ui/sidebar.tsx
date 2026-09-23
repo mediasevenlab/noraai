@@ -413,8 +413,8 @@ function SidebarGroupLabel({
     props: mergeProps<"div">(
       {
         className: cn(
-          // 13/20 regular like meal-card composition; 8px to items like title → состав
-          "mb-2 flex h-auto shrink-0 items-center px-2.5 text-[13px] font-normal leading-5 text-[var(--nora-text)] outline-hidden transition-[margin,opacity] duration-200 ease-linear group-data-[collapsible=icon]:hidden focus-visible:shadow-[var(--nora-shadow-focus)] [&>svg]:size-3.5 [&>svg]:shrink-0",
+          // 13/20 regular; 8px only when the group is open, so a closed row sits centered between dividers.
+          "mb-2 flex h-auto shrink-0 items-center px-2.5 text-[13px] font-normal leading-5 text-[var(--nora-text)] outline-hidden transition-[margin,opacity] duration-200 ease-linear in-data-[closed]:mb-0 group-data-[collapsible=icon]:hidden focus-visible:shadow-[var(--nora-shadow-focus)] [&>svg]:size-3.5 [&>svg]:shrink-0",
           className
         ),
       },

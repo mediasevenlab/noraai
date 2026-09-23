@@ -11,6 +11,7 @@ import {
   productCardCoverKcalBadgeClass,
   productCardGoalAnchorClass,
   productCardOriginAnchorClass,
+  productDesktopCardMinHeightClass,
   productListCardHeightClass,
   productSheetFrostFillClass,
   type ProductCardOrigin,
@@ -95,7 +96,7 @@ function RationSummaryPlaque({ ration }: { ration: SharedRation }) {
       </span>
       <span
         className={cn(
-          'inline-flex h-7 w-[4.25rem] shrink-0 items-center justify-center rounded-full max-md:hidden',
+          'inline-flex h-7 shrink-0 items-center justify-center rounded-full px-2.5 max-md:hidden',
           'bg-[color-mix(in_srgb,var(--nora-panel)_80%,transparent)]',
           'font-[family-name:var(--nora-font)] text-[11px] font-medium leading-none tabular-nums',
           filled ? 'text-[var(--nora-text)]' : 'text-[var(--nora-text-tertiary)]',
@@ -130,6 +131,7 @@ function SharedRationCardSkeleton({ layout = 'grid' }: { layout?: FeedCardLayout
         'flex h-full min-w-0 flex-col',
         list ? 'max-md:flex-row max-md:items-stretch' : 'max-md:min-h-[327px]',
         list && productListCardHeightClass,
+        productDesktopCardMinHeightClass,
       )}
       data-card-layout={layout}
       data-slot="meal-card-skeleton"
@@ -146,12 +148,12 @@ function SharedRationCardSkeleton({ layout = 'grid' }: { layout?: FeedCardLayout
         <div
           className={cn(
             'flex flex-col justify-center px-3 sm:px-4',
-            list ? 'pt-2.5' : 'min-h-0 flex-1',
+            list ? 'pt-2.5' : 'min-h-0 flex-1 md:flex-none md:pt-2.5',
           )}
         >
           <div className="h-10 animate-pulse rounded-[12px] bg-[var(--nora-inset)]" />
         </div>
-        <div className={cn('flex flex-col px-3 sm:px-4', list && 'mt-auto pt-2.5')}>
+        <div className={cn('flex flex-col px-3 sm:px-4', list ? 'mt-auto pt-2.5' : 'md:pt-2')}>
           <div
             aria-hidden
             className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]"
@@ -192,15 +194,16 @@ function SharedRationCard({
         'group flex h-full min-w-0 cursor-pointer flex-col',
         list ? 'max-md:flex-row max-md:items-stretch' : 'max-md:min-h-[327px]',
         list && productListCardHeightClass,
+        productDesktopCardMinHeightClass,
       )}
       data-card-layout={layout}
       data-slot="meal-card"
       onClick={onOpen}
     >
-      <div className={cn('relative shrink-0 px-2 pt-2', list && 'max-md:flex max-md:self-stretch max-md:p-2')}>
+      <div className={cn('relative px-2 pt-2 max-md:shrink-0', list && 'max-md:flex max-md:self-stretch max-md:p-2', 'md:flex md:min-h-0 md:flex-1 md:flex-col')}>
         <div
           className={cn(
-            'relative h-[204px] w-full overflow-hidden bg-[var(--nora-inset)] sm:h-[216px] md:h-[224px]',
+            'relative h-[204px] w-full overflow-hidden bg-[var(--nora-inset)] sm:h-[216px] md:h-[224px] md:h-auto md:min-h-0 md:flex-1',
             list && 'max-md:aspect-square max-md:!h-full max-md:!w-auto max-md:!max-h-none',
           )}
           data-haptic="card"
@@ -240,7 +243,7 @@ function SharedRationCard({
           </div>
         </div>
       </div>
-      <div className={cn('flex min-w-0 flex-1 flex-col', list && 'max-md:min-w-0')}>
+      <div className={cn('flex min-w-0 flex-col max-md:flex-1', list && 'max-md:min-w-0')}>
         {list ? (
           <div className="hidden px-3 pt-2.5 max-md:block">
             <h3 className="truncate font-[family-name:var(--nora-font)] text-[15px] font-medium leading-5 text-[var(--nora-text)]">
@@ -254,12 +257,12 @@ function SharedRationCard({
         <div
           className={cn(
             'flex flex-col justify-center px-3 sm:px-4',
-            list ? 'pt-2.5 max-md:flex-none max-md:pt-3' : 'min-h-0 flex-1',
+            list ? 'pt-2.5 max-md:flex-none max-md:pt-3' : 'min-h-0 flex-1 md:flex-none md:pt-2.5',
           )}
         >
           <RationSummaryPlaque ration={ration} />
         </div>
-        <div className={cn('flex flex-col px-3 sm:px-4', list && 'mt-auto pt-2.5')}>
+        <div className={cn('flex flex-col px-3 sm:px-4', list ? 'mt-auto pt-2.5' : 'md:pt-2')}>
           <div
             aria-hidden
             className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]"

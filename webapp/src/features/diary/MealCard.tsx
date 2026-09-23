@@ -19,6 +19,7 @@ import {
   productCardCoverKcalBadgeClass,
   productCardGoalAnchorClass,
   productCardOriginAnchorClass,
+  productDesktopCardMinHeightClass,
   productListCardHeightClass,
   productSheetFrostFillClass,
 } from '@/components/nora/product-sheet'
@@ -762,6 +763,7 @@ export function MealCard({
         list && 'max-md:flex-row max-md:items-stretch',
         list && productListCardHeightClass,
         variant === 'feed' && !list && 'max-md:min-h-[327px]',
+        productDesktopCardMinHeightClass,
         grayscale && 'grayscale',
         className,
       )}
@@ -1027,6 +1029,7 @@ export function SkeletonMealCard({
         'flex h-full min-w-0 flex-col',
         list && 'max-md:flex-row max-md:items-stretch',
         list && productListCardHeightClass,
+        productDesktopCardMinHeightClass,
         className,
       )}
       data-card-layout={layout}
