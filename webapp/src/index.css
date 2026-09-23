@@ -687,6 +687,10 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
 /*
  * iOS Safari zooms focused form controls when computed font-size < 16px.
  * Keep mobile inputs at 16px before and after focus so the viewport does not jump.
+ * Inside settings/profile wells the glyphs are drawn at 13px (same as labels) via
+ * scale(13/16). Transform does not change the computed font-size, so iOS still
+ * sees 16px and does not zoom. Pinch-zoom of the page stays available.
+ * Search fields stay at 16px: scaling them clips the placeholder.
  */
 @media (max-width: 767px) {
   input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image']):not([type='hidden']),
@@ -696,6 +700,48 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
   [data-slot='textarea'],
   [contenteditable='true'] {
     font-size: 16px !important;
+  }
+
+  [data-settings-well] {
+    --ios-type-scale: 0.8125;
+  }
+
+  [data-settings-well] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image']):not([type='hidden']):not([data-ios-keep]) {
+    box-sizing: border-box !important;
+    display: block !important;
+    width: calc(100% / var(--ios-type-scale)) !important;
+    max-width: none !important;
+    height: calc(2rem / var(--ios-type-scale)) !important;
+    min-height: calc(2rem / var(--ios-type-scale)) !important;
+    max-height: calc(2rem / var(--ios-type-scale)) !important;
+    margin-top: 0 !important;
+    margin-right: calc(100% * (var(--ios-type-scale) - 1) / var(--ios-type-scale)) !important;
+    margin-bottom: calc(2rem * (var(--ios-type-scale) - 1) / var(--ios-type-scale)) !important;
+    padding: 0 calc(0.75rem / var(--ios-type-scale)) !important;
+    font-size: 16px !important;
+    line-height: calc(2rem / var(--ios-type-scale)) !important;
+    border-radius: calc(var(--nora-radius-md, 8px) / var(--ios-type-scale)) !important;
+    transform: scale(var(--ios-type-scale));
+    transform-origin: top left;
+  }
+
+  [data-settings-well] textarea {
+    box-sizing: border-box !important;
+    display: block !important;
+    width: calc(100% / var(--ios-type-scale)) !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: calc(4rem / var(--ios-type-scale)) !important;
+    max-height: none !important;
+    margin-top: 0 !important;
+    margin-right: calc(100% * (var(--ios-type-scale) - 1) / var(--ios-type-scale)) !important;
+    padding: calc(0.5rem / var(--ios-type-scale)) calc(0.75rem / var(--ios-type-scale)) !important;
+    font-size: 16px !important;
+    font-weight: 300 !important;
+    line-height: calc(1.25rem / var(--ios-type-scale)) !important;
+    border-radius: calc(var(--nora-radius-md, 8px) / var(--ios-type-scale)) !important;
+    transform: scale(var(--ios-type-scale));
+    transform-origin: top left;
   }
 }
 

@@ -8,7 +8,7 @@ import { SexChoiceField } from './SexChoiceField'
 
 const entryControlClass =
   'bg-[var(--nora-panel)] text-[16px] leading-5 lg:text-[13px]'
-const entryTextareaClass = `min-h-16 resize-y px-3 py-2 ${entryControlClass}`
+const entryTextareaClass = `min-h-16 resize-y px-3 py-2 font-light placeholder:font-light placeholder:text-[var(--nora-text-tertiary)] ${entryControlClass}`
 
 export function QuestionnaireFieldControl({
   field,

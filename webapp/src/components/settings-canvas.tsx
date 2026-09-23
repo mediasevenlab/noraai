@@ -13,8 +13,10 @@ const settingsBodyClass =
   'font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 text-[var(--nora-text-secondary)]'
 
 /**
- * Поля и кнопки: на десктопе кегль 13px и высота 32px.
- * На узком экране поля 16px и 40px — iOS зумит фокус, если кегль меньше 16px.
+ * Поля и кнопки: кегль 13px. На телефоне у настоящих полей ввода вычисленный
+ * кегль 16px (иначе iOS зумит фокус), а рисуется он как 13px — см. index.css.
+ * Кнопки и списки зума не вызывают, поэтому у них кегль сразу 13px.
+ * Высота на узком экране 40px у кнопок (зона нажатия), у полей после масштаба 32px.
  */
 const settingsControlsClass = cn(
   'mt-4 rounded-[16px] bg-[var(--settings-substrate,var(--nora-inset))] px-3.5 py-3.5',
@@ -24,14 +26,13 @@ const settingsControlsClass = cn(
   '[&_[data-slot=field-description]]:!mt-0 [&_[data-slot=field-description]]:!font-[family-name:var(--nora-font)] [&_[data-slot=field-description]]:!text-[12px] [&_[data-slot=field-description]]:!font-light [&_[data-slot=field-description]]:!leading-5 [&_[data-slot=field-description]]:!text-[var(--nora-text-tertiary)]',
   '[&_[data-slot=input]]:!h-10 [&_[data-slot=input]]:!min-h-10 [&_[data-slot=input]]:!bg-[var(--nora-panel)] [&_[data-slot=input]]:!px-3 [&_[data-slot=input]]:!text-[16px] [&_[data-slot=input]]:!font-normal [&_[data-slot=input]]:!leading-5',
   'lg:[&_[data-slot=input]]:!h-8 lg:[&_[data-slot=input]]:!min-h-8 lg:[&_[data-slot=input]]:!text-[13px]',
-  '[&_[data-slot=select-trigger]]:!h-10 [&_[data-slot=select-trigger]]:!min-h-10 [&_[data-slot=select-trigger]]:!bg-[var(--nora-panel)] [&_[data-slot=select-trigger]]:!px-3 [&_[data-slot=select-trigger]]:!text-[16px] [&_[data-slot=select-trigger]]:!font-normal',
-  'lg:[&_[data-slot=select-trigger]]:!h-8 lg:[&_[data-slot=select-trigger]]:!min-h-8 lg:[&_[data-slot=select-trigger]]:!text-[13px]',
-  '[&_[data-settings-field]]:!h-10 [&_[data-settings-field]]:!min-h-10 [&_[data-settings-field]]:!bg-[var(--nora-panel)] [&_[data-settings-field]]:!text-[16px]',
-  'lg:[&_[data-settings-field]]:!h-8 lg:[&_[data-settings-field]]:!min-h-8 lg:[&_[data-settings-field]]:!text-[13px]',
+  '[&_[data-slot=select-trigger]]:!h-10 [&_[data-slot=select-trigger]]:!min-h-10 [&_[data-slot=select-trigger]]:!bg-[var(--nora-panel)] [&_[data-slot=select-trigger]]:!px-3 [&_[data-slot=select-trigger]]:!text-[13px] [&_[data-slot=select-trigger]]:!font-normal',
+  'lg:[&_[data-slot=select-trigger]]:!h-8 lg:[&_[data-slot=select-trigger]]:!min-h-8',
+  '[&_[data-settings-field]]:!h-10 [&_[data-settings-field]]:!min-h-10 [&_[data-settings-field]]:!bg-[var(--nora-panel)] [&_[data-settings-field]]:!text-[13px]',
+  'lg:[&_[data-settings-field]]:!h-8 lg:[&_[data-settings-field]]:!min-h-8',
   '[&_button:not([data-choice-plaque])]:!h-10 [&_button:not([data-choice-plaque])]:!min-h-10 [&_button:not([data-choice-plaque])]:!px-3 [&_button:not([data-choice-plaque])]:!text-[13px] [&_button:not([data-choice-plaque])]:!font-normal',
   'lg:[&_button:not([data-choice-plaque])]:!h-8 lg:[&_button:not([data-choice-plaque])]:!min-h-8',
-  '[&_button:not([data-choice-plaque])_span]:!text-[16px] [&_button:not([data-choice-plaque])_span]:!font-normal',
-  'lg:[&_button:not([data-choice-plaque])_span]:!text-[13px]',
+  '[&_button:not([data-choice-plaque])_span]:!text-[13px] [&_button:not([data-choice-plaque])_span]:!font-normal',
 )
 
 /** Раскладка страницы настроек в том же виде, что «Разработка». */
@@ -55,7 +56,7 @@ export function SettingsCanvas({
   title: string
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-3 py-8 sm:px-6 md:px-10 md:py-12 lg:flex-row lg:gap-16 lg:px-12">
+    <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-3 pt-3 pb-8 sm:px-6 md:px-10 md:py-12 lg:flex-row lg:gap-16 lg:px-12">
       <aside className="hidden w-full shrink-0 flex-col gap-6 lg:sticky lg:top-6 lg:flex lg:w-[280px] lg:self-start">
         <div>
           <div className={cn('mb-1', settingsCaptionClass)}>{eyebrow}</div>
@@ -123,7 +124,9 @@ export function SettingsEntry({
         {badge ? <NoraBadge className="shrink-0" variant="blue">{badge}</NoraBadge> : null}
       </div>
       <p className={cn('mt-1 max-w-[54ch]', settingsBodyClass)}>{description}</p>
-      <div className={settingsControlsClass}>{children}</div>
+      <div className={settingsControlsClass} data-settings-well="">
+        {children}
+      </div>
     </li>
   )
 }

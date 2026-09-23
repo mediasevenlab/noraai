@@ -81,10 +81,10 @@ const fieldGoal: ProfileField = {
   control: 'choice',
   hideLabel: true,
   options: [
-    { value: 'Похудение', label: 'Похудение', description: 'Снижение веса и жира' },
-    { value: 'Набор', label: 'Набор', description: 'Мышечная масса / вес' },
+    { value: 'Похудение', label: 'Похудение', description: 'Снижение веса' },
+    { value: 'Набор', label: 'Набор', description: 'Мышцы и вес' },
     { value: 'Поддержание', label: 'Поддержание', description: 'Стабильный вес' },
-    { value: 'Здоровье', label: 'Здоровье', description: 'Питание без цели по весу' },
+    { value: 'Здоровье', label: 'Здоровье', description: 'Без цели по весу' },
   ],
 }
 
@@ -186,7 +186,7 @@ const fieldDietType: ProfileField = {
   options: [
     { value: 'Обычное', label: 'Обычное', description: 'Без строгих рамок' },
     { value: 'Вегетарианство', label: 'Вегетарианство', description: 'Без мяса и рыбы' },
-    { value: 'Веганство', label: 'Веганство', description: 'Без продуктов животных' },
+    { value: 'Веганство', label: 'Веганство', description: 'Только растения' },
     { value: 'Пескетарианство', label: 'Песке', description: 'Рыба, без мяса' },
   ],
 }
@@ -208,7 +208,7 @@ const fieldRestrictions: ProfileField = {
   options: [
     { value: 'Нет ограничений', label: 'Нет', description: 'Без исключений' },
     { value: 'Лактоза', label: 'Лактоза', description: 'Молоко и молочка' },
-    { value: 'Глютен', label: 'Глютен', description: 'Пшеница, рожь, ячмень' },
+    { value: 'Глютен', label: 'Глютен', description: 'Пшеница и рожь' },
     { value: 'Орехи', label: 'Орехи', description: 'В т.ч. арахис' },
     { value: 'Морепродукты', label: 'Морепродукты', description: 'Рыба, креветки' },
     { value: 'Яйца', label: 'Яйца', description: 'Куриные и другие' },
@@ -223,7 +223,7 @@ const fieldHealth: ProfileField = {
   control: 'choice',
   options: [
     { value: 'Без особенностей', label: 'Без особенностей', description: 'Ничего критичного' },
-    { value: 'ЖКТ', label: 'ЖКТ', description: 'Чувствительное пищеварение' },
+    { value: 'ЖКТ', label: 'ЖКТ', description: 'Пищеварение' },
     { value: 'Гормоны / щитовидка', label: 'Гормоны', description: 'Эндокринный фон' },
     { value: 'Давление / сердце', label: 'Сердце', description: 'ССС и давление' },
   ],
@@ -237,7 +237,7 @@ const fieldStressEating: ProfileField = {
     { value: 'Редко', label: 'Редко', description: 'Почти не влияет' },
     { value: 'Иногда', label: 'Иногда', description: 'Бывает заедание' },
     { value: 'Часто', label: 'Часто', description: 'Сильно связано' },
-    { value: 'Скорее пропускаю еду', label: 'Пропускаю', description: 'При стрессе меньше ем' },
+    { value: 'Скорее пропускаю еду', label: 'Пропускаю', description: 'Ем меньше' },
   ],
 }
 
@@ -247,8 +247,8 @@ const fieldDietExperience: ProfileField = {
   control: 'choice',
   hideLabel: true,
   options: [
-    { value: 'Нет опыта', label: 'Нет опыта', description: 'Первый осознанный заход' },
-    { value: 'Пробовал(а) коротко', label: 'Коротко', description: 'Были короткие попытки' },
+    { value: 'Нет опыта', label: 'Нет опыта', description: 'Первый раз' },
+    { value: 'Пробовал(а) коротко', label: 'Коротко', description: 'Короткие попытки' },
     { value: 'Есть опыт', label: 'Есть опыт', description: 'Несколько подходов' },
     { value: 'Много лет', label: 'Много лет', description: 'Долгая история' },
   ],

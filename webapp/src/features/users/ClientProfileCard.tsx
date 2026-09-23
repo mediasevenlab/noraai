@@ -235,11 +235,11 @@ function ProfileSectionEntry({
       title={section.title}
     >
       {editing ? (
-        <div className="px-2">
+        <div>
           {rows.map((field, index) => (
             <div
               className={cn(
-                'border-t border-[var(--nora-divider)] py-2.5',
+                'border-t border-[var(--nora-divider)] py-3.5',
                 index === 0 && 'border-t-0 pt-0',
                 index === rows.length - 1 && 'pb-0',
               )}
@@ -260,24 +260,35 @@ function ProfileSectionEntry({
           Пока ничего не указано.
         </p>
       ) : (
-        <div className="px-2">
-          {rows.map((field, index) => (
-            <div
-              className={cn(
-                'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 border-t border-[var(--nora-divider)] py-2.5',
-                index === 0 && 'border-t-0 pt-0',
-                index === rows.length - 1 && 'pb-0',
-              )}
-              key={field.key}
-            >
-              <span className="min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
-                {field.label}
-              </span>
-              <span className="font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)]">
-                {values[field.key] || '—'}
-              </span>
-            </div>
-          ))}
+        <div>
+          {rows.map((field, index) => {
+            const extended = field.layout === 'extended'
+            return (
+              <div
+                className={cn(
+                  'min-w-0 border-t border-[var(--nora-divider)] py-3.5',
+                  index === 0 && 'border-t-0 pt-0',
+                  index === rows.length - 1 && 'pb-0',
+                  extended
+                    ? 'grid gap-2'
+                    : 'grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4',
+                )}
+                key={field.key}
+              >
+                <span className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
+                  {field.label}
+                </span>
+                <span
+                  className={cn(
+                    'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 break-words text-[var(--nora-text-secondary)]',
+                    extended ? 'whitespace-pre-wrap' : 'text-right',
+                  )}
+                >
+                  {values[field.key] || '—'}
+                </span>
+              </div>
+            )
+          })}
         </div>
       )}
     </SettingsEntry>

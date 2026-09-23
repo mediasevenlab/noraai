@@ -2,8 +2,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { cn } from '@/lib/utils'
 
 export const SEX_OPTIONS = [
-  { value: 'Женский', label: 'Женский' },
-  { value: 'Мужской', label: 'Мужской' },
+  { value: 'Женский', label: 'Женский', description: 'Для женщин' },
+  { value: 'Мужской', label: 'Мужской', description: 'Для мужчин' },
 ] as const
 
 export function SexChoiceField({
@@ -32,18 +32,33 @@ export function SexChoiceField({
         return (
           <label
             className={cn(
-              'flex cursor-pointer items-center gap-2 rounded-[var(--nora-radius-md)] px-2.5 py-2',
-              entry ? 'bg-[var(--nora-panel)] px-3 text-[13px] leading-5' : 'bg-[var(--nora-input-bg)] text-[12px]',
+              'flex cursor-pointer gap-2 rounded-[var(--nora-radius-md)] px-2.5 py-2',
+              entry ? 'items-start bg-[var(--nora-panel)] px-3 py-2' : 'items-center bg-[var(--nora-input-bg)] text-[12px]',
               'font-[family-name:var(--nora-font)] font-medium text-[var(--nora-text)]',
               'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
               'has-focus-visible:shadow-[inset_0_0_0_1px_var(--nora-tint)]',
-              'has-data-checked:bg-[var(--nora-tint-dimmed)] has-data-checked:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)]',
+              'has-data-checked:bg-[var(--nora-tint-dimmed)] has-data-checked:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)] has-data-checked:[&_[data-option-note]]:text-[color-mix(in_srgb,var(--nora-tint)_32%,var(--nora-text-secondary))]',
             )}
             htmlFor={id}
             key={option.value}
           >
-            <RadioGroupItem aria-label={option.label} id={id} value={option.value} />
-            <span>{option.label}</span>
+            {entry ? (
+              <span className="flex h-5 shrink-0 items-center">
+                <RadioGroupItem aria-label={option.label} id={id} value={option.value} />
+              </span>
+            ) : (
+              <RadioGroupItem aria-label={option.label} id={id} value={option.value} />
+            )}
+            {entry ? (
+              <span className="min-w-0 grid gap-px text-left">
+                <span className="text-[13px] leading-5">{option.label}</span>
+                <span className="min-w-0 truncate text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]" data-option-note="">
+                  {option.description}
+                </span>
+              </span>
+            ) : (
+              <span>{option.label}</span>
+            )}
           </label>
         )
       })}

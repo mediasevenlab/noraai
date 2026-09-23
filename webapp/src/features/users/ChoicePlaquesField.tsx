@@ -16,7 +16,7 @@ function plaqueClassName(checked: boolean, entry: boolean) {
     'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
     'has-focus-visible:shadow-[inset_0_0_0_1px_var(--nora-tint)]',
     checked
-      && 'bg-[var(--nora-tint-dimmed)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)]',
+      && 'bg-[var(--nora-tint-dimmed)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)] [&_[data-option-note]]:text-[color-mix(in_srgb,var(--nora-tint)_32%,var(--nora-text-secondary))]',
   )
 }
 
@@ -26,7 +26,7 @@ function RoundChoiceMark({ checked }: { checked: boolean }) {
     <span
       aria-hidden
       className={cn(
-        'relative mt-px flex size-4 shrink-0 items-center justify-center rounded-full border border-input',
+        'relative flex size-4 shrink-0 items-center justify-center rounded-full border border-[var(--nora-border-strong)] bg-transparent',
         'dark:bg-input/30',
         checked && 'border-primary bg-primary text-primary-foreground dark:bg-primary',
       )}
@@ -56,9 +56,10 @@ function OptionCopy({
         <span
           className={
             entry
-              ? 'text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]'
+              ? 'min-w-0 truncate text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]'
               : 'text-[10px] leading-snug text-[var(--nora-text-tertiary)]'
           }
+          data-option-note=""
         >
           {description}
         </span>
@@ -152,12 +153,22 @@ export function ChoicePlaquesField({
                 emit(undefined, allowCustom ? detailText : '')
               }}
             >
-              <RadioGroupItem
-                aria-label={option.label}
-                className="mt-px"
-                id={id}
-                value={option.value}
-              />
+              {entry ? (
+                <span className="flex h-5 shrink-0 items-center">
+                  <RadioGroupItem
+                    aria-label={option.label}
+                    id={id}
+                    value={option.value}
+                  />
+                </span>
+              ) : (
+                <RadioGroupItem
+                  aria-label={option.label}
+                  className="mt-px"
+                  id={id}
+                  value={option.value}
+                />
+              )}
               <OptionCopy description={option.description} entry={entry} label={option.label} />
             </label>
           )
@@ -236,7 +247,13 @@ export function MultiChoicePlaquesField({
             role="checkbox"
             type="button"
           >
-            <RoundChoiceMark checked={checked} />
+            {entry ? (
+              <span className="flex h-5 shrink-0 items-center">
+                <RoundChoiceMark checked={checked} />
+              </span>
+            ) : (
+              <RoundChoiceMark checked={checked} />
+            )}
             <OptionCopy description={option.description} entry={entry} label={option.label} />
           </button>
         )

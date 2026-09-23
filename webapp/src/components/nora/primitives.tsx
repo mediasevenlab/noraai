@@ -191,8 +191,27 @@ export function NoraTextarea({
   className,
   ...props
 }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const ref = React.useRef<HTMLTextAreaElement>(null)
+  React.useLayoutEffect(() => {
+    const el = ref.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const apply = () => {
+      const scaled =
+        window.matchMedia('(max-width: 767px)').matches &&
+        el.closest('[data-settings-well]')
+      el.style.marginBottom = scaled ? `${-el.offsetHeight * (1 - 13 / 16)}px` : ''
+    }
+    apply()
+    const observer = new ResizeObserver(apply)
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      el.style.marginBottom = ''
+    }
+  }, [])
   return (
     <textarea
+      ref={ref}
       className={cn(
         "block min-h-16 w-full resize-y border-0 p-2 outline-none transition-shadow duration-150",
         font,
@@ -1319,6 +1338,7 @@ export const NoraSearch = React.forwardRef<
         {icon}
       </span>
       <input
+        data-ios-keep=""
         ref={ref}
         className={cn(
           "min-w-0 flex-1 border-0 bg-transparent outline-none",
