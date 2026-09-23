@@ -1,7 +1,7 @@
 import type { UserDto } from '@web-app-demo/contracts'
 import { useId, useState, type FormEvent } from 'react'
 
-import { SettingsEntry } from '@/components/settings-canvas'
+import { SettingsEntry, SettingsReadRows, useSettingsDraft } from '@/components/settings-canvas'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -13,6 +13,30 @@ export function ProfilePanel({ user }: { user: UserDto }) {
   const [displayName, setDisplayName] = useState(user.displayName ?? '')
   const mutation = useUpdateProfileMutation()
   const displayNameInvalid = displayName.trim().length === 1
+  const mode = useSettingsDraft({
+    id: 'profile-display-name',
+    disabled: displayNameInvalid,
+    pending: mutation.isPending,
+    save: async () => {
+      if (displayName.trim().length === 1) return false
+      const normalized = displayName.trim()
+      const current = user.displayName ?? ''
+      if (normalized === current) return true
+      try {
+        const response = await mutation.mutateAsync({
+          displayName: normalized === '' ? null : normalized,
+        })
+        setDisplayName(response.user.displayName ?? '')
+        return true
+      } catch {
+        return false
+      }
+    },
+    reset: () => {
+      setDisplayName(user.displayName ?? '')
+      mutation.reset()
+    },
+  })
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -22,12 +46,15 @@ export function ProfilePanel({ user }: { user: UserDto }) {
     })
   }
 
+  const showForm = !mode.managed || mode.editing
+
   return (
     <SettingsEntry
       badge="Аккаунт"
       description="Имя в приложении."
       title="Данные профиля"
     >
+      {showForm ? (
       <form className="grid gap-3.5" noValidate onSubmit={submit}>
         <FieldGroup>
           <Field data-invalid={displayNameInvalid}>
@@ -81,29 +108,38 @@ export function ProfilePanel({ user }: { user: UserDto }) {
           </Field>
         </FieldGroup>
 
-        {mutation.isError && (
-          <Alert variant="destructive">
-            <AlertTitle>Профиль не сохранён</AlertTitle>
-            <AlertDescription>{mutation.error.message}</AlertDescription>
-          </Alert>
+        {mode.managed ? null : (
+          <div>
+            <Button
+              className="font-normal"
+              disabled={mutation.isPending || displayNameInvalid}
+              type="submit"
+            >
+              {mutation.isPending ? 'Сохраняем…' : 'Сохранить'}
+            </Button>
+          </div>
         )}
-        {mutation.isSuccess && (
-          <Alert>
-            <AlertTitle>Профиль сохранён</AlertTitle>
-            <AlertDescription>Отображаемое имя обновлено.</AlertDescription>
-          </Alert>
-        )}
-
-        <div>
-          <Button
-            className="font-normal"
-            disabled={mutation.isPending || displayNameInvalid}
-            type="submit"
-          >
-            {mutation.isPending ? 'Сохраняем…' : 'Сохранить'}
-          </Button>
-        </div>
       </form>
+      ) : (
+        <SettingsReadRows
+          rows={[
+            { label: 'Отображаемое имя', value: displayName.trim() || user.email },
+            { label: 'Email', value: user.email },
+          ]}
+        />
+      )}
+      {mutation.isError && (
+        <Alert className="mt-3" variant="destructive">
+          <AlertTitle>Профиль не сохранён</AlertTitle>
+          <AlertDescription>{mutation.error.message}</AlertDescription>
+        </Alert>
+      )}
+      {mutation.isSuccess && (
+        <Alert className="mt-3">
+          <AlertTitle>Профиль сохранён</AlertTitle>
+          <AlertDescription>Отображаемое имя обновлено.</AlertDescription>
+        </Alert>
+      )}
     </SettingsEntry>
   )
 }

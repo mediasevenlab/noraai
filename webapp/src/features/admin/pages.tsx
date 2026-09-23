@@ -38,6 +38,7 @@ export function AdminSettings({ user }: { user: UserDto }) {
   return (
     <SettingsCanvas
       description="Имя администратора и тема рабочей области. Оформление можно оставить как в системе или выбрать светлую или тёмную тему."
+      editable
       eyebrow="Администратор"
       meta={user.email}
       title="Настройки"

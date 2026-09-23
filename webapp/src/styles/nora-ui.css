@@ -36,6 +36,7 @@
   --nora-modal: #1a1a1a;
   --nora-inset: #2b2b2b;
   --settings-substrate: color-mix(in srgb, white 8%, var(--nora-panel));
+  --settings-divider: color-mix(in srgb, white 5%, var(--settings-substrate));
 
   --nora-text: #ffffff;
   --nora-text-secondary: #999999;
@@ -137,8 +138,9 @@
   --nora-popover: #ffffff;
   --nora-modal: #ffffff;
   --nora-inset: #f3f3f3;
-  /* Та же заливка, что у плитки меню: 4% чёрного поверх панели. */
-  --settings-substrate: color-mix(in srgb, black 4%, var(--nora-panel));
+  /* На тон темнее плитки меню (4% чёрного), без заметного скачка. */
+  --settings-substrate: color-mix(in srgb, black 5%, var(--nora-panel));
+  --settings-divider: color-mix(in srgb, black 3%, var(--settings-substrate));
 
   --nora-text: #222222;
   --nora-text-secondary: #666666;
@@ -816,4 +818,9 @@ html[data-android] .ios-glass-glare-soft {
   background: var(--nora-panel);
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+/* Hairline inside a settings well stays one step darker than that well. */
+[data-settings-well] {
+  --nora-divider: var(--settings-divider, var(--nora-divider));
 }

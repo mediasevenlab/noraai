@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils'
 import { QuestionnaireFieldControl } from './QuestionnaireFieldControl'
 import {
   PROFILE_SECTIONS,
+  measureInputValue,
+  measureLabel,
   type FieldKey,
   type ProfileField,
   type ProfileSection,
@@ -91,7 +93,7 @@ function EditFieldBlock({
           : 'text-[12px] text-[var(--nora-text-secondary)]'
       }
     >
-      {field.label}
+      {entry && field.unit ? measureLabel(field) : field.label}
       {field.optional ? (
         <span className="font-normal text-[12px] text-[var(--nora-text-tertiary)]">
           {' '}
@@ -113,7 +115,7 @@ function EditFieldBlock({
 
   if (inline) {
     return (
-      <div className="grid grid-cols-[minmax(0,1fr)_9rem] items-center gap-x-4">
+      <div className="grid grid-cols-2 items-center gap-2">
         {label}
         {control}
       </div>
@@ -276,7 +278,7 @@ function ProfileSectionEntry({
                 key={field.key}
               >
                 <span className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
-                  {field.label}
+                  {field.unit ? measureLabel(field) : field.label}
                 </span>
                 <span
                   className={cn(
@@ -284,7 +286,7 @@ function ProfileSectionEntry({
                     extended ? 'whitespace-pre-wrap' : 'text-right',
                   )}
                 >
-                  {values[field.key] || '—'}
+                  {measureInputValue(values[field.key], field.unit) || '—'}
                 </span>
               </div>
             )

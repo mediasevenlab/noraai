@@ -62,7 +62,8 @@ export function ReferralLinkPanel({
         aria-describedby={`${fieldId}-hint`}
         aria-label={isCopied ? 'Ссылка скопирована' : 'Скопировать ссылку'}
         className={cn(
-          'group relative flex h-[var(--nora-control-h,30px)] w-full min-w-0 items-center rounded-[var(--nora-radius-md,8px)] bg-[var(--nora-input-bg)] px-2.5 text-left font-[family-name:var(--nora-font)] outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
+          'group relative flex h-8 w-full min-w-0 items-center rounded-[var(--nora-radius-md,8px)] px-3 text-left font-[family-name:var(--nora-font)] text-[13px] outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
+          layout === 'entry' ? 'bg-[var(--nora-panel)]' : 'bg-[var(--nora-input-bg)]',
           'cursor-pointer hover:bg-[color-mix(in_srgb,var(--nora-input-bg)_88%,var(--nora-text)_4%)]',
           'focus-visible:bg-[var(--nora-panel)] focus-visible:shadow-[var(--nora-shadow-focus)]',
         )}
@@ -71,7 +72,7 @@ export function ReferralLinkPanel({
         onClick={() => void copyLink()}
         type="button"
       >
-        <span className="min-w-0 flex-1 truncate pr-10 text-xs font-normal text-[var(--nora-text)]">
+        <span className="min-w-0 flex-1 truncate pr-10 text-[13px] font-normal text-[var(--nora-text)]">
           {referralUrl}
         </span>
         <CircleCheckIcon

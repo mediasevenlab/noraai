@@ -1,7 +1,7 @@
 import { useTheme } from 'next-themes'
 import { MonitorIcon, MoonIcon, SunIcon } from 'lucide-react'
 
-import { SettingsEntry } from '@/components/settings-canvas'
+import { SettingsEntry, SettingsReadRows, useSettingsMode } from '@/components/settings-canvas'
 import {
   Field,
   FieldDescription,
@@ -33,6 +33,8 @@ const themeLabels: Record<Theme, string> = {
 export function AppearancePanel() {
   const { theme = 'system', setTheme } = useTheme()
   const selectedTheme = isTheme(theme) ? theme : 'system'
+  const mode = useSettingsMode()
+  const showForm = !mode.managed || mode.editing
 
   return (
     <SettingsEntry
@@ -40,6 +42,7 @@ export function AppearancePanel() {
       description="Как в системе, светлая или тёмная."
       title="Внешний вид"
     >
+      {showForm ? (
       <div className="grid gap-3.5">
         <Field>
           <FieldLabel
@@ -77,6 +80,11 @@ export function AppearancePanel() {
           </FieldDescription>
         </Field>
       </div>
+      ) : (
+        <SettingsReadRows
+          rows={[{ label: 'Тема', value: themeLabels[selectedTheme] }]}
+        />
+      )}
     </SettingsEntry>
   )
 }

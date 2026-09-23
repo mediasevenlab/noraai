@@ -153,7 +153,7 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
   const searchField = (
     <NoraSearch
       aria-label="Поиск рефералов"
-      className="!h-10 !min-h-10 min-w-0 flex-1 bg-[var(--nora-panel)] [&_svg]:!size-5 lg:!h-8 lg:!min-h-8 lg:w-[220px] lg:flex-none"
+      className="h-8 min-h-8 w-full bg-[var(--nora-panel)] [&_svg]:size-3.5 lg:w-[220px]"
       icon={<SearchIcon />}
       inputClassName="text-[16px] leading-5 lg:text-[13px] lg:leading-none"
       onChange={(event) => setDraftQuery(event.target.value)}
@@ -177,12 +177,13 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
         title="Каталог"
       >
         <div className="grid gap-2.5">
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-x-3 gap-y-2 lg:justify-between">
-            <p className="font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
+          <form className="flex w-full min-w-0 items-center gap-2" onSubmit={submitSearch}>
+            <p className="shrink-0 font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
               {description}
             </p>
-            {search}
-          </div>
+            {bonusChip ? <div className="shrink-0">{bonusChip}</div> : null}
+            <div className="relative h-8 min-w-0 flex-1 lg:ml-auto lg:w-[220px] lg:flex-none">{searchField}</div>
+          </form>
           <div className="overflow-hidden rounded-[12px] bg-[var(--nora-panel)]">
             {tableBody}
           </div>

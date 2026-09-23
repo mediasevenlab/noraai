@@ -171,6 +171,7 @@ export function MentorSettings({ user }: { user: UserDto }) {
   return (
     <SettingsCanvas
       description="Имя наставника и уведомления в Telegram, когда подопечный добавляет приём. Ниже ссылка, по которой пользователи подключаются к вам."
+      editable
       eyebrow="Наставник"
       meta={user.email}
       title="Настройки"

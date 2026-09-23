@@ -1325,6 +1325,7 @@ export const NoraSearch = React.forwardRef<
 >(function NoraSearch({ className, inputClassName, icon, ...props }, ref) {
   return (
     <div
+      data-settings-search=""
       className={cn(
         "box-border flex items-center gap-[7px] border border-transparent px-[var(--nora-space-2,10px)]",
         controlH,

@@ -30,6 +30,8 @@ export type ProfileField = {
   exclusiveValue?: string
   optional?: boolean
   placeholder?: string
+  /** Shown after the label («Возраст, лет»); the stored answer keeps the unit. */
+  unit?: string
   /** Hide label when the step heading already names the question. */
   hideLabel?: boolean
   /** Onboarding: place beside another short field in a 2-column row. */
@@ -60,19 +62,39 @@ const fieldSex: ProfileField = {
 const fieldAge: ProfileField = {
   key: 'ageLabel',
   label: 'Возраст',
+  unit: 'лет',
   halfWidth: true,
 }
 
 const fieldHeight: ProfileField = {
   key: 'height',
   label: 'Рост',
+  unit: 'см',
   halfWidth: true,
 }
 
 const fieldWeight: ProfileField = {
   key: 'weight',
   label: 'Вес',
+  unit: 'кг',
   halfWidth: true,
+}
+
+export function measureLabel(field: Pick<ProfileField, 'label' | 'unit'>) {
+  return field.unit ? `${field.label}, ${field.unit}` : field.label
+}
+
+export function measureInputValue(value: string, unit?: string) {
+  if (!unit) return value
+  const suffix = ` ${unit}`
+  return value.endsWith(suffix) ? value.slice(0, -suffix.length) : value
+}
+
+export function measureStoredValue(value: string, unit?: string) {
+  const trimmed = value.trim()
+  if (!unit || trimmed === '') return trimmed
+  const suffix = ` ${unit}`
+  return trimmed.endsWith(suffix) ? trimmed : `${trimmed}${suffix}`
 }
 
 const fieldGoal: ProfileField = {

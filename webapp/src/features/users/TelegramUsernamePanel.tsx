@@ -9,7 +9,7 @@ import {
 import { useId, useState, type FormEvent } from 'react'
 
 import { NoraToast } from '@/components/nora'
-import { SettingsEntry } from '@/components/settings-canvas'
+import { SettingsEntry, SettingsReadRows, useSettingsMode } from '@/components/settings-canvas'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -102,6 +102,8 @@ export function TelegramUsernamePanel({
     )
   }
 
+  const mode = useSettingsMode()
+  const showForm = !mode.managed || mode.editing
   const linkError = linkMutation.error instanceof ApiRequestError
     && linkMutation.error.code === 'CONFLICT'
     ? 'Этот Telegram-контакт уже занят.'
@@ -118,7 +120,7 @@ export function TelegramUsernamePanel({
       }
       title={variant === 'notify' ? 'Telegram-уведомления' : 'Telegram'}
     >
-      {bound ? (
+      {showForm ? (bound ? (
         <div className="grid gap-3.5">
           <Field>
             <FieldLabel className="font-normal text-[var(--nora-text-secondary)]">
@@ -241,6 +243,13 @@ export function TelegramUsernamePanel({
             </Button>
           </div>
         </form>
+      )) : (
+        <SettingsReadRows
+          rows={[{
+            label: 'Ник или телефон',
+            value: displayTelegramContact(user) || 'Не привязан',
+          }]}
+        />
       )}
     </SettingsEntry>
   )

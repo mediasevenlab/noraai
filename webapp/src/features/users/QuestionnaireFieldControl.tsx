@@ -3,7 +3,13 @@ import {
   ChoicePlaquesField,
   MultiChoicePlaquesField,
 } from './ChoicePlaquesField'
-import type { FieldKey, ProfileField } from './questionnaire-sections'
+import {
+  measureInputValue,
+  measureLabel,
+  measureStoredValue,
+  type FieldKey,
+  type ProfileField,
+} from './questionnaire-sections'
 import { SexChoiceField } from './SexChoiceField'
 
 const entryControlClass =
@@ -90,15 +96,18 @@ export function QuestionnaireFieldControl({
   return (
     <NoraInput
       aria-invalid={invalid || undefined}
-      aria-label={field.label}
+      aria-label={variant === 'entry' && field.unit ? measureLabel(field) : field.label}
       className={
         variant === 'entry'
           ? `h-10 w-full px-3 lg:h-8 ${entryControlClass}`
           : 'h-8 text-[13px]'
       }
-      onChange={(event) => onChange(field.key, event.target.value)}
+      onChange={(event) => onChange(
+        field.key,
+        variant === 'entry' ? measureStoredValue(event.target.value, field.unit) : event.target.value,
+      )}
       placeholder={field.placeholder}
-      value={value}
+      value={variant === 'entry' ? measureInputValue(value, field.unit) : value}
     />
   )
 }

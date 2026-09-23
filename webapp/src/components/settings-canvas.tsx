@@ -1,5 +1,14 @@
-import type { ReactNode } from 'react'
-import { ArrowUpRightIcon } from 'lucide-react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
+import { ArrowUpRightIcon, CheckIcon, PencilIcon, XIcon, type LucideIcon } from 'lucide-react'
 
 import { NoraBadge } from '@/components/nora/primitives'
 import { cn } from '@/lib/utils'
@@ -19,24 +28,23 @@ const settingsBodyClass =
  * Высота на узком экране 40px у кнопок (зона нажатия), у полей после масштаба 32px.
  */
 const settingsControlsClass = cn(
-  'mt-4 rounded-[16px] bg-[var(--settings-substrate,var(--nora-inset))] px-3.5 py-3.5',
+  'mt-4 rounded-[16px] bg-[var(--settings-substrate,var(--nora-inset))] px-5 py-5',
   '[&_form]:!gap-2.5',
   '[&_[data-slot=field-group]]:!mt-0',
   '[&_[data-slot=field-label]]:!mb-0.5 [&_[data-slot=field-label]]:!font-[family-name:var(--nora-font)] [&_[data-slot=field-label]]:!text-[13px] [&_[data-slot=field-label]]:!font-medium [&_[data-slot=field-label]]:!leading-5 [&_[data-slot=field-label]]:!text-[var(--nora-text)]',
   '[&_[data-slot=field-description]]:!mt-0 [&_[data-slot=field-description]]:!font-[family-name:var(--nora-font)] [&_[data-slot=field-description]]:!text-[12px] [&_[data-slot=field-description]]:!font-light [&_[data-slot=field-description]]:!leading-5 [&_[data-slot=field-description]]:!text-[var(--nora-text-tertiary)]',
-  '[&_[data-slot=input]]:!h-10 [&_[data-slot=input]]:!min-h-10 [&_[data-slot=input]]:!bg-[var(--nora-panel)] [&_[data-slot=input]]:!px-3 [&_[data-slot=input]]:!text-[16px] [&_[data-slot=input]]:!font-normal [&_[data-slot=input]]:!leading-5',
+  '[&_[data-slot=input]]:!bg-[var(--nora-panel)] [&_[data-slot=input]]:!px-3 [&_[data-slot=input]]:!text-[16px] [&_[data-slot=input]]:!font-normal [&_[data-slot=input]]:!leading-5',
   'lg:[&_[data-slot=input]]:!h-8 lg:[&_[data-slot=input]]:!min-h-8 lg:[&_[data-slot=input]]:!text-[13px]',
   '[&_[data-slot=select-trigger]]:!h-10 [&_[data-slot=select-trigger]]:!min-h-10 [&_[data-slot=select-trigger]]:!bg-[var(--nora-panel)] [&_[data-slot=select-trigger]]:!px-3 [&_[data-slot=select-trigger]]:!text-[13px] [&_[data-slot=select-trigger]]:!font-normal',
   'lg:[&_[data-slot=select-trigger]]:!h-8 lg:[&_[data-slot=select-trigger]]:!min-h-8',
-  '[&_[data-settings-field]]:!h-10 [&_[data-settings-field]]:!min-h-10 [&_[data-settings-field]]:!bg-[var(--nora-panel)] [&_[data-settings-field]]:!text-[13px]',
-  'lg:[&_[data-settings-field]]:!h-8 lg:[&_[data-settings-field]]:!min-h-8',
-  '[&_button:not([data-choice-plaque])]:!h-10 [&_button:not([data-choice-plaque])]:!min-h-10 [&_button:not([data-choice-plaque])]:!px-3 [&_button:not([data-choice-plaque])]:!text-[13px] [&_button:not([data-choice-plaque])]:!font-normal',
-  'lg:[&_button:not([data-choice-plaque])]:!h-8 lg:[&_button:not([data-choice-plaque])]:!min-h-8',
+  '[&_[data-settings-field]]:!h-8 [&_[data-settings-field]]:!min-h-8 [&_[data-settings-field]]:!bg-[var(--nora-panel)] [&_[data-settings-field]]:!text-[13px]',
+  '[&_button:not([data-choice-plaque]):not([data-settings-field])]:!h-10 [&_button:not([data-choice-plaque]):not([data-settings-field])]:!min-h-10 [&_button:not([data-choice-plaque]):not([data-settings-field])]:!px-3 [&_button:not([data-choice-plaque]):not([data-settings-field])]:!text-[13px] [&_button:not([data-choice-plaque]):not([data-settings-field])]:!font-normal',
+  'lg:[&_button:not([data-choice-plaque]):not([data-settings-field])]:!h-8 lg:[&_button:not([data-choice-plaque]):not([data-settings-field])]:!min-h-8',
   '[&_button:not([data-choice-plaque])_span]:!text-[13px] [&_button:not([data-choice-plaque])_span]:!font-normal',
 )
 
 /** Раскладка страницы настроек в том же виде, что «Разработка». */
-export function SettingsCanvas({
+function SettingsCanvasView({
   actions,
   children,
   ctaLabel = 'Настройки',
@@ -88,7 +96,10 @@ export function SettingsCanvas({
       </aside>
 
       <section className="min-w-0 flex-1" aria-label={title} id={panelsId}>
-        <ul className={cn('flex flex-col', divided && 'divide-y divide-border/70')}>
+        <ul
+          className={cn('group/sections flex flex-col', divided && 'divide-y divide-border/70')}
+          data-plain={divided ? undefined : ''}
+        >
           {children}
         </ul>
         {actions ? <div aria-hidden className="h-16 lg:hidden" /> : null}
@@ -118,12 +129,12 @@ export function SettingsEntry({
   title: string
 }) {
   return (
-    <li className="w-full py-6 first:pt-0 lg:ml-auto lg:w-lg lg:max-w-full">
+    <li className="w-full py-6 first:pt-0 group-data-[plain]/sections:py-3 group-data-[plain]/sections:first:pt-0 lg:ml-auto lg:w-lg lg:max-w-full">
       <div className="flex items-center justify-start gap-2 lg:justify-between lg:gap-x-4">
         <h2 className="min-w-0 font-heading text-[22px] leading-tight font-bold tracking-[-0.02em] text-foreground md:text-[24px]">
           {title}
         </h2>
-        {badge ? <NoraBadge className="shrink-0" variant="blue">{badge}</NoraBadge> : null}
+        {badge ? <NoraBadge className="hidden shrink-0 lg:inline-flex" variant="blue">{badge}</NoraBadge> : null}
       </div>
       <p className={cn('mt-1 max-w-[54ch]', settingsBodyClass)}>{description}</p>
       <div className={settingsControlsClass} data-settings-well="">
@@ -131,4 +142,190 @@ export function SettingsEntry({
       </div>
     </li>
   )
+}
+
+const readRowClass =
+  'font-[family-name:var(--nora-font)] text-[13px] leading-5 text-[var(--nora-text)]'
+
+export function SettingsReadRows({
+  rows,
+}: {
+  rows: Array<{ label: string, value: string }>
+}) {
+  return (
+    <div>
+      {rows.map((row, index) => (
+        <div
+          className={cn(
+            'grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 border-t border-[var(--nora-divider)] py-3.5',
+            index === 0 && 'border-t-0 pt-0',
+            index === rows.length - 1 && 'pb-0',
+          )}
+          key={row.label}
+        >
+          <span className={cn(readRowClass, 'font-medium')}>{row.label}</span>
+          <span className={cn(readRowClass, 'min-w-0 break-words text-right font-normal')}>
+            {row.value || '—'}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+type SettingsDraft = {
+  id: string
+  disabled: boolean
+  pending: boolean
+  save: () => Promise<boolean>
+  reset: () => void
+}
+
+type SettingsMode = {
+  editing: boolean
+  managed: boolean
+  register: (draft: SettingsDraft) => () => void
+}
+
+const SettingsModeContext = createContext<SettingsMode | null>(null)
+
+export function useSettingsMode() {
+  const mode = useContext(SettingsModeContext)
+  if (!mode) {
+    return {
+      editing: true,
+      managed: false,
+      register: () => () => {},
+    }
+  }
+  return mode
+}
+
+export function useSettingsDraft(draft: SettingsDraft) {
+  const mode = useSettingsMode()
+  const saveRef = useRef(draft.save)
+  const resetRef = useRef(draft.reset)
+  saveRef.current = draft.save
+  resetRef.current = draft.reset
+
+  useEffect(() => {
+    if (!mode.managed) return
+    return mode.register({
+      id: draft.id,
+      disabled: draft.disabled,
+      pending: draft.pending,
+      save: () => saveRef.current(),
+      reset: () => resetRef.current(),
+    })
+  }, [draft.disabled, draft.id, draft.pending, mode])
+
+  return mode
+}
+
+function SettingsBarButton({
+  children,
+  disabled,
+  icon: Icon,
+  onClick,
+  tone = 'primary',
+}: {
+  children: ReactNode
+  disabled?: boolean
+  icon: LucideIcon
+  onClick: () => void
+  tone?: 'primary' | 'quiet'
+}) {
+  return (
+    <button
+      className="group inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card py-1.5 pr-1.5 pl-4 text-[13px] font-medium text-foreground shadow-xs transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+      disabled={disabled}
+      onClick={onClick}
+      type="button"
+    >
+      <Icon aria-hidden className="size-4 shrink-0 lg:hidden" strokeWidth={1.75} />
+      {children}
+      <span
+        className={cn(
+          'hidden size-7 items-center justify-center rounded-full transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 lg:flex',
+          tone === 'primary'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-muted text-foreground',
+        )}
+      >
+        <Icon aria-hidden className="size-3.5" />
+      </span>
+    </button>
+  )
+}
+
+function ManagedSettingsCanvas(
+  props: Omit<Parameters<typeof SettingsCanvasView>[0], 'actions'>,
+) {
+  const [editing, setEditing] = useState(false)
+  const [drafts, setDrafts] = useState<SettingsDraft[]>([])
+  const draftsRef = useRef(drafts)
+  draftsRef.current = drafts
+
+  const register = useCallback((draft: SettingsDraft) => {
+    setDrafts((current) => [...current.filter((item) => item.id !== draft.id), draft])
+    return () => {
+      setDrafts((current) => current.filter((item) => item.id !== draft.id))
+    }
+  }, [])
+
+  const mode = useMemo<SettingsMode>(
+    () => ({ editing, managed: true, register }),
+    [editing, register],
+  )
+
+  const pending = drafts.some((draft) => draft.pending)
+  const disabled = drafts.some((draft) => draft.disabled)
+
+  const cancel = () => {
+    for (const draft of draftsRef.current) draft.reset()
+    setEditing(false)
+  }
+
+  const save = async () => {
+    let ok = true
+    for (const draft of draftsRef.current) {
+      if (!(await draft.save())) ok = false
+    }
+    if (ok) setEditing(false)
+  }
+
+  const actions = editing ? (
+    <>
+      <SettingsBarButton disabled={pending} icon={XIcon} onClick={cancel} tone="quiet">
+        Отмена
+      </SettingsBarButton>
+      <SettingsBarButton
+        disabled={pending || disabled}
+        icon={CheckIcon}
+        onClick={() => {
+          void save()
+        }}
+      >
+        {pending ? 'Сохраняем…' : 'Сохранить'}
+      </SettingsBarButton>
+    </>
+  ) : (
+    <SettingsBarButton icon={PencilIcon} onClick={() => setEditing(true)}>
+      Изменить
+    </SettingsBarButton>
+  )
+
+  return (
+    <SettingsModeContext.Provider value={mode}>
+      <SettingsCanvasView {...props} actions={actions} />
+    </SettingsModeContext.Provider>
+  )
+}
+
+export function SettingsCanvas({
+  editable = false,
+  ...props
+}: Parameters<typeof SettingsCanvasView>[0] & { editable?: boolean }) {
+  if (editable) return <ManagedSettingsCanvas {...props} />
+  return <SettingsCanvasView {...props} />
 }

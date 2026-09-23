@@ -6,7 +6,7 @@ import {
 import { useId, useState, type FormEvent } from 'react'
 
 import { NoraToast } from '@/components/nora'
-import { SettingsEntry } from '@/components/settings-canvas'
+import { SettingsEntry, SettingsReadRows, useSettingsDraft } from '@/components/settings-canvas'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -43,12 +43,39 @@ export function NicknamePanel({ user }: { user: UserDto }) {
     ? 'Этот никнейм уже занят.'
     : mutation.error?.message
 
+  const mode = useSettingsDraft({
+    id: 'settings-nickname',
+    disabled: !validation.success,
+    pending: mutation.isPending,
+    save: async () => {
+      const next = nickname.trim().toLowerCase()
+      const parsed = next === ''
+        ? { success: true as const, data: null }
+        : nicknameSchema.safeParse(next)
+      if (!parsed.success) return false
+      if (next === (user.nickname ?? '')) return true
+      try {
+        const response = await mutation.mutateAsync({ nickname: parsed.data })
+        setNickname(response.user.nickname ?? '')
+        return true
+      } catch {
+        return false
+      }
+    },
+    reset: () => {
+      setNickname(user.nickname ?? '')
+      mutation.reset()
+    },
+  })
+  const showForm = !mode.managed || mode.editing
+
   return (
     <SettingsEntry
       badge="Публично"
       description="Для ссылок и публичного профиля."
       title="Никнейм"
     >
+      {showForm ? (
       <form className="grid gap-3.5" noValidate onSubmit={submit}>
         <Field data-invalid={!validation.success}>
           <FieldLabel
@@ -85,32 +112,38 @@ export function NicknamePanel({ user }: { user: UserDto }) {
           )}
         </Field>
 
-        {mutation.isError && (
-          <NoraToast className="h-auto min-h-10 w-full justify-start py-2" variant="error">
-            {errorMessage ?? 'Никнейм не сохранён'}
-          </NoraToast>
+        {mode.managed ? null : (
+          <div>
+            <Button
+              className="font-normal"
+              disabled={
+                mutation.isPending
+                || isDefaultUser
+                || !validation.success
+                || isUnchanged
+              }
+              type="submit"
+            >
+              {mutation.isPending ? 'Сохраняем…' : 'Сохранить'}
+            </Button>
+          </div>
         )}
-        {mutation.isSuccess && (
-          <NoraToast className="h-auto min-h-10 w-full justify-start py-2" variant="success">
-            Никнейм сохранён
-          </NoraToast>
-        )}
-
-        <div>
-          <Button
-            className="font-normal"
-            disabled={
-              mutation.isPending
-              || isDefaultUser
-              || !validation.success
-              || isUnchanged
-            }
-            type="submit"
-          >
-            {mutation.isPending ? 'Сохраняем…' : 'Сохранить'}
-          </Button>
-        </div>
       </form>
+      ) : (
+        <SettingsReadRows
+          rows={[{ label: 'Ваш никнейм', value: nickname || '—' }]}
+        />
+      )}
+      {mutation.isError && (
+        <NoraToast className="mt-3 h-auto min-h-10 w-full justify-start py-2" variant="error">
+          {errorMessage ?? 'Никнейм не сохранён'}
+        </NoraToast>
+      )}
+      {mutation.isSuccess && (
+        <NoraToast className="mt-3 h-auto min-h-10 w-full justify-start py-2" variant="success">
+          Никнейм сохранён
+        </NoraToast>
+      )}
     </SettingsEntry>
   )
 }

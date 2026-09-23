@@ -2,7 +2,7 @@ import { registrationMentorIdentifierSchema } from '@web-app-demo/contracts'
 import { CircleCheckIcon, CircleXIcon } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 
-import { SettingsEntry } from '@/components/settings-canvas'
+import { SettingsEntry, SettingsReadRows, useSettingsMode } from '@/components/settings-canvas'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
@@ -65,6 +65,8 @@ export function MentorConnectionPanel() {
     }
   }, [auth, currentMentor.data?.mentor, normalized])
 
+  const mode = useSettingsMode()
+  const showForm = !mode.managed || mode.editing
   const connectionError = connect.error instanceof ApiRequestError && connect.error.code === 'CONFLICT'
     ? 'Вы уже подключены к наставнику.'
     : connect.isError
@@ -77,6 +79,7 @@ export function MentorConnectionPanel() {
       description="Никнейм или ID наставника."
       title="Подключение к наставнику"
     >
+      {showForm ? (
       <div className="grid gap-3.5">
         {currentMentor.data?.mentor ? (
           <Field>
@@ -190,6 +193,18 @@ export function MentorConnectionPanel() {
           </Alert>
         )}
       </div>
+      ) : (
+        <SettingsReadRows
+          rows={[{
+            label: 'Наставник',
+            value: currentMentor.data?.mentor
+              ? (currentMentor.data.mentor.displayName
+                ?? currentMentor.data.mentor.nickname
+                ?? currentMentor.data.mentor.email)
+              : 'Не подключён',
+          }]}
+        />
+      )}
     </SettingsEntry>
   )
 }
