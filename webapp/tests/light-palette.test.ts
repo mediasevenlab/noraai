@@ -81,6 +81,8 @@ const REMOVED_PALETTE_IDS = [
 
 const ADDED_PALETTE_IDS = [
   'breath',
+  'breathtwo',
+  'breaththree',
   'limestone',
   'plaster',
   'limewash',

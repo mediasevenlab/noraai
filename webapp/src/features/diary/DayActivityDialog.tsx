@@ -23,7 +23,7 @@ import {
   mealsOnActivityDay,
   mondayWeekPlanDays,
   ringStroke,
-  sumActivityMeals,
+  sumDiaryDayStats,
   WEEK_ACTIVITY_DAYS,
   weekActivityRings,
   type DayActivityMeal,
@@ -180,7 +180,7 @@ export function DayActivityDialog({
   const days = mondayWeekPlanDays()
   const selectedDay = days.find((day) => day.dayKey === scope) ?? null
   const scopedMeals = selectedDay ? mealsOnActivityDay(meals, selectedDay.dayKey) : meals
-  const totals = sumActivityMeals(scopedMeals)
+  const totals = sumDiaryDayStats(scopedMeals, completedIds)
   const rings = selectedDay
     ? dayActivityRings({ completedIds, dailyCalories, meals: scopedMeals, totals })
     : weekActivityRings({ completedIds, dailyCalories, meals: scopedMeals, totals })

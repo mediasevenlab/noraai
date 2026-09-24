@@ -88,7 +88,7 @@ import { useSyncedPlanLibrary } from './use-plan-library'
 import { PlanToolbar, visiblePlanCards, partitionPlanCards, PlanGroupHeading, PLAN_GROUP_ICONS, planToolbarPillClass, type PlanFeedTab, type PlanLibrary } from './PlanToolbar'
 import { useCurrentWeekPlan } from './use-current-week-plan'
 import { WeekPlanCard, WeekPlanCardSkeleton } from './WeekPlanCard'
-import { buildWeekPlan, buildWeekPlanFromCatalog, buildWeekPlanFromRation, buildWeekPlanFromSharedRation, formatPlanActiveRange, nextPlanDayCount, padPlanDaysForEditor, rationDaysFromSharedRation, removeEmptyPlanDay, sharedRationSnapshotFromWeekPlan, type WeekPlan } from './week-plan'
+import { buildWeekPlan, buildWeekPlanFromCatalog, buildWeekPlanFromRation, buildWeekPlanFromSharedRation, formatPlanActiveRange, nextPlanDayCount, padPlanDaysForEditor, planOccupancyMarks, rationDaysFromSharedRation, removeEmptyPlanDay, sharedRationSnapshotFromWeekPlan, type WeekPlan } from './week-plan'
 
 export function PlanPage({
   heading,
@@ -615,6 +615,24 @@ export function PlanPage({
         onOpenChange={(open) => {
           if (!open) setStartPickerPlanId(null)
         }}
+        occupied={planOccupancyMarks(
+          snapshot.selectedPlanIds
+            .filter((id) => id !== startPickerPlanId)
+            .flatMap((id) => {
+              const card = allCards.find((plan) => plan.id === id)
+              const start = snapshot.planStarts[id]
+              if (!card || !start) return []
+              const stored = authored.find((item) => item.id === id)?.dayCount ?? 0
+              return [
+                {
+                  id,
+                  title: card.title,
+                  dayCount: card.days.length > 0 ? card.days.length : Math.max(1, stored),
+                  start,
+                },
+              ]
+            }),
+        )}
         open={Boolean(startPickerPlan)}
         planTitle={startPickerPlan?.title ?? ''}
         selected={Boolean(startPickerPlanId && selectedPlanIds.has(startPickerPlanId))}

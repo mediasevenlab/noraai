@@ -187,6 +187,20 @@ export function mealsOnActivityDay<T extends { at?: string; recordedAt?: string 
   })
 }
 
+/** Meal count includes planned cards. KBJU includes only eaten or completed ones. */
+export function sumDiaryDayStats(
+  meals: readonly (DayActivityMeal & {
+    kcal: number
+    protein: number
+    fat: number
+    carbs: number
+  })[],
+  completedIds?: ReadonlySet<string>,
+): DayActivityTotals {
+  const eaten = meals.filter((meal) => !isRationPlanPending(meal, completedIds))
+  return { ...sumActivityMeals(eaten), count: meals.length }
+}
+
 export function sumActivityMeals(
   meals: readonly { kcal: number; protein: number; fat: number; carbs: number }[],
 ): DayActivityTotals {

@@ -30,6 +30,8 @@ import {
   currentWeekPlanId,
   defaultPlanDayKey,
   formatPlanActiveRange,
+  planOccupancyMarks,
+  planOccupancyOnDay,
   planRangeFromStart,
   filledPlanBoardDays,
   mobilePlanDayTabs,
@@ -96,6 +98,22 @@ describe('current week plan', () => {
     expect(formatPlanActiveRange(new Date(2026, 8, 7), 1)).toBe('07.09 - 07.09')
     expect(formatPlanActiveRange(new Date(2026, 8, 28), 6)).toBe('28.09 - 03.10')
     expect(formatPlanActiveRange(new Date(2026, 8, 7), 0)).toBe('07.09 - 07.09')
+  })
+
+  test('placed rations keep their own color and stack on shared days', () => {
+    const marks = planOccupancyMarks([
+      { id: 'a', title: 'Сытная', dayCount: 6, start: '2026-09-19' },
+      { id: 'b', title: 'Ровная', dayCount: 4, start: new Date(2026, 8, 22) },
+      { id: 'empty', title: 'Без даты', dayCount: 3, start: null },
+    ])
+    expect(marks.map((mark) => mark.planId)).toEqual(['a', 'b'])
+    expect(marks[0]!.color).not.toBe(marks[1]!.color)
+    expect(planOccupancyOnDay(marks, new Date(2026, 8, 20)).map((mark) => mark.planId)).toEqual(['a'])
+    expect(planOccupancyOnDay(marks, new Date(2026, 8, 23)).map((mark) => mark.planId)).toEqual([
+      'a',
+      'b',
+    ])
+    expect(planOccupancyOnDay(marks, new Date(2026, 8, 26))).toEqual([])
   })
 
   test('plan range from start covers the full day count', () => {
@@ -610,6 +628,12 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(startDialog).toContain('mode="range"')
   expect(startDialog).toContain('numberOfMonths={1}')
   expect(startDialog).toContain('planRangeFromStart')
+  expect(startDialog).toContain('data-plan-occupied=""')
+  expect(startDialog).toContain('data-plan-occupied-layer={mark.planId}')
+  expect(startDialog).toContain('data-plan-start-occupied=""')
+  expect(startDialog).toContain('planOccupancyOnDay')
+  expect(page).toContain('planOccupancyMarks(')
+  expect(page).toContain(".filter((id) => id !== startPickerPlanId)")
   expect(startDialog).toContain('h-auto')
   expect(startDialog).toContain('!pb-0')
   expect(startDialog).toContain('data-plan-start-divider=""')

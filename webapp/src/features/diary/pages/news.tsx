@@ -77,7 +77,7 @@ import {
   readBoughtShoppingKeys,
   shoppingDayKey,
 } from "../day-shopping";
-import { mealsInMondayWeek } from "../day-activity-rings";
+import { mealsInMondayWeek, sumDiaryDayStats } from "../day-activity-rings";
 import {
   diaryFeedGridClass,
   readDiaryCardLayout,

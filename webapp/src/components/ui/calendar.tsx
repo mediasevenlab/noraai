@@ -104,10 +104,12 @@ function Calendar({
   locale,
   formatters,
   components,
+  onRangeEdgeDrag,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
   compactDays?: boolean
+  onRangeEdgeDrag?: (edge: "start" | "end", date: Date) => void
 }) {
   const defaultClassNames = getDefaultClassNames()
 
@@ -116,7 +118,7 @@ function Calendar({
       showOutsideDays={showOutsideDays}
       weekStartsOn={1}
       className={cn(
-        "group/calendar bg-[var(--nora-panel)] p-2.5",
+        "group/calendar bg-[var(--nora-panel)] p-2.5 [--nora-calendar-hover:color-mix(in_srgb,black_16%,var(--nora-panel))]",
         "font-[family-name:var(--nora-font)] text-xs font-medium text-[var(--nora-text)]",
         "[--cell-radius:var(--nora-radius-md)] [--cell-size:26px]",
         "in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
@@ -189,7 +191,7 @@ function Calendar({
         ),
         day: cn(
           compactDays
-            ? "group/day relative h-(--cell-size) w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-e-(--cell-radius)"
+            ? "group/day relative h-(--cell-size) w-full rounded-(--cell-radius) p-0 text-center select-none hover:z-20 hover:!bg-[var(--nora-calendar-hover)] hover:after:hidden [&:hover>button]:z-20 [&:hover>button]:!rounded-(--cell-radius) [&:hover>button]:!bg-[var(--nora-calendar-hover)] [&:hover>button]:!text-[var(--nora-text)] [&:last-child[data-selected=true]_button]:rounded-e-(--cell-radius)"
             : "group/day relative aspect-square h-full w-full rounded-(--cell-radius) p-0 text-center select-none [&:last-child[data-selected=true]_button]:rounded-e-(--cell-radius)",
           props.showWeekNumber
             ? "[&:nth-child(2)[data-selected=true]_button]:rounded-s-(--cell-radius)"
@@ -250,7 +252,12 @@ function Calendar({
         },
         Dropdown: CalendarCaptionDropdown,
         DayButton: ({ ...props }) => (
-          <CalendarDayButton compactDays={compactDays} locale={locale} {...props} />
+          <CalendarDayButton
+            compactDays={compactDays}
+            locale={locale}
+            onRangeEdgeDrag={onRangeEdgeDrag}
+            {...props}
+          />
         ),
         WeekNumber: ({ children, ...props }) => {
           return (
@@ -274,17 +281,81 @@ function CalendarDayButton({
   day,
   modifiers,
   locale,
+  onRangeEdgeDrag,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
   ...props
 }: React.ComponentProps<typeof DayButton> & {
   compactDays?: boolean
   locale?: Partial<Locale>
+  onRangeEdgeDrag?: (edge: "start" | "end", date: Date) => void
 }) {
   const defaultClassNames = getDefaultClassNames()
-
   const ref = React.useRef<HTMLButtonElement>(null)
+  const edge = modifiers.range_start ? "start" : modifiers.range_end ? "end" : null
+  const edgeRef = React.useRef(edge)
+  const dragCallbackRef = React.useRef(onRangeEdgeDrag)
+  edgeRef.current = edge
+  dragCallbackRef.current = onRangeEdgeDrag
+
+  const suppressFocusRef = React.useRef(false)
   React.useEffect(() => {
+    if (suppressFocusRef.current) return
     if (modifiers.focused) ref.current?.focus()
   }, [modifiers.focused])
+
+  React.useEffect(() => {
+    const node = ref.current
+    if (!node || !compactDays) return
+    const onDown = (event: PointerEvent) => {
+      const currentEdge = edgeRef.current
+      if (!currentEdge || !dragCallbackRef.current) return
+      if (event.pointerType === "mouse" && event.button !== 0) return
+      const drag = {
+        edge: currentEdge,
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        moved: false,
+      }
+      const move = (ev: PointerEvent) => {
+        if (ev.pointerId !== drag.pointerId) return
+        if (!drag.moved && Math.hypot(ev.clientX - drag.x, ev.clientY - drag.y) < 6) return
+        if (!drag.moved) {
+          suppressFocusRef.current = true
+          if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+        }
+        drag.moved = true
+        const hit = document.elementFromPoint(ev.clientX, ev.clientY)
+        const host = hit instanceof Element ? hit.closest("[data-day-time]") : null
+        const time = Number(host?.getAttribute("data-day-time"))
+        if (!time) return
+        dragCallbackRef.current?.(drag.edge, new Date(time))
+      }
+      const up = (ev: PointerEvent) => {
+        window.removeEventListener("pointermove", move)
+        window.removeEventListener("pointerup", up)
+        window.removeEventListener("pointercancel", up)
+        if (!drag.moved || ev.pointerId !== drag.pointerId) return
+        suppressFocusRef.current = true
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+        window.addEventListener(
+          "click",
+          (clickEvent) => {
+            clickEvent.preventDefault()
+            clickEvent.stopPropagation()
+          },
+          { capture: true, once: true },
+        )
+      }
+      window.addEventListener("pointermove", move)
+      window.addEventListener("pointerup", up)
+      window.addEventListener("pointercancel", up)
+    }
+    node.addEventListener("pointerdown", onDown)
+    return () => node.removeEventListener("pointerdown", onDown)
+  }, [compactDays])
 
   return (
     <Button
@@ -292,6 +363,10 @@ function CalendarDayButton({
       variant="ghost"
       size="icon"
       data-day={day.date.toLocaleDateString(locale?.code)}
+      data-day-time={day.date.getTime()}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
       data-selected-single={
         modifiers.selected &&
         !modifiers.range_start &&
@@ -303,15 +378,18 @@ function CalendarDayButton({
       data-range-middle={modifiers.range_middle}
       className={cn(
         compactDays
-          ? "relative isolate z-10 flex !size-auto !h-(--cell-size) !w-full min-w-0 flex-col gap-0.5 border-0 leading-none font-normal"
+          ? "relative isolate z-10 flex !size-auto !h-(--cell-size) !w-full min-w-0 flex-col gap-0.5 overflow-hidden border-0 leading-none font-normal data-[range-start=true]:touch-none data-[range-end=true]:touch-none data-[range-start=true]:cursor-grab data-[range-end=true]:cursor-grab"
           : "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-0.5 border-0 leading-none font-normal",
         "rounded-(--cell-radius) text-xs text-[var(--nora-text)]",
-        "hover:bg-[var(--nora-row-hover)] hover:text-[var(--nora-text)]",
-        "group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:shadow-[var(--nora-shadow-focus)]",
+        compactDays
+          ? "hover:!rounded-(--cell-radius) hover:!bg-[var(--nora-calendar-hover)] hover:shadow-none hover:!text-[var(--nora-text)] hover:[&_[data-plan-occupied]]:hidden"
+          : "hover:bg-[var(--nora-row-hover)] hover:text-[var(--nora-text)]",
+        "group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 focus-visible:shadow-[var(--nora-shadow-focus)]",
         "data-[selected-single=true]:bg-[var(--nora-tint)] data-[selected-single=true]:text-[var(--nora-on-accent)] data-[selected-single=true]:hover:bg-[var(--nora-tint-dark)] data-[selected-single=true]:hover:text-[var(--nora-on-accent)]",
         "data-[range-start=true]:rounded-(--cell-radius) data-[range-start=true]:rounded-s-(--cell-radius) data-[range-start=true]:bg-[var(--nora-tint)] data-[range-start=true]:text-[var(--nora-on-accent)]",
         "data-[range-end=true]:rounded-(--cell-radius) data-[range-end=true]:rounded-e-(--cell-radius) data-[range-end=true]:bg-[var(--nora-tint)] data-[range-end=true]:text-[var(--nora-on-accent)]",
         "data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-[var(--nora-tint-dimmed)] data-[range-middle=true]:text-[var(--nora-text)]",
+        "data-[range-start=true]:hover:!bg-[var(--nora-calendar-hover)] data-[range-middle=true]:hover:!bg-[var(--nora-calendar-hover)] data-[range-end=true]:hover:!bg-[var(--nora-calendar-hover)] data-[range-middle=true]:hover:!rounded-(--cell-radius)",
         "[&>span]:text-[9px] [&>span]:font-medium [&>span]:opacity-70",
         defaultClassNames.day,
         className

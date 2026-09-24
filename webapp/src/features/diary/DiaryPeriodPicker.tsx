@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { format } from 'date-fns'
 import { ru as dateFnsRu } from 'date-fns/locale'
-import { CalendarDaysIcon, CalendarIcon, RotateCcwIcon, XIcon } from 'lucide-react'
+import { CalendarDaysIcon, CalendarIcon, XIcon } from 'lucide-react'
 import { type DateRange } from 'react-day-picker'
 import { ru as dayPickerRu } from 'react-day-picker/locale'
 
@@ -19,19 +19,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-
-const pickerPopoverClass =
-  'w-auto overflow-hidden border-0 bg-[var(--nora-popover)] p-0 shadow-[var(--nora-shadow-menu)] ring-1 ring-[var(--nora-menu-border)]'
 
 const PERIOD_DIALOG_FRAME_CLASS = cn(
   '!flex flex-col gap-0 overflow-hidden bg-[var(--nora-modal)] p-0 !pb-0',
   'inset-x-0 bottom-0 top-auto h-auto max-h-[calc(100dvh-var(--modal-sheet-inset))] w-full max-w-none translate-x-0 translate-y-0 rounded-t-[var(--modal-sheet-radius)] rounded-b-none',
+  'md:inset-auto md:top-1/2 md:left-1/2 md:h-auto md:max-h-[min(760px,calc(100vh-2rem))] md:w-[min(100%-2rem,480px)] md:max-w-[480px] md:rounded-[24px]',
 )
 
 const CALENDAR_WEEKDAY_CLASS =
@@ -201,12 +194,14 @@ function PeriodCalendar({
   density,
   month,
   onMonthChange,
+  onRangeEdgeDrag,
   onSelect,
   range,
 }: {
   density: 'sheet' | 'popover'
   month: Date
   onMonthChange: (next: Date) => void
+  onRangeEdgeDrag?: (edge: 'start' | 'end', date: Date) => void
   onSelect: (next: DateRange | undefined) => void
   range: DateRange | undefined
 }) {
@@ -246,6 +241,8 @@ function PeriodCalendar({
         ),
       }}
       onSelect={onSelect}
+      resetOnSelect
+      onRangeEdgeDrag={onRangeEdgeDrag}
     />
   )
 }
@@ -304,11 +301,6 @@ function PeriodActions({
           onClick={onReset}
           variant="primary"
         >
-          <RotateCcwIcon
-            aria-hidden
-            className={compact ? 'size-3' : 'size-3.5'}
-            strokeWidth={1.75}
-          />
           Сбросить
         </NoraButton>
         <NoraButton
@@ -331,7 +323,7 @@ function PeriodActions({
  * Period range picker for the diary toolbar.
  * Default: diary start → today, growing with each new day. A custom range
  * applies only after Save. Reset returns to the full diary.
- * Mobile: hugging sheet with two independently navigable months. Desktop: side-by-side popover.
+ * Hugging sheet with two independently navigable months, on phone and desktop.
  */
 export function DiaryPeriodPicker({
   periodStart,
@@ -347,12 +339,11 @@ export function DiaryPeriodPicker({
     const to = startOfLocalDay(toDate(periodEnd ?? new Date(todayKey)))
     if (from.getTime() <= to.getTime()) return { from, to }
     return { from: to, to: from }
-  }, [periodStart, periodEnd, todayKey])
+  }, [periodEnd, periodStart, todayKey])
 
   const [applied, setApplied] = React.useState<DateRange | null>(null)
   const [draft, setDraft] = React.useState<DateRange | undefined>()
   const [dialogOpen, setDialogOpen] = React.useState(false)
-  const [popoverOpen, setPopoverOpen] = React.useState(false)
   const [{ top: topMonth, bottom: bottomMonth }, setVisibleMonths] =
     React.useState(() =>
       visibleMonthsForBounds(toDate(periodStart), new Date()),
@@ -379,7 +370,6 @@ export function DiaryPeriodPicker({
     setApplied(null)
     setDraft(undefined)
     setDialogOpen(false)
-    setPopoverOpen(false)
     setVisibleMonths(
       visibleMonthsForBounds(toDate(periodStart), new Date()),
     )
@@ -393,7 +383,7 @@ export function DiaryPeriodPicker({
   })
   const triggerRange = isCompleteRange(applied) ? applied : defaultRange
   const pickerRange = draft ?? triggerRange
-  const label = periodLabel(dialogOpen || popoverOpen ? pickerRange : triggerRange)
+  const label = periodLabel(dialogOpen ? pickerRange : triggerRange)
 
   React.useEffect(() => {
     if (!isCompleteRange(applied)) {
@@ -408,6 +398,18 @@ export function DiaryPeriodPicker({
 
   function onSelectRange(next: DateRange | undefined) {
     setDraft(next)
+  }
+
+  function onRangeEdgeDrag(edge: 'start' | 'end', date: Date) {
+    const day = startOfLocalDay(date)
+    setDraft((current) => {
+      const from = current?.from ? startOfLocalDay(current.from) : day
+      const to = current?.to ? startOfLocalDay(current.to) : from
+      if (edge === 'start') {
+        return day.getTime() <= to.getTime() ? { from: day, to } : { from: to, to: day }
+      }
+      return day.getTime() >= from.getTime() ? { from, to: day } : { from: day, to: from }
+    })
   }
 
   function resetPeriod() {
@@ -425,7 +427,6 @@ export function DiaryPeriodPicker({
       to: startOfLocalDay(draft.to),
     })
     setDialogOpen(false)
-    setPopoverOpen(false)
   }
 
   function openDialog() {
@@ -442,7 +443,6 @@ export function DiaryPeriodPicker({
         className={cn(
           diaryToolbarIconButtonClass,
           diaryToolbarChipClass,
-          'md:hidden',
           className,
         )}
         disabled={disabled}
@@ -503,6 +503,7 @@ export function DiaryPeriodPicker({
                 onMonthChange={(next) =>
                   setVisibleMonths((prev) => ({ ...prev, top: next }))
                 }
+                onRangeEdgeDrag={onRangeEdgeDrag}
                 onSelect={onSelectRange}
                 range={pickerRange}
               />
@@ -517,6 +518,7 @@ export function DiaryPeriodPicker({
                 onMonthChange={(next) =>
                   setVisibleMonths((prev) => ({ ...prev, bottom: next }))
                 }
+                onRangeEdgeDrag={onRangeEdgeDrag}
                 onSelect={onSelectRange}
                 range={pickerRange}
               />
@@ -533,69 +535,6 @@ export function DiaryPeriodPicker({
           </div>
         </DialogContent>
       </Dialog>
-
-      <Popover
-        open={popoverOpen}
-        onOpenChange={(next) => {
-          if (disabled) return
-          if (next) hydrateDraft(applied)
-          setPopoverOpen(next)
-        }}
-      >
-        <PopoverTrigger
-          disabled={disabled}
-          render={
-            <button
-              type="button"
-              aria-label={`Период: ${label}`}
-              className={cn(
-                diaryToolbarIconButtonClass,
-                diaryToolbarChipClass,
-                'hidden md:inline-flex',
-                className,
-              )}
-            />
-          }
-        >
-          <CalendarIcon className="size-3.5 shrink-0 text-current" strokeWidth={1.75} />
-        </PopoverTrigger>
-        <PopoverContent align="end" className={pickerPopoverClass} sideOffset={4}>
-          <div
-            className="flex items-start gap-3 px-2.5 pt-2.5 pb-2"
-            data-diary-period-desktop=""
-          >
-            <div data-diary-period-calendar="left">
-              <PeriodCalendar
-                density="popover"
-                month={topMonth}
-                onMonthChange={(next) =>
-                  setVisibleMonths((prev) => ({ ...prev, top: next }))
-                }
-                onSelect={onSelectRange}
-                range={pickerRange}
-              />
-            </div>
-            <div data-diary-period-calendar="right">
-              <PeriodCalendar
-                density="popover"
-                month={bottomMonth}
-                onMonthChange={(next) =>
-                  setVisibleMonths((prev) => ({ ...prev, bottom: next }))
-                }
-                onSelect={onSelectRange}
-                range={pickerRange}
-              />
-            </div>
-          </div>
-          <PeriodActions
-            density="popover"
-            onReset={resetPeriod}
-            onSave={savePeriod}
-            resetEnabled={resetEnabled}
-            saveEnabled={saveEnabled}
-          />
-        </PopoverContent>
-      </Popover>
     </>
   )
 }

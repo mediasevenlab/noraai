@@ -139,7 +139,7 @@ export function SettingsEntry({
         </h2>
         {marker ?? (badge ? <NoraBadge className="hidden shrink-0 lg:inline-flex" variant="blue">{badge}</NoraBadge> : null)}
       </div>
-      <p className={cn('mt-1 max-w-[54ch]', settingsBodyClass)}>{description}</p>
+      <p className={cn('mt-1 max-w-[54ch]', settingsBodyClass, 'text-[var(--nora-text-tertiary)]')}>{description}</p>
       <div className={settingsControlsClass} data-settings-well="">
         {children}
       </div>
@@ -167,7 +167,7 @@ export function SettingsReadRows({
           key={row.label}
         >
           <span className={cn(readRowClass, 'font-medium text-[var(--nora-text)]')}>{row.label}</span>
-          <span className={cn(readRowClass, 'min-w-0 break-words text-right font-light text-[color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary)))]')}>
+          <span className={cn(readRowClass, 'min-w-0 break-words text-right font-light text-[color-mix(in_srgb,white_10%,color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary))))]')}>
             {row.value || '—'}
           </span>
         </div>

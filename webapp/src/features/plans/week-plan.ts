@@ -19,7 +19,7 @@ import {
   type RationEntry,
 } from '@/features/mentor'
 import type { PlanGoal } from '@/platform/authored-plans'
-import { addLocalDays, PLAN_SLOT_COUNT, startOfLocalDay } from '@/platform/plan-slots'
+import { addLocalDays, dateFromDayKey, PLAN_SLOT_COUNT, startOfLocalDay } from '@/platform/plan-slots'
 
 import type { CatalogPlan } from './plan-catalog'
 
@@ -50,6 +50,64 @@ function formatPlanRangeDay(date: Date) {
 export function planRangeFromStart(start: Date, dayCount: number) {
   const from = startOfLocalDay(start)
   return { from, to: addLocalDays(from, Math.max(1, dayCount) - 1) }
+}
+
+/** Light washes match the blue range. Swatches stay saturated for the legend dot. */
+export const PLAN_OCCUPANCY_COLORS = [
+  { fill: 'rgba(124, 92, 191, 0.08)', swatch: '#7c5cbf' },
+  { fill: 'rgba(224, 154, 43, 0.1)', swatch: '#e09a2b' },
+  { fill: 'rgba(47, 158, 143, 0.08)', swatch: '#2f9e8f' },
+  { fill: 'rgba(212, 93, 122, 0.08)', swatch: '#d45d7a' },
+  { fill: 'rgba(91, 143, 58, 0.08)', swatch: '#5b8f3a' },
+] as const
+
+export type PlanOccupancyMark = {
+  planId: string
+  title: string
+  from: Date
+  to: Date
+  color: string
+  swatch: string
+}
+
+function occupancyStart(value: Date | string | null | undefined) {
+  if (value == null) return null
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : startOfLocalDay(value)
+  }
+  return dateFromDayKey(value)
+}
+
+/** Inclusive ranges of rations already on the calendar, in selection order. */
+export function planOccupancyMarks(
+  plans: readonly {
+    id: string
+    title: string
+    dayCount: number
+    start: Date | string | null | undefined
+  }[],
+): PlanOccupancyMark[] {
+  const marks: PlanOccupancyMark[] = []
+  for (const plan of plans) {
+    const from = occupancyStart(plan.start)
+    if (!from) continue
+    const range = planRangeFromStart(from, plan.dayCount)
+    marks.push({
+      planId: plan.id,
+      title: plan.title,
+      from: range.from,
+      to: range.to,
+      color: PLAN_OCCUPANCY_COLORS[marks.length % PLAN_OCCUPANCY_COLORS.length]!.fill,
+      swatch: PLAN_OCCUPANCY_COLORS[marks.length % PLAN_OCCUPANCY_COLORS.length]!.swatch,
+    })
+  }
+  return marks
+}
+
+/** Every placed ration that covers this local day, so their fills can stack. */
+export function planOccupancyOnDay(marks: readonly PlanOccupancyMark[], day: Date) {
+  const key = startOfLocalDay(day).getTime()
+  return marks.filter((mark) => key >= mark.from.getTime() && key <= mark.to.getTime())
 }
 
 /** Selected-plan cover badge: `07.09 - 15.09`. */

@@ -67,13 +67,15 @@ describe('sidebar scheme contrast', () => {
       const sidebar =
         palette.id === 'default'
           ? mix(panel, text, 0.985)
-          : palette.id === 'breathtwo'
+          : palette.id === 'breathtwo' || palette.id === 'breaththree'
             ? hexToRgb('#f3f3f4')
             : mix(panel, canvas, 0.28)
 
-      const search = mix(sidebar, border, 0.36)
-      const hover = mix(sidebar, border, 0.74)
-      const active = mix(sidebar, border, 0.5)
+      const onSubstrate = palette.id === 'breathtwo' || palette.id === 'breaththree'
+      const black = { r: 0, g: 0, b: 0 }
+      const search = onSubstrate ? mix(black, sidebar, 0.04) : mix(sidebar, border, 0.36)
+      const hover = onSubstrate ? mix(black, sidebar, 0.02) : mix(sidebar, border, 0.74)
+      const active = onSubstrate ? mix(black, sidebar, 0.03) : mix(sidebar, border, 0.5)
 
       expect(luma(search), palette.id).toBeLessThan(luma(sidebar) - 4)
       expect(luma(active), palette.id).toBeLessThan(luma(hover))

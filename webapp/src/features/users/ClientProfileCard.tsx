@@ -275,7 +275,7 @@ function ProfileSectionEntry({
                 </span>
                 <span
                   className={cn(
-                    'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 break-words text-[color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary)))]',
+                    'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 break-words text-[color-mix(in_srgb,white_10%,color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary))))]',
                     extended ? 'whitespace-pre-wrap' : 'text-right',
                   )}
                 >

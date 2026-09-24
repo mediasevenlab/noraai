@@ -12,6 +12,7 @@ import {
   activityRingHoleRadius,
   activityRingLayout,
   ringStroke,
+  sumDiaryDayStats,
   WEEK_ACTIVITY_DAYS,
   weekActivityRings,
 } from '../src/features/diary/day-activity-rings'
@@ -134,6 +135,25 @@ describe('week activity rings', () => {
       value: 2,
       target: DAY_ACTIVITY_MEAL_SLOTS * WEEK_ACTIVITY_DAYS,
       progress: 2 / (DAY_ACTIVITY_MEAL_SLOTS * WEEK_ACTIVITY_DAYS),
+    })
+  })
+
+  test('planned meals count in the day total but not in KBJU until completed', () => {
+    const pending = { ...planned('plan'), kcal: 500, protein: 20, fat: 10, carbs: 40 }
+    const own = { id: 'own', title: 'Свой ужин', fromApi: true as const, kcal: 200, protein: 10, fat: 5, carbs: 15 }
+    expect(sumDiaryDayStats([pending, own], new Set())).toEqual({
+      kcal: 200,
+      protein: 10,
+      fat: 5,
+      carbs: 15,
+      count: 2,
+    })
+    expect(sumDiaryDayStats([pending], new Set(['plan']))).toEqual({
+      kcal: 500,
+      protein: 20,
+      fat: 10,
+      carbs: 40,
+      count: 1,
     })
   })
 })

@@ -245,6 +245,7 @@
 .scheme-editor-light.light-palette-rain { --light-bg: #f1f3f4; --light-canvas: #e8eaec; --light-panel: #f7f8f9; --light-surface: #eef0f1; --light-popover: #f7f8f9; --light-inset: #dde0e3; --light-border: #d0d4d8; }
 .scheme-editor-light.light-palette-breath { --light-bg: #fbfcfb; --light-canvas: #f0f2f1; --light-panel: #ffffff; --light-surface: #f7f8f7; --light-popover: #ffffff; --light-inset: #f5f7f6; --light-border: #e4e8e6; }
 .scheme-editor-light.light-palette-breathtwo { --light-bg: #fbfcfb; --light-canvas: #f0f2f1; --light-panel: #ffffff; --light-surface: #f7f8f7; --light-popover: #ffffff; --light-inset: #f5f7f6; --light-border: #e4e8e6; }
+.scheme-editor-light.light-palette-breaththree { --light-bg: #fbfcfb; --light-canvas: #f0f2f1; --light-panel: #ffffff; --light-surface: #f7f8f7; --light-popover: #ffffff; --light-inset: #f5f7f6; --light-border: #e4e8e6; }
 .scheme-editor-light.light-palette-limestone { --light-bg: #f6f7f7; --light-canvas: #eceeed; --light-panel: #fafbfb; --light-surface: #f1f3f2; --light-popover: #fafbfb; --light-inset: #e4e6e5; --light-border: #d6d9d8; }
 .scheme-editor-light.light-palette-plaster { --light-bg: #fbfbf9; --light-canvas: #f2f3f1; --light-panel: #ffffff; --light-surface: #f7f7f5; --light-popover: #ffffff; --light-inset: #eceeea; --light-border: #dfe2dc; }
 .scheme-editor-light.light-palette-limewash { --light-bg: #fbfbfb; --light-canvas: #f2f2f2; --light-panel: #ffffff; --light-surface: #f7f7f7; --light-popover: #ffffff; --light-inset: #ececec; --light-border: #dfdfdf; }
@@ -321,7 +322,8 @@
 }
 
 .scheme-editor-light.light-palette-breath,
-.scheme-editor-light.light-palette-breathtwo {
+.scheme-editor-light.light-palette-breathtwo,
+.scheme-editor-light.light-palette-breaththree {
   /* Wells must read against white modal/panel; the shared 64/36 input mix is too close. */
   --nora-input-bg: var(--light-inset);
   --nora-button-bg: var(--light-inset);

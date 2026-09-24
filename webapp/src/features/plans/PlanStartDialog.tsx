@@ -6,7 +6,7 @@ import { CalendarDaysIcon, XIcon } from 'lucide-react'
 
 import { NoraButton } from '@/components/nora/primitives'
 import { productSheetOverlayChipClass } from '@/components/nora/product-sheet'
-import { Calendar, noraSheetCalendarClass } from '@/components/ui/calendar'
+import { Calendar, CalendarDayButton, noraSheetCalendarClass } from '@/components/ui/calendar'
 import {
   Dialog,
   DialogClose,
@@ -16,9 +16,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { startOfLocalDay } from '@/platform/plan-slots'
+import { addLocalDays, startOfLocalDay } from '@/platform/plan-slots'
 
-import { planRangeFromStart } from './week-plan'
+import {
+  formatPlanActiveRange,
+  planOccupancyOnDay,
+  planRangeFromStart,
+  type PlanOccupancyMark,
+} from './week-plan'
 
 const FRAME_CLASS = cn(
   '!flex flex-col gap-0 overflow-hidden bg-[var(--nora-modal)] p-0 !pb-0',
@@ -46,9 +51,58 @@ function startOfLocalMonth(value: Date) {
   return new Date(value.getFullYear(), value.getMonth(), 1)
 }
 
+function occupancySegment(day: Date, mark: PlanOccupancyMark) {
+  const weekday = day.getDay()
+  const previous = new Date(day.getFullYear(), day.getMonth(), day.getDate() - 1).getTime()
+  const next = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1).getTime()
+  const from = mark.from.getTime()
+  const to = mark.to.getTime()
+  const continuesBefore = weekday !== 1 && previous >= from && previous <= to
+  const continuesAfter = weekday !== 0 && next >= from && next <= to
+  return { start: !continuesBefore, end: !continuesAfter }
+}
+
+function OccupiedDayButton({
+  marks,
+  ...props
+}: React.ComponentProps<typeof CalendarDayButton> & {
+  marks: readonly PlanOccupancyMark[]
+}) {
+  const day = props.day.date
+  const layers = planOccupancyOnDay(marks, day)
+  const continuesBefore = layers.some((mark) => !occupancySegment(day, mark).start)
+  const continuesAfter = layers.some((mark) => !occupancySegment(day, mark).end)
+  return (
+    <CalendarDayButton
+      {...props}
+      className={cn(
+        props.className,
+        layers.length > 0 && continuesBefore && continuesAfter && '!rounded-none',
+        layers.length > 0 && continuesBefore && !continuesAfter && '!rounded-s-none',
+        layers.length > 0 && !continuesBefore && continuesAfter && '!rounded-e-none',
+      )}
+    >
+      {layers.length > 0 ? (
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10" data-plan-occupied="">
+          {layers.map((mark) => (
+            <span
+              key={mark.planId}
+              className="absolute inset-0"
+              data-plan-occupied-layer={mark.planId}
+              style={{ backgroundColor: mark.color }}
+            />
+          ))}
+        </div>
+      ) : null}
+      {props.children}
+    </CalendarDayButton>
+  )
+}
+
 export function PlanStartDialog({
   dayCount = 1,
   initialDate,
+  occupied = [],
   onClear,
   onConfirm,
   onOpenChange,
@@ -58,6 +112,7 @@ export function PlanStartDialog({
 }: {
   dayCount?: number
   initialDate: Date
+  occupied?: readonly PlanOccupancyMark[]
   onClear?: () => void
   onConfirm: (date: Date) => void
   onOpenChange: (open: boolean) => void
@@ -65,15 +120,16 @@ export function PlanStartDialog({
   planTitle: string
   selected: boolean
 }) {
-  const [date, setDate] = React.useState(() => startOfLocalDay(initialDate))
-  const [month, setMonth] = React.useState(() => startOfLocalMonth(initialDate))
+  const initialDay = startOfLocalDay(initialDate).getTime()
+  const [date, setDate] = React.useState(() => new Date(initialDay))
+  const [month, setMonth] = React.useState(() => startOfLocalMonth(new Date(initialDay)))
 
   React.useEffect(() => {
     if (!open) return
-    const next = startOfLocalDay(initialDate)
+    const next = new Date(initialDay)
     setDate(next)
     setMonth(startOfLocalMonth(next))
-  }, [initialDate, open])
+  }, [initialDay, open])
 
   const range = planRangeFromStart(date, dayCount)
 
@@ -127,6 +183,24 @@ export function PlanStartDialog({
                 button_previous: cn(PLAN_NAV_BUTTON_CLASS, 'rdp-button_previous'),
                 button_next: cn(PLAN_NAV_BUTTON_CLASS, 'rdp-button_next'),
               }}
+              components={{
+                DayButton: (dayProps) => (
+                  <OccupiedDayButton
+                    compactDays
+                    marks={occupied}
+                    onRangeEdgeDrag={(edge, nextDay) => {
+                      const day = startOfLocalDay(nextDay)
+                      const next =
+                        edge === 'end'
+                          ? addLocalDays(day, -(Math.max(1, dayCount) - 1))
+                          : day
+                      setDate(next)
+                      setMonth(startOfLocalMonth(next))
+                    }}
+                    {...dayProps}
+                  />
+                ),
+              }}
               locale={dayPickerRu}
               mode="range"
               month={month}
@@ -141,9 +215,27 @@ export function PlanStartDialog({
               selected={range}
             />
           </div>
-        </div>
-        <div className="shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3.5">
-          <div className="px-3 sm:px-4" data-plan-start-actions="">
+          {occupied.length > 0 ? (
+            <ul className="my-3 flex flex-col gap-1.5" data-plan-start-occupied="">
+              {occupied.map((mark) => (
+                <li
+                  key={mark.planId}
+                  className="flex min-w-0 items-center gap-2 text-[12px] font-light leading-5 text-[var(--nora-text-secondary)]"
+                >
+                  <span
+                    aria-hidden
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: mark.swatch }}
+                  />
+                  <span className="min-w-0 truncate text-[var(--nora-text)]">{mark.title}</span>
+                  <span className="ml-auto shrink-0 tabular-nums">
+                    {formatPlanActiveRange(mark.from, Math.round((mark.to.getTime() - mark.from.getTime()) / 86400000) + 1)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <div className="px-0" data-plan-start-actions="">
             <div
               aria-hidden
               className="border-t border-[var(--nora-divider)]"

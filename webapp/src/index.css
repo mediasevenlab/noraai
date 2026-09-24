@@ -210,8 +210,52 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
     --sidebar: color-mix(in srgb, var(--nora-panel) 98.5%, var(--nora-text) 1.5%);
 }
 
-.scheme-editor-light.light-palette-breathtwo {
+/* Дыхание 2 и 3: сайдбар совпадает с подложкой блоков, шрифт — с текстом внутри них. */
+.scheme-editor-light.light-palette-breathtwo,
+.scheme-editor-light.light-palette-breaththree {
     --sidebar: color-mix(in srgb, white 5%, color-mix(in srgb, white 10%, #f1f1f2));
+    --settings-row-value: color-mix(in srgb, black 20%, color-mix(in srgb, black 20%, var(--nora-text-secondary)));
+    /* Рамка «Дыхания» зеленее подложки, поэтому чипы меню считаем от сайдбара. */
+    --nora-sidebar-search-bg: color-mix(in srgb, black 4%, var(--sidebar));
+    --nora-sidebar-item-hover: color-mix(in srgb, black 2%, var(--sidebar));
+    --nora-sidebar-item-active: color-mix(in srgb, black 3%, var(--sidebar));
+}
+
+.scheme-editor-light.light-palette-breathtwo [data-sidebar="group-label"],
+.scheme-editor-light.light-palette-breaththree [data-sidebar="group-label"] {
+    font-weight: 500;
+}
+
+.scheme-editor-light.light-palette-breathtwo [data-sidebar="menu-button"]:not([data-size="lg"]):not([data-active]),
+.scheme-editor-light.light-palette-breaththree [data-sidebar="menu-button"]:not([data-size="lg"]):not([data-active]) {
+    font-weight: 300;
+    color: var(--settings-row-value);
+}
+
+.scheme-editor-light.light-palette-breathtwo [data-sidebar="menu-button"]:not([data-size="lg"]):not([data-active]) svg,
+.scheme-editor-light.light-palette-breaththree [data-sidebar="menu-button"]:not([data-size="lg"]):not([data-active]) svg {
+    color: var(--settings-row-value);
+}
+
+.scheme-editor-light.light-palette-breathtwo [data-sidebar="menu-button"][data-active],
+.scheme-editor-light.light-palette-breaththree [data-sidebar="menu-button"][data-active],
+.scheme-editor-light.light-palette-breathtwo [data-sidebar="menu-button"]:not([data-size="lg"]):hover,
+.scheme-editor-light.light-palette-breaththree [data-sidebar="menu-button"]:not([data-size="lg"]):hover {
+    font-weight: 500;
+    color: var(--nora-text);
+}
+
+.scheme-editor-light.light-palette-breathtwo [data-sidebar="menu-button"][data-active] svg,
+.scheme-editor-light.light-palette-breaththree [data-sidebar="menu-button"][data-active] svg,
+.scheme-editor-light.light-palette-breathtwo [data-sidebar="menu-button"]:not([data-size="lg"]):hover svg,
+.scheme-editor-light.light-palette-breaththree [data-sidebar="menu-button"]:not([data-size="lg"]):hover svg {
+    color: var(--nora-text);
+}
+
+.scheme-editor-light.light-palette-breathtwo [data-sidebar="footer"] .text-muted-foreground,
+.scheme-editor-light.light-palette-breaththree [data-sidebar="footer"] .text-muted-foreground {
+    color: var(--settings-row-value);
+    font-weight: 300;
 }
 
 .scheme-editor-light :is([data-sidebar="sidebar"], [data-slot="sidebar-inner"]) {

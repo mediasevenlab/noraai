@@ -98,6 +98,7 @@ export function UserSettings({
   return (
     <SettingsCanvas
       description="Имя, которое видно в рабочей области, публичный никнейм и связь с Telegram собраны в этом разделе. Здесь же можно подключиться к наставнику."
+      divided={false}
       editable
       eyebrow="Аккаунт"
       meta={user.email}
@@ -116,6 +117,7 @@ export function UserReferrals({ user }: { user: UserDto }) {
     <SettingsCanvas
       ctaLabel="Рефералы"
       description="Ссылка запоминает людей, которые зарегистрировались по ней. В каталоге видно, кто пришёл, и бонус за каждого."
+      divided={false}
       eyebrow="Социальная сеть"
       meta={user.email}
       panelsId="referrals-panels"

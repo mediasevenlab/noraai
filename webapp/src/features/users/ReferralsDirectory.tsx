@@ -155,7 +155,7 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
       aria-label="Поиск рефералов"
       className="h-8 min-h-8 w-full bg-[var(--nora-panel)] [&_svg]:size-3.5 lg:w-[220px]"
       icon={<SearchIcon />}
-      inputClassName="text-[16px] leading-5 lg:text-[13px] lg:leading-none"
+      inputClassName="text-[13px] leading-5"
       onChange={(event) => setDraftQuery(event.target.value)}
       placeholder="Поиск рефералов…"
       value={draftQuery}

@@ -11,6 +11,7 @@ export const LIGHT_PALETTES = [
   { id: 'rain', label: 'Дождь', panel: '#f7f8f9', canvas: '#e8eaec' },
   { id: 'breath', label: 'Дыхание', panel: '#ffffff', canvas: '#f0f2f1' },
   { id: 'breathtwo', label: 'Дыхание 2', panel: '#ffffff', canvas: '#f0f2f1' },
+  { id: 'breaththree', label: 'Дыхание 3', panel: '#ffffff', canvas: '#f0f2f1' },
   { id: 'limestone', label: 'Известняк', panel: '#fafbfb', canvas: '#eceeed' },
   { id: 'plaster', label: 'Штукатурка', panel: '#ffffff', canvas: '#f2f3f1' },
   { id: 'limewash', label: 'Известь', panel: '#ffffff', canvas: '#f2f2f2' },
@@ -36,7 +37,7 @@ export const LIGHT_PALETTES = [
 
 export type LightPaletteId = (typeof LIGHT_PALETTES)[number]['id']
 
-export const DEFAULT_LIGHT_PALETTE: LightPaletteId = 'pearl'
+export const DEFAULT_LIGHT_PALETTE: LightPaletteId = 'breaththree'
 
 const LIGHT_PALETTE_IDS = new Set<string>(LIGHT_PALETTES.map((palette) => palette.id))
 
