@@ -293,8 +293,12 @@ function CalendarDayButton({
 }) {
   const defaultClassNames = getDefaultClassNames()
   const ref = React.useRef<HTMLButtonElement>(null)
-  const edge = modifiers.range_start ? "start" : modifiers.range_end ? "end" : null
-  const edgeRef = React.useRef(edge)
+  const edge: "start" | "end" | null = modifiers.range_start
+    ? "start"
+    : modifiers.range_end
+      ? "end"
+      : null
+  const edgeRef = React.useRef<"start" | "end" | null>(edge)
   const dragCallbackRef = React.useRef(onRangeEdgeDrag)
   edgeRef.current = edge
   dragCallbackRef.current = onRangeEdgeDrag

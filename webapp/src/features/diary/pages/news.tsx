@@ -1258,6 +1258,7 @@ export function NewsPage({
         : groupMealsByDay(filtered).map((group) => ({
             ...group,
             meals: orderDiaryDayByPlanLayout(group.meals, diaryPlanSlotIndex),
+            totals: sumDiaryDayStats(group.meals, completedIds),
           })),
     [
       completedIds,
