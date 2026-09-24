@@ -28,12 +28,13 @@ const settingsBodyClass =
  * Высота на узком экране 40px у кнопок (зона нажатия), у полей после масштаба 32px.
  */
 const settingsControlsClass = cn(
-  'mt-4 rounded-[16px] bg-[var(--settings-substrate,var(--nora-inset))] px-[17px] py-[17px]',
+  'mt-4 rounded-[16px] bg-[var(--settings-substrate,var(--nora-inset))] px-3.5 py-3.5',
   '[&_form]:!gap-2.5',
   '[&_[data-slot=field-group]]:!mt-0',
   '[&_[data-slot=field-label]]:!mb-0.5 [&_[data-slot=field-label]]:!font-[family-name:var(--nora-font)] [&_[data-slot=field-label]]:!text-[13px] [&_[data-slot=field-label]]:!font-medium [&_[data-slot=field-label]]:!leading-5 [&_[data-slot=field-label]]:!text-[var(--nora-text)]',
   '[&_[data-slot=field-description]]:!mt-0 [&_[data-slot=field-description]]:!font-[family-name:var(--nora-font)] [&_[data-slot=field-description]]:!text-[12px] [&_[data-slot=field-description]]:!font-light [&_[data-slot=field-description]]:!leading-5 [&_[data-slot=field-description]]:!text-[var(--nora-text-tertiary)]',
   '[&_[data-slot=input]]:!bg-[var(--nora-panel)] [&_[data-slot=input]]:!px-3 [&_[data-slot=input]]:!text-[16px] [&_[data-slot=input]]:!font-normal [&_[data-slot=input]]:!leading-5',
+  '[&_[data-slot=input]:disabled]:!bg-[var(--nora-panel)] [&_[data-slot=input]:disabled]:!opacity-100 [&_[data-slot=input]:disabled]:!text-[var(--nora-text-secondary)]',
   'lg:[&_[data-slot=input]]:!h-8 lg:[&_[data-slot=input]]:!min-h-8 lg:[&_[data-slot=input]]:!text-[13px]',
   '[&_[data-slot=select-trigger]]:!h-10 [&_[data-slot=select-trigger]]:!min-h-10 [&_[data-slot=select-trigger]]:!bg-[var(--nora-panel)] [&_[data-slot=select-trigger]]:!px-3 [&_[data-slot=select-trigger]]:!text-[13px] [&_[data-slot=select-trigger]]:!font-normal',
   'lg:[&_[data-slot=select-trigger]]:!h-8 lg:[&_[data-slot=select-trigger]]:!min-h-8',
@@ -121,20 +122,22 @@ export function SettingsEntry({
   badge,
   children,
   description,
+  marker,
   title,
 }: {
   badge?: string
   children: ReactNode
   description: string
+  marker?: ReactNode
   title: string
 }) {
   return (
-    <li className="w-full py-6 first:pt-0 group-data-[plain]/sections:py-3 group-data-[plain]/sections:first:pt-0 lg:ml-auto lg:w-lg lg:max-w-full">
-      <div className="flex items-center justify-start gap-2 lg:justify-between lg:gap-x-4">
+    <li className="w-full py-6 first:pt-0 group-data-[plain]/sections:py-[15.6px] group-data-[plain]/sections:first:pt-0 lg:ml-auto lg:w-lg lg:max-w-full">
+      <div className="flex items-center justify-between gap-2 lg:gap-x-4">
         <h2 className="min-w-0 font-heading text-[22px] leading-tight font-bold tracking-[-0.02em] text-foreground md:text-[24px]">
           {title}
         </h2>
-        {badge ? <NoraBadge className="hidden shrink-0 lg:inline-flex" variant="blue">{badge}</NoraBadge> : null}
+        {marker ?? (badge ? <NoraBadge className="hidden shrink-0 lg:inline-flex" variant="blue">{badge}</NoraBadge> : null)}
       </div>
       <p className={cn('mt-1 max-w-[54ch]', settingsBodyClass)}>{description}</p>
       <div className={settingsControlsClass} data-settings-well="">
@@ -163,8 +166,8 @@ export function SettingsReadRows({
           )}
           key={row.label}
         >
-          <span className={cn(readRowClass, 'font-[450] text-[var(--nora-text)]')}>{row.label}</span>
-          <span className={cn(readRowClass, 'min-w-0 break-words text-right text-[var(--nora-text-secondary)]')}>
+          <span className={cn(readRowClass, 'font-medium text-[var(--nora-text)]')}>{row.label}</span>
+          <span className={cn(readRowClass, 'min-w-0 break-words text-right font-light text-[color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary)))]')}>
             {row.value || '—'}
           </span>
         </div>

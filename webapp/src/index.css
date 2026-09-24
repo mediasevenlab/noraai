@@ -211,7 +211,7 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
 }
 
 .scheme-editor-light.light-palette-breathtwo {
-    --sidebar: #f1f2f1;
+    --sidebar: color-mix(in srgb, white 5%, color-mix(in srgb, white 10%, #f1f1f2));
 }
 
 .scheme-editor-light :is([data-sidebar="sidebar"], [data-slot="sidebar-inner"]) {

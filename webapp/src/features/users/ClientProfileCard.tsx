@@ -89,7 +89,7 @@ function EditFieldBlock({
     <span
       className={
         entry
-          ? 'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-[450] leading-5 text-[var(--nora-text)]'
+          ? 'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
           : 'text-[12px] text-[var(--nora-text-secondary)]'
       }
     >
@@ -208,32 +208,25 @@ function ProfileSectionCard({
   )
 }
 
-const PROFILE_ENTRY_BADGE: Record<string, string> = {
-  'Базовые данные': 'Тело',
-  Цель: 'Фокус',
-  Активность: 'Движение',
-  Быт: 'Быт',
-  Ограничения: 'Фильтр',
-  Контекст: 'Фон',
-}
-
 function ProfileSectionEntry({
   editing,
   onChange,
   section,
+  sectionIndex,
   values,
 }: {
   editing: boolean
   onChange: (key: FieldKey, value: string) => void
   section: ProfileSection
+  sectionIndex: number
   values: Record<FieldKey, string>
 }) {
   const rows = visibleFields(values, section.fields, editing)
 
   return (
     <SettingsEntry
-      badge={PROFILE_ENTRY_BADGE[section.title]}
       description={section.description}
+      marker={<ProfileSectionMarker section={section} sectionIndex={sectionIndex} />}
       title={section.title}
     >
       {editing ? (
@@ -277,12 +270,12 @@ function ProfileSectionEntry({
                 )}
                 key={field.key}
               >
-                <span className="font-[family-name:var(--nora-font)] text-[13px] font-[450] leading-5 text-[var(--nora-text)]">
+                <span className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
                   {field.unit ? measureLabel(field) : field.label}
                 </span>
                 <span
                   className={cn(
-                    'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 break-words text-[var(--nora-text-secondary)]',
+                    'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 break-words text-[color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary)))]',
                     extended ? 'whitespace-pre-wrap' : 'text-right',
                   )}
                 >
@@ -444,12 +437,13 @@ export function ClientProfileCard({
   if (layout === 'entry') {
     return (
       <>
-        {PROFILE_SECTIONS.map((section) => (
+        {PROFILE_SECTIONS.map((section, sectionIndex) => (
           <ProfileSectionEntry
             editing={editing}
             key={section.title}
             onChange={onChange}
             section={section}
+            sectionIndex={sectionIndex}
             values={values}
           />
         ))}

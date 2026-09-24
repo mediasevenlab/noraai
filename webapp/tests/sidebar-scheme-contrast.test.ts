@@ -68,7 +68,7 @@ describe('sidebar scheme contrast', () => {
         palette.id === 'default'
           ? mix(panel, text, 0.985)
           : palette.id === 'breathtwo'
-            ? hexToRgb('#f1f2f1')
+            ? hexToRgb('#f3f3f4')
             : mix(panel, canvas, 0.28)
 
       const search = mix(sidebar, border, 0.36)
