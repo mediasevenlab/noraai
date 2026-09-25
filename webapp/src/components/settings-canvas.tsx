@@ -10,9 +10,9 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
+import { ArrowUpRightIcon, CheckIcon, PencilIcon, XIcon, type LucideIcon } from 'lucide-react'
 
 import { userGeneralSearch } from '@/features/navigation'
-import { ArrowUpRightIcon, CheckIcon, PencilIcon, XIcon, type LucideIcon } from 'lucide-react'
 
 import { NoraBadge } from '@/components/nora/primitives'
 import { cn } from '@/lib/utils'
@@ -59,6 +59,7 @@ function SettingsCanvasView({
   divided = true,
   lead,
   panelsId = 'settings-panels',
+  phoneSheet,
   title,
 }: {
   actions?: ReactNode
@@ -70,14 +71,12 @@ function SettingsCanvasView({
   lead?: ReactNode
   meta?: string
   panelsId?: string
+  phoneSheet?: boolean
   title: string
 }) {
   return (
     <div className={cn(
       'mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-3 pt-3 pb-8 sm:px-6 md:px-10 md:py-12 lg:flex-row lg:gap-16 lg:px-12',
-      lead && 'max-lg:min-h-full max-lg:gap-0 max-lg:bg-[color-mix(in_srgb,var(--nora-text)_5%,var(--background))] max-lg:pb-0',
-    )}>
-      <aside className="hidden w-full shrink-0 flex-col gap-6 lg:sticky lg:top-6 lg:flex lg:w-[280px] lg:self-start">
       (lead || phoneSheet) && 'max-lg:min-h-full max-lg:flex-1 max-lg:gap-0 max-lg:pb-0',
       lead && 'max-lg:bg-[color-mix(in_srgb,var(--nora-text)_5%,var(--background))]',
     )}>
@@ -127,6 +126,9 @@ function SettingsCanvasView({
           </ul>
         </div>
         {actions && !lead && !phoneSheet ? <div aria-hidden className="h-16 lg:hidden" /> : null}
+      </section>
+      {actions ? (
+        <div
           className="fixed z-40 flex flex-wrap-reverse items-center gap-2 lg:hidden left-4 right-[4.75rem] bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]"
           data-settings-dock=""
         >
@@ -137,9 +139,6 @@ function SettingsCanvasView({
   )
 }
 
-/** Один раздел настроек — как запись в списке версий. */
-export function SettingsEntry({
-  badge,
 /** Gray pill above a phone settings sheet. Pull down to leave the section. */
 function PhoneSheetHandle() {
   const navigate = useNavigate()
@@ -192,6 +191,9 @@ function PhoneSheetHandle() {
   )
 }
 
+/** Один раздел настроек — как запись в списке версий. */
+export function SettingsEntry({
+  badge,
   children,
   className,
   description,
@@ -208,10 +210,10 @@ function PhoneSheetHandle() {
   return (
     <li className={cn('w-full py-6 first:pt-0 group-data-[plain]/sections:py-[15.6px] group-data-[plain]/sections:first:pt-0 lg:group-data-[plain]/sections:py-[20px] lg:group-data-[plain]/sections:first:pt-0 lg:ml-auto lg:w-lg lg:max-w-full', className)}>
       <div className="flex items-center justify-between gap-2 lg:gap-x-4">
-        <h2 className="min-w-0 font-heading text-[22px] leading-tight font-bold tracking-[-0.02em] text-foreground md:text-[24px]">
+        <h2 className="min-w-0 font-heading text-[22px] leading-tight font-bold tracking-[-0.02em] text-foreground lg:text-[24px]">
           {title}
         </h2>
-        <h2 className="min-w-0 font-heading text-[22px] leading-tight font-bold tracking-[-0.02em] text-foreground lg:text-[24px]">
+        {marker ?? (badge ? <NoraBadge className="hidden shrink-0 lg:inline-flex" variant="blue">{badge}</NoraBadge> : null)}
       </div>
       <p className={cn('mt-1 max-w-[54ch]', settingsBodyClass, 'text-[var(--nora-text-tertiary)]')}>{description}</p>
       <div className={settingsControlsClass} data-settings-well="">
