@@ -1,4 +1,4 @@
-import { AtSignIcon, ChevronLeftIcon, ChevronRightIcon, GiftIcon, HashIcon, SearchIcon, UserRoundIcon, UsersIcon } from 'lucide-react'
+import { AtSignIcon, ChevronLeftIcon, ChevronRightIcon, GiftIcon, HashIcon, SearchIcon, UserRoundIcon } from 'lucide-react'
 import { useState, type FormEvent, type MouseEvent } from 'react'
 
 import { DataTableFrame } from '@/components/dashboard'

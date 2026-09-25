@@ -4,6 +4,7 @@ import { BadgeCheck as BadgeCheckIcon, CameraIcon } from 'lucide-react'
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { useSettingsDraft, useSettingsMode } from '@/components/settings-canvas'
+import { userGeneralSearch } from '@/features/navigation'
 import { cn } from '@/lib/utils'
 
 export type ProfileMobileTab = 'profile' | 'questionnaire'
@@ -208,7 +209,7 @@ export function ProfileMobileMasthead({
     const distance = Math.max(0, event.clientY - dragOrigin.current)
     dragOrigin.current = null
     if (distance > 72) {
-      void navigate({ to: '/app/general' })
+      void navigate({ search: userGeneralSearch(), to: '/app/general' })
       return
     }
     const masthead = mastheadRef.current
