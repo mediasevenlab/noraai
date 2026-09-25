@@ -239,7 +239,7 @@ export const MEAL_DIALOG_HERO_CLASS = 'group/preview relative shrink-0 px-2.5 pt
 export const MEAL_DIALOG_COVER_CLASS =
   'w-full rounded-[12px] shadow-[inset_0_0_0_1px_var(--nora-border)] sm:rounded-[14px]'
 export const MEAL_DIALOG_HERO_FRAME_CLASS =
-  'h-[min(44vw,240px)] max-h-[min(44vw,240px)] transition-[height,max-height] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] sm:h-[268px] sm:max-h-none group-data-[hero-expanded]/preview:h-[min(88vw,480px)] group-data-[hero-expanded]/preview:max-h-[min(88vw,480px)] sm:group-data-[hero-expanded]/preview:h-[268px] sm:group-data-[hero-expanded]/preview:max-h-none'
+  'h-[min(52.8vw,288px)] max-h-[min(52.8vw,288px)] transition-[height,max-height] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] sm:h-[322px] sm:max-h-none group-data-[hero-expanded]/preview:h-[min(88vw,480px)] group-data-[hero-expanded]/preview:max-h-[min(88vw,480px)] sm:group-data-[hero-expanded]/preview:h-[322px] sm:group-data-[hero-expanded]/preview:max-h-none'
 export const MEAL_DIALOG_MACROS_OVERLAY_CLASS =
   'pointer-events-none absolute inset-x-3 bottom-3.5 z-[1] flex justify-center px-1.5 sm:inset-x-2 sm:bottom-2.5'
 

@@ -487,6 +487,13 @@ export const STEP_ITEMS: ReadonlyArray<StepItem> = [
     description:
       'На телефоне вверху профиля — фото, имя и вкладки «Профиль» и «Анкета». В режиме правки можно сменить фото и фон шапки.',
   },
+  {
+    category: 'Версия · v0.70',
+    title: 'Лист с ручкой',
+    badge: 'Profile',
+    description:
+      'На телефоне настройки и рефералы закрываются той же серой ручкой, что и профиль. Ручки модальных окон стоят на верхнем крае.',
+  },
 ]
 
 export function stepVersion(item: StepItem): string {

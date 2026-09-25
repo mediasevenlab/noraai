@@ -208,14 +208,14 @@ export function ProfileMobileMasthead({
     if (dragOrigin.current == null) return
     const distance = Math.max(0, event.clientY - dragOrigin.current)
     dragOrigin.current = null
-    if (distance > 72) {
+    const masthead = mastheadRef.current
+    if (distance > 160) {
       void navigate({ search: userGeneralSearch(), to: '/app/general' })
       return
     }
-    const masthead = mastheadRef.current
     if (masthead) {
       masthead.style.transition = 'padding-bottom 180ms ease'
-      masthead.style.paddingBottom = ''
+      masthead.style.paddingBottom = '64px'
     }
   }
 
@@ -325,14 +325,14 @@ export function ProfileMobileMasthead({
       </div>
       <button
         aria-label="Закрыть раздел"
-        className="absolute bottom-6 left-1/2 z-[3] flex h-6 w-16 -translate-x-1/2 cursor-grab touch-none items-end justify-center pb-0.5"
+        className="nora-sheet-handle absolute bottom-[34px] left-1/2 z-[3] flex h-5 w-16 -translate-x-1/2 cursor-grab touch-none items-end justify-center"
         onPointerCancel={onHandleUp}
         onPointerDown={onHandleDown}
         onPointerMove={onHandleMove}
         onPointerUp={onHandleUp}
         type="button"
       >
-        <span className="block h-1 w-10 rounded-full bg-white/80 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]" />
+        <span className="nora-sheet-pill" />
       </button>
     </div>
   )

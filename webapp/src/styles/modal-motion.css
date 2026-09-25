@@ -8,7 +8,7 @@
   --modal-out-duration: 420ms;
   --modal-recess-scale: 0.92;
   --modal-recess-radius: 12px;
-  --modal-sheet-inset: max(10px, var(--app-safe-top, env(safe-area-inset-top, 0px)));
+  --modal-sheet-inset: 1.25rem;
   --modal-sheet-radius: 28px;
   --modal-overlay-bg: color-mix(in srgb, #0f172a 18%, transparent);
   --modal-overlay-blur: 12px;

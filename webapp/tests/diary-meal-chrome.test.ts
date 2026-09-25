@@ -34,9 +34,9 @@ test('calorie chip shows the same kcal unit as the menu', () => {
   expect(formatDailyCalorieChip(2200)).toMatch(/ккал$/)
 })
 
-test('meal dialog hero is slightly shorter than the previous 259px cap', () => {
-  expect(news).toContain('h-[min(44vw,240px)]')
-  expect(news).toContain('sm:h-[268px]')
+test('meal dialog hero is a fifth taller than the 240px default', () => {
+  expect(news).toContain('h-[min(52.8vw,288px)]')
+  expect(news).toContain('sm:h-[322px]')
   expect(news).not.toContain('h-[min(47.6vw,259px)]')
   expect(news).not.toContain('max-h-[min(41.4vw,225px)]')
   expect(news).not.toContain('max-h-[min(36vw,196px)]')
@@ -57,7 +57,7 @@ test('meal dialog hero can double height from a preview toggle', () => {
   expect(news).toContain('Увеличить превью')
   expect(news).toContain('Уменьшить превью')
   expect(news).toContain('group-data-[hero-expanded]/preview:h-[min(88vw,480px)]')
-  expect(news).toContain('sm:group-data-[hero-expanded]/preview:h-[268px]')
+  expect(news).toContain('sm:group-data-[hero-expanded]/preview:h-[322px]')
   expect(news).toContain('bg-[var(--nora-panel)]/72')
   expect(news).toContain('backdrop-blur-[16px]')
   expect(news).toContain('bottom-3.5 right-3.5')

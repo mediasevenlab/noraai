@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router'
 import {
   createContext,
   useCallback,
@@ -6,8 +7,11 @@ import {
   useMemo,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
+
+import { userGeneralSearch } from '@/features/navigation'
 import { ArrowUpRightIcon, CheckIcon, PencilIcon, XIcon, type LucideIcon } from 'lucide-react'
 
 import { NoraBadge } from '@/components/nora/primitives'
@@ -74,6 +78,10 @@ function SettingsCanvasView({
       lead && 'max-lg:min-h-full max-lg:gap-0 max-lg:bg-[color-mix(in_srgb,var(--nora-text)_5%,var(--background))] max-lg:pb-0',
     )}>
       <aside className="hidden w-full shrink-0 flex-col gap-6 lg:sticky lg:top-6 lg:flex lg:w-[280px] lg:self-start">
+      (lead || phoneSheet) && 'max-lg:min-h-full max-lg:flex-1 max-lg:gap-0 max-lg:pb-0',
+      lead && 'max-lg:bg-[color-mix(in_srgb,var(--nora-text)_5%,var(--background))]',
+    )}>
+      <aside className="hidden w-full shrink-0 flex-col gap-6 lg:sticky lg:top-6 lg:flex lg:w-[280px] lg:self-start">
         <div>
           <div className={cn('mb-1', settingsCaptionClass)}>{eyebrow}</div>
           <h1 className="font-heading text-[42px] leading-none font-bold tracking-[-0.04em] text-foreground md:text-[48px]">
@@ -101,23 +109,24 @@ function SettingsCanvasView({
         </div>
       </aside>
 
-      <section className={cn('min-w-0 flex-1', lead && 'max-lg:flex max-lg:flex-col')} aria-label={title} id={panelsId}>
+      <section className={cn('min-w-0 flex-1', (lead || phoneSheet) && 'max-lg:flex max-lg:flex-col')} aria-label={title} id={panelsId}>
         {lead ? <div className="lg:hidden">{lead}</div> : null}
-        <ul
-          className={cn(
-            'group/sections flex flex-col',
-            divided && 'divide-y divide-border/70',
-            lead && 'max-lg:relative max-lg:min-h-0 max-lg:flex-1 max-lg:-mx-3 max-lg:-mt-6 max-lg:overflow-hidden max-lg:rounded-t-[22px] max-lg:bg-background max-lg:px-3 max-lg:pt-7 max-lg:pb-[calc(5rem+env(safe-area-inset-bottom))] max-lg:shadow-[0_-4px_14px_rgba(0,0,0,0.035)] sm:max-lg:-mx-6 sm:max-lg:px-6 md:max-lg:-mx-10 md:max-lg:px-10',
-          )}
-          data-plain={divided ? undefined : ''}
-          data-profile-sheet={lead ? '' : undefined}
-        >
-          {children}
-        </ul>
-        {actions && !lead ? <div aria-hidden className="h-16 lg:hidden" /> : null}
-      </section>
-      {actions ? (
-        <div
+        <div className={cn((lead || phoneSheet) && 'max-lg:relative max-lg:flex max-lg:min-h-0 max-lg:flex-1 max-lg:flex-col', phoneSheet && 'max-lg:mt-5')}>
+          {phoneSheet ? <PhoneSheetHandle /> : null}
+          <ul
+            className={cn(
+              'group/sections flex flex-col',
+              divided && 'divide-y divide-border/70',
+              (lead || phoneSheet) && 'max-lg:relative max-lg:min-h-0 max-lg:flex-1 max-lg:-mx-3 max-lg:overflow-hidden max-lg:rounded-t-[22px] max-lg:bg-background max-lg:px-3 max-lg:pt-5 max-lg:pb-[calc(5rem+env(safe-area-inset-bottom))] max-lg:shadow-[0_-4px_14px_rgba(0,0,0,0.035)] sm:max-lg:-mx-6 sm:max-lg:px-6 md:max-lg:-mx-10 md:max-lg:px-10',
+              lead && 'max-lg:-mt-6',
+            )}
+            data-plain={divided ? undefined : ''}
+            data-profile-sheet={(lead || phoneSheet) ? '' : undefined}
+          >
+            {children}
+          </ul>
+        </div>
+        {actions && !lead && !phoneSheet ? <div aria-hidden className="h-16 lg:hidden" /> : null}
           className="fixed z-40 flex flex-wrap-reverse items-center gap-2 lg:hidden left-4 right-[4.75rem] bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]"
           data-settings-dock=""
         >
@@ -131,6 +140,58 @@ function SettingsCanvasView({
 /** Один раздел настроек — как запись в списке версий. */
 export function SettingsEntry({
   badge,
+/** Gray pill above a phone settings sheet. Pull down to leave the section. */
+function PhoneSheetHandle() {
+  const navigate = useNavigate()
+  const origin = useRef<number | null>(null)
+
+  const shellOf = (event: ReactPointerEvent<HTMLButtonElement>) => event.currentTarget.parentElement
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    origin.current = event.clientY
+    event.currentTarget.setPointerCapture(event.pointerId)
+    const shell = shellOf(event)
+    if (shell) shell.style.transition = 'none'
+  }
+
+  const onPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (origin.current == null) return
+    const shell = shellOf(event)
+    if (!shell) return
+    const distance = Math.max(0, event.clientY - origin.current)
+    shell.style.transform = `translateY(${distance}px)`
+  }
+
+  const onPointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (origin.current == null) return
+    const distance = Math.max(0, event.clientY - origin.current)
+    origin.current = null
+    const shell = shellOf(event)
+    if (distance > 160) {
+      void navigate({ search: userGeneralSearch(), to: '/app/general' })
+      return
+    }
+    if (shell) {
+      shell.style.transition = 'transform 180ms ease'
+      shell.style.transform = ''
+    }
+  }
+
+  return (
+    <button
+      aria-label="Закрыть раздел"
+      className="nora-sheet-handle absolute top-0 left-1/2 z-[3] hidden h-5 w-16 -translate-x-1/2 -translate-y-[calc(100%+10px)] cursor-grab touch-none items-end justify-center max-lg:flex"
+      onPointerCancel={onPointerUp}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      type="button"
+    >
+      <span className="nora-sheet-pill" />
+    </button>
+  )
+}
+
   children,
   className,
   description,
@@ -150,7 +211,7 @@ export function SettingsEntry({
         <h2 className="min-w-0 font-heading text-[22px] leading-tight font-bold tracking-[-0.02em] text-foreground md:text-[24px]">
           {title}
         </h2>
-        {marker ?? (badge ? <NoraBadge className="hidden shrink-0 lg:inline-flex" variant="blue">{badge}</NoraBadge> : null)}
+        <h2 className="min-w-0 font-heading text-[22px] leading-tight font-bold tracking-[-0.02em] text-foreground lg:text-[24px]">
       </div>
       <p className={cn('mt-1 max-w-[54ch]', settingsBodyClass, 'text-[var(--nora-text-tertiary)]')}>{description}</p>
       <div className={settingsControlsClass} data-settings-well="">

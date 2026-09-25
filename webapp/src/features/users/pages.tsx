@@ -132,6 +132,7 @@ export function UserSettings({
       editable
       eyebrow="Аккаунт"
       meta={user.email}
+      phoneSheet
       title="Настройки"
     >
       <TelegramUsernamePanel user={user} />
@@ -149,6 +150,7 @@ export function UserReferrals({ user }: { user: UserDto }) {
       eyebrow="Социальная сеть"
       meta={user.email}
       panelsId="referrals-panels"
+      phoneSheet
       title="Рефералы"
     >
       <ReferralLinkPanel layout="entry" user={user} />

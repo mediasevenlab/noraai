@@ -109,7 +109,7 @@ export function PlanPageShell({
               className="mb-3 flex items-center justify-between gap-2 md:hidden"
               data-plan-mobile-header=""
             >
-              <h1 className={cn(noraProductTitleClass, 'min-w-0 flex-1 truncate')}>{title}</h1>
+              <h1 className={cn(noraPageTitleClass, 'min-w-0 flex-1 truncate')}>{title}</h1>
               <button
                 aria-label="О рационе"
                 className={cn(

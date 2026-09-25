@@ -52,7 +52,7 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed z-50 grid w-full gap-0 overflow-hidden bg-[var(--nora-modal)] p-0 font-[family-name:var(--nora-font)] text-xs text-[var(--nora-text)] shadow-[var(--nora-shadow-modal)] outline-none",
+          "fixed z-50 grid w-full gap-0 overflow-hidden bg-[var(--nora-modal)] p-0 font-[family-name:var(--nora-font)] text-xs text-[var(--nora-text)] shadow-[var(--nora-shadow-modal)] outline-none max-md:overflow-visible",
           "inset-x-0 bottom-0 max-w-none rounded-t-[var(--modal-sheet-radius)] rounded-b-none",
           "md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:max-w-[min(340px,calc(100%-2rem))] md:rounded-[var(--nora-radius-xl,14px)]",
           className

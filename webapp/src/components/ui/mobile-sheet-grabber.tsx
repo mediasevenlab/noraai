@@ -51,7 +51,7 @@ export function MobileSheetGrabber({ dismiss }: { dismiss: React.ReactNode }) {
     const popup = popupOf(event.currentTarget)
     if (!popup) return
     const delta = Math.max(0, event.clientY - start.y)
-    const limit = Math.max(120, popup.getBoundingClientRect().height * 0.22)
+    const limit = Math.max(160, popup.getBoundingClientRect().height * 0.28)
     if (delta >= limit) {
       setShift(popup, popup.offsetHeight, true)
       window.setTimeout(() => {
@@ -74,7 +74,7 @@ export function MobileSheetGrabber({ dismiss }: { dismiss: React.ReactNode }) {
       <div
         aria-hidden
         data-slot="sheet-grabber"
-        className="flex h-3.5 w-full shrink-0 touch-none items-center justify-center md:hidden"
+        className="nora-sheet-handle absolute top-0 left-1/2 z-[5] flex h-5 w-16 -translate-x-1/2 -translate-y-[calc(100%+10px)] touch-none items-end justify-center md:hidden"
         onPointerCancel={finish}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
