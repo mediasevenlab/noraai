@@ -148,7 +148,7 @@
   --settings-well-stroke: color-mix(in srgb, black 9%, var(--settings-substrate));
   --settings-well-glint: color-mix(in srgb, white 78%, var(--settings-substrate));
 
-  --nora-text: #222222;
+  --nora-text: #333333;
   --nora-text-secondary: #666666;
   --nora-text-tertiary: #999999;
   --nora-text-dimmed: #aaaaaa;
@@ -171,7 +171,7 @@
   --nora-button-on-tint-text: #ffffff;
 
   --nora-input-bg: #f3f3f3;
-  --nora-input-text: #222222;
+  --nora-input-text: #333333;
   --nora-input-placeholder: #999999;
 
   --nora-divider: #eeeeee;
@@ -188,10 +188,10 @@
   --nora-kbd-on-tint-text: #ffffff;
 
   --nora-toast-bg: #ffffff;
-  --nora-toast-text: #222222;
+  --nora-toast-text: #333333;
   --nora-toast-shadow: 0 8px 28px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
   --nora-toast-action-bg: #f3f3f3;
-  --nora-toast-action-text: #222222;
+  --nora-toast-action-text: #333333;
   --nora-toast-action-hover: #ebebeb;
   --nora-tooltip-bg: #222222;
   --nora-tooltip-text: #ffffff;
@@ -335,7 +335,7 @@
   --nora-row-hover: var(--light-inset);
 }
 
-.scheme-editor-light.light-text-default { --nora-text: #222222; --nora-text-secondary: #666666; --nora-text-tertiary: #999999; --nora-text-dimmed: #aaaaaa; }
+.scheme-editor-light.light-text-default { --nora-text: #333333; --nora-text-secondary: #666666; --nora-text-tertiary: #999999; --nora-text-dimmed: #aaaaaa; }
 .scheme-editor-light.light-text-graphite { --nora-text: #393939; --nora-text-secondary: #747474; --nora-text-tertiary: #9d9d9d; --nora-text-dimmed: #b8b8b8; }
 .scheme-editor-light.light-text-charcoal { --nora-text: #404040; --nora-text-secondary: #7a7a7a; --nora-text-tertiary: #a2a2a2; --nora-text-dimmed: #bdbdbd; }
 .scheme-editor-light.light-text-ink { --nora-text: #464646; --nora-text-secondary: #7f7f7f; --nora-text-tertiary: #a6a6a6; --nora-text-dimmed: #c0c0c0; }
@@ -839,13 +839,73 @@ html[data-android] .ios-glass-glare-soft {
   box-shadow: inset 0 1px 0 var(--settings-divider-glint, transparent);
 }
 
-/* Mobile wells: the frame is a hairline that catches light on top and fades out below. */
-@media (max-width: 767px) {
-  [data-settings-well] {
-    position: relative;
-  }
+/* Wells: a hairline that catches light on top and fades out below. */
+[data-settings-well] {
+  position: relative;
+}
 
-  [data-settings-well]::before {
+[data-settings-well]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--settings-well-stroke, var(--settings-divider)) 62%, transparent) 0%,
+    color-mix(in srgb, var(--settings-well-stroke, var(--settings-divider)) 22%, transparent) 28%,
+    transparent 58%
+  );
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+/* Phone profile tabs: same capsule as the «Изменить» dock button, without an icon. */
+.profile-masthead-tab {
+  background: var(--nora-panel);
+  color: var(--nora-text);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 70%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.profile-masthead-tab[data-active] {
+  background: #333333;
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 28%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.scheme-editor-dark .profile-masthead-tab,
+[data-scheme="editor-dark"] .profile-masthead-tab {
+  background: var(--nora-input-bg);
+  color: var(--nora-text);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.scheme-editor-dark .profile-masthead-tab[data-active],
+[data-scheme="editor-dark"] .profile-masthead-tab[data-active] {
+  background: #333333;
+  color: #fff;
+}
+
+.profile-avatar {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 65%, transparent);
+}
+
+/* Mobile profile sheet: a solid rim along the top curve, with a light catch. */
+@media (max-width: 1023px) {
+  [data-profile-sheet]::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -853,9 +913,8 @@ html[data-android] .ios-glass-glare-soft {
     padding: 1px;
     background: linear-gradient(
       to bottom,
-      color-mix(in srgb, var(--settings-well-stroke, var(--settings-divider)) 62%, transparent) 0%,
-      color-mix(in srgb, var(--settings-well-stroke, var(--settings-divider)) 22%, transparent) 28%,
-      transparent 58%
+      color-mix(in srgb, black 4%, transparent) 0 22px,
+      transparent 22px
     );
     pointer-events: none;
     -webkit-mask:
@@ -866,6 +925,23 @@ html[data-android] .ios-glass-glare-soft {
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
     mask-composite: exclude;
+  }
+
+  [data-profile-sheet]::after {
+    content: "";
+    position: absolute;
+    top: 1px;
+    left: 18px;
+    right: 18px;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--settings-well-glint, white) 18%,
+      var(--settings-well-glint, white) 82%,
+      transparent
+    );
+    pointer-events: none;
   }
 }
 

@@ -1,14 +1,15 @@
 import type { UserDto } from '@web-app-demo/contracts'
+import { MailIcon, UserRoundIcon } from 'lucide-react'
 import { useId, useState, type FormEvent } from 'react'
 
-import { SettingsEntry, SettingsReadRows, useSettingsDraft } from '@/components/settings-canvas'
+import { SettingsEntry, SettingsFieldMark, SettingsReadRows, useSettingsDraft } from '@/components/settings-canvas'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useUpdateProfileMutation } from './queries'
 
-export function ProfilePanel({ user }: { user: UserDto }) {
+export function ProfilePanel({ className, user }: { className?: string, user: UserDto }) {
   const displayNameErrorId = useId()
   const [displayName, setDisplayName] = useState(user.displayName ?? '')
   const mutation = useUpdateProfileMutation()
@@ -51,6 +52,7 @@ export function ProfilePanel({ user }: { user: UserDto }) {
   return (
     <SettingsEntry
       badge="Аккаунт"
+      className={className}
       description="Имя в приложении."
       title="Данные профиля"
     >
@@ -58,12 +60,15 @@ export function ProfilePanel({ user }: { user: UserDto }) {
       <form className="grid gap-3.5" noValidate onSubmit={submit}>
         <FieldGroup>
           <Field data-invalid={displayNameInvalid}>
-            <FieldLabel
-              className="font-normal text-[var(--nora-text-secondary)]"
-              htmlFor="profile-display-name"
-            >
-              Отображаемое имя
-            </FieldLabel>
+            <div className="mb-1.5 flex items-center gap-2.5">
+              <SettingsFieldMark icon={UserRoundIcon} />
+              <FieldLabel
+                className="!mb-0 font-normal text-[var(--nora-text-secondary)]"
+                htmlFor="profile-display-name"
+              >
+                Отображаемое имя
+              </FieldLabel>
+            </div>
             <Input
               aria-describedby={displayNameInvalid ? displayNameErrorId : undefined}
               aria-invalid={displayNameInvalid}
@@ -89,14 +94,16 @@ export function ProfilePanel({ user }: { user: UserDto }) {
             )}
           </Field>
           <Field>
-            <FieldLabel
-              className="font-normal text-[var(--nora-text-secondary)]"
-              htmlFor="profile-email"
-            >
-              Email
-            </FieldLabel>
+            <div className="mb-1.5 flex items-center gap-2.5">
+              <SettingsFieldMark icon={MailIcon} />
+              <FieldLabel
+                className="!mb-0 font-normal text-[var(--nora-text-secondary)]"
+                htmlFor="profile-email"
+              >
+                Email
+              </FieldLabel>
+            </div>
             <Input
-              aria-readonly="true"
               className="font-normal"
               id="profile-email"
               readOnly
@@ -123,8 +130,8 @@ export function ProfilePanel({ user }: { user: UserDto }) {
       ) : (
         <SettingsReadRows
           rows={[
-            { label: 'Отображаемое имя', value: displayName.trim() || user.email },
-            { label: 'Email', value: user.email },
+            { icon: UserRoundIcon, label: 'Отображаемое имя', value: displayName.trim() || user.email },
+            { icon: MailIcon, label: 'Email', value: user.email },
           ]}
         />
       )}

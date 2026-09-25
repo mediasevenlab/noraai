@@ -3,17 +3,18 @@ import {
   nicknameSchema,
   type UserDto,
 } from '@web-app-demo/contracts'
+import { AtSignIcon } from 'lucide-react'
 import { useId, useState, type FormEvent } from 'react'
 
 import { NoraToast } from '@/components/nora'
-import { SettingsEntry, SettingsReadRows, useSettingsDraft } from '@/components/settings-canvas'
+import { SettingsEntry, SettingsFieldMark, SettingsReadRows, useSettingsDraft } from '@/components/settings-canvas'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { ApiRequestError } from '@/platform/api'
 import { useUpdateProfileMutation } from './queries'
 
-export function NicknamePanel({ user }: { user: UserDto }) {
+export function NicknamePanel({ className, user }: { className?: string, user: UserDto }) {
   const errorId = useId()
   const [nickname, setNickname] = useState(user.nickname ?? '')
   const mutation = useUpdateProfileMutation()
@@ -72,18 +73,22 @@ export function NicknamePanel({ user }: { user: UserDto }) {
   return (
     <SettingsEntry
       badge="Публично"
+      className={className}
       description="Для ссылок и публичного профиля."
       title="Никнейм"
     >
       {showForm ? (
       <form className="grid gap-3.5" noValidate onSubmit={submit}>
         <Field data-invalid={!validation.success}>
-          <FieldLabel
-            className="font-normal text-[var(--nora-text-secondary)]"
-            htmlFor="settings-nickname"
-          >
-            Ваш никнейм
-          </FieldLabel>
+          <div className="mb-1.5 flex items-center gap-2.5">
+            <SettingsFieldMark icon={AtSignIcon} />
+            <FieldLabel
+              className="!mb-0 font-normal text-[var(--nora-text-secondary)]"
+              htmlFor="settings-nickname"
+            >
+              Ваш никнейм
+            </FieldLabel>
+          </div>
           <Input
             aria-describedby={!validation.success ? errorId : undefined}
             aria-invalid={!validation.success}
@@ -131,7 +136,7 @@ export function NicknamePanel({ user }: { user: UserDto }) {
       </form>
       ) : (
         <SettingsReadRows
-          rows={[{ label: 'Ваш никнейм', value: nickname || '—' }]}
+          rows={[{ icon: AtSignIcon, label: 'Ваш никнейм', value: nickname || '—' }]}
         />
       )}
       {mutation.isError && (

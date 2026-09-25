@@ -56,7 +56,7 @@ describe('sidebar scheme contrast', () => {
 
   test('search and active chips stay darker than the sidebar in every light palette', () => {
     expect(borders.size).toBe(LIGHT_PALETTES.length)
-    const text = hexToRgb('#222222')
+    const text = hexToRgb('#333333')
 
     for (const palette of LIGHT_PALETTES) {
       const panel = hexToRgb(palette.panel)

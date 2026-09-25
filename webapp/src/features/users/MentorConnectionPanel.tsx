@@ -1,8 +1,8 @@
 import { registrationMentorIdentifierSchema } from '@web-app-demo/contracts'
-import { CircleCheckIcon, CircleXIcon } from 'lucide-react'
+import { CircleCheckIcon, CircleXIcon, UsersIcon } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 
-import { SettingsEntry, SettingsReadRows, useSettingsMode } from '@/components/settings-canvas'
+import { SettingsEntry, SettingsFieldMark, SettingsReadRows, useSettingsMode } from '@/components/settings-canvas'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
@@ -83,12 +83,15 @@ export function MentorConnectionPanel() {
       <div className="grid gap-3.5">
         {currentMentor.data?.mentor ? (
           <Field>
-            <FieldLabel
-              className="font-normal text-[var(--nora-text-secondary)]"
-              htmlFor={identifierId}
-            >
-              Никнейм или ID наставника
-            </FieldLabel>
+            <div className="mb-1.5 flex items-center gap-2.5">
+              <SettingsFieldMark icon={UsersIcon} />
+              <FieldLabel
+                className="!mb-0 font-normal text-[var(--nora-text-secondary)]"
+                htmlFor={identifierId}
+              >
+                Никнейм или ID наставника
+              </FieldLabel>
+            </div>
             <div className="relative">
               <Input
                 className="pr-10 font-normal"
@@ -108,12 +111,15 @@ export function MentorConnectionPanel() {
           </Field>
         ) : (
           <Field data-invalid={lookupState === 'not_found' || lookupState === 'error'}>
-            <FieldLabel
-              className="font-normal text-[var(--nora-text-secondary)]"
-              htmlFor={identifierId}
-            >
-              Никнейм или ID наставника
-            </FieldLabel>
+            <div className="mb-1.5 flex items-center gap-2.5">
+              <SettingsFieldMark icon={UsersIcon} />
+              <FieldLabel
+                className="!mb-0 font-normal text-[var(--nora-text-secondary)]"
+                htmlFor={identifierId}
+              >
+                Никнейм или ID наставника
+              </FieldLabel>
+            </div>
             <div className="relative">
               <Input
                 aria-invalid={lookupState === 'not_found' || lookupState === 'error'}
@@ -196,6 +202,7 @@ export function MentorConnectionPanel() {
       ) : (
         <SettingsReadRows
           rows={[{
+            icon: UsersIcon,
             label: 'Наставник',
             value: currentMentor.data?.mentor
               ? (currentMentor.data.mentor.displayName

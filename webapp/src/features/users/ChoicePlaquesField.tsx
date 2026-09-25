@@ -16,7 +16,7 @@ function plaqueClassName(checked: boolean, entry: boolean) {
     'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
     'has-focus-visible:shadow-[inset_0_0_0_1px_var(--nora-tint)]',
     checked
-      && 'bg-[var(--nora-tint-dimmed)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)] [&_[data-option-note]]:text-[var(--nora-text-secondary)]',
+      && 'bg-[var(--nora-tint-dimmed)] text-[var(--nora-tint)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)] [&_[data-option-note]]:text-[var(--nora-tint)]',
   )
 }
 

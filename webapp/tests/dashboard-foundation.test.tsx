@@ -134,7 +134,7 @@ test('the site header is hidden on mobile', () => {
   expect(mobileNav).not.toContain('ios-glass-tile divide-y')
   expect(mobileNav).not.toContain('rounded-[22px] px-3')
   expect(mobileNav).toContain('text-[20px] font-medium leading-6')
-  expect(mobileNav).toContain('truncate text-[13px] font-normal leading-4')
+  expect(mobileNav).toContain('truncate text-[13px] font-medium leading-4')
   expect(mobileNav).toContain('ios-glass-glyph')
   expect(mobileNav).toContain('ios-glass-glyph text-[var(--nora-text-secondary)]')
   expect(mobileNav).toContain('item.active')

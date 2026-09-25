@@ -1,8 +1,8 @@
-import { SearchIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
+import { AtSignIcon, ChevronLeftIcon, ChevronRightIcon, GiftIcon, HashIcon, SearchIcon, UserRoundIcon, UsersIcon } from 'lucide-react'
 import { useState, type FormEvent, type MouseEvent } from 'react'
 
 import { DataTableFrame } from '@/components/dashboard'
-import { SettingsEntry } from '@/components/settings-canvas'
+import { SettingsEntry, SettingsFieldMark } from '@/components/settings-canvas'
 import { NoraBadge, NoraSearch } from '@/components/nora/primitives'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
@@ -92,16 +92,28 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="w-[40%] px-3.5 text-xs font-medium text-[var(--nora-text)]">
-                Аккаунт
+                <span className="inline-flex items-center gap-1.5">
+                  {layout === 'entry' ? <SettingsFieldMark icon={UserRoundIcon} /> : null}
+                  Аккаунт
+                </span>
               </TableHead>
               <TableHead className="w-[20%] pl-6 text-xs font-medium text-[var(--nora-text)]">
-                Никнейм
+                <span className="inline-flex items-center gap-1.5">
+                  {layout === 'entry' ? <SettingsFieldMark icon={AtSignIcon} /> : null}
+                  Никнейм
+                </span>
               </TableHead>
               <TableHead className="w-[20%] text-xs font-medium text-[var(--nora-text)]">
-                ID
+                <span className="inline-flex items-center gap-1.5">
+                  {layout === 'entry' ? <SettingsFieldMark icon={HashIcon} /> : null}
+                  ID
+                </span>
               </TableHead>
               <TableHead className="w-[20%] text-xs font-medium text-[var(--nora-text)]">
-                Бонусы
+                <span className="inline-flex items-center gap-1.5">
+                  {layout === 'entry' ? <SettingsFieldMark icon={GiftIcon} /> : null}
+                  Бонусы
+                </span>
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -153,9 +165,9 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
   const searchField = (
     <NoraSearch
       aria-label="Поиск рефералов"
-      className="h-8 min-h-8 w-full bg-[var(--nora-panel)] [&_svg]:size-3.5 lg:w-[220px]"
-      icon={<SearchIcon />}
-      inputClassName="text-[13px] leading-5"
+      className="h-8 min-h-8 w-full bg-[var(--nora-panel)] lg:w-[220px]"
+      icon={<SearchIcon className="!size-4 max-[767px]:!size-[calc(1rem/0.875)]" strokeWidth={1.75} />}
+      inputClassName="text-[13px] !font-light leading-5 placeholder:!font-light"
       onChange={(event) => setDraftQuery(event.target.value)}
       placeholder="Поиск рефералов…"
       value={draftQuery}

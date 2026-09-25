@@ -4,8 +4,8 @@ import {
   type UserDto,
 } from '@web-app-demo/contracts'
 import { CheckIcon, PencilIcon, XIcon, type LucideIcon } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
-import { SettingsEntry } from '@/components/settings-canvas'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { SettingsEntry, SettingsFieldMark, useSettingsDraft, useSettingsMode } from '@/components/settings-canvas'
 import { cn } from '@/lib/utils'
 import { QuestionnaireFieldControl } from './QuestionnaireFieldControl'
 import {
@@ -85,7 +85,7 @@ function EditFieldBlock({
   const entry = variant === 'entry'
   const inline =
     entry && field.layout !== 'extended' && field.control == null
-  const label = (
+  const labelText = (
     <span
       className={
         entry
@@ -102,6 +102,12 @@ function EditFieldBlock({
       ) : null}
     </span>
   )
+  const label = entry ? (
+    <span className="flex min-w-0 items-center gap-2.5">
+      <SettingsFieldMark icon={field.icon} />
+      {labelText}
+    </span>
+  ) : labelText
   const control = (
     <QuestionnaireFieldControl
       field={field}
@@ -144,11 +150,11 @@ function ProfileSectionMarker({
     <span
       aria-hidden
       className={cn(
-        'inline-flex size-7 shrink-0 items-center justify-center rounded-full',
+        'inline-flex size-9 shrink-0 items-center justify-center rounded-full',
         iconTone,
       )}
     >
-      <Icon className="size-3.5" strokeWidth={2} />
+      <Icon className="size-4.5" strokeWidth={2} />
     </span>
   )
 }
@@ -209,12 +215,14 @@ function ProfileSectionCard({
 }
 
 function ProfileSectionEntry({
+  className,
   editing,
   onChange,
   section,
   sectionIndex,
   values,
 }: {
+  className?: string
   editing: boolean
   onChange: (key: FieldKey, value: string) => void
   section: ProfileSection
@@ -225,8 +233,13 @@ function ProfileSectionEntry({
 
   return (
     <SettingsEntry
+      className={className}
       description={section.description}
-      marker={<ProfileSectionMarker section={section} sectionIndex={sectionIndex} />}
+      marker={(
+        <span className="max-lg:hidden">
+          <ProfileSectionMarker section={section} sectionIndex={sectionIndex} />
+        </span>
+      )}
       title={section.title}
     >
       {editing ? (
@@ -266,11 +279,12 @@ function ProfileSectionEntry({
                   index === rows.length - 1 && 'pb-0',
                   extended
                     ? 'grid gap-2'
-                    : 'grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4',
+                    : 'grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4',
                 )}
                 key={field.key}
               >
-                <span className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
+                <span className="flex min-w-0 items-center gap-2.5 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
+                  <SettingsFieldMark icon={field.icon} />
                   {field.unit ? measureLabel(field) : field.label}
                 </span>
                 <span
@@ -327,6 +341,7 @@ function ProfileBarButton({
 }
 
 export function useClientProfileEditor() {
+  const mode = useSettingsMode()
   const questionnaire = useQuestionnaireQuery()
   const saveMutation = usePutQuestionnaireMutation()
   const serverAnswers = questionnaire.data?.answers
@@ -336,7 +351,16 @@ export function useClientProfileEditor() {
   const [draft, setDraft] = useState<Record<FieldKey, string>>(
     () => serverAnswers ?? emptyQuestionnaireAnswers(),
   )
-  const [editing, setEditing] = useState(false)
+  const [localEditing, setLocalEditing] = useState(false)
+  const editing = mode.managed ? mode.editing : localEditing
+  const valuesRef = useRef(values)
+  valuesRef.current = values
+  const wasEditingRef = useRef(false)
+
+  useEffect(() => {
+    if (editing && !wasEditingRef.current) setDraft(valuesRef.current)
+    wasEditingRef.current = editing
+  }, [editing])
 
   useEffect(() => {
     if (!serverAnswers || editing) return
@@ -346,12 +370,12 @@ export function useClientProfileEditor() {
 
   const startEdit = () => {
     setDraft(values)
-    setEditing(true)
+    setLocalEditing(true)
   }
 
   const cancelEdit = () => {
-    setDraft(values)
-    setEditing(false)
+    setDraft(valuesRef.current)
+    if (!mode.managed) setLocalEditing(false)
   }
 
   const saveEdit = async () => {
@@ -363,11 +387,23 @@ export function useClientProfileEditor() {
         setValues(response.answers)
         setDraft(response.answers)
       }
-      setEditing(false)
+      if (!mode.managed) setLocalEditing(false)
+      return true
     } catch {
-      // Keep the editor open; saveError is shown from the mutation.
+      return false
     }
   }
+
+  useSettingsDraft({
+    id: 'profile-questionnaire',
+    disabled: false,
+    pending: saveMutation.isPending,
+    save: async () => {
+      if (!serverAnswers) return !questionnaire.isLoading
+      return saveEdit()
+    },
+    reset: cancelEdit,
+  })
 
   const updateDraft = (key: FieldKey, value: string) => {
     setDraft((current) => ({ ...current, [key]: value }))
@@ -424,6 +460,7 @@ export function ClientProfileCard({
   editing,
   layout = 'card',
   onChange,
+  sectionClassName,
   values,
 }: {
   user: UserDto
@@ -432,6 +469,7 @@ export function ClientProfileCard({
   editing: boolean
   layout?: 'card' | 'entry'
   onChange: (key: FieldKey, value: string) => void
+  sectionClassName?: string
   values: Record<FieldKey, string>
 }) {
   if (layout === 'entry') {
@@ -439,6 +477,7 @@ export function ClientProfileCard({
       <>
         {PROFILE_SECTIONS.map((section, sectionIndex) => (
           <ProfileSectionEntry
+            className={cn(sectionClassName, sectionIndex === 0 && 'max-lg:!pt-0')}
             editing={editing}
             key={section.title}
             onChange={onChange}

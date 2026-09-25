@@ -1,5 +1,6 @@
 import { Navigate } from '@tanstack/react-router'
 import type { UserDto } from '@web-app-demo/contracts'
+import { useState } from 'react'
 
 import { userGeneralSearch } from '@/features/navigation'
 
@@ -9,6 +10,7 @@ import { AccountProfileCard } from './AccountProfileCard'
 import { ClientProfileCard, useClientProfileEditor } from './ClientProfileCard'
 import { MentorConnectionPanel } from './MentorConnectionPanel'
 import { NicknamePanel } from './NicknamePanel'
+import { ProfileMobileMasthead, type ProfileMobileTab } from './ProfileMobileMasthead'
 import { ProfilePanel } from './ProfilePanel'
 import { QuestionnaireOnboarding } from './QuestionnaireOnboarding'
 import { TelegramUsernamePanel } from './TelegramUsernamePanel'
@@ -20,42 +22,70 @@ export function UserHome() {
   return <Navigate replace search={userGeneralSearch()} to="/app/general" />
 }
 
-export function UserProfile({ user }: { user: UserDto }) {
+function ProfileQuestionnaire({ className, user }: { className?: string, user: UserDto }) {
   const profile = useClientProfileEditor()
 
+  if (profile.isLoading) {
+    return (
+      <li className="font-[family-name:var(--nora-font)] text-[13px] font-light text-[var(--nora-text-tertiary)] lg:ml-auto lg:w-lg">
+        Загрузка анкеты…
+      </li>
+    )
+  }
+
+  if (profile.isError) {
+    return (
+      <li className="font-[family-name:var(--nora-font)] text-[13px] text-[var(--nora-error)] lg:ml-auto lg:w-lg">
+        Не удалось загрузить анкету.
+      </li>
+    )
+  }
+
   return (
-    <SettingsCanvas
-      actions={profile.actions}
-      ctaLabel="Профиль"
-      description="Анкета, которую вы заполнили: пол, цель, активность и ограничения. Пустые необязательные ответы здесь не показываются."
-      divided={false}
-      eyebrow="Анкета"
-      meta={user.email}
-      panelsId="profile-panels"
-      title="Профиль"
-    >
-      {profile.isLoading ? (
-        <li className="font-[family-name:var(--nora-font)] text-[13px] font-light text-[var(--nora-text-tertiary)] lg:ml-auto lg:w-lg">
-          Загрузка анкеты…
-        </li>
-      ) : profile.isError ? (
-        <li className="font-[family-name:var(--nora-font)] text-[13px] text-[var(--nora-error)] lg:ml-auto lg:w-lg">
-          Не удалось загрузить анкету.
-        </li>
-      ) : (
-        <ClientProfileCard
-          editing={profile.editing}
-          layout="entry"
-          onChange={profile.onChange}
-          user={user}
-          values={profile.values}
-        />
-      )}
+    <>
+      <ClientProfileCard
+        editing={profile.editing}
+        layout="entry"
+        onChange={profile.onChange}
+        sectionClassName={className}
+        user={user}
+        values={profile.values}
+      />
       {profile.saveError ? (
         <li className="pt-4 font-[family-name:var(--nora-font)] text-[13px] text-[var(--nora-error)] lg:ml-auto lg:w-lg">
           Не удалось сохранить анкету. Попробуйте ещё раз.
         </li>
       ) : null}
+    </>
+  )
+}
+
+export function UserProfile({ user }: { user: UserDto }) {
+  const [tab, setTab] = useState<ProfileMobileTab>('profile')
+  const accountClass = tab === 'questionnaire' ? 'max-lg:hidden' : undefined
+  const questionnaireClass = tab === 'profile' ? 'max-lg:hidden' : undefined
+
+  return (
+    <SettingsCanvas
+      ctaLabel="Профиль"
+      description="Имя и никнейм, затем анкета: пол, цель, активность и ограничения."
+      divided={false}
+      editable
+      eyebrow="Аккаунт"
+      lead={(
+        <ProfileMobileMasthead
+          onTab={setTab}
+          tab={tab}
+          user={user}
+        />
+      )}
+      meta={user.email}
+      panelsId="profile-panels"
+      title="Профиль"
+    >
+      <ProfilePanel className={accountClass} user={user} />
+      <NicknamePanel className={accountClass} user={user} />
+      <ProfileQuestionnaire className={questionnaireClass} user={user} />
     </SettingsCanvas>
   )
 }
@@ -97,15 +127,13 @@ export function UserSettings({
 }) {
   return (
     <SettingsCanvas
-      description="Имя, которое видно в рабочей области, публичный никнейм и связь с Telegram собраны в этом разделе. Здесь же можно подключиться к наставнику."
+      description="Приёмы из Telegram через бота и подключение к наставнику."
       divided={false}
       editable
       eyebrow="Аккаунт"
       meta={user.email}
       title="Настройки"
     >
-      <ProfilePanel user={user} />
-      <NicknamePanel user={user} />
       <TelegramUsernamePanel user={user} />
       <MentorConnectionPanel />
     </SettingsCanvas>

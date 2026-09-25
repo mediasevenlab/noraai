@@ -53,6 +53,7 @@ function SettingsCanvasView({
   eyebrow,
   meta,
   divided = true,
+  lead,
   panelsId = 'settings-panels',
   title,
 }: {
@@ -62,12 +63,16 @@ function SettingsCanvasView({
   description: string
   divided?: boolean
   eyebrow: string
+  lead?: ReactNode
   meta?: string
   panelsId?: string
   title: string
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-3 pt-3 pb-8 sm:px-6 md:px-10 md:py-12 lg:flex-row lg:gap-16 lg:px-12">
+    <div className={cn(
+      'mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-3 pt-3 pb-8 sm:px-6 md:px-10 md:py-12 lg:flex-row lg:gap-16 lg:px-12',
+      lead && 'max-lg:min-h-full max-lg:gap-0 max-lg:bg-[color-mix(in_srgb,var(--nora-text)_5%,var(--background))] max-lg:pb-0',
+    )}>
       <aside className="hidden w-full shrink-0 flex-col gap-6 lg:sticky lg:top-6 lg:flex lg:w-[280px] lg:self-start">
         <div>
           <div className={cn('mb-1', settingsCaptionClass)}>{eyebrow}</div>
@@ -96,14 +101,20 @@ function SettingsCanvasView({
         </div>
       </aside>
 
-      <section className="min-w-0 flex-1" aria-label={title} id={panelsId}>
+      <section className={cn('min-w-0 flex-1', lead && 'max-lg:flex max-lg:flex-col')} aria-label={title} id={panelsId}>
+        {lead ? <div className="lg:hidden">{lead}</div> : null}
         <ul
-          className={cn('group/sections flex flex-col', divided && 'divide-y divide-border/70')}
+          className={cn(
+            'group/sections flex flex-col',
+            divided && 'divide-y divide-border/70',
+            lead && 'max-lg:relative max-lg:min-h-0 max-lg:flex-1 max-lg:-mx-3 max-lg:-mt-6 max-lg:overflow-hidden max-lg:rounded-t-[22px] max-lg:bg-background max-lg:px-3 max-lg:pt-7 max-lg:pb-[calc(5rem+env(safe-area-inset-bottom))] max-lg:shadow-[0_-4px_14px_rgba(0,0,0,0.035)] sm:max-lg:-mx-6 sm:max-lg:px-6 md:max-lg:-mx-10 md:max-lg:px-10',
+          )}
           data-plain={divided ? undefined : ''}
+          data-profile-sheet={lead ? '' : undefined}
         >
           {children}
         </ul>
-        {actions ? <div aria-hidden className="h-16 lg:hidden" /> : null}
+        {actions && !lead ? <div aria-hidden className="h-16 lg:hidden" /> : null}
       </section>
       {actions ? (
         <div
@@ -121,18 +132,20 @@ function SettingsCanvasView({
 export function SettingsEntry({
   badge,
   children,
+  className,
   description,
   marker,
   title,
 }: {
   badge?: string
   children: ReactNode
+  className?: string
   description: string
   marker?: ReactNode
   title: string
 }) {
   return (
-    <li className="w-full py-6 first:pt-0 group-data-[plain]/sections:py-[15.6px] group-data-[plain]/sections:first:pt-0 lg:ml-auto lg:w-lg lg:max-w-full">
+    <li className={cn('w-full py-6 first:pt-0 group-data-[plain]/sections:py-[15.6px] group-data-[plain]/sections:first:pt-0 lg:group-data-[plain]/sections:py-[20px] lg:group-data-[plain]/sections:first:pt-0 lg:ml-auto lg:w-lg lg:max-w-full', className)}>
       <div className="flex items-center justify-between gap-2 lg:gap-x-4">
         <h2 className="min-w-0 font-heading text-[22px] leading-tight font-bold tracking-[-0.02em] text-foreground md:text-[24px]">
           {title}
@@ -150,23 +163,40 @@ export function SettingsEntry({
 const readRowClass =
   'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5'
 
+export function SettingsFieldMark({
+  icon: Icon,
+}: {
+  icon: LucideIcon
+}) {
+  return (
+    <Icon
+      aria-hidden
+      className="size-4 shrink-0 text-[var(--nora-text-secondary)]"
+      strokeWidth={1.75}
+    />
+  )
+}
+
 export function SettingsReadRows({
   rows,
 }: {
-  rows: Array<{ label: string, value: string }>
+  rows: Array<{ icon?: LucideIcon, label: string, value: string }>
 }) {
   return (
     <div>
       {rows.map((row, index) => (
         <div
           className={cn(
-            'grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 border-t border-[var(--nora-divider)] py-3.5',
+            'grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 border-t border-[var(--nora-divider)] py-3.5',
             index === 0 && 'border-t-0 pt-0',
             index === rows.length - 1 && 'pb-0',
           )}
           key={row.label}
         >
-          <span className={cn(readRowClass, 'font-medium text-[var(--nora-text)]')}>{row.label}</span>
+          <span className="flex min-w-0 items-center gap-2.5">
+            {row.icon ? <SettingsFieldMark icon={row.icon} /> : null}
+            <span className={cn(readRowClass, 'font-medium text-[var(--nora-text)]')}>{row.label}</span>
+          </span>
           <span className={cn(readRowClass, 'min-w-0 break-words text-right font-light text-[color-mix(in_srgb,white_10%,color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary))))]')}>
             {row.value || '—'}
           </span>

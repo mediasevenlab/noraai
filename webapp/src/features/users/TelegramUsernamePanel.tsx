@@ -6,10 +6,11 @@ import {
   type TelegramLinkResponse,
   type UserDto,
 } from '@web-app-demo/contracts'
+import { SendIcon } from 'lucide-react'
 import { useId, useState, type FormEvent } from 'react'
 
 import { NoraToast } from '@/components/nora'
-import { SettingsEntry, SettingsReadRows, useSettingsMode } from '@/components/settings-canvas'
+import { SettingsEntry, SettingsFieldMark, SettingsReadRows, useSettingsMode } from '@/components/settings-canvas'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -123,9 +124,12 @@ export function TelegramUsernamePanel({
       {showForm ? (bound ? (
         <div className="grid gap-3.5">
           <Field>
-            <FieldLabel className="font-normal text-[var(--nora-text-secondary)]">
-              Подтверждённый контакт
-            </FieldLabel>
+            <div className="mb-1.5 flex items-center gap-2.5">
+              <SettingsFieldMark icon={SendIcon} />
+              <FieldLabel className="!mb-0 font-normal text-[var(--nora-text-secondary)]">
+                Подтверждённый контакт
+              </FieldLabel>
+            </div>
             <Input
               className="font-normal"
               disabled
@@ -161,12 +165,15 @@ export function TelegramUsernamePanel({
       ) : (
         <form className="grid gap-3.5" noValidate onSubmit={startLink}>
           <Field data-invalid={!validation.success}>
-            <FieldLabel
-              className="font-normal text-[var(--nora-text-secondary)]"
-              htmlFor={variant === 'notify' ? 'settings-telegram-notify-contact' : 'settings-telegram-contact'}
-            >
-              Ник или телефон
-            </FieldLabel>
+            <div className="mb-1.5 flex items-center gap-2.5">
+              <SettingsFieldMark icon={SendIcon} />
+              <FieldLabel
+                className="!mb-0 font-normal text-[var(--nora-text-secondary)]"
+                htmlFor={variant === 'notify' ? 'settings-telegram-notify-contact' : 'settings-telegram-contact'}
+              >
+                Ник или телефон
+              </FieldLabel>
+            </div>
             <Input
               aria-describedby={!validation.success ? errorId : undefined}
               aria-invalid={!validation.success}
@@ -229,23 +236,22 @@ export function TelegramUsernamePanel({
             </NoraToast>
           )}
 
-          <div>
-            <Button
-              className="font-normal"
-              disabled={
-                linkMutation.isPending
-                || !validation.success
-                || (!validation.telegramUsername && !validation.telegramPhone)
-              }
-              type="submit"
-            >
-              {linkMutation.isPending ? 'Готовим код…' : 'Привязать через бота'}
-            </Button>
-          </div>
+          {(validation.telegramUsername || validation.telegramPhone || linkMutation.isPending) ? (
+            <div>
+              <Button
+                className="font-normal"
+                disabled={linkMutation.isPending}
+                type="submit"
+              >
+                {linkMutation.isPending ? 'Готовим код…' : 'Привязать через бота'}
+              </Button>
+            </div>
+          ) : null}
         </form>
       )) : (
         <SettingsReadRows
           rows={[{
+            icon: SendIcon,
             label: 'Ник или телефон',
             value: displayTelegramContact(user) || 'Не привязан',
           }]}

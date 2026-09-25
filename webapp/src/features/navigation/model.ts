@@ -243,6 +243,7 @@ export function safeReturnPath(role: UserRole, value: string | undefined): strin
     return '/app/onboarding'
   }
 
+
   // Admin design-system, components, blocks, stack, and steps live outside the primary nav list.
   // Retired demo URLs still resolve so old bookmarks land on admin home.
   if (role === 'admin' && /^\/admin\/demo\/[a-z0-9-]+$/.test(url.pathname)) {

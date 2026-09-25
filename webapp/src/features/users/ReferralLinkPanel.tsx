@@ -1,9 +1,9 @@
 import type { UserDto } from '@web-app-demo/contracts'
-import { CircleCheckIcon } from 'lucide-react'
+import { CircleCheckIcon, LinkIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { FieldDescription } from '@/components/ui/field'
-import { SettingsEntry } from '@/components/settings-canvas'
+import { SettingsEntry, SettingsFieldMark } from '@/components/settings-canvas'
 import { cn } from '@/lib/utils'
 
 type ReferralLinkVariant = 'referral' | 'mentor'
@@ -72,7 +72,8 @@ export function ReferralLinkPanel({
         onClick={() => void copyLink()}
         type="button"
       >
-        <span className="min-w-0 flex-1 truncate pr-10 text-[13px] font-normal text-[var(--nora-text)]">
+        {layout === 'entry' ? <SettingsFieldMark icon={LinkIcon} /> : null}
+        <span className={cn('min-w-0 flex-1 truncate pr-10 text-[13px] font-normal text-[var(--nora-text)]', layout === 'entry' && 'pl-2.5')}>
           {referralUrl}
         </span>
         <CircleCheckIcon

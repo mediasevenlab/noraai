@@ -269,7 +269,7 @@ export function MobileNavFab({
                         active={active}
                         icon={item.icon}
                       />
-                      <span className="min-w-0 truncate text-[13px] font-normal leading-4 tracking-normal">
+                      <span className="min-w-0 truncate text-[13px] font-medium leading-4 tracking-normal">
                         {item.label}
                       </span>
                       {hint ? (

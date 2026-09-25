@@ -184,7 +184,7 @@ describe('light palette', () => {
     expect(css).toContain('--nora-divider: color-mix')
     expect(css).not.toMatch(/--nora-divider:\s*var\(--light-border/)
 
-    const text = hexRgb('#222222')
+    const text = hexRgb('#333333')
     const baseLine = hexRgb('#eeeeee')
     const doveLine = hexRgb('#dcdddd')
     const hairline = {

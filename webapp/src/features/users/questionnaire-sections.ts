@@ -1,11 +1,22 @@
 import type { QuestionnaireAnswers } from '@web-app-demo/contracts'
 import {
   ActivityIcon,
+  BrainIcon,
+  CakeIcon,
+  CalendarRangeIcon,
+  CookingPotIcon,
+  DropletsIcon,
   HeartPulseIcon,
+  HistoryIcon,
+  MessageSquareTextIcon,
   MoonStarIcon,
+  RulerIcon,
+  SaladIcon,
+  ScaleIcon,
   ShieldAlertIcon,
   TargetIcon,
   UserRoundIcon,
+  UtensilsIcon,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -36,6 +47,7 @@ export type ProfileField = {
   hideLabel?: boolean
   /** Onboarding: place beside another short field in a 2-column row. */
   halfWidth?: boolean
+  icon: LucideIcon
 }
 
 export type ProfileSection = {
@@ -57,6 +69,7 @@ const fieldSex: ProfileField = {
   key: 'sexLabel',
   label: 'Пол',
   control: 'sex',
+  icon: UserRoundIcon,
 }
 
 const fieldAge: ProfileField = {
@@ -64,6 +77,7 @@ const fieldAge: ProfileField = {
   label: 'Возраст',
   unit: 'лет',
   halfWidth: true,
+  icon: CakeIcon,
 }
 
 const fieldHeight: ProfileField = {
@@ -71,6 +85,7 @@ const fieldHeight: ProfileField = {
   label: 'Рост',
   unit: 'см',
   halfWidth: true,
+  icon: RulerIcon,
 }
 
 const fieldWeight: ProfileField = {
@@ -78,6 +93,7 @@ const fieldWeight: ProfileField = {
   label: 'Вес',
   unit: 'кг',
   halfWidth: true,
+  icon: ScaleIcon,
 }
 
 export function measureLabel(field: Pick<ProfileField, 'label' | 'unit'>) {
@@ -100,6 +116,7 @@ export function measureStoredValue(value: string, unit?: string) {
 const fieldGoal: ProfileField = {
   key: 'goal',
   label: 'Цель',
+  icon: TargetIcon,
   control: 'choice',
   hideLabel: true,
   options: [
@@ -113,6 +130,7 @@ const fieldGoal: ProfileField = {
 const fieldTimeline: ProfileField = {
   key: 'timeline',
   label: 'Срок',
+  icon: CalendarRangeIcon,
   control: 'choice',
   options: [
     { value: '1 месяц', label: '1 месяц', description: 'Быстрый старт' },
@@ -125,6 +143,7 @@ const fieldTimeline: ProfileField = {
 const fieldGoalDetail: ProfileField = {
   key: 'goalDetail',
   label: 'Комментарий',
+  icon: MessageSquareTextIcon,
   layout: 'extended',
   optional: true,
   placeholder: 'Можно уточнить цель или написать свой вариант',
@@ -133,6 +152,7 @@ const fieldGoalDetail: ProfileField = {
 const fieldActivity: ProfileField = {
   key: 'activity',
   label: 'Активность',
+  icon: ActivityIcon,
   control: 'choice',
   hideLabel: true,
   options: [
@@ -147,6 +167,7 @@ const fieldActivity: ProfileField = {
 const fieldMeals: ProfileField = {
   key: 'meals',
   label: 'Приёмы пищи',
+  icon: UtensilsIcon,
   control: 'choice',
   options: [
     { value: '2 раза', label: '2 раза', description: 'Редко, плотно' },
@@ -159,6 +180,7 @@ const fieldMeals: ProfileField = {
 const fieldWater: ProfileField = {
   key: 'water',
   label: 'Вода',
+  icon: DropletsIcon,
   control: 'choice',
   options: [
     { value: 'До 1 л', label: 'До 1 л', description: 'Мало воды' },
@@ -171,6 +193,7 @@ const fieldWater: ProfileField = {
 const fieldActivityDetail: ProfileField = {
   key: 'activityDetail',
   label: 'Комментарий',
+  icon: MessageSquareTextIcon,
   layout: 'extended',
   optional: true,
   placeholder: 'Можно уточнить активность, еду или воду',
@@ -179,6 +202,7 @@ const fieldActivityDetail: ProfileField = {
 const fieldSleep: ProfileField = {
   key: 'sleep',
   label: 'Сон',
+  icon: MoonStarIcon,
   control: 'choice',
   options: [
     { value: 'До 6 ч', label: 'До 6 ч', description: 'Недосып' },
@@ -191,6 +215,7 @@ const fieldSleep: ProfileField = {
 const fieldCooking: ProfileField = {
   key: 'cooking',
   label: 'Готовка',
+  icon: CookingPotIcon,
   control: 'choice',
   options: [
     { value: 'Дома', label: 'Дома', description: 'Чаще сам/сама' },
@@ -203,6 +228,7 @@ const fieldCooking: ProfileField = {
 const fieldDietType: ProfileField = {
   key: 'dietType',
   label: 'Тип питания',
+  icon: SaladIcon,
   control: 'choice',
   hideLabel: true,
   options: [
@@ -216,6 +242,7 @@ const fieldDietType: ProfileField = {
 const fieldRoutineDetail: ProfileField = {
   key: 'routineDetail',
   label: 'Комментарий',
+  icon: MessageSquareTextIcon,
   layout: 'extended',
   optional: true,
   placeholder: 'Что ещё важно по режиму',
@@ -224,6 +251,7 @@ const fieldRoutineDetail: ProfileField = {
 const fieldRestrictions: ProfileField = {
   key: 'restrictions',
   label: 'Ограничения',
+  icon: ShieldAlertIcon,
   control: 'multi-choice',
   hideLabel: true,
   exclusiveValue: 'Нет ограничений',
@@ -242,6 +270,7 @@ const fieldRestrictions: ProfileField = {
 const fieldHealth: ProfileField = {
   key: 'health',
   label: 'Здоровье',
+  icon: HeartPulseIcon,
   control: 'choice',
   options: [
     { value: 'Без особенностей', label: 'Без особенностей', description: 'Ничего критичного' },
@@ -254,6 +283,7 @@ const fieldHealth: ProfileField = {
 const fieldStressEating: ProfileField = {
   key: 'stressEating',
   label: 'Стресс и еда',
+  icon: BrainIcon,
   control: 'choice',
   options: [
     { value: 'Редко', label: 'Редко', description: 'Почти не влияет' },
@@ -266,6 +296,7 @@ const fieldStressEating: ProfileField = {
 const fieldDietExperience: ProfileField = {
   key: 'dietExperience',
   label: 'Опыт диет',
+  icon: HistoryIcon,
   control: 'choice',
   hideLabel: true,
   options: [
@@ -279,6 +310,7 @@ const fieldDietExperience: ProfileField = {
 const fieldNotes: ProfileField = {
   key: 'notes',
   label: 'Комментарий',
+  icon: MessageSquareTextIcon,
   layout: 'extended',
   optional: true,
   placeholder: 'Если есть другие ограничения — напишите здесь',
