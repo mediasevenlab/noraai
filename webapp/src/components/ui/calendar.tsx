@@ -112,6 +112,22 @@ function Calendar({
   onRangeEdgeDrag?: (edge: "start" | "end", date: Date) => void
 }) {
   const defaultClassNames = getDefaultClassNames()
+  const dragCallbackRef = React.useRef(onRangeEdgeDrag)
+  dragCallbackRef.current = onRangeEdgeDrag
+  const DayButton = React.useMemo(() => {
+    return function StableDayButton(
+      props: React.ComponentProps<typeof CalendarDayButton>,
+    ) {
+      return (
+        <CalendarDayButton
+          compactDays={compactDays}
+          locale={locale}
+          onRangeEdgeDrag={(edge, date) => dragCallbackRef.current?.(edge, date)}
+          {...props}
+        />
+      )
+    }
+  }, [compactDays, locale])
 
   return (
     <DayPicker
@@ -251,14 +267,7 @@ function Calendar({
           )
         },
         Dropdown: CalendarCaptionDropdown,
-        DayButton: ({ ...props }) => (
-          <CalendarDayButton
-            compactDays={compactDays}
-            locale={locale}
-            onRangeEdgeDrag={onRangeEdgeDrag}
-            {...props}
-          />
-        ),
+        DayButton,
         WeekNumber: ({ children, ...props }) => {
           return (
             <td {...props}>
@@ -322,25 +331,29 @@ function CalendarDayButton({
         x: event.clientX,
         y: event.clientY,
         moved: false,
+        lastTime: 0,
       }
       const move = (ev: PointerEvent) => {
         if (ev.pointerId !== drag.pointerId) return
         if (!drag.moved && Math.hypot(ev.clientX - drag.x, ev.clientY - drag.y) < 6) return
         if (!drag.moved) {
           suppressFocusRef.current = true
+          document.documentElement.setAttribute("data-calendar-dragging", "")
           if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
         }
         drag.moved = true
         const hit = document.elementFromPoint(ev.clientX, ev.clientY)
         const host = hit instanceof Element ? hit.closest("[data-day-time]") : null
         const time = Number(host?.getAttribute("data-day-time"))
-        if (!time) return
+        if (!time || time === drag.lastTime) return
+        drag.lastTime = time
         dragCallbackRef.current?.(drag.edge, new Date(time))
       }
       const up = (ev: PointerEvent) => {
         window.removeEventListener("pointermove", move)
         window.removeEventListener("pointerup", up)
         window.removeEventListener("pointercancel", up)
+        document.documentElement.removeAttribute("data-calendar-dragging")
         if (!drag.moved || ev.pointerId !== drag.pointerId) return
         suppressFocusRef.current = true
         if (document.activeElement instanceof HTMLElement) document.activeElement.blur()

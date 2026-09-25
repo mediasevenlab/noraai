@@ -132,6 +132,30 @@ export function PlanStartDialog({
   }, [initialDay, open])
 
   const range = planRangeFromStart(date, dayCount)
+  const occupiedRef = React.useRef(occupied)
+  const dragRef = React.useRef<(edge: 'start' | 'end', nextDay: Date) => void>(() => {})
+  occupiedRef.current = occupied
+  dragRef.current = (edge, nextDay) => {
+    const day = startOfLocalDay(nextDay)
+    const next = edge === 'end' ? addLocalDays(day, -(Math.max(1, dayCount) - 1)) : day
+    setDate((current) => (current.getTime() === next.getTime() ? current : next))
+    setMonth((current) => {
+      const monthStart = startOfLocalMonth(next)
+      return current.getTime() === monthStart.getTime() ? current : monthStart
+    })
+  }
+  const DayButton = React.useMemo(() => {
+    return function PlanDayButton(props: React.ComponentProps<typeof CalendarDayButton>) {
+      return (
+        <OccupiedDayButton
+          compactDays
+          marks={occupiedRef.current}
+          onRangeEdgeDrag={(edge, nextDay) => dragRef.current(edge, nextDay)}
+          {...props}
+        />
+      )
+    }
+  }, [])
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -165,7 +189,7 @@ export function PlanStartDialog({
             </div>
           </DialogHeader>
         </div>
-        <div className="min-h-0 overflow-y-auto px-3 pt-3 pb-3 sm:px-4">
+        <div className="min-h-0 overflow-y-auto px-3 pt-3 sm:px-4">
           <div className="rounded-[16px] bg-[var(--nora-inset)] p-2 sm:p-3" data-plan-start-calendar="">
             <Calendar
               className={noraSheetCalendarClass}
@@ -183,24 +207,7 @@ export function PlanStartDialog({
                 button_previous: cn(PLAN_NAV_BUTTON_CLASS, 'rdp-button_previous'),
                 button_next: cn(PLAN_NAV_BUTTON_CLASS, 'rdp-button_next'),
               }}
-              components={{
-                DayButton: (dayProps) => (
-                  <OccupiedDayButton
-                    compactDays
-                    marks={occupied}
-                    onRangeEdgeDrag={(edge, nextDay) => {
-                      const day = startOfLocalDay(nextDay)
-                      const next =
-                        edge === 'end'
-                          ? addLocalDays(day, -(Math.max(1, dayCount) - 1))
-                          : day
-                      setDate(next)
-                      setMonth(startOfLocalMonth(next))
-                    }}
-                    {...dayProps}
-                  />
-                ),
-              }}
+              components={{ DayButton }}
               locale={dayPickerRu}
               mode="range"
               month={month}
@@ -216,7 +223,7 @@ export function PlanStartDialog({
             />
           </div>
           {occupied.length > 0 ? (
-            <ul className="my-3 flex flex-col gap-1.5" data-plan-start-occupied="">
+            <ul className="mt-3 flex flex-col gap-1.5" data-plan-start-occupied="">
               {occupied.map((mark) => (
                 <li
                   key={mark.planId}
@@ -235,7 +242,11 @@ export function PlanStartDialog({
               ))}
             </ul>
           ) : null}
-          <div className="px-0" data-plan-start-actions="">
+        </div>
+        <div
+          className="shrink-0 px-3 pt-3 pb-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))] sm:px-4 sm:pb-3.5"
+          data-plan-start-actions=""
+        >
             <div
               aria-hidden
               className="border-t border-[var(--nora-divider)]"
@@ -259,7 +270,6 @@ export function PlanStartDialog({
                 Начать {format(date, 'd MMMM', { locale: dateFnsRu })}
               </NoraButton>
             </div>
-          </div>
         </div>
       </DialogContent>
     </Dialog>

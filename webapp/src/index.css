@@ -735,8 +735,8 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
 /*
  * iOS Safari zooms focused form controls when computed font-size < 16px.
  * Keep mobile inputs at 16px before and after focus so the viewport does not jump.
- * Inside settings/profile wells the glyphs are drawn at 13px (same as labels) via
- * scale(13/16). Transform does not change the computed font-size, so iOS still
+ * Inside settings/profile wells the glyphs are drawn at 14px via scale(14/16).
+ * Transform does not change the computed font-size, so iOS still
  * sees 16px and does not zoom. Pinch-zoom of the page stays available.
  * Search scales the whole field inside a sized slot, so the placeholder stays intact.
  */
@@ -751,7 +751,18 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
   }
 
   [data-settings-well] {
-    --ios-type-scale: 0.8125;
+    --ios-type-scale: 0.875;
+  }
+
+  [data-settings-well] [data-slot='field-label'],
+  [data-settings-well] [data-slot='select-trigger'],
+  [data-settings-well] button,
+  [data-settings-well] span {
+    font-size: 14px !important;
+  }
+
+  [data-settings-well] [data-slot='field-description'] {
+    font-size: 13px !important;
   }
 
   [data-settings-well] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image']):not([type='hidden']):not([data-ios-keep]) {

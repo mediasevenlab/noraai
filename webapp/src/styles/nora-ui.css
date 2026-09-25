@@ -38,6 +38,8 @@
   --settings-substrate: color-mix(in srgb, white 8%, var(--nora-panel));
   --settings-divider: color-mix(in srgb, white 5%, var(--settings-substrate));
   --settings-divider-glint: color-mix(in srgb, white 10%, var(--settings-substrate));
+  --settings-well-stroke: color-mix(in srgb, white 14%, var(--settings-substrate));
+  --settings-well-glint: color-mix(in srgb, white 22%, var(--settings-substrate));
 
   --nora-text: #ffffff;
   --nora-text-secondary: #999999;
@@ -143,6 +145,8 @@
   --settings-substrate: color-mix(in srgb, white 5%, color-mix(in srgb, white 10%, #f1f1f2));
   --settings-divider: color-mix(in srgb, white 5%, color-mix(in srgb, black 4%, color-mix(in srgb, black 5%, var(--settings-substrate))));
   --settings-divider-glint: color-mix(in srgb, white 60%, var(--settings-substrate));
+  --settings-well-stroke: color-mix(in srgb, black 9%, var(--settings-substrate));
+  --settings-well-glint: color-mix(in srgb, white 78%, var(--settings-substrate));
 
   --nora-text: #222222;
   --nora-text-secondary: #666666;
@@ -833,4 +837,63 @@ html[data-android] .ios-glass-glare-soft {
 
 [data-settings-well] .border-t:not(.border-t-0) {
   box-shadow: inset 0 1px 0 var(--settings-divider-glint, transparent);
+}
+
+/* Mobile wells: the frame is a hairline that catches light on top and fades out below. */
+@media (max-width: 767px) {
+  [data-settings-well] {
+    position: relative;
+  }
+
+  [data-settings-well]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--settings-well-stroke, var(--settings-divider)) 62%, transparent) 0%,
+      color-mix(in srgb, var(--settings-well-stroke, var(--settings-divider)) 22%, transparent) 28%,
+      transparent 58%
+    );
+    pointer-events: none;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+}
+
+/* Drag keeps the range paint. The pressed day must not flash the hover chip. */
+html[data-calendar-dragging] [data-slot="calendar"] td:hover {
+  background-color: transparent !important;
+  color: var(--nora-text) !important;
+}
+html[data-calendar-dragging] [data-slot="calendar"] td:hover::after {
+  display: block !important;
+}
+html[data-calendar-dragging] [data-slot="calendar"] td:hover > button {
+  border-radius: var(--cell-radius) !important;
+  background-color: transparent !important;
+  color: var(--nora-text) !important;
+}
+html[data-calendar-dragging] [data-slot="calendar"] td[data-range-start="true"]:hover,
+html[data-calendar-dragging] [data-slot="calendar"] td[data-range-end="true"]:hover {
+  background-color: var(--nora-tint-dimmed) !important;
+}
+html[data-calendar-dragging] [data-slot="calendar"] td:hover > button[data-range-start="true"],
+html[data-calendar-dragging] [data-slot="calendar"] td:hover > button[data-range-end="true"],
+html[data-calendar-dragging] [data-slot="calendar"] td:hover > button[data-selected-single="true"] {
+  background-color: var(--nora-tint) !important;
+  color: var(--nora-on-accent) !important;
+}
+html[data-calendar-dragging] [data-slot="calendar"] td:hover > button[data-range-middle="true"] {
+  border-radius: 0 !important;
+  background-color: var(--nora-tint-dimmed) !important;
+  color: var(--nora-text) !important;
 }
