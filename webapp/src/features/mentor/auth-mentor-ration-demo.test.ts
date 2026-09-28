@@ -5,6 +5,7 @@ import {
   AUTH_MENTOR_CREATE_DEMO,
   AUTH_MENTOR_CREATE_MEALS,
   AUTH_MENTOR_CREATE_SCRIPT,
+  authMentorCreateAddMealAtMs,
   authMentorCreateCloseAtMs,
   authMentorCreateDraftRation,
   authMentorCreateExistingRation,
@@ -18,7 +19,7 @@ import {
 } from './auth-mentor-ration-demo'
 
 describe('auth mentor ration create choreography', () => {
-  test('opens the editor, then fills breakfast, lunch, and dinner', () => {
+  test('opens the editor, fills breakfast, then reveals lunch and dinner tabs', () => {
     expect(AUTH_MENTOR_CREATE_MEALS.map((meal) => meal.slot)).toEqual([
       'Завтрак',
       'Обед',
@@ -46,8 +47,8 @@ describe('auth mentor ration create choreography', () => {
     expect(authMentorCreatePressAtMs()).toBe(AUTH_MENTOR_CREATE_DEMO.listSettleMs)
     expect(authMentorCreateOpenAtMs()).toBeGreaterThan(authMentorCreatePressAtMs())
     expect(authMentorCreateMealTabAtMs(1)).toBeGreaterThan(authMentorCreateStepDoneAtMs(0))
-    expect(authMentorCreateMealTabAtMs(2)).toBeGreaterThan(authMentorCreateStepDoneAtMs(1))
-    expect(authMentorCreateSavePressAtMs()).toBeGreaterThan(authMentorCreateStepDoneAtMs(2))
+    expect(authMentorCreateAddMealAtMs(1)).toBeGreaterThan(authMentorCreateAddMealAtMs(0))
+    expect(authMentorCreateSavePressAtMs()).toBeGreaterThan(authMentorCreateAddMealAtMs(1))
     expect(authMentorCreateSavedAtMs()).toBeGreaterThan(authMentorCreateSavePressAtMs())
     expect(authMentorCreateCloseAtMs()).toBeGreaterThan(authMentorCreateSavedAtMs())
     expect(authMentorCreateCloseAtMs()).toBeGreaterThan(12_000)
@@ -65,13 +66,17 @@ describe('auth mentor ration create choreography', () => {
     expect(opened.phase).toBe('editor')
     expect(opened.tab).toBe('description')
     expect(opened.meals).toHaveLength(1)
-    const lunch = authMentorCreateProgress(authMentorCreateMealTabAtMs(1))
-    expect(lunch.tab).toBe(1)
+    const lunch = authMentorCreateProgress(authMentorCreateAddMealAtMs(0))
+    expect(lunch.tab).toBe(0)
     expect(lunch.meals).toHaveLength(2)
     expect(lunch.meals[0]?.title).toBe(AUTH_MENTOR_CREATE_MEALS[0]!.title)
-    const dinner = authMentorCreateProgress(authMentorCreateMealTabAtMs(2))
-    expect(dinner.tab).toBe(2)
+    expect(lunch.meals[1]?.slot).toBe('Обед')
+    expect(lunch.meals[1]?.title).toBe('')
+    const dinner = authMentorCreateProgress(authMentorCreateAddMealAtMs(1))
+    expect(dinner.tab).toBe(0)
     expect(dinner.meals).toHaveLength(3)
+    expect(dinner.meals[2]?.slot).toBe('Ужин')
+    expect(dinner.meals[2]?.title).toBe('')
     const saved = authMentorCreateProgress(authMentorCreateSavedAtMs())
     expect(saved.phase).toBe('saved')
     expect(saved.meals.map((meal) => meal.slot)).toEqual(['Завтрак', 'Обед', 'Ужин'])

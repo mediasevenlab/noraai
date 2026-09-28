@@ -10,11 +10,16 @@ import {
   AUTH_RATION_FILTER_FROM_GOAL,
   AUTH_RATION_FILTER_TO_GOAL,
   authDemoPlanMeals,
+  authDemoPlanRange,
   authPreviewGainRation,
   authPreviewRation,
   authRationAddDemoDay,
   authRationAddOpenAtMs,
   authRationAddPlusPressAtMs,
+  authRationCalendarCloseAtMs,
+  authRationCalendarPressAtMs,
+  authRationSelectOpenAtMs,
+  authRationSelectPressAtMs,
   authRationDayBusyAtMs,
   authRationDayCloseAtMs,
   authRationDaySuccessAtMs,
@@ -84,6 +89,9 @@ describe('auth ration demo choreography', () => {
     expect(authRationAddDemoDay().short).toBe('День 1')
     expect(authRationAddPlusPressAtMs()).toBe(AUTH_RATION_ADD_DEMO.settleMs)
     expect(authRationAddOpenAtMs()).toBeGreaterThan(authRationAddPlusPressAtMs())
+    expect(authRationSelectOpenAtMs()).toBeGreaterThan(authRationSelectPressAtMs())
+    expect(authRationCalendarCloseAtMs()).toBeGreaterThan(authRationCalendarPressAtMs())
+    expect(authDemoPlanRange().label).toBe('19.09 - 25.09')
     expect(AUTH_RATION_ADD_DEMO.afterCloseMs).toBeGreaterThan(600)
     expect(authRationDayBusyAtMs()).toBeGreaterThan(AUTH_RATION_DAY_DEMO.settleMs)
     expect(authRationDaySuccessAtMs()).toBeGreaterThan(authRationDayBusyAtMs())
@@ -93,6 +101,7 @@ describe('auth ration demo choreography', () => {
     expect(meals).toHaveLength(ration.meals.length)
     expect(meals[0]?.title).toBe(ration.meals[0]?.title)
     expect(meals[0]?.assumptions).toContain('Добавлено из рациона')
+    expect(meals[1]?.portionItems).toHaveLength(3)
     expect(meals.every((meal) => meal.image.length > 0)).toBe(true)
   })
 

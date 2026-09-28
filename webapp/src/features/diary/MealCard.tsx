@@ -451,11 +451,13 @@ export function Cover({
 function MealCardAddButton({
   label,
   disabled,
+  pressed = false,
   className,
   onAdd,
 }: {
   label: string
   disabled?: boolean
+  pressed?: boolean
   className?: string
   onAdd?: () => void
 }) {
@@ -471,6 +473,7 @@ function MealCardAddButton({
     <NoraIconButton
       aria-label={label}
       className={cn(MEAL_CARD_FOOTER_PLUS_CLASS, className)}
+      data-demo-pressed={pressed ? '' : undefined}
       data-slot="meal-card-add"
       disabled={disabled}
       onClick={stopClick}
@@ -488,6 +491,7 @@ function CardActions({
   canShare = true,
   hideFooterShare = false,
   savePressed = false,
+  sharePressed = false,
   onToggleSave,
   onShare,
 }: {
@@ -496,6 +500,7 @@ function CardActions({
   canShare?: boolean
   hideFooterShare?: boolean
   savePressed?: boolean
+  sharePressed?: boolean
   onToggleSave: () => void
   onShare: () => void
 }) {
@@ -507,6 +512,8 @@ function CardActions({
           aria-label={shareLabel}
           active={shared}
           className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
+          data-demo-pressed={sharePressed ? '' : undefined}
+          data-slot="meal-card-share"
           disabled={!canShare}
           onClick={onShare}
         >
@@ -677,6 +684,8 @@ export function MealCard({
   completedIds,
   readOnly = false,
   showPlanState = true,
+  doneBadgeEnter = false,
+  addPressed = false,
   variant = 'diary',
   layout = 'grid',
   unread = false,
@@ -684,6 +693,7 @@ export function MealCard({
   onOpen,
   hideFooterShare = false,
   savePressed = false,
+  sharePressed = false,
   likePressed = false,
   grayscale = false,
   revealAuthor = false,
@@ -706,6 +716,10 @@ export function MealCard({
   completedIds: ReadonlySet<string>
   readOnly?: boolean
   showPlanState?: boolean
+  /** Login demo: grow the done badge in once, the same way a press scales a button. */
+  doneBadgeEnter?: boolean
+  /** Demo: grow the footer plus before a plan dialog opens. */
+  addPressed?: boolean
   variant?: 'diary' | 'feed'
   layout?: DiaryCardLayout
   unread?: boolean
@@ -837,7 +851,13 @@ export function MealCard({
             </div>
           ) : picking ? null : showPlanState && (done || logged) ? (
             <div className={productCardOriginAnchorClass}>
-              <span aria-label="Выполнено" className={RATION_DONE_CARD_BADGE_CLASS}>
+              <span
+                aria-label="Выполнено"
+                className={cn(
+                  RATION_DONE_CARD_BADGE_CLASS,
+                  doneBadgeEnter && 'auth-demo-done-badge-in',
+                )}
+              >
                 <CircleCheckIcon aria-hidden className="size-3" strokeWidth={2} />
                 Выполнено
               </span>
@@ -964,6 +984,22 @@ export function MealCard({
                     onAdd={onAddToPlan ?? onAddToDiary}
                   />
                 ) : null}
+                {hideFooterShare ? null : (
+                  <NoraIconButton
+                    aria-label={meal.shared ? 'Скрыть из ленты' : 'Поделиться'}
+                    active={Boolean(meal.shared)}
+                    className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
+                    data-demo-pressed={sharePressed ? '' : undefined}
+                    data-slot="meal-card-share"
+                    disabled={!canShare}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onShare()
+                    }}
+                  >
+                    <Share2Icon className="size-4" />
+                  </NoraIconButton>
+                )}
                 {onToggleLike ? (
                   <MealLikeButton
                     liked={Boolean(meal.liked)}
@@ -982,6 +1018,7 @@ export function MealCard({
                 disabled={readOnly || !onAddToPlan || addingToPlan}
                 label={list ? 'В рацион' : 'В план'}
                 onAdd={onAddToPlan}
+                pressed={addPressed}
               />
               {list ? (
                 <MacrosLine className="min-w-0 flex-1 md:hidden" meal={meal} part="kcal" />
@@ -993,12 +1030,14 @@ export function MealCard({
                     disabled={readOnly || !onAddToPlan || addingToPlan}
                     label="В рацион"
                     onAdd={onAddToPlan}
+                    pressed={addPressed}
                   />
                 ) : null}
                 <CardActions
                   canShare={canShare}
                   hideFooterShare={hideFooterShare}
                   savePressed={savePressed}
+                  sharePressed={sharePressed}
                   saved={saved}
                   shared={Boolean(meal.shared)}
                   onToggleSave={onToggleSave}

@@ -95,8 +95,10 @@ export {
   Cover,
   imagesForDiaryMeal,
   MealCard,
+  MealLikeButton,
   MealMacrosPlaque,
   SkeletonMealCard,
+  authorInitials,
 } from './MealCard'
 export { MealOpenDetail } from './MealOpenDetail'
 export type { MealMacrosRevealState } from './meal-card-reveal'
@@ -105,7 +107,7 @@ export {
   MEAL_DIALOG_FRAME_CLASS,
   MealDialogHero,
 } from './meal-sheet'
-export { feedDayHeading, isApiMealId, favoriteMealIdsForSync, reconcileLocalFavoriteIds, daysCountLabel, mealsCountLabel, calorieBalanceTone, CALORIE_BALANCE_CHIP_CLASS } from './diary-feed'
+export { feedDayHeading, isApiMealId, favoriteMealIdsForSync, reconcileLocalFavoriteIds, daysCountLabel, mealsCountLabel, mealsPerDayLabel, calorieBalanceTone, CALORIE_BALANCE_CHIP_CLASS } from './diary-feed'
 export {
   catalogFavoriteCreateDraft,
   isCatalogFavoriteMeal,

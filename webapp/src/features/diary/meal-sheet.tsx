@@ -253,7 +253,7 @@ const RATION_CARD_STATUS_BADGE_CLASS = cn(
 
 export const RATION_DONE_CARD_BADGE_CLASS = cn(
   RATION_CARD_STATUS_BADGE_CLASS,
-  'bg-[#16A34A] text-white',
+  'bg-[var(--nora-success)] text-white',
 )
 
 export const RATION_PICKED_CARD_BADGE_CLASS = cn(

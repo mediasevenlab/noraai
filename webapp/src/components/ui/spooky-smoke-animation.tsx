@@ -30,7 +30,8 @@ void main(){
   col.g-=fbm(uv*1.003+vec2(0,T*.015)+n+.003);
   col.b-=fbm(uv*1.006+vec2(0,T*.015)+n+.006);
 
-  col=mix(col, u_color, dot(col,vec3(.21,.71,.07)));
+  float luma=dot(clamp(col,0.,1.),vec3(.2126,.7152,.0722));
+  col=u_color*mix(.12,1.,luma);
 
   col=mix(vec3(0),col,min(time*.1,1.));
   col=clamp(col,0.,1.);

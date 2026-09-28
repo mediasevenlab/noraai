@@ -9,15 +9,12 @@ import { useEffect, type ReactNode } from 'react'
 
 import {
   authDemoSurfaceWindow,
-  authDemoTimelineGroups,
   type AuthDemoSurface,
 } from '../auth-demo-timeline'
 import { AuthMealCarousel } from './AuthMealCarousel'
 import { useDismissAppBootSplash } from '@/platform/app-boot-splash'
 import {
-  AuthDemoPlaybackButtons,
   AuthDemoPlaybackProvider,
-  AuthDemoPlaybackTransport,
   authDemoKickCatchup,
   authDemoReleaseSeek,
   useAuthDemoPlayback,
@@ -131,7 +128,7 @@ export function AuthPageShell({
       >
         <section className="relative hidden overflow-hidden bg-black lg:block">
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-black">
-            <SmokeBackground className="size-full" smokeColor="#FF0000" />
+            <SmokeBackground className="size-full" smokeColor="#0099ff" />
           </div>
           <div className="relative z-[1] flex h-full min-h-svh flex-col px-6 pb-16 pt-6 md:px-10 md:pb-20 md:pt-10">
             <div className="flex min-h-0 flex-1 justify-center">
@@ -139,11 +136,7 @@ export function AuthPageShell({
             </div>
           </div>
           <div className="absolute top-6 right-6 z-10 flex items-center gap-1.5 md:top-10 md:right-10">
-            <AuthDemoPlaybackTransport />
             <AuthThemeToggle className="bg-[var(--nora-panel)]/80 shadow-[inset_0_0_0_1px_var(--nora-border,rgba(0,0,0,0.08))] backdrop-blur-sm hover:bg-[var(--nora-panel)]" />
-          </div>
-          <div className="absolute inset-x-6 bottom-6 z-10 md:inset-x-10 md:bottom-10">
-            <AuthDemoPlaybackButtons marks={authDemoTimelineGroups(surface)} />
           </div>
         </section>
       </AuthDemoPlaybackProvider>

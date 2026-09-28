@@ -7,14 +7,22 @@ export { AuthRationDayPickerSheet } from './AuthRationDayPickerSheet'
 export { AuthRationGoalBar } from './AuthRationGoalBar'
 export { RationCard } from './RationCard'
 export {
+  AUTH_DEMO_PLAN_DAY_COUNT,
+  AUTH_DEMO_PLAN_START,
   AUTH_RATION_ADD_DEMO,
   AUTH_RATION_FILTER_FROM_GOAL,
   AUTH_RATION_FILTER_TO_GOAL,
+  AUTH_RATION_SELECT_DEMO,
   authDemoPlanMeals,
+  authDemoPlanRange,
   authPreviewGainRation,
   authPreviewRation,
   authRationAddOpenAtMs,
   authRationAddPlusPressAtMs,
+  authRationCalendarCloseAtMs,
+  authRationCalendarPressAtMs,
+  authRationSelectOpenAtMs,
+  authRationSelectPressAtMs,
   authRationDayCloseAtMs,
   authRationDemoCloseAtMs,
   authRationDemoCookShowAtMs,

@@ -55,12 +55,14 @@ const CHIP_LABELS: Record<AuthDemoCaptionId, string> = {
   rationShop: 'Список',
   rationAdd: 'В дневник',
   rationDay: 'День',
+  planChosen: 'Выбран',
+  dayNorm: 'Норма',
   planMeal: 'План',
   shopping: 'Корзина',
   planDone: 'Выполнено',
   mentorCreate: 'Создать',
   mentorEditor: 'Сборка',
-  mentorSaved: 'Сохранён',
+  mentorSaved: 'Отправка',
 }
 
 function mark(id: AuthDemoCaptionId, atMs: number): AuthDemoTimelineMark {

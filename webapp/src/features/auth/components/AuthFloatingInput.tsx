@@ -32,7 +32,7 @@ export function AuthFloatingInput({
 
   return (
     <div
-      className="relative h-10"
+      className="relative h-10 min-[768px]:h-[37px]"
       data-auth-field=""
       data-has-adornment={endAdornment ? '' : undefined}
       data-tone={tone}

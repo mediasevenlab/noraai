@@ -56,7 +56,6 @@ export function RegisterForm({
 }) {
   const auth = useAuth()
   const displayNameId = useId()
-  const displayNameDescriptionId = useId()
   const displayNameErrorId = useId()
   const emailId = useId()
   const emailErrorId = useId()
@@ -237,8 +236,8 @@ export function RegisterForm({
                     return (
                       <label
                         className={cn(
-                          'relative box-border flex h-10 cursor-pointer items-center justify-center rounded-[var(--nora-radius-md)] bg-[var(--nora-panel)] px-8 shadow-[inset_0_0_0_1px_var(--settings-well-stroke,var(--nora-border))]',
-                          'font-[family-name:var(--nora-font)] text-[14px] font-normal text-[var(--nora-text)]',
+                          'relative box-border flex h-10 min-[768px]:h-[37px] cursor-pointer items-center justify-start gap-2 rounded-[var(--nora-radius-md)] bg-[var(--nora-panel)] px-3 shadow-[inset_0_0_0_1px_var(--settings-well-stroke,var(--nora-border))]',
+                          'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text)]',
                           'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
                           'has-focus-visible:shadow-[inset_0_0_0_1px_var(--nora-tint)]',
                           'has-data-checked:bg-[var(--nora-tint-dimmed)] has-data-checked:text-[var(--nora-tint)] has-data-checked:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)]',
@@ -247,11 +246,11 @@ export function RegisterForm({
                         key={option.value}
                       >
                         <RadioGroupItem
-                          className="absolute top-1/2 left-3 size-4 -translate-y-1/2 [&_[data-slot=radio-group-indicator]>span]:size-2"
+                          className="size-4 shrink-0 [&_[data-slot=radio-group-indicator]>span]:size-2"
                           id={id}
                           value={option.value}
                         />
-                        <span className="leading-none">{option.label}</span>
+                        <span className="min-w-0 truncate text-left">{option.label}</span>
                       </label>
                     )
                   })}
@@ -376,10 +375,7 @@ export function RegisterForm({
           children={(field) => (
             <Field className="gap-2" data-invalid={hasErrors(fieldErrors.displayName)}>
               <AuthFloatingInput
-                aria-describedby={[
-                  displayNameDescriptionId,
-                  errorId(fieldErrors.displayName, displayNameErrorId),
-                ].filter(Boolean).join(' ')}
+                aria-describedby={errorId(fieldErrors.displayName, displayNameErrorId)}
                 aria-invalid={hasErrors(fieldErrors.displayName)}
                 autoComplete="name"
                 hint="Иван Иванов"
@@ -395,9 +391,6 @@ export function RegisterForm({
                 type="text"
                 value={field.state.value}
               />
-              <FieldDescription id={displayNameDescriptionId}>
-                Как к вам обращаться
-              </FieldDescription>
               <FieldError id={displayNameErrorId} errors={fieldErrors.displayName} />
             </Field>
           )}
@@ -425,7 +418,6 @@ export function RegisterForm({
                 type="email"
                 value={field.state.value}
               />
-              <FieldDescription>Для связи с вами</FieldDescription>
               <FieldError id={emailErrorId} errors={fieldErrors.email} />
             </Field>
           )}

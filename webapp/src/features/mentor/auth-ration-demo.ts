@@ -75,8 +75,8 @@ export const AUTH_RATION_FILTER_DEMO = {
 
 export const AUTH_RATION_ADD_DEMO = {
   settleMs: 920,
-  plusPressMs: 280,
-  afterPlusMs: 120,
+  plusPressMs: 820,
+  afterPlusMs: 560,
   afterCloseMs: 920,
 } as const
 
@@ -90,6 +90,74 @@ export function authRationAddOpenAtMs() {
     AUTH_RATION_ADD_DEMO.plusPressMs +
     AUTH_RATION_ADD_DEMO.afterPlusMs
   )
+}
+
+/** After the ration card is on screen: press «Выбрать», open the calendar, then flip. */
+export const AUTH_RATION_SELECT_DEMO = {
+  settleMs: 1100,
+  pressMs: 820,
+  afterPressMs: 480,
+  addedHoldMs: 1500,
+  /** Let the incoming meal paint on the right before the ration card slides. */
+  slideLeadMs: 140,
+} as const
+
+/** Calendar already shows the ration week. Leave it readable, then press «Начать…». */
+export const AUTH_RATION_CALENDAR_DEMO = {
+  settleMs: 2200,
+  pressMs: 820,
+  afterPressMs: 420,
+} as const
+
+/** Local start used by the signup calendar demo. 19 September 2026. */
+export const AUTH_DEMO_PLAN_START = new Date(2026, 8, 19)
+export const AUTH_DEMO_PLAN_DAY_COUNT = 7
+
+function authDemoPlanDay(date: Date) {
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  return `${day}.${month}`
+}
+
+/** Same `19.09 - 25.09` cover label the plan card shows after the week is chosen. */
+export function authDemoPlanRange(
+  start: Date = AUTH_DEMO_PLAN_START,
+  dayCount: number = AUTH_DEMO_PLAN_DAY_COUNT,
+) {
+  const from = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+  const to = new Date(from)
+  to.setDate(from.getDate() + Math.max(1, dayCount) - 1)
+  return { from, to, label: `${authDemoPlanDay(from)} - ${authDemoPlanDay(to)}` }
+}
+
+export function authRationSelectPressAtMs() {
+  return AUTH_RATION_SELECT_DEMO.settleMs
+}
+
+export function authRationSelectOpenAtMs() {
+  return (
+    AUTH_RATION_SELECT_DEMO.settleMs +
+    AUTH_RATION_SELECT_DEMO.pressMs +
+    AUTH_RATION_SELECT_DEMO.afterPressMs
+  )
+}
+
+export function authRationCalendarPressAtMs() {
+  return AUTH_RATION_CALENDAR_DEMO.settleMs
+}
+
+export function authRationCalendarCloseAtMs() {
+  return (
+    AUTH_RATION_CALENDAR_DEMO.settleMs +
+    AUTH_RATION_CALENDAR_DEMO.pressMs +
+    AUTH_RATION_CALENDAR_DEMO.afterPressMs
+  )
+}
+
+const AUTH_DEMO_PLAN_PORTIONS: Record<string, string[]> = {
+  'Овсянка с ягодами': ['Овсяные хлопья ~50 г', 'Ягоды ~60 г', 'Йогурт ~100 г'],
+  'Курица с овощами': ['Куриная грудка ~180 г', 'Рис ~150 г', 'Овощи ~120 г'],
+  'Рыба и салат': ['Рыба ~160 г', 'Салат ~80 г', 'Оливковое масло ~10 г'],
 }
 
 export const AUTH_RATION_DAY_DEMO = {
@@ -137,6 +205,7 @@ export function authDemoPlanMeals(ration: RationEntry): MealEntry[] {
       carbs: draft.carbs,
       image: source.image,
       assumptions: [...draft.assumptions],
+      portionItems: AUTH_DEMO_PLAN_PORTIONS[draft.title] ?? undefined,
     }
   })
 }

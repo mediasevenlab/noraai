@@ -23,6 +23,7 @@ import { usableMealCover, preferredMealPhotoSrc } from './meal-cover'
 export type DiaryWeekPlanOption = {
   id: string
   title: string
+  image?: string
 }
 
 export type DiaryMealDraftSource = {
@@ -66,12 +67,16 @@ export function diaryPlanSourceId(meal: { id: string; assumptions?: readonly str
 }
 
 export function diaryWeekPlanOptions(
-  authored: readonly { id: string; title: string }[],
+  authored: readonly { id: string; title: string; coverImage?: string }[],
   now = new Date(),
 ): DiaryWeekPlanOption[] {
   return [
     { id: currentWeekPlanStampId(now), title: 'План на неделю' },
-    ...authored.map((plan) => ({ id: plan.id, title: plan.title })),
+    ...authored.map((plan) => ({
+      id: plan.id,
+      title: plan.title,
+      ...(plan.coverImage ? { image: plan.coverImage } : {}),
+    })),
   ]
 }
 

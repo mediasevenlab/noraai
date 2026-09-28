@@ -68,6 +68,8 @@ export const AUTH_MENTOR_CREATE_DEMO = {
   lineSettleMs: 160,
   addMealPressMs: 240,
   afterAddMealMs: 280,
+  /** Pause so the new meal tab is visible before the next one appears. */
+  slotRevealHoldMs: 720,
   savePressMs: 280,
   afterSaveMs: 720,
   savedHoldMs: 1400,
@@ -227,7 +229,10 @@ export function authMentorCreateStepDoneAtMs(index = 0): number {
 }
 
 export function authMentorCreateAddMealPressAtMs(index: number): number {
-  return authMentorCreateStepDoneAtMs(index) + AUTH_MENTOR_CREATE_DEMO.afterFieldMs
+  if (index <= 0) {
+    return authMentorCreateStepDoneAtMs(0) + AUTH_MENTOR_CREATE_DEMO.afterFieldMs
+  }
+  return authMentorCreateAddMealAtMs(index - 1) + AUTH_MENTOR_CREATE_DEMO.slotRevealHoldMs
 }
 
 export function authMentorCreateAddMealAtMs(index: number): number {
@@ -235,8 +240,10 @@ export function authMentorCreateAddMealAtMs(index: number): number {
 }
 
 export function authMentorCreateSavePressAtMs() {
-  const last = AUTH_MENTOR_CREATE_MEALS.length - 1
-  return authMentorCreateStepDoneAtMs(last) + AUTH_MENTOR_CREATE_DEMO.afterFieldMs
+  return (
+    authMentorCreateAddMealAtMs(AUTH_MENTOR_CREATE_MEALS.length - 2) +
+    AUTH_MENTOR_CREATE_DEMO.slotRevealHoldMs
+  )
 }
 
 export function authMentorCreateSavedAtMs() {
@@ -291,6 +298,8 @@ function emptyMealProgress(meal: AuthMentorDemoMeal): AuthMentorCreateMealProgre
 
 function mealProgressAt(index: number, ms: number): AuthMentorCreateMealProgress {
   const meal = AUTH_MENTOR_CREATE_MEALS[index]!
+  // Later meals only reveal their tab. Breakfast is the one the demo fills.
+  if (index > 0) return emptyMealProgress(meal)
   const tabAt = authMentorCreateMealTabAtMs(index)
   if (ms < tabAt) return emptyMealProgress(meal)
   const macrosReady = ms >= authMentorCreateMacrosAtMs(index)
@@ -318,11 +327,7 @@ function mealCountAt(ms: number) {
 
 function activeTabAt(ms: number): 'description' | number {
   if (ms < authMentorCreateMealTabAtMs(0)) return 'description'
-  let tab = 0
-  for (let index = 1; index < AUTH_MENTOR_CREATE_MEALS.length; index += 1) {
-    if (ms >= authMentorCreateMealTabAtMs(index)) tab = index
-  }
-  return tab
+  return 0
 }
 
 function focusAt(ms: number): AuthMentorCreateProgress['focus'] {

@@ -109,11 +109,15 @@ import {
   authMentorCreateOpenAtMs,
   authMentorCreatePressAtMs,
   authMentorCreateSavedAtMs,
-  authDemoPlanMeals,
   authPreviewGainRation,
   authPreviewRation,
+  authDemoPlanMeals,
+  authDemoPlanRange,
   authRationAddOpenAtMs,
   authRationAddPlusPressAtMs,
+  authRationSelectOpenAtMs,
+  authRationSelectPressAtMs,
+  AUTH_RATION_SELECT_DEMO,
   authRationFilterCloseAtMs,
   authRationFilterCommitAtMs,
   authRationFilterItemPressAtMs,
@@ -125,17 +129,31 @@ import {
   type RationGoal,
 } from '@/features/mentor'
 import { cn } from '@/lib/utils'
+import { AuthFeedRationCard } from './AuthFeedRationCard'
+import { AuthPlanStartSheet } from './AuthPlanStartSheet'
 
 const noop = () => undefined
+const MENTOR_DEMO_DAYS = 7
+const MENTOR_SELECT_SETTLE_MS = 640
+const MENTOR_SELECT_PRESS_MS = 280
 
-const CARD_FRAME_CLASS = 'h-[22.5rem] w-[16.75rem]'
+function mentorDemoWeek<T extends { days: number }>(ration: T): T {
+  return ration.days >= MENTOR_DEMO_DAYS ? ration : { ...ration, days: MENTOR_DEMO_DAYS }
+}
+
+/** Matches the desktop meal card min-height so the footer padding is not clipped. */
+const CARD_FRAME_CLASS = 'h-[365px] w-[16.75rem]'
 const OPEN_FRAME_CLASS = 'h-[min(44rem,calc(100svh-10rem))] w-[24.5rem]'
+const OPEN_MENTOR_FRAME_CLASS = 'h-[min(47rem,calc(100svh-8rem))] w-[24.5rem]'
 const MENTOR_CREATE_CLASS = cn(
   'nora-press-grow ios-glass-glare inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border-0 px-3',
   'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-none text-[var(--nora-text-secondary)]',
   'bg-[var(--nora-inset)] shadow-[var(--nora-shadow-modal)]',
 )
 const OPEN_DAY_PICKER_FRAME_CLASS = 'h-[min(34rem,calc(100svh-10rem))] w-[24.5rem]'
+/** Same width as the other demo sheets; tall enough for the seven plan days. */
+const OPEN_PLAN_PICKER_FRAME_CLASS = 'h-[min(38rem,calc(100svh-10rem))] w-[24.5rem]'
+const OPEN_PLAN_START_FRAME_CLASS = 'h-[min(26rem,calc(100svh-10rem))] w-[24.5rem]'
 const MOTION_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
 const PRESS_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 const CAPTION_FADE_MS = 340
@@ -156,6 +174,8 @@ const AUTH_DEMO_CAPTION_ICONS = {
   rationShop: ShoppingBagIcon,
   rationAdd: CalendarPlusIcon,
   rationDay: CalendarIcon,
+  planChosen: CircleCheckIcon,
+  dayNorm: TargetIcon,
   planMeal: CircleIcon,
   shopping: ShoppingBagIcon,
   planDone: CircleCheckIcon,
@@ -175,18 +195,27 @@ export function AuthMealCarousel({
   const [planMeals, setPlanMeals] = React.useState<MealEntry[]>([])
   const [completedIds, setCompletedIds] = React.useState(() => new Set<string>())
   const [balanceDelta, setBalanceDelta] = React.useState<number | null>(null)
-  const items = React.useMemo(
-    () =>
-      authDemoCarouselItems(meals, gainRation, planMeals, {
-        includeRation: false,
-      }),
-    [gainRation, meals, planMeals, surface],
+  const existingMentorRation = React.useMemo(() => authMentorCreateExistingRation(), [])
+  const createdMentorRation = React.useMemo(() => authMentorCreateDraftRation(), [])
+  const items = React.useMemo(() => {
+    if (surface === 'signup-mentor') {
+      return [
+        { kind: 'ration' as const, id: 'mentor-side-left', ration: mentorDemoWeek(authPreviewRation()) },
+        { kind: 'ration' as const, id: 'mentor-front', ration: mentorDemoWeek(existingMentorRation) },
+        { kind: 'ration' as const, id: 'mentor-side-right', ration: mentorDemoWeek(authPreviewGainRation()) },
+      ]
+    }
+    return authDemoCarouselItems(meals, gainRation, planMeals, {
+      includeRation: false,
+    })
+  }, [existingMentorRation, gainRation, meals, planMeals, surface])
+  const [active, setActive] = React.useState(() =>
+    surface === 'login' ? 0 : surface === 'signup-mentor' ? 1 : 2,
   )
-  const [active, setActive] = React.useState(() => (surface === 'login' ? 0 : 2))
   const [pressed, setPressed] = React.useState(false)
   const [openId, setOpenId] = React.useState<string | null>(null)
   const [openSheet, setOpenSheet] = React.useState<
-    'draft' | 'ration' | 'day-picker' | 'plan-meal' | 'shopping' | 'mentor-create' | null
+    'draft' | 'ration' | 'day-picker' | 'plan-start' | 'plan-meal' | 'shopping' | 'mentor-create' | null
   >(null)
   const [frameOpen, setFrameOpen] = React.useState(false)
   const [introDone, setIntroDone] = React.useState(() => surface !== 'login')
@@ -214,6 +243,11 @@ export function AuthMealCarousel({
   const [rationAddPlaying, setRationAddPlaying] = React.useState(false)
   const [addPressed, setAddPressed] = React.useState(false)
   const [planDayPlaying, setPlanDayPlaying] = React.useState(false)
+  const [signupRationVisible, setSignupRationVisible] = React.useState(false)
+  const [rationSelectPressed, setRationSelectPressed] = React.useState(false)
+  const [rationSelectAdded, setRationSelectAdded] = React.useState(false)
+  const [signupPlanHeld, setSignupPlanHeld] = React.useState(false)
+  const [signupNormMet, setSignupNormMet] = React.useState(false)
   const [shoppingDone, setShoppingDone] = React.useState(false)
   const [planActDone, setPlanActDone] = React.useState(false)
   const [mentorCreatePending, setMentorCreatePending] = React.useState(
@@ -222,11 +256,12 @@ export function AuthMealCarousel({
   const [mentorCreateActive, setMentorCreateActive] = React.useState(false)
   const [mentorCreatePressed, setMentorCreatePressed] = React.useState(false)
   const [mentorCreatedVisible, setMentorCreatedVisible] = React.useState(false)
-  const existingMentorRation = React.useMemo(() => authMentorCreateExistingRation(), [])
-  const createdMentorRation = React.useMemo(() => authMentorCreateDraftRation(), [])
+  const [mentorSelectPressed, setMentorSelectPressed] = React.useState(false)
+  const [mentorSelectAdded, setMentorSelectAdded] = React.useState(false)
   const [boughtKeys, setBoughtKeys] = React.useState(() => new Set<string>())
   const [basketPressed, setBasketPressed] = React.useState(false)
   const [draftActDone, setDraftActDone] = React.useState(() => surface !== 'login')
+  const [mealDoneVisible, setMealDoneVisible] = React.useState(false)
   const [savePlaying, setSavePlaying] = React.useState(false)
   const [saveDone, setSaveDone] = React.useState(() => surface !== 'login')
   const [savePressed, setSavePressed] = React.useState(false)
@@ -275,7 +310,7 @@ export function AuthMealCarousel({
   }, [])
 
   const openItemAt = React.useCallback(
-    (index: number, sheet?: 'draft' | 'ration' | 'day-picker' | 'plan-meal' | 'shopping' | 'mentor-create') => {
+    (index: number, sheet?: 'draft' | 'ration' | 'day-picker' | 'plan-start' | 'plan-meal' | 'shopping' | 'mentor-create') => {
       const target = items[index]
       if (!target) return
       const resolved =
@@ -288,6 +323,10 @@ export function AuthMealCarousel({
       setOpenSheet(resolved)
       setOpenId(target.id)
       setMentorCreatedVisible(false)
+      if (resolved === 'mentor-create') {
+        setMentorSelectPressed(false)
+        setMentorSelectAdded(false)
+      }
       setDraftOpenedAt(new Date().toISOString())
       setFrameOpen(true)
       setIntroDone(true)
@@ -363,6 +402,9 @@ export function AuthMealCarousel({
     } else if (openSheet === 'day-picker') {
       justClosedRef.current = false
       setCaptionId('rationAdd')
+    } else if (openSheet === 'plan-start') {
+      justClosedRef.current = false
+      setCaptionId('rationDay')
     } else if (openSheet === 'shopping') {
       justClosedRef.current = false
       setShoppingDone(true)
@@ -377,7 +419,6 @@ export function AuthMealCarousel({
       setMentorCreatePressed(false)
       setMentorCreatedVisible(true)
       setCaptionId('mentorSaved')
-      finishDemo()
     } else {
       justClosedRef.current = true
       setDraftActDone(true)
@@ -386,25 +427,29 @@ export function AuthMealCarousel({
     if (closedRation) {
       setRationAddPlaying(true)
     }
-    // Keep the sheet painted while the frame shrinks into the thumbnail.
-    setFrameOpen(false)
-    setSheetMs(0)
     if (closeTimerRef.current !== null) {
       authDemoClear(closeTimerRef.current)
       closeTimerRef.current = null
     }
+    const closedDraft = openSheet === 'draft'
+    const closedPlanStart = openSheet === 'plan-start'
     const finishClose = () => {
       setCollapseHandOff(false)
       setDetailEntered(false)
       setOpenId(null)
       setOpenSheet(null)
       setDraftOpenedAt(null)
+      if (closedDraft) setMealDoneVisible(true)
+      if (closedPlanStart) setRationSelectAdded(true)
     }
     if (reduceMotion || authDemoIsSeeking()) {
       finishClose()
       if (startSaveDemo) setSavePlaying(true)
       return
     }
+    // Keep the sheet painted while the frame shrinks into the card.
+    setFrameOpen(false)
+    setSheetMs(0)
     closeTimerRef.current = authDemoTimeout(() => {
       closeTimerRef.current = null
       finishClose()
@@ -436,6 +481,8 @@ export function AuthMealCarousel({
     if (
       !rationActDone ||
       rationAddPlaying ||
+      signupRationVisible ||
+      signupPlanHeld ||
       planMeals.length > 0 ||
       openId ||
       frameOpen
@@ -450,6 +497,8 @@ export function AuthMealCarousel({
     planMeals.length,
     rationActDone,
     rationAddPlaying,
+    signupPlanHeld,
+    signupRationVisible,
     surface,
   ])
 
@@ -466,6 +515,22 @@ export function AuthMealCarousel({
 
   React.useEffect(() => {
     if (openId) return
+    if (surface === 'signup-user') {
+      if (signupPlanHeld) {
+        setCaptionId('dayNorm')
+        return
+      }
+      if (rationSelectAdded && signupRationVisible) {
+        setCaptionId('rationDay')
+        return
+      }
+      if (signupRationVisible) {
+        setCaptionId('ration')
+        return
+      }
+      setCaptionId('rationAdd')
+      return
+    }
     // Keep the share pitch after the login feed act ends; signup surfaces
     // seek past share and must be free to show ration / mentor captions.
     if (sharePlaying || (saveDone && !shareDone)) {
@@ -482,6 +547,10 @@ export function AuthMealCarousel({
     }
     if (mentorCreateActive || mentorCreatePending || mentorCreatedVisible) {
       setCaptionId(mentorCreatedVisible ? 'mentorSaved' : 'mentorCreate')
+      return
+    }
+    if (signupRationVisible) {
+      setCaptionId('ration')
       return
     }
     if (items[active]?.kind === 'ration') {
@@ -517,6 +586,9 @@ export function AuthMealCarousel({
     savePlaying,
     shareDone,
     sharePlaying,
+    signupPlanHeld,
+    signupRationVisible,
+    rationSelectAdded,
     surface,
   ])
 
@@ -623,8 +695,11 @@ export function AuthMealCarousel({
         setMenuOpen(true)
       }, authShareDemoMenuOpenAtMs()),
       authDemoTimeout(() => setSharePressed(true), authShareDemoSharePressAtMs()),
+      authDemoTimeout(
+        () => setSharePressed(false),
+        authShareDemoSharePressAtMs() + AUTH_MEAL_SHARE_DEMO.sharePressHoldMs,
+      ),
       authDemoTimeout(() => {
-        setSharePressed(false)
         setMenuOpen(false)
         setFeedView(true)
       }, authShareDemoFeedAtMs()),
@@ -689,6 +764,9 @@ export function AuthMealCarousel({
       rationFilterPlaying ||
       rationAddPlaying ||
       planDayPlaying ||
+      signupRationVisible ||
+      signupPlanHeld ||
+      surface === 'signup-mentor' ||
       savePlaying ||
       (draftActDone && !saveDone) ||
       sharePlaying ||
@@ -724,6 +802,8 @@ export function AuthMealCarousel({
     shoppingDone,
     draftActDone,
     demoFinished,
+    signupPlanHeld,
+    signupRationVisible,
     surface,
   ])
 
@@ -750,15 +830,8 @@ export function AuthMealCarousel({
     if (!rationAddPlaying || openId || frameOpen || !introDone) return
 
     if (reduceMotion) {
-      pendingPlanMealsRef.current = authDemoPlanMeals(lossRation)
-      setPlanMeals(pendingPlanMealsRef.current)
-      pendingPlanMealsRef.current = null
-      setActive(AUTH_DEMO_FIRST_PLAN_INDEX)
+      setSignupRationVisible(true)
       setRationAddPlaying(false)
-      setPlanDayPlaying(true)
-      setCompletedIds(new Set())
-      setBalanceDelta(null)
-      balanceTweenedRef.current = false
       return
     }
 
@@ -773,7 +846,102 @@ export function AuthMealCarousel({
     return () => {
       for (const id of timers) authDemoClear(id)
     }
-  }, [active, frameOpen, introDone, lossRation, openId, openItemAt, rationAddPlaying, reduceMotion])
+  }, [active, frameOpen, introDone, openId, openItemAt, rationAddPlaying, reduceMotion])
+
+  React.useEffect(() => {
+    if (
+      surface !== 'signup-user' ||
+      !signupRationVisible ||
+      openId ||
+      frameOpen ||
+      signupPlanHeld ||
+      rationSelectAdded
+    ) {
+      return
+    }
+    if (reduceMotion) {
+      setRationSelectAdded(true)
+      return
+    }
+    const timers = [
+      authDemoTimeout(() => setRationSelectPressed(true), authRationSelectPressAtMs()),
+      authDemoTimeout(() => {
+        setRationSelectPressed(false)
+        setCaptionId('rationDay')
+        openItemAt(active, 'plan-start')
+      }, authRationSelectOpenAtMs()),
+    ]
+    return () => {
+      for (const id of timers) authDemoClear(id)
+    }
+  }, [
+    active,
+    frameOpen,
+    openId,
+    openItemAt,
+    rationSelectAdded,
+    reduceMotion,
+    signupPlanHeld,
+    signupRationVisible,
+    surface,
+  ])
+
+  React.useEffect(() => {
+    if (
+      surface !== 'signup-user' ||
+      !rationSelectAdded ||
+      !signupRationVisible ||
+      openId ||
+      frameOpen ||
+      signupPlanHeld
+    ) {
+      return
+    }
+    if (reduceMotion) {
+      setSignupRationVisible(false)
+      setSignupPlanHeld(true)
+      setActive(AUTH_DEMO_SHOP_INDEX)
+      return
+    }
+    const id = authDemoTimeout(() => {
+      setSignupRationVisible(false)
+      setSignupPlanHeld(true)
+      setActive(AUTH_DEMO_SHOP_INDEX)
+    }, AUTH_RATION_SELECT_DEMO.addedHoldMs)
+    return () => authDemoClear(id)
+  }, [
+    frameOpen,
+    openId,
+    rationSelectAdded,
+    reduceMotion,
+    signupPlanHeld,
+    signupRationVisible,
+    surface,
+  ])
+
+  React.useEffect(() => {
+    if (surface !== 'signup-user' || !signupPlanHeld || !rationSelectAdded) return
+    if (planMeals.length === 0 || active === AUTH_DEMO_SHOP_INDEX) return
+    if (openId || frameOpen) return
+    if (reduceMotion) {
+      setActive(AUTH_DEMO_SHOP_INDEX)
+      return
+    }
+    const id = authDemoTimeout(
+      () => setActive(AUTH_DEMO_SHOP_INDEX),
+      AUTH_RATION_SELECT_DEMO.slideLeadMs,
+    )
+    return () => authDemoClear(id)
+  }, [
+    active,
+    frameOpen,
+    openId,
+    planMeals.length,
+    rationSelectAdded,
+    reduceMotion,
+    signupPlanHeld,
+    surface,
+  ])
 
   React.useEffect(() => {
     if (!planDayPlaying || openId || frameOpen || planActDone) return
@@ -988,7 +1156,6 @@ export function AuthMealCarousel({
       setMentorCreatedVisible(true)
       setMentorCreatePressed(false)
       setCaptionId('mentorSaved')
-      if (!authDemoIsSeeking()) finishDemo()
       return
     }
     if (origin >= openAt) {
@@ -1014,7 +1181,29 @@ export function AuthMealCarousel({
     return () => {
       for (const id of timers) authDemoClear(id)
     }
-  }, [active, finishDemo, frameOpen, mentorCreateActive, openId, openItemAt])
+  }, [active, frameOpen, mentorCreateActive, openId, openItemAt])
+
+  React.useEffect(() => {
+    if (surface !== 'signup-mentor' || !mentorCreatedVisible || openId || frameOpen || mentorSelectAdded) {
+      return
+    }
+    if (reduceMotion) {
+      setMentorSelectAdded(true)
+      finishDemo()
+      return
+    }
+    const timers = [
+      authDemoTimeout(() => setMentorSelectPressed(true), MENTOR_SELECT_SETTLE_MS),
+      authDemoTimeout(() => {
+        setMentorSelectPressed(false)
+        setMentorSelectAdded(true)
+        finishDemo()
+      }, MENTOR_SELECT_SETTLE_MS + MENTOR_SELECT_PRESS_MS),
+    ]
+    return () => {
+      for (const id of timers) authDemoClear(id)
+    }
+  }, [finishDemo, frameOpen, mentorCreatedVisible, mentorSelectAdded, openId, reduceMotion, surface])
 
   React.useEffect(() => {
     const next = items[(active + 1) % items.length]
@@ -1060,19 +1249,51 @@ export function AuthMealCarousel({
     !mentorCreatePending &&
     !mentorCreatedVisible
   const frontItem = items[active]
-  const showDayBar =
+  const signupMealFront =
+    surface === 'signup-user' &&
+    signupPlanHeld &&
+    !signupRationVisible &&
+    active === AUTH_DEMO_SHOP_INDEX &&
     frontItem?.kind === 'meal' &&
-    isRationImportedMeal(frontItem.meal) &&
     !openId &&
+    !frameOpen
+  const barMeals =
+    planMeals.length > 0 ? planMeals : signupMealFront ? authDemoPlanMeals(rationShown) : planMeals
+  const showDayBar =
+    !openId &&
+    !frameOpen &&
     !mentorCreateActive &&
     !mentorCreatedVisible &&
-    planMeals.length > 0
+    (signupMealFront ||
+      (frontItem?.kind === 'meal' &&
+        isRationImportedMeal(frontItem.meal) &&
+        planMeals.length > 0 &&
+        (surface !== 'signup-user' || active !== AUTH_DEMO_FIRST_PLAN_INDEX) &&
+        (signupPlanHeld || !signupRationVisible)))
   const showMentorCreateBar = mentorCreateActive && !openId && !mentorCreatedVisible
   const showShareAudience = !openId && shareAudienceVisible
-  const planDayHeading = authDemoPlanDayHeading(planMeals)
-  const planKcalDelta = AUTH_DEMO_PLAN_DAILY_KCAL - authDemoPlanKcalTotal(planMeals)
-  const displayedBalanceDelta = balanceDelta ?? planKcalDelta
+  const planDayHeading = authDemoPlanDayHeading(barMeals)
+  const signupMealKcal =
+    signupMealFront && frontItem?.kind === 'meal' ? frontItem.meal.kcal : null
+  const planKcalDelta = AUTH_DEMO_PLAN_DAILY_KCAL - authDemoPlanKcalTotal(barMeals)
+  const displayedBalanceDelta = signupMealFront
+    ? signupNormMet
+      ? 0
+      : (signupMealKcal ?? 0)
+    : (balanceDelta ?? planKcalDelta)
   const planBalanceLabel = authDemoPlanBalanceFromDelta(displayedBalanceDelta)
+
+  React.useEffect(() => {
+    if (!signupMealFront || signupNormMet) return
+    if (reduceMotion) {
+      setSignupNormMet(true)
+      return
+    }
+    const id = authDemoTimeout(() => setSignupNormMet(true), 2800)
+    return () => authDemoClear(id)
+  }, [reduceMotion, signupMealFront, signupNormMet])
+
+  const formedMealIndex = items.findIndex((entry) => entry.id === authDemoFormedMeal().id)
 
   if (items.length === 0) return null
 
@@ -1088,7 +1309,7 @@ export function AuthMealCarousel({
         )}
         style={{
           left: `calc(50% - ${leftInsetRem}rem)`,
-          top: authDemoCaptionTop(frameOpen),
+          top: authDemoCaptionTop(frameOpen && openSheet !== 'plan-start'),
           transitionDuration: reduceMotion
             ? '0ms'
             : `${frameOpen ? AUTH_MEAL_EXPAND_MS : AUTH_MEAL_SLIDE_MS}ms`,
@@ -1144,14 +1365,10 @@ export function AuthMealCarousel({
       ) : null}
       {showMentorCreateBar ? (
         <div
-          className={cn(
-            'pointer-events-none absolute z-[6]',
-            !reduceMotion && 'transition-[opacity,transform] ease-[cubic-bezier(0.22,1,0.36,1)]',
-          )}
+          className="auth-mentor-create-in pointer-events-none absolute z-[6]"
           style={{
             left: `calc(50% - ${AUTH_MEAL_CARD_WIDTH_REM / 2}rem)`,
-            top: 'calc(50% - 13.6rem)',
-            transitionDuration: reduceMotion ? '0ms' : '280ms',
+            top: 'calc(50% - 14.6rem)',
             width: `${AUTH_MEAL_CARD_WIDTH_REM}rem`,
           }}
         >
@@ -1177,8 +1394,7 @@ export function AuthMealCarousel({
       {items.map((item, index) => {
         const offset = signedCarouselOffset(index, active, items.length)
         const isFront = offset === 0
-        const hideSides = openSheet === 'mentor-create'
-        const visible = hideSides ? isFront : Math.abs(offset) <= 1
+        const visible = Math.abs(offset) <= 1
         const side = offset === 0 ? 'front' : offset < 0 ? 'left' : 'right'
         const dimSide = visible && !isFront
         const showDetail = isFront && openItem?.id === item.id
@@ -1213,7 +1429,11 @@ export function AuthMealCarousel({
                 'transition-[transform,opacity,filter] ease-[cubic-bezier(0.22,1,0.36,1)]',
             )}
             data-carousel-side={side}
-            key={item.id}
+            key={
+              surface === 'signup-user' && index === AUTH_DEMO_FIRST_PLAN_INDEX
+                ? 'signup-ration-card'
+                : item.id
+            }
             style={{
               filter: dimSide
                 ? 'blur(3px) saturate(0.88) brightness(0.97)'
@@ -1229,9 +1449,15 @@ export function AuthMealCarousel({
                 'relative isolate overflow-hidden rounded-[var(--meal-card-radius)] bg-[var(--nora-panel)]',
                 expanded && 'rounded-[22px]',
                 expanded
-                  ? openSheet === 'day-picker' || openSheet === 'shopping'
-                    ? OPEN_DAY_PICKER_FRAME_CLASS
-                    : OPEN_FRAME_CLASS
+                  ? openSheet === 'day-picker'
+                    ? OPEN_PLAN_PICKER_FRAME_CLASS
+                    : openSheet === 'plan-start'
+                      ? OPEN_PLAN_START_FRAME_CLASS
+                      : openSheet === 'shopping'
+                      ? OPEN_DAY_PICKER_FRAME_CLASS
+                      : openSheet === 'mentor-create'
+                        ? OPEN_MENTOR_FRAME_CLASS
+                        : OPEN_FRAME_CLASS
                   : CARD_FRAME_CLASS,
                 dimSide && 'pointer-events-none',
                 'after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-[color-mix(in_srgb,var(--nora-canvas)_16%,transparent)] after:transition-opacity after:duration-700 after:ease-[cubic-bezier(0.22,1,0.36,1)]',
@@ -1254,7 +1480,7 @@ export function AuthMealCarousel({
                   // share one box instead of stacking two sizes.
                   expanded || collapsing
                     ? 'absolute inset-0'
-                    : 'absolute top-1/2 left-1/2 h-[22.5rem] w-[16.75rem] -translate-x-1/2 -translate-y-1/2',
+                    : 'absolute top-1/2 left-1/2 h-[365px] w-[16.75rem] -translate-x-1/2 -translate-y-1/2',
                   (expanded || collapsing) && 'pointer-events-none',
                   !reduceMotion && 'transition-opacity ease-[cubic-bezier(0.22,1,0.36,1)]',
                 )}
@@ -1269,25 +1495,58 @@ export function AuthMealCarousel({
                       : '0ms',
                 }}
               >
-                {isFront &&
-                (openSheet === 'mentor-create' || mentorCreateActive || mentorCreatedVisible) ? (
-                  <RationCard
-                    adding={false}
-                    hideAdd
-                    key={mentorCreatedVisible ? createdMentorRation.id : existingMentorRation.id}
-                    onAdd={noop}
-                    onOpen={noop}
-                    onToggleSave={noop}
-                    ration={mentorCreatedVisible ? createdMentorRation : existingMentorRation}
-                    saved={false}
+                {surface === 'signup-mentor' && item.kind === 'ration' ? (
+                  <AuthFeedRationCard
+                    actionLabel="Отправить"
+                    addedLabel="Отправлен"
+                    ration={mentorDemoWeek(
+                      item.id === 'mentor-front' && mentorCreatedVisible
+                        ? createdMentorRation
+                        : item.ration,
+                    )}
+                    selectAdded={item.id === 'mentor-front' && mentorSelectAdded}
+                    selectPressed={item.id === 'mentor-front' && mentorSelectPressed && isFront}
+                  />
+                ) : surface === 'signup-user' &&
+                  (signupRationVisible || signupPlanHeld) &&
+                  index === AUTH_DEMO_FIRST_PLAN_INDEX ? (
+                  <AuthFeedRationCard
+                    activeRange={authDemoPlanRange().label}
+                    ration={rationShown}
+                    selectAdded={rationSelectAdded}
+                    selectPressed={rationSelectPressed && isFront}
                   />
                 ) : item.kind === 'meal' ? (
                   <MealCard
+                    addPressed={addPressed && isFront && surface === 'signup-user'}
                     completedIds={completedIds}
-                    grayscale={
-                      item.id === authDemoFormedMeal().id && !draftActDone
+                    doneBadgeEnter={
+                      (surface === 'login' && mealDoneVisible) ||
+                      (surface === 'signup-user' &&
+                        signupPlanHeld &&
+                        isFront &&
+                        index === AUTH_DEMO_SHOP_INDEX &&
+                        signupNormMet)
                     }
-                    hideFooterShare
+                    showPlanState={
+                      surface === 'login'
+                        ? mealDoneVisible && formedMealIndex >= 0 && index >= formedMealIndex
+                        : surface === 'signup-user' &&
+                            signupPlanHeld &&
+                            isFront &&
+                            index === AUTH_DEMO_SHOP_INDEX
+                          ? signupNormMet
+                          : !(signupPlanHeld && isFront && isRationImportedMeal(item.meal))
+                    }
+                    grayscale={
+                      (surface === 'signup-user' &&
+                        signupPlanHeld &&
+                        isFront &&
+                        index === AUTH_DEMO_SHOP_INDEX &&
+                        !signupNormMet) ||
+                      (item.id === authDemoFormedMeal().id && !draftActDone)
+                    }
+                    hideFooterShare={item.id !== authDemoShareMeal().id}
                     revealAuthor={showFeedChrome}
                     likePressed={likePressed && showFeedChrome}
                     meal={{
@@ -1304,6 +1563,7 @@ export function AuthMealCarousel({
                     menuSide="bottom"
                     onDelete={noop}
                     onOpen={noop}
+                    onAddToPlan={surface === 'signup-user' && isFront ? noop : undefined}
                     onShare={noop}
                     onToggleLike={noop}
                     onToggleSave={() => {
@@ -1417,6 +1677,27 @@ export function AuthMealCarousel({
                 </Dialog>
               ) : null}
 
+              {showDetail && draftOpenedAt && openSheet === 'plan-start' ? (
+                <Dialog
+                  disablePointerDismissal
+                  modal={false}
+                  onOpenChange={(open) => {
+                    if (!open) closeOpenCard()
+                  }}
+                  open
+                >
+                  <div className={detailShellClass} style={detailShellStyle}>
+                    <AuthPlanStartSheet
+                      collapsing={collapsing}
+                      key={draftOpenedAt}
+                      onComplete={closeOpenCard}
+                      play={detailEntered || seeking}
+                      startMs={authDemoSheetPlayStartMs(sheetMs, seeking)}
+                    />
+                  </div>
+                </Dialog>
+              ) : null}
+
               {showDetail && draftOpenedAt && openSheet === 'day-picker' ? (
                 <Dialog
                   disablePointerDismissal
@@ -1432,7 +1713,7 @@ export function AuthMealCarousel({
                       key={draftOpenedAt}
                       onCaptionId={setCaptionId}
                       onComplete={() => {
-                        pendingPlanMealsRef.current = authDemoPlanMeals(lossRation)
+                        setSignupRationVisible(true)
                         closeOpenCard()
                       }}
                       play={detailEntered || seeking}

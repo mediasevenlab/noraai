@@ -45,7 +45,7 @@ describe('auth demo timeline marks', () => {
     expect(marks.at(-1)!.id).toBe('mentorSaved')
     expect(marks.find((item) => item.id === 'mentorCreate')?.chip).toBe('Создать')
     expect(marks.find((item) => item.id === 'mentorEditor')?.chip).toBe('Сборка')
-    expect(marks.find((item) => item.id === 'mentorSaved')?.chip).toBe('Сохранён')
+    expect(marks.find((item) => item.id === 'mentorSaved')?.chip).toBe('Отправка')
     expect(marks.at(-1)!.atMs).toBeGreaterThan(60_000)
     expect(marks.at(-1)!.atMs).toBeLessThan(240_000)
     const rationAdd = marks.find((item) => item.id === 'rationAdd')!

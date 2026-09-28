@@ -182,6 +182,12 @@ describe('diary meals copied into a weekly plan', () => {
       title: 'План на неделю',
     })
     expect(options[1]).toEqual({ id: 'plan_office', title: 'Офис без срывов' })
+    expect(
+      diaryWeekPlanOptions(
+        [{ id: 'plan_office', title: 'Офис без срывов', coverImage: '/cover.jpg' }],
+        now,
+      )[1],
+    ).toEqual({ id: 'plan_office', title: 'Офис без срывов', image: '/cover.jpg' })
     expect(diaryDefaultPlanId(options, 'plan_office')).toBe('plan_office')
     expect(diaryDefaultPlanId(options, 'missing')).toBe(currentWeekPlanStampId(now))
   })

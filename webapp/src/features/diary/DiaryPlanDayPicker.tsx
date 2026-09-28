@@ -2,11 +2,7 @@ import * as React from "react";
 import { CalendarDaysIcon, Loader2Icon, PlusIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { NoraInput, NoraSelect, NoraTextarea } from "@/components/nora/primitives";
-import {
-  productToolbarSelectContentClass,
-  productToolbarSelectItemClass,
-} from "@/components/nora/product-sheet";
+import { NoraInput, NoraTextarea } from "@/components/nora/primitives";
 import {
   Dialog,
   DialogClose,
@@ -27,13 +23,12 @@ import {
   diaryNewPlanDays,
   diaryNewPlanTitle,
   diaryPlanDayOccupancy,
-  diaryPlanPickerItems,
   isDiaryNewPlanId,
   type DiaryPlanStamp,
   type DiaryWeekPlanOption,
 } from "./diary-plan-import";
 import { feedPlanWeekDays, type FeedPlanWeekDay } from "./feed-import";
-import { usableMealCover } from "./meal-cover";
+import { PLAN_COVER_PLACEHOLDER_SRC, usableMealCover } from "./meal-cover";
 import { MealDetailHeading, MEAL_DIALOG_OVERLAY_CHIP_CLASS } from "./meal-sheet";
 import type { MealEntry } from "./meals-catalog";
 import { currentWeekPlanStampId } from "./ration-import";
@@ -43,6 +38,12 @@ const PLAN_DAY_PICKER_FRAME_CLASS = cn(
   "inset-x-0 bottom-0 top-auto h-auto max-h-[calc(100dvh-var(--modal-sheet-inset))] w-full max-w-none translate-x-0 translate-y-0 rounded-t-[var(--modal-sheet-radius)] rounded-b-none",
   "md:inset-auto md:top-1/2 md:left-1/2 md:bottom-auto md:h-auto md:max-h-[min(760px,calc(100vh-2rem))] md:w-[min(100%-2rem,480px)] md:max-w-[480px] md:rounded-[24px]",
 );
+
+/** Create card plus four plans fill the row; further plans scroll sideways. */
+const PLAN_PICKER_CARD_CLASS =
+  "nora-press-grow flex w-[calc((100%-2rem)/5)] shrink-0 flex-col gap-1.5 outline-none focus-visible:shadow-[var(--nora-shadow-focus)]";
+const PLAN_PICKER_TITLE_CLASS =
+  "block w-full truncate text-center font-[family-name:var(--nora-font)] text-[13px] leading-4";
 
 const PLAN_DAY_ROW_CLASS = cn(
   "nora-press-grow ios-glass-glare-soft flex min-h-12 items-center gap-3 rounded-[14px] border-0 px-3.5 py-2.5 text-left",
@@ -128,7 +129,6 @@ export function DiaryPlanDayPicker({
   const planId = planIdProp ?? localPlanId;
   const creatingNew = !lockedPlan && isDiaryNewPlanId(planId);
   const usesDraftDays = creatingNew || planId === sessionCreatedPlanId;
-  const planItems = diaryPlanPickerItems(plans);
   const weekDays = feedPlanWeekDays();
   const days = planDays
     ? planDays
@@ -246,25 +246,97 @@ export function DiaryPlanDayPicker({
               </DialogHeader>
               {!lockedPlan ? (
                 <div className="flex flex-col gap-2">
-                  <MealDetailHeading>План назначения</MealDetailHeading>
                   <div
-                    className="rounded-[16px] bg-[var(--nora-inset)] p-2.5"
+                    aria-label="План назначения"
+                    className="no-scrollbar -mx-2 flex gap-2 overflow-x-auto overscroll-x-contain px-2 pb-0.5"
                     data-diary-plan-select=""
+                    role="listbox"
                   >
-                    <NoraSelect
-                      className="!h-10 !min-h-10 !max-h-10 rounded-[12px] bg-[var(--nora-panel)] px-3.5 text-[13px] font-normal leading-5"
-                      contentClassName={productToolbarSelectContentClass}
+                    <button
+                      aria-label="Создать новый план"
+                      aria-selected={creatingNew}
+                      className={PLAN_PICKER_CARD_CLASS}
+                      data-diary-plan-card="new"
                       disabled={busy}
-                      itemClassName={productToolbarSelectItemClass}
-                      items={planItems}
-                      onValueChange={(value) => {
-                        if (value) setPlanId(value);
-                      }}
-                      placeholder="План"
-                      value={planId}
-                    />
+                      onClick={() => setPlanId(DIARY_NEW_PLAN_ID)}
+                      role="option"
+                      type="button"
+                    >
+                      <span
+                        className={cn(
+                          "block aspect-square w-full rounded-[12px] p-0.5",
+                          creatingNew ? "bg-[var(--nora-tint)]" : "bg-transparent",
+                        )}
+                      >
+                        <span className="flex size-full items-center justify-center rounded-[10px] bg-[var(--nora-inset)]">
+                          <PlusIcon
+                            aria-hidden
+                            className="size-5 text-[var(--nora-text)]"
+                            strokeWidth={1.75}
+                          />
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          PLAN_PICKER_TITLE_CLASS,
+                          creatingNew
+                            ? "font-medium text-[var(--nora-text)]"
+                            : "font-normal text-[var(--nora-text-secondary)]",
+                        )}
+                      >
+                        Новый план
+                      </span>
+                    </button>
+                    {plans.map((plan) => {
+                      const selectedPlan = plan.id === planId && !creatingNew;
+                      const cover =
+                        usableMealCover(plan.image) || PLAN_COVER_PLACEHOLDER_SRC;
+                      return (
+                        <button
+                          aria-label={plan.title}
+                          aria-selected={selectedPlan}
+                          className={PLAN_PICKER_CARD_CLASS}
+                          data-diary-plan-card={plan.id}
+                          disabled={busy}
+                          key={plan.id}
+                          onClick={() => setPlanId(plan.id)}
+                          role="option"
+                          type="button"
+                        >
+                          <span
+                            className={cn(
+                              "block aspect-square w-full rounded-[12px] p-0.5",
+                              selectedPlan ? "bg-[var(--nora-tint)]" : "bg-transparent",
+                            )}
+                          >
+                            <img
+                              alt=""
+                              className="size-full rounded-[10px] bg-[var(--nora-inset)] object-cover"
+                              onError={(event) => {
+                                const img = event.currentTarget;
+                                if (img.dataset.coverFallback === "1") return;
+                                img.dataset.coverFallback = "1";
+                                img.src = PLAN_COVER_PLACEHOLDER_SRC;
+                              }}
+                              src={cover}
+                            />
+                          </span>
+                          <span
+                            className={cn(
+                              PLAN_PICKER_TITLE_CLASS,
+                              selectedPlan
+                                ? "font-medium text-[var(--nora-text)]"
+                                : "font-normal text-[var(--nora-text-secondary)]",
+                            )}
+                          >
+                            {plan.title}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                   {creatingNew ? (
-                    <div className="mt-2.5" data-diary-new-plan="">
+                    <div data-diary-new-plan="">
                       <MealDetailHeading>Название</MealDetailHeading>
                       <NoraInput
                         className={PLAN_TITLE_FIELD_CLASS}
@@ -290,12 +362,17 @@ export function DiaryPlanDayPicker({
                       </div>
                     </div>
                   ) : null}
-                  </div>
                 </div>
               ) : null}
             </div>
-            <div className="min-h-0 overflow-y-auto flex flex-col gap-2 px-2 pt-2 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-2 sm:pb-3.5">
-              <MealDetailHeading>Дни плана</MealDetailHeading>
+            <div className="shrink-0 px-2 pt-4">
+              <div
+                aria-hidden
+                className="border-t border-[var(--nora-divider)]"
+                data-diary-plan-divider=""
+              />
+            </div>
+            <div className="min-h-0 overflow-y-auto flex flex-col gap-2.5 px-2 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-2 sm:pb-3.5">
               <div className="flex flex-col gap-2.5">
                 {days.map((day) => {
                   const occupancy = diaryPlanDayOccupancy(
