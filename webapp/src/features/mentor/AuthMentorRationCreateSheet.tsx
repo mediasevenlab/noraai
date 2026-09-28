@@ -270,7 +270,7 @@ export function AuthMentorRationCreateSheet({
 
   const tabValue = state.tab === 'description' ? 'description' : `meal-${state.tab}`
   const insideDay = typeof state.tab === 'number'
-  const dayMealIndex = insideDay ? state.tab : 0
+  const dayMealIndex = typeof state.tab === 'number' ? state.tab : 0
   const dayMeal = state.meals[dayMealIndex]
   const titledMealCount = state.meals.filter((meal) => meal.title.trim()).length
 
