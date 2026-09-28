@@ -10,7 +10,7 @@ import { ApiRequestError } from '@/platform/api'
 import { passwordResetAcceptedNotice } from '../password-reset-copy'
 import { useAuth } from '../use-auth'
 import { AuthFloatingInput } from './AuthFloatingInput'
-import { authSubmitClassName } from './auth-control-styles'
+import { authFormClassName, authSubmitClassName, authTitleClassName } from './auth-control-styles'
 import { FormAlert } from './form-errors'
 import type { FieldErrors } from './form-model'
 import {
@@ -55,15 +55,15 @@ export function ForgotPasswordForm() {
 
   return (
     <form
-      className="flex flex-col gap-8 font-[family-name:var(--nora-font)]"
+      className={authFormClassName}
       onSubmit={(event) => {
         event.preventDefault()
         void form.handleSubmit()
       }}
     >
       <FieldGroup className="mt-0 gap-5">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <h1 className="font-heading text-[20px] leading-[1.3] font-semibold tracking-[-0.01em] text-[var(--nora-text)] text-balance">
+        <div className="mb-3 flex flex-col items-center gap-2 text-center">
+          <h1 className={authTitleClassName}>
             Сброс пароля
           </h1>
           <p className="text-[13px] leading-relaxed font-normal text-[var(--nora-text-secondary)] text-balance">
@@ -118,7 +118,7 @@ export function ForgotPasswordForm() {
           />
         </Field>
 
-        <FieldDescription className="text-center text-xs font-normal">
+        <FieldDescription className="text-center text-[13px] font-normal" data-auth-footer="">
           <Link
             className="font-medium text-[var(--nora-text)] underline-offset-4 hover:underline"
             search={{ returnTo: undefined }}

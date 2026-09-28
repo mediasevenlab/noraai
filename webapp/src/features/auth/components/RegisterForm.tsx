@@ -24,7 +24,13 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '../use-auth'
 import { AuthFloatingInput } from './AuthFloatingInput'
 import { AuthPasswordToggleButton } from './AuthPasswordToggleButton'
-import { authSubmitClassName } from './auth-control-styles'
+import {
+  authFieldAdornmentClassName,
+  authFieldIconClassName,
+  authFormClassName,
+  authSubmitClassName,
+  authTitleClassName,
+} from './auth-control-styles'
 import { FormAlert } from './form-errors'
 import type { FieldErrors } from './form-model'
 import {
@@ -50,6 +56,7 @@ export function RegisterForm({
 }) {
   const auth = useAuth()
   const displayNameId = useId()
+  const displayNameDescriptionId = useId()
   const displayNameErrorId = useId()
   const emailId = useId()
   const emailErrorId = useId()
@@ -192,23 +199,23 @@ export function RegisterForm({
 
   return (
     <form
-      className="flex flex-col gap-8 font-[family-name:var(--nora-font)]"
+      className={authFormClassName}
       onSubmit={(event) => {
         event.preventDefault()
         void form.handleSubmit()
       }}
     >
       <FieldGroup className="mt-0 gap-5">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <h1 className="font-heading text-[20px] leading-[1.3] font-semibold tracking-[-0.01em] text-[var(--nora-text)] text-balance">
+        <div className="mb-3 flex flex-col items-center gap-2 text-center">
+          <h1 className={authTitleClassName}>
             Создание аккаунта
           </h1>
-          <p className="text-[13px] leading-relaxed font-normal text-[var(--nora-text-secondary)] text-balance">
+          <p className="text-[13px] leading-relaxed font-light text-[var(--nora-text-secondary)] text-balance">
             Заполните форму, чтобы зарегистрироваться
           </p>
         </div>
 
-        <div className="flex flex-col gap-5 mb-3">
+        <div className="flex flex-col gap-5">
           <form.Field
             name="role"
             children={(field) => (
@@ -230,17 +237,21 @@ export function RegisterForm({
                     return (
                       <label
                         className={cn(
-                          'box-border flex h-9 cursor-pointer items-center gap-2 rounded-[var(--nora-radius-md)] bg-[var(--nora-input-bg)] px-2.5',
-                          'font-[family-name:var(--nora-font)] text-xs font-medium text-[var(--nora-text)]',
+                          'box-border flex h-10 cursor-pointer items-center gap-2 rounded-[var(--nora-radius-md)] bg-[var(--nora-panel)] px-3 shadow-[inset_0_0_0_1px_var(--settings-well-stroke,var(--nora-border))] lg:h-8',
+                          'font-[family-name:var(--nora-font)] text-[14px] font-medium text-[var(--nora-text)] lg:text-[13px]',
                           'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
                           'has-focus-visible:shadow-[inset_0_0_0_1px_var(--nora-tint)]',
-                          'has-data-checked:bg-[var(--nora-tint-dimmed)] has-data-checked:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)]',
+                          'has-data-checked:bg-[var(--nora-tint-dimmed)] has-data-checked:text-[var(--nora-tint)] has-data-checked:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)]',
                         )}
                         htmlFor={id}
                         key={option.value}
                       >
-                        <RadioGroupItem id={id} value={option.value} />
-                        <span>{option.label}</span>
+                        <RadioGroupItem
+                          className="size-4 [&_[data-slot=radio-group-indicator]>span]:size-2"
+                          id={id}
+                          value={option.value}
+                        />
+                        <span className="leading-none">{option.label}</span>
                       </label>
                     )
                   })}
@@ -299,7 +310,8 @@ export function RegisterForm({
                             : undefined
                   }
                   className={cn(
-                    'pointer-events-none absolute inset-y-0 right-0 z-[2] flex w-9 items-center justify-center',
+                    authFieldAdornmentClassName,
+                    'pointer-events-none',
                     mentorLookupState === 'found' && 'text-[var(--nora-success)]',
                     mentorLookupState === 'not_found'
                       && mentorIdentifier.trim()
@@ -308,17 +320,16 @@ export function RegisterForm({
                       && mentorIdentifier.trim()
                       && 'text-[var(--nora-error)]',
                     mentorLookupState === 'checking' && 'text-[var(--nora-text-secondary)]',
-                    mentorLookupState === 'idle' && 'text-[var(--nora-text-tertiary)]',
                   )}
                 >
                   {mentorLookupState === 'found' ? (
-                    <CircleCheckIcon aria-hidden className="size-4" strokeWidth={2.25} />
+                    <CircleCheckIcon aria-hidden className={authFieldIconClassName} strokeWidth={1.75} />
                   ) : (mentorLookupState === 'not_found' || mentorLookupState === 'error') && mentorIdentifier.trim() ? (
-                    <CircleXIcon aria-hidden className="size-4" strokeWidth={2.25} />
+                    <CircleXIcon aria-hidden className={authFieldIconClassName} strokeWidth={1.75} />
                   ) : mentorLookupState === 'checking' ? (
-                    <Loader2Icon aria-hidden className="size-4 animate-spin" strokeWidth={2.25} />
+                    <Loader2Icon aria-hidden className={cn(authFieldIconClassName, 'animate-spin')} strokeWidth={1.75} />
                   ) : (
-                    <GraduationCapIcon aria-hidden className="size-4" strokeWidth={2.25} />
+                    <GraduationCapIcon aria-hidden className={authFieldIconClassName} strokeWidth={1.75} />
                   )}
                 </span>
               }
@@ -365,7 +376,10 @@ export function RegisterForm({
           children={(field) => (
             <Field className="gap-2" data-invalid={hasErrors(fieldErrors.displayName)}>
               <AuthFloatingInput
-                aria-describedby={errorId(fieldErrors.displayName, displayNameErrorId)}
+                aria-describedby={[
+                  displayNameDescriptionId,
+                  errorId(fieldErrors.displayName, displayNameErrorId),
+                ].filter(Boolean).join(' ')}
                 aria-invalid={hasErrors(fieldErrors.displayName)}
                 autoComplete="name"
                 hint="Иван Иванов"
@@ -381,6 +395,9 @@ export function RegisterForm({
                 type="text"
                 value={field.state.value}
               />
+              <FieldDescription id={displayNameDescriptionId}>
+                Как к вам обращаться
+              </FieldDescription>
               <FieldError id={displayNameErrorId} errors={fieldErrors.displayName} />
             </Field>
           )}
@@ -497,7 +514,7 @@ export function RegisterForm({
           />
         </Field>
 
-        <FieldDescription className="text-center text-xs font-normal">
+        <FieldDescription className="text-center text-[13px] font-normal" data-auth-footer="">
           Уже есть аккаунт?{' '}
           <Link
             className="font-medium text-[var(--nora-text)] underline-offset-4 hover:underline"

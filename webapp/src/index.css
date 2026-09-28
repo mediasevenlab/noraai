@@ -802,12 +802,61 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
     margin-bottom: calc(3.5rem * (var(--ios-type-scale) - 1) / var(--ios-type-scale)) !important;
     padding: calc(0.5rem / var(--ios-type-scale)) calc(0.75rem / var(--ios-type-scale)) !important;
     font-size: 16px !important;
-    font-weight: 300 !important;
+    font-weight: 400 !important;
     line-height: calc(1.25rem / var(--ios-type-scale)) !important;
     border-radius: calc(var(--nora-radius-md, 8px) / var(--ios-type-scale)) !important;
     field-sizing: fixed !important;
     transform: scale(var(--ios-type-scale));
     transform-origin: top left;
+  }
+
+  /*
+   * Same height as the submit button (40px). Computed type stays 16px;
+   * the painted size is 14px.
+   */
+  [data-auth-field] {
+    --ios-type-scale: 0.875;
+    height: 2.5rem;
+  }
+
+  [data-auth-field] > [data-auth-field-face] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: calc(100% / var(--ios-type-scale));
+    height: calc(2.5rem / var(--ios-type-scale));
+    transform: scale(var(--ios-type-scale));
+    transform-origin: top left;
+  }
+
+  [data-auth-field] [data-slot='input'] {
+    box-sizing: border-box !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding-top: calc(0.625rem / var(--ios-type-scale)) !important;
+    padding-bottom: calc(0.625rem / var(--ios-type-scale)) !important;
+    padding-left: calc(0.75rem / var(--ios-type-scale)) !important;
+    padding-right: calc(0.75rem / var(--ios-type-scale)) !important;
+    font-size: 16px !important;
+    font-weight: 400 !important;
+    line-height: calc(1.25rem / var(--ios-type-scale)) !important;
+  }
+
+  [data-auth-field][data-has-adornment] [data-slot='input'] {
+    padding-right: calc(2.5rem / var(--ios-type-scale)) !important;
+  }
+
+  [data-auth-field] label {
+    left: calc(0.75rem / var(--ios-type-scale)) !important;
+    font-size: 16px !important;
+    font-weight: 300 !important;
+  }
+
+  [data-auth-field]:has(input:focus) label,
+  [data-auth-field]:has(input:not(:placeholder-shown)) label {
+    /* 12px on screen; the field face is scaled, so the computed size is larger. */
+    font-size: calc(12px / var(--ios-type-scale)) !important;
   }
 
   [data-settings-well] [data-settings-search] {
@@ -823,6 +872,58 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
     transform: scale(var(--ios-type-scale));
     transform-origin: top left;
   }
+}
+
+/*
+ * Browser autofill paints a blue fill and its own smaller font.
+ * Chrome only honors the value's type on ::first-line, and only via the
+ * `font` shorthand. The size matches typed text: 13px, 16px under 768px.
+ */
+[data-auth-field] [data-slot='input']:-webkit-autofill,
+[data-auth-field] [data-slot='input']:-webkit-autofill:hover,
+[data-auth-field] [data-slot='input']:-webkit-autofill:focus,
+[data-auth-field] [data-slot='input']:-webkit-autofill:active,
+[data-auth-field] [data-slot='input']:autofill {
+  -webkit-text-fill-color: var(--nora-text) !important;
+  caret-color: var(--nora-text);
+  box-shadow:
+    inset 0 0 0 1px var(--settings-well-stroke, var(--nora-border)),
+    inset 0 0 0 1000px var(--nora-panel) !important;
+  transition: background-color 99999s ease-out 0s;
+}
+
+[data-auth-field] input:-webkit-autofill::first-line,
+[data-auth-field] input:-webkit-autofill:hover::first-line,
+[data-auth-field] input:-webkit-autofill:focus::first-line,
+[data-auth-field] input:-webkit-autofill:active::first-line,
+[data-auth-field] input:autofill::first-line {
+  font: 400 13px/1.25rem "Inter Variable", "Inter", system-ui, sans-serif !important;
+}
+
+@media (max-width: 767px) {
+  [data-auth-field] input:-webkit-autofill,
+  [data-auth-field] input:-webkit-autofill:hover,
+  [data-auth-field] input:-webkit-autofill:focus,
+  [data-auth-field] input:-webkit-autofill:active,
+  [data-auth-field] input:autofill {
+    font-size: 16px !important;
+    font-weight: 400 !important;
+    line-height: calc(1.25rem / 0.875) !important;
+  }
+
+  [data-auth-field] input:-webkit-autofill::first-line,
+  [data-auth-field] input:-webkit-autofill:hover::first-line,
+  [data-auth-field] input:-webkit-autofill:focus::first-line,
+  [data-auth-field] input:-webkit-autofill:active::first-line,
+  [data-auth-field] input:autofill::first-line {
+    font: 400 16px/calc(1.25rem / 0.875) "Inter Variable", "Inter", system-ui, sans-serif !important;
+  }
+}
+
+[data-auth-field] [data-slot='input']:-webkit-autofill:focus-visible {
+  box-shadow:
+    var(--nora-shadow-focus),
+    inset 0 0 0 1000px var(--nora-panel) !important;
 }
 
 /* Native overlay scrollbar — thin pill, Nora tokens, not the Windows chrome bar. */

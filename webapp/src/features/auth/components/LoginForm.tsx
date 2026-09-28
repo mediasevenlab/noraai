@@ -11,7 +11,7 @@ import { AuthFloatingInput } from './AuthFloatingInput'
 import { AuthPasswordToggleButton } from './AuthPasswordToggleButton'
 import { FormAlert } from './form-errors'
 import type { FieldErrors } from './form-model'
-import { authSubmitClassName } from './auth-control-styles'
+import { authFormClassName, authSubmitClassName, authTitleClassName } from './auth-control-styles'
 import {
   clearFieldError,
   errorId,
@@ -54,18 +54,18 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
 
   return (
     <form
-      className="flex flex-col gap-8 font-[family-name:var(--nora-font)]"
+      className={authFormClassName}
       onSubmit={(event) => {
         event.preventDefault()
         void form.handleSubmit()
       }}
     >
       <FieldGroup className="mt-0 gap-5">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <h1 className="font-heading text-[20px] leading-[1.3] font-semibold tracking-[-0.01em] text-[var(--nora-text)] text-balance">
+        <div className="mb-3 flex flex-col items-center gap-2 text-center">
+          <h1 className={authTitleClassName}>
             Вход в аккаунт
           </h1>
-          <p className="text-[13px] leading-relaxed font-normal text-[var(--nora-text-secondary)] text-balance">
+          <p className="text-[13px] leading-relaxed font-light text-[var(--nora-text-secondary)] text-balance">
             Введите email и пароль, чтобы продолжить
           </p>
         </div>
@@ -147,7 +147,7 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
           />
         </Field>
 
-        <FieldDescription className="text-center text-xs font-normal">
+        <FieldDescription className="text-center text-[13px] font-normal" data-auth-footer="">
           Нет аккаунта?{' '}
           <Link
             className="font-medium text-[var(--nora-text)] underline-offset-4 hover:underline"
