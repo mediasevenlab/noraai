@@ -46,12 +46,11 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
   const totalPages = referrals.data
     ? Math.max(1, Math.ceil(referrals.data.total / referrals.data.pageSize))
     : 1
-  const shownCount = referrals.data?.items.length
-  const description = referrals.data
-    ? `${shownCount} показано`
-    : referrals.isError
-      ? 'Недоступно'
-      : 'Загрузка…'
+  const description = referrals.isError
+    ? 'Недоступно'
+    : referrals.isPending
+      ? 'Загрузка…'
+      : null
   const bonusTotal = referrals.data
     ? userReferralBonusTotal(referrals.data.total)
     : null
@@ -190,9 +189,11 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
       >
         <div className="grid gap-2.5">
           <form className="flex w-full min-w-0 items-center gap-2" onSubmit={submitSearch}>
-            <p className="shrink-0 font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
-              {description}
-            </p>
+            {description ? (
+              <p className="shrink-0 font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
+                {description}
+              </p>
+            ) : null}
             {bonusChip ? <div className="shrink-0">{bonusChip}</div> : null}
             <div className="relative h-8 min-w-0 flex-1 lg:ml-auto lg:w-[220px] lg:flex-none">{searchField}</div>
           </form>
@@ -214,7 +215,7 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
   return (
     <div className="grid gap-4">
       <DataTableFrame
-        description={description}
+        description={description ?? undefined}
         nextDisabled={!referrals.data?.hasNext}
         onNext={() => setPage((current) => current + 1)}
         onPrevious={() => setPage((current) => Math.max(1, current - 1))}

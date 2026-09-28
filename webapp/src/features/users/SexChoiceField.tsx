@@ -32,8 +32,10 @@ export function SexChoiceField({
         return (
           <label
             className={cn(
-              'flex cursor-pointer gap-2 rounded-[var(--nora-radius-md)] px-2.5 py-2',
-              entry ? 'items-start bg-[var(--nora-panel)] px-3 py-2' : 'items-center bg-[var(--nora-input-bg)] text-[12px]',
+              'flex cursor-pointer items-start gap-2 rounded-[var(--nora-radius-md)] px-3 py-2',
+              entry
+                ? 'bg-[var(--nora-panel)]'
+                : 'bg-[var(--questionnaire-fill,var(--settings-substrate))] shadow-[inset_0_0_0_1px_var(--questionnaire-fill-stroke,var(--nora-border))]',
               'font-[family-name:var(--nora-font)] font-medium text-[var(--nora-text)]',
               'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
               'has-focus-visible:shadow-[inset_0_0_0_1px_var(--nora-tint)]',
@@ -42,23 +44,20 @@ export function SexChoiceField({
             htmlFor={id}
             key={option.value}
           >
-            {entry ? (
-              <span className="flex h-5 shrink-0 items-center">
-                <RadioGroupItem aria-label={option.label} id={id} value={option.value} />
+            <span className="flex h-5 shrink-0 items-center">
+              <RadioGroupItem
+                aria-label={option.label}
+                className={entry ? undefined : 'bg-[var(--questionnaire-mark,var(--nora-panel))]'}
+                id={id}
+                value={option.value}
+              />
+            </span>
+            <span className="min-w-0 grid gap-px text-left">
+              <span className="text-[13px] leading-5">{option.label}</span>
+              <span className="min-w-0 truncate text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]" data-option-note="">
+                {option.description}
               </span>
-            ) : (
-              <RadioGroupItem aria-label={option.label} id={id} value={option.value} />
-            )}
-            {entry ? (
-              <span className="min-w-0 grid gap-px text-left">
-                <span className="text-[13px] leading-5">{option.label}</span>
-                <span className="min-w-0 truncate text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]" data-option-note="">
-                  {option.description}
-                </span>
-              </span>
-            ) : (
-              <span>{option.label}</span>
-            )}
+            </span>
           </label>
         )
       })}

@@ -1,4 +1,4 @@
-export const MODAL_MOTION_STORAGE_KEY = 'nora-modal-motion'
+export const MODAL_MOTION_STORAGE_KEY = 'nora-modal-motion-v2'
 
 export const MODAL_MOTIONS = [
   { id: 'near', label: 'Едва · 1%', scale: '0.99', radius: '6px' },
@@ -15,7 +15,7 @@ export const MODAL_MOTIONS = [
 
 export type ModalMotionId = (typeof MODAL_MOTIONS)[number]['id']
 
-export const DEFAULT_MODAL_MOTION: ModalMotionId = 'ios'
+export const DEFAULT_MODAL_MOTION: ModalMotionId = 'near'
 
 const MODAL_MOTION_IDS = new Set<string>(MODAL_MOTIONS.map((motion) => motion.id))
 

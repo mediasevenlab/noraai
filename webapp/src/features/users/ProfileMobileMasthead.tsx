@@ -225,11 +225,14 @@ export function ProfileMobileMasthead({
       ref={mastheadRef}
     >
       {cover ? (
-        <div
-          aria-hidden
-          className="absolute inset-0 scale-105 bg-cover bg-center blur-[2px]"
-          style={{ backgroundImage: `url(${cover})` }}
-        />
+        <>
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${cover})` }}
+          />
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-black/25" />
+        </>
       ) : null}
       {mode.editing ? (
         <div className="absolute top-3 right-3 z-[1] flex items-center gap-1.5">
@@ -325,7 +328,7 @@ export function ProfileMobileMasthead({
       </div>
       <button
         aria-label="Закрыть раздел"
-        className="nora-sheet-handle absolute bottom-[34px] left-1/2 z-[3] flex h-5 w-16 -translate-x-1/2 cursor-grab touch-none items-end justify-center"
+        className="nora-sheet-handle absolute bottom-[34px] left-1/2 z-[3] flex h-8 w-44 -translate-x-1/2 cursor-grab touch-none items-end justify-center"
         onPointerCancel={onHandleUp}
         onPointerDown={onHandleDown}
         onPointerMove={onHandleMove}

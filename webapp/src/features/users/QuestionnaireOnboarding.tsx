@@ -85,23 +85,20 @@ export function QuestionnaireOnboarding() {
                 <NoraBadge variant="blue">
                   Шаг {stepIndex + 1} из {ONBOARDING_STEPS.length}
                 </NoraBadge>
-                <span className="text-[12px] text-[var(--nora-text-tertiary)]">
-                  {step.category}
-                </span>
               </div>
               <div className="flex items-end justify-between gap-4">
                 <div className="min-w-0 grid gap-1.5">
                   <h1 className="font-heading text-[28px] leading-[1.15] font-bold tracking-[-0.03em] text-[var(--nora-text)]">
                     {step.heading}
                   </h1>
-                  <p className="text-[13px] leading-relaxed text-[var(--nora-text-secondary)]">
+                  <p className="text-[13px] font-light leading-relaxed text-[var(--nora-text-tertiary)]">
                     {step.summary}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2 pb-0.5">
                   <NoraButton
                     aria-label="Назад"
-                    className="size-9 rounded-full p-0 [&_svg]:size-4"
+                    className="size-9 rounded-full bg-[var(--questionnaire-back,var(--nora-panel))] p-0 text-[var(--nora-text)] shadow-none hover:bg-[color-mix(in_srgb,var(--nora-text)_6%,var(--questionnaire-back,var(--nora-panel)))] hover:text-[var(--nora-text)] disabled:bg-[var(--nora-surface)] disabled:text-[var(--nora-text-dimmed)] [&_svg]:size-4"
                     disabled={stepIndex === 0 || saveMutation.isPending}
                     onClick={goBack}
                     variant="ghost"
@@ -140,17 +137,17 @@ export function QuestionnaireOnboarding() {
                   showFieldErrors && incompleteRequiredKeys.has(field.key)
                 return (
                   <div
-                    className={cn('grid gap-1.5', !field.halfWidth && 'col-span-2')}
+                    className={cn('grid gap-2', !field.halfWidth && 'col-span-2')}
                     key={field.key}
                   >
                     {field.hideLabel ? null : (
-                      <span className="text-[12px] text-[var(--nora-text-secondary)]">
+                      <span className="min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
                         {field.label}
                         {fieldInvalid ? (
                           <span className="text-[var(--nora-error)]"> *</span>
                         ) : null}
                         {field.optional ? (
-                          <span className="text-[var(--nora-text-tertiary)]">
+                          <span className="font-normal text-[12px] text-[var(--nora-text-tertiary)]">
                             {' '}
                             · необязательно
                           </span>
@@ -176,7 +173,7 @@ export function QuestionnaireOnboarding() {
               className="mt-8 flex gap-1.5 text-[11px] leading-relaxed text-[var(--nora-text-tertiary)]"
               role="status"
             >
-              <span className="shrink-0 font-medium text-[var(--nora-text)]">*</span>
+              <span className="shrink-0">*</span>
               <span>
                 Чтобы получить доступ к функциям приложения, пройдите первичную анкету.
                 <br />

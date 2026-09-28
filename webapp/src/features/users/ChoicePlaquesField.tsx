@@ -10,8 +10,10 @@ const MULTI_SEPARATOR = ', '
 
 function plaqueClassName(checked: boolean, entry: boolean) {
   return cn(
-    'flex cursor-pointer items-start gap-2 rounded-[var(--nora-radius-md)] px-2.5 py-2',
-    entry ? 'bg-[var(--nora-panel)] px-3' : 'bg-[var(--nora-input-bg)]',
+    'flex cursor-pointer items-start gap-2 rounded-[var(--nora-radius-md)] px-3 py-2',
+    entry
+      ? 'bg-[var(--nora-panel)]'
+      : 'bg-[var(--questionnaire-fill,var(--settings-substrate))] shadow-[inset_0_0_0_1px_var(--questionnaire-fill-stroke,var(--nora-border))]',
     'font-[family-name:var(--nora-font)] text-[var(--nora-text)]',
     'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
     'has-focus-visible:shadow-[inset_0_0_0_1px_var(--nora-tint)]',
@@ -21,13 +23,13 @@ function plaqueClassName(checked: boolean, entry: boolean) {
 }
 
 /** Same look as RadioGroupItem — used for multi-select so steps stay visually consistent. */
-function RoundChoiceMark({ checked }: { checked: boolean }) {
+function RoundChoiceMark({ checked, light }: { checked: boolean; light?: boolean }) {
   return (
     <span
       aria-hidden
       className={cn(
-        'relative flex size-4 shrink-0 items-center justify-center rounded-full border border-[var(--nora-border-strong)] bg-transparent',
-        'dark:bg-input/30',
+        'relative flex size-4 shrink-0 items-center justify-center rounded-full border border-[var(--nora-border-strong)]',
+        light ? 'bg-[var(--questionnaire-mark,var(--nora-panel))]' : 'bg-transparent dark:bg-input/30',
         checked && 'border-primary bg-primary text-primary-foreground dark:bg-primary',
       )}
     >
@@ -39,26 +41,18 @@ function RoundChoiceMark({ checked }: { checked: boolean }) {
 }
 
 function OptionCopy({
-  entry,
   label,
   description,
 }: {
-  entry: boolean
   label: string
   description?: string
 }) {
   return (
     <span className="min-w-0 grid gap-px text-left">
-      <span className={entry ? 'text-[13px] font-medium leading-5' : 'text-[12px] font-medium leading-snug'}>
-        {label}
-      </span>
+      <span className="text-[13px] font-medium leading-5">{label}</span>
       {description ? (
         <span
-          className={
-            entry
-              ? 'min-w-0 truncate text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]'
-              : 'text-[10px] leading-snug text-[var(--nora-text-tertiary)]'
-          }
+          className="min-w-0 truncate text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]"
           data-option-note=""
         >
           {description}
@@ -153,23 +147,15 @@ export function ChoicePlaquesField({
                 emit(undefined, allowCustom ? detailText : '')
               }}
             >
-              {entry ? (
-                <span className="flex h-5 shrink-0 items-center">
-                  <RadioGroupItem
-                    aria-label={option.label}
-                    id={id}
-                    value={option.value}
-                  />
-                </span>
-              ) : (
+              <span className="flex h-5 shrink-0 items-center">
                 <RadioGroupItem
                   aria-label={option.label}
-                  className="mt-px"
+                  className={entry ? undefined : 'bg-[var(--questionnaire-mark,var(--nora-panel))]'}
                   id={id}
                   value={option.value}
                 />
-              )}
-              <OptionCopy description={option.description} entry={entry} label={option.label} />
+              </span>
+              <OptionCopy description={option.description} label={option.label} />
             </label>
           )
         })}
@@ -180,7 +166,7 @@ export function ChoicePlaquesField({
           className={
             entry
               ? 'h-10 bg-[var(--nora-panel)] px-3 text-[16px] leading-5 lg:h-8 lg:text-[13px]'
-              : 'h-10 text-[13px]'
+              : 'h-10 min-h-10 w-full bg-[var(--questionnaire-fill,var(--settings-substrate))] px-3 text-[16px] font-normal leading-5 shadow-[inset_0_0_0_1px_var(--questionnaire-fill-stroke,var(--nora-border))] lg:h-8 lg:min-h-8 lg:text-[13px]'
           }
           onChange={(event) => emit(selectedOption, event.target.value)}
           placeholder={customPlaceholder}
@@ -247,14 +233,10 @@ export function MultiChoicePlaquesField({
             role="checkbox"
             type="button"
           >
-            {entry ? (
-              <span className="flex h-5 shrink-0 items-center">
-                <RoundChoiceMark checked={checked} />
-              </span>
-            ) : (
-              <RoundChoiceMark checked={checked} />
-            )}
-            <OptionCopy description={option.description} entry={entry} label={option.label} />
+            <span className="flex h-5 shrink-0 items-center">
+              <RoundChoiceMark checked={checked} light={!entry} />
+            </span>
+            <OptionCopy description={option.description} label={option.label} />
           </button>
         )
       })}

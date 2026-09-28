@@ -6,12 +6,12 @@
   --modal-overlay-duration: 500ms;
   --modal-panel-duration: 500ms;
   --modal-out-duration: 420ms;
-  --modal-recess-scale: 0.92;
-  --modal-recess-radius: 12px;
+  --modal-recess-scale: 0.99;
+  --modal-recess-radius: 6px;
   --modal-sheet-inset: 1.25rem;
   --modal-sheet-radius: 28px;
-  --modal-overlay-bg: color-mix(in srgb, #0f172a 18%, transparent);
-  --modal-overlay-blur: 12px;
+  --modal-overlay-bg: rgb(0 0 0 / 0.14);
+  --modal-overlay-blur: 8px;
   --modal-overlay-saturate: 140%;
 }
 

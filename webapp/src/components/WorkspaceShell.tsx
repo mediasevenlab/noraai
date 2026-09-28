@@ -179,7 +179,7 @@ export function WorkspaceShell({
             : item.to === '/mentor/plans'
               ? isMentorPlanPath(pathname)
               : item.to === pathname),
-        disabled: navigationLocked || item.disabled,
+        disabled: item.disabled,
         icon: iconsByPath[item.to],
         label: item.label,
         to: item.to,

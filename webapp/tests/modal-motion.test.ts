@@ -36,8 +36,8 @@ describe('modal motion', () => {
     }
   })
 
-  test('defaults to the iOS recess preset', () => {
-    expect(DEFAULT_MODAL_MOTION).toBe('ios')
+  test('defaults to the slightest recess', () => {
+    expect(DEFAULT_MODAL_MOTION).toBe('near')
   })
 
   test('phone dialogs slide up as iOS sheets while the presenting view recedes', () => {

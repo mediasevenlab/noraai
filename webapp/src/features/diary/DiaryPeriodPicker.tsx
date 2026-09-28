@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils'
 const PERIOD_DIALOG_FRAME_CLASS = cn(
   '!flex flex-col gap-0 overflow-hidden bg-[var(--nora-modal)] p-0 !pb-0',
   'inset-x-0 bottom-0 top-auto h-auto max-h-[calc(100dvh-var(--modal-sheet-inset))] w-full max-w-none translate-x-0 translate-y-0 rounded-t-[var(--modal-sheet-radius)] rounded-b-none',
-  'md:inset-auto md:top-1/2 md:left-1/2 md:h-auto md:max-h-[min(760px,calc(100vh-2rem))] md:w-[min(100%-2rem,480px)] md:max-w-[480px] md:rounded-[24px]',
+  'md:inset-auto md:top-1/2 md:left-1/2 md:h-auto md:max-h-[min(960px,calc(100vh-2rem))] md:w-[min(100%-2rem,480px)] md:max-w-[480px] md:rounded-[24px]',
 )
 
 const CALENDAR_WEEKDAY_CLASS =
@@ -250,7 +250,7 @@ function PeriodCalendar({
 const PERIOD_SHEET_ACTION_CLASS = cn(
   'nora-press-grow inline-flex !h-10 !min-h-10 !max-h-10 w-full items-center justify-center gap-1.5',
   '!rounded-[14px] border-0 !px-4 py-0',
-  'font-[family-name:var(--nora-font)] [font-size:13px] !font-medium leading-none',
+  'font-[family-name:var(--nora-font)] [font-size:13px] !font-normal leading-none',
   'enabled:text-[var(--nora-on-accent)] enabled:hover:text-[var(--nora-on-accent)]',
   'enabled:[&_svg]:text-[var(--nora-on-accent)]',
 )
@@ -258,7 +258,7 @@ const PERIOD_SHEET_ACTION_CLASS = cn(
 const PERIOD_POPOVER_ACTION_CLASS = cn(
   'nora-press-grow inline-flex h-[var(--nora-control-h)] min-h-[var(--nora-control-h)] max-h-[var(--nora-control-h)] w-full items-center justify-center gap-1',
   'rounded-[var(--nora-radius-md)] border-0 !px-2.5 py-0',
-  'font-[family-name:var(--nora-font)] text-xs !font-medium leading-none',
+  'font-[family-name:var(--nora-font)] text-xs !font-normal leading-none',
   'enabled:text-[var(--nora-on-accent)] enabled:hover:text-[var(--nora-on-accent)]',
   'enabled:[&_svg]:text-[var(--nora-on-accent)]',
 )

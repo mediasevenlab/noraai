@@ -78,7 +78,7 @@ function SettingsCanvasView({
     <div className={cn(
       'mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-3 pt-3 pb-8 sm:px-6 md:px-10 md:py-12 lg:flex-row lg:gap-16 lg:px-12',
       (lead || phoneSheet) && 'max-lg:min-h-full max-lg:flex-1 max-lg:gap-0 max-lg:pb-0',
-      lead && 'max-lg:bg-[color-mix(in_srgb,var(--nora-text)_5%,var(--background))]',
+      (lead || phoneSheet) && 'max-lg:bg-[color-mix(in_srgb,var(--nora-text)_9%,var(--background))]',
     )}>
       <aside className="hidden w-full shrink-0 flex-col gap-6 lg:sticky lg:top-6 lg:flex lg:w-[280px] lg:self-start">
         <div>
@@ -179,7 +179,7 @@ function PhoneSheetHandle() {
   return (
     <button
       aria-label="Закрыть раздел"
-      className="nora-sheet-handle absolute top-0 left-1/2 z-[3] hidden h-5 w-16 -translate-x-1/2 -translate-y-[calc(100%+10px)] cursor-grab touch-none items-end justify-center max-lg:flex"
+      className="nora-sheet-handle absolute top-0 left-1/2 z-[3] hidden h-8 w-44 -translate-x-1/2 -translate-y-[calc(100%+10px)] cursor-grab touch-none items-end justify-center max-lg:flex"
       onPointerCancel={onPointerUp}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -210,7 +210,7 @@ export function SettingsEntry({
   return (
     <li className={cn('w-full py-6 first:pt-0 group-data-[plain]/sections:py-[15.6px] group-data-[plain]/sections:first:pt-0 lg:group-data-[plain]/sections:py-[20px] lg:group-data-[plain]/sections:first:pt-0 lg:ml-auto lg:w-lg lg:max-w-full', className)}>
       <div className="flex items-center justify-between gap-2 lg:gap-x-4">
-        <h2 className="min-w-0 font-heading text-[22px] leading-tight font-bold tracking-[-0.02em] text-foreground lg:text-[24px]">
+        <h2 className="min-w-0 font-heading text-[18px] leading-tight font-bold tracking-[-0.02em] text-foreground lg:text-[24px]">
           {title}
         </h2>
         {marker ?? (badge ? <NoraBadge className="hidden shrink-0 lg:inline-flex" variant="blue">{badge}</NoraBadge> : null)}

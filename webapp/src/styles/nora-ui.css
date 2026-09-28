@@ -36,6 +36,13 @@
   --nora-modal: #1a1a1a;
   --nora-inset: #2b2b2b;
   --settings-substrate: color-mix(in srgb, white 8%, var(--nora-panel));
+  --questionnaire-fill: var(--nora-input-bg);
+  --questionnaire-fill-stroke: transparent;
+  --questionnaire-mark: transparent;
+  --questionnaire-card: var(--nora-panel);
+  --questionnaire-back: var(--nora-button-bg);
+  --questionnaire-preview-label: #c2c2c2;
+  --questionnaire-preview-value: #8a8a8a;
   --settings-divider: color-mix(in srgb, white 5%, var(--settings-substrate));
   --settings-divider-glint: color-mix(in srgb, white 10%, var(--settings-substrate));
   --settings-well-stroke: color-mix(in srgb, white 14%, var(--settings-substrate));
@@ -143,6 +150,13 @@
   --nora-inset: #f3f3f3;
   /* Прежняя подложка настроек, до совпадения с плиткой меню. */
   --settings-substrate: color-mix(in srgb, white 5%, color-mix(in srgb, white 10%, #f1f1f2));
+  --questionnaire-fill: color-mix(in srgb, white 20%, var(--settings-substrate));
+  --questionnaire-fill-stroke: color-mix(in srgb, black 3%, var(--questionnaire-fill));
+  --questionnaire-mark: var(--nora-panel);
+  --questionnaire-card: var(--nora-panel);
+  --questionnaire-back: var(--nora-panel);
+  --questionnaire-preview-label: var(--nora-text-secondary);
+  --questionnaire-preview-value: var(--nora-text-tertiary);
   --settings-divider: color-mix(in srgb, white 5%, color-mix(in srgb, black 4%, color-mix(in srgb, black 5%, var(--settings-substrate))));
   --settings-divider-glint: color-mix(in srgb, white 60%, var(--settings-substrate));
   --settings-well-stroke: color-mix(in srgb, black 9%, var(--settings-substrate));
@@ -924,8 +938,8 @@ html[data-android] .ios-glass-glare-soft {
     left: 50%;
     z-index: 5;
     display: flex;
-    height: 1.25rem;
-    width: 4rem;
+    height: 2rem;
+    width: 11rem;
     transform: translate(-50%, calc(-100% - 10px));
     align-items: flex-end;
     justify-content: center;

@@ -83,7 +83,7 @@ export function QuestionnaireFieldControl({
         className={
           variant === 'entry'
             ? entryTextareaClass
-            : 'min-h-[3.75rem] resize-y px-3 py-2 text-[12px] leading-relaxed'
+            : 'min-h-14 resize-y bg-[var(--questionnaire-fill,var(--settings-substrate))] px-3 py-2 text-[16px] font-light leading-5 text-[color-mix(in_srgb,var(--nora-text-secondary)_40%,var(--nora-input-text))] shadow-[inset_0_0_0_1px_var(--questionnaire-fill-stroke,var(--nora-border))] placeholder:font-light placeholder:text-[var(--nora-input-placeholder)] lg:text-[13px]'
         }
         onChange={(event) => onChange(field.key, event.target.value)}
         placeholder={field.placeholder}
@@ -100,7 +100,7 @@ export function QuestionnaireFieldControl({
       className={
         variant === 'entry'
           ? `h-10 w-full px-3 lg:h-8 ${entryControlClass}`
-          : 'h-8 text-[13px]'
+          : 'h-10 min-h-10 w-full bg-[var(--questionnaire-fill,var(--settings-substrate))] px-3 text-[16px] font-normal leading-5 shadow-[inset_0_0_0_1px_var(--questionnaire-fill-stroke,var(--nora-border))] lg:h-8 lg:min-h-8 lg:text-[13px]'
       }
       onChange={(event) => onChange(
         field.key,

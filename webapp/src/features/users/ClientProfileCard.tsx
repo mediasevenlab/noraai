@@ -219,14 +219,12 @@ function ProfileSectionEntry({
   editing,
   onChange,
   section,
-  sectionIndex,
   values,
 }: {
   className?: string
   editing: boolean
   onChange: (key: FieldKey, value: string) => void
   section: ProfileSection
-  sectionIndex: number
   values: Record<FieldKey, string>
 }) {
   const rows = visibleFields(values, section.fields, editing)
@@ -235,11 +233,6 @@ function ProfileSectionEntry({
     <SettingsEntry
       className={className}
       description={section.description}
-      marker={(
-        <span className="max-lg:hidden">
-          <ProfileSectionMarker section={section} sectionIndex={sectionIndex} />
-        </span>
-      )}
       title={section.title}
     >
       {editing ? (
@@ -482,7 +475,6 @@ export function ClientProfileCard({
             key={section.title}
             onChange={onChange}
             section={section}
-            sectionIndex={sectionIndex}
             values={values}
           />
         ))}

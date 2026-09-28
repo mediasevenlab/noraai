@@ -74,7 +74,7 @@ export function MobileSheetGrabber({ dismiss }: { dismiss: React.ReactNode }) {
       <div
         aria-hidden
         data-slot="sheet-grabber"
-        className="nora-sheet-handle absolute top-0 left-1/2 z-[5] flex h-5 w-16 -translate-x-1/2 -translate-y-[calc(100%+10px)] touch-none items-end justify-center md:hidden"
+        className="nora-sheet-handle absolute top-0 left-1/2 z-[5] flex h-8 w-44 -translate-x-1/2 -translate-y-[calc(100%+10px)] touch-none items-end justify-center md:hidden"
         onPointerCancel={finish}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

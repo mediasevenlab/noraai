@@ -43,11 +43,11 @@ describe('modal overlay', () => {
     }
   })
 
-  test('defaults to dusk frost', () => {
-    expect(DEFAULT_MODAL_OVERLAY).toBe('dusk')
+  test('defaults to a light mist', () => {
+    expect(DEFAULT_MODAL_OVERLAY).toBe('mist')
     const root = css.slice(css.indexOf(':root {'), css.indexOf("html[data-modal-overlay='haze']"))
-    expect(root).toContain('--modal-overlay-bg: color-mix(in srgb, #0f172a 18%, transparent)')
-    expect(root).toContain('--modal-overlay-blur: 12px')
+    expect(root).toContain('--modal-overlay-bg: rgb(0 0 0 / 0.14)')
+    expect(root).toContain('--modal-overlay-blur: 8px')
     expect(root).toContain('--modal-overlay-saturate: 140%')
   })
 

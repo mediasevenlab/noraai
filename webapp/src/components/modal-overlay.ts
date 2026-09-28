@@ -1,4 +1,4 @@
-export const MODAL_OVERLAY_STORAGE_KEY = 'nora-modal-overlay-v3'
+export const MODAL_OVERLAY_STORAGE_KEY = 'nora-modal-overlay-v4'
 
 export const MODAL_OVERLAYS = [
   {
@@ -145,7 +145,7 @@ export const MODAL_OVERLAYS = [
 
 export type ModalOverlayId = (typeof MODAL_OVERLAYS)[number]['id']
 
-export const DEFAULT_MODAL_OVERLAY: ModalOverlayId = 'dusk'
+export const DEFAULT_MODAL_OVERLAY: ModalOverlayId = 'mist'
 
 const MODAL_OVERLAY_IDS = new Set<string>(MODAL_OVERLAYS.map((overlay) => overlay.id))
 

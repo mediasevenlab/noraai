@@ -1,6 +1,6 @@
 import { MoonIcon, SunIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import type { UserDto } from '@web-app-demo/contracts'
+import { isDefaultUserEmail, type UserDto } from '@web-app-demo/contracts'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -50,6 +50,7 @@ export function SiteHeader({
       ? [title]
       : ['']
   const displayName = user.displayName ?? user.email
+  const showAppearanceMenus = isDefaultUserEmail(user.email)
 
   return (
     <header className="sticky top-0 z-20 hidden h-14 shrink-0 items-center gap-2 border-b bg-background px-4 md:flex md:px-6">
@@ -79,15 +80,19 @@ export function SiteHeader({
         })}
       </nav>
       <div className="ml-auto flex items-center gap-2">
-        {user.role === 'user' || user.role === 'mentor' ? <SidebarPromoToggle /> : null}
-        <LightPaletteMenu />
-        <ModalOverlayMenu />
-        <ModalMotionMenu />
-        <CardRadiusMenu />
-        <CardShadowMenu />
-        <PlannedCoverWashMenu />
-        <PlannedCoverBlurMenu />
-        <PlannedCoverGradeMenu />
+        {showAppearanceMenus ? (
+          <>
+            {user.role === 'user' || user.role === 'mentor' ? <SidebarPromoToggle /> : null}
+            <LightPaletteMenu />
+            <ModalOverlayMenu />
+            <ModalMotionMenu />
+            <CardRadiusMenu />
+            <CardShadowMenu />
+            <PlannedCoverWashMenu />
+            <PlannedCoverBlurMenu />
+            <PlannedCoverGradeMenu />
+          </>
+        ) : null}
         <Button
           aria-label={isDark ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
           className="size-7"

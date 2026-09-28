@@ -1,4 +1,4 @@
-export const CARD_RADIUS_STORAGE_KEY = 'nora-card-radius'
+export const CARD_RADIUS_STORAGE_KEY = 'nora-card-radius-v2'
 
 /** Padding around the diary card preview (`px-2` / `pt-2`). */
 export const MEAL_CARD_PREVIEW_INSET_PX = 8
@@ -15,9 +15,9 @@ function option(radiusPx: number, label: string) {
 export const CARD_RADII = [
   option(8, '8 px'),
   option(10, '10 px'),
-  option(12, '12 px'),
+  option(12, '12 px · по умолчанию'),
   option(14, '14 px'),
-  option(16, '16 px · по умолчанию'),
+  option(16, '16 px'),
   option(18, '18 px'),
   option(20, '20 px'),
   option(22, '22 px'),
@@ -27,7 +27,7 @@ export const CARD_RADII = [
 
 export type CardRadiusId = (typeof CARD_RADII)[number]['id']
 
-export const DEFAULT_CARD_RADIUS: CardRadiusId = '16'
+export const DEFAULT_CARD_RADIUS: CardRadiusId = '12'
 
 const CARD_RADIUS_IDS = new Set<string>(CARD_RADII.map((item) => item.id))
 

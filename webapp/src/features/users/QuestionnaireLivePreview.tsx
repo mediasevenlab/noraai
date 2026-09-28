@@ -4,8 +4,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import {
   ONBOARDING_STEPS,
+  measureInputValue,
+  measureLabel,
   type FieldKey,
   type OnboardingStep,
+  type ProfileField,
 } from './questionnaire-sections'
 
 const CARD_MOTION_MS = 420
@@ -24,34 +27,44 @@ function isFilled(value: string) {
   return value.trim().length > 0
 }
 
+const previewValueClass =
+  'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 break-words text-[var(--questionnaire-preview-value,var(--nora-text-tertiary))]'
+
 function PreviewFieldRow({
-  label,
+  field,
   value,
   isFirst,
+  isLast,
 }: {
-  label: string
+  field: ProfileField
   value: string
   isFirst: boolean
+  isLast: boolean
 }) {
   const filled = isFilled(value)
+  const extended = field.layout === 'extended'
 
   return (
     <div
       className={cn(
-        'grid grid-cols-2 items-center gap-3 border-t border-[var(--nora-divider)] py-2.5',
+        'min-w-0 border-t border-[var(--nora-divider)] py-3.5',
         isFirst && 'border-t-0 pt-0',
+        isLast && 'pb-0',
+        extended
+          ? 'grid gap-2'
+          : 'grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4',
       )}
     >
-      <span className="min-w-0 truncate text-[12px] leading-5 text-[var(--nora-text-tertiary)]">
-        {label}
+      <span className="min-w-0 truncate font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--questionnaire-preview-label,var(--nora-text-secondary))]">
+        {field.unit ? measureLabel(field) : field.label}
       </span>
-      <div className="flex h-5 min-w-0 items-center justify-end">
+      <div className={cn('flex min-w-0 items-center', !extended && 'justify-end')}>
         {filled ? (
-          <span className="min-w-0 truncate text-right text-[12px] leading-5 font-normal text-[var(--nora-text-secondary)]">
-            {value}
+          <span className={cn(previewValueClass, extended ? 'whitespace-pre-wrap' : 'truncate text-right')}>
+            {measureInputValue(value, field.unit) || '—'}
           </span>
         ) : (
-          <Skeleton className="h-3 w-24 shrink-0" />
+          <Skeleton className="h-3.5 w-24 shrink-0" />
         )}
       </div>
     </div>
@@ -74,13 +87,13 @@ function PreviewStepCard({
   const iconTone = PREVIEW_ICON_TONES[stepIndex % PREVIEW_ICON_TONES.length]!
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-[var(--nora-radius-lg)] bg-[var(--dash-card-bg,var(--nora-panel))] shadow-[inset_0_0_0_1px_var(--dash-card-ring,var(--nora-border))]">
+    <article className="flex flex-col overflow-hidden rounded-[var(--nora-radius-lg)] bg-[var(--questionnaire-card,var(--dash-card-bg,var(--nora-panel)))] shadow-[inset_0_0_0_1px_var(--dash-card-ring,var(--nora-border))]">
       <div className="flex items-start justify-between gap-3 border-b border-[var(--nora-divider)] p-3.5">
         <div className="min-w-0">
-          <h2 className="truncate text-[13px] font-semibold text-[var(--nora-text)]">
+          <h2 className="truncate font-heading text-[16px] leading-tight font-bold tracking-[-0.02em] text-[var(--nora-text)]">
             {step.heading}
           </h2>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--nora-text-tertiary)]">
+          <p className="mt-1 text-[13px] font-light leading-5 text-[var(--nora-text-tertiary)]">
             {step.summary}
           </p>
         </div>
@@ -94,12 +107,13 @@ function PreviewStepCard({
           <Icon className="size-3.5" strokeWidth={2} />
         </span>
       </div>
-      <div className="grid content-start p-3.5">
+      <div className="grid content-start p-3.5 pb-5">
         {rows.map((field, index) => (
           <PreviewFieldRow
+            field={field}
             isFirst={index === 0}
+            isLast={index === rows.length - 1}
             key={field.key}
-            label={field.label}
             value={values[field.key]}
           />
         ))}

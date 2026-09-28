@@ -1,6 +1,6 @@
 :root {
-  --meal-card-radius: 16px;
-  --meal-card-preview-radius: 12px;
+  --meal-card-radius: 12px;
+  --meal-card-preview-radius: 8px;
 }
 
 [data-slot='meal-card'],
