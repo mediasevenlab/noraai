@@ -1,5 +1,12 @@
 import * as React from "react";
-import { CalendarDaysIcon, Loader2Icon, PlusIcon, XIcon } from "lucide-react";
+import {
+  CalendarDaysIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  Loader2Icon,
+  PlusIcon,
+  XIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { NoraInput, NoraTextarea } from "@/components/nora/primitives";
@@ -13,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-import { mealsCountLabel } from "./diary-feed";
+import { mealsCountLabel, rationsCountLabel } from "./diary-feed";
 import {
   DIARY_NEW_PLAN_ID,
   DIARY_NEW_PLAN_MAX_DAYS,
@@ -29,7 +36,7 @@ import {
 } from "./diary-plan-import";
 import { feedPlanWeekDays, type FeedPlanWeekDay } from "./feed-import";
 import { PLAN_COVER_PLACEHOLDER_SRC, usableMealCover } from "./meal-cover";
-import { MealDetailHeading, MEAL_DIALOG_OVERLAY_CHIP_CLASS } from "./meal-sheet";
+import { MEAL_DIALOG_OVERLAY_CHIP_CLASS } from "./meal-sheet";
 import type { MealEntry } from "./meals-catalog";
 import { currentWeekPlanStampId } from "./ration-import";
 
@@ -42,8 +49,18 @@ const PLAN_DAY_PICKER_FRAME_CLASS = cn(
 /** Create card plus four plans fill the row; further plans scroll sideways. */
 const PLAN_PICKER_CARD_CLASS =
   "nora-press-grow flex w-[calc((100%-2rem)/5)] shrink-0 flex-col gap-1.5 outline-none focus-visible:shadow-[var(--nora-shadow-focus)]";
+const PLAN_PICKER_COVER_CLASS = "block aspect-square w-full rounded-[16px] p-0.5";
 const PLAN_PICKER_TITLE_CLASS =
   "block w-full truncate text-center font-[family-name:var(--nora-font)] text-[13px] leading-4";
+const PLAN_SCROLL_BUTTON_CLASS =
+  "nora-press-grow absolute top-[calc((100cqw-2rem)/10-1rem)] z-10 flex size-8 items-center justify-center rounded-full bg-[var(--nora-panel)] text-[var(--nora-text)] shadow-[0_1px_4px_rgba(0,0,0,0.16)] outline-none focus-visible:shadow-[var(--nora-shadow-focus)] max-md:hidden";
+
+function planScrollEdges(scroller: HTMLElement) {
+  return {
+    more: scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 4,
+    back: scroller.scrollLeft > 4,
+  };
+}
 
 const PLAN_DAY_ROW_CLASS = cn(
   "nora-press-grow ios-glass-glare-soft flex min-h-12 items-center gap-3 rounded-[14px] border-0 px-3.5 py-2.5 text-left",
@@ -70,9 +87,9 @@ function planPickerDescription(
 }
 
 const PLAN_TITLE_FIELD_CLASS =
-  "mt-2 !h-10 !min-h-10 !max-h-10 rounded-[12px] bg-[var(--nora-panel)] px-3.5 font-[family-name:var(--nora-font)] !text-[13px] !font-normal !leading-5";
+  "!h-10 !min-h-10 !max-h-10 rounded-[14px] bg-[var(--nora-inset)] px-3.5 font-[family-name:var(--nora-font)] !text-[13px] !font-normal !leading-5 text-[var(--nora-text)] placeholder:text-[var(--nora-text-tertiary)]";
 const PLAN_DESC_FIELD_CLASS =
-  "mt-2 min-h-16 rounded-[12px] bg-[var(--nora-panel)] px-3.5 py-2.5 font-[family-name:var(--nora-font)] !text-[13px] !font-normal !leading-5";
+  "min-h-16 rounded-[14px] bg-[var(--nora-inset)] px-3.5 py-2.5 font-[family-name:var(--nora-font)] !text-[13px] !font-normal !leading-5 text-[var(--nora-text)] placeholder:text-[var(--nora-text-tertiary)]";
 
 export function DiaryPlanDayPicker({
   addingDayKey,
@@ -126,6 +143,10 @@ export function DiaryPlanDayPicker({
     null,
   );
   const [creating, setCreating] = React.useState(false);
+  const [planScrollMore, setPlanScrollMore] = React.useState<boolean | null>(null);
+  const [planScrollBack, setPlanScrollBack] = React.useState(false);
+  const planScrollRef = React.useRef<HTMLDivElement>(null);
+  const planRowOverflows = plans.length > 4;
   const planId = planIdProp ?? localPlanId;
   const creatingNew = !lockedPlan && isDiaryNewPlanId(planId);
   const usesDraftDays = creatingNew || planId === sessionCreatedPlanId;
@@ -145,6 +166,29 @@ export function DiaryPlanDayPicker({
   const description = planPickerDescription(selected, meal, bulk, creatingNew, lockedPlan);
   const occupancyPlanId = creatingNew ? DIARY_NEW_PLAN_ID : planId;
 
+  React.useLayoutEffect(() => {
+    const node = planScrollRef.current;
+    if (!node || !open || lockedPlan) return;
+    function syncPlanScroll() {
+      const scroller = planScrollRef.current;
+      if (!scroller || scroller.clientWidth === 0) return;
+      const edges = planScrollEdges(scroller);
+      setPlanScrollMore(edges.more);
+      setPlanScrollBack(edges.back);
+    }
+    syncPlanScroll();
+    const frame = requestAnimationFrame(syncPlanScroll);
+    node.addEventListener("scroll", syncPlanScroll, { passive: true });
+    const observer = new ResizeObserver(syncPlanScroll);
+    observer.observe(node);
+    for (const child of node.children) observer.observe(child);
+    return () => {
+      cancelAnimationFrame(frame);
+      node.removeEventListener("scroll", syncPlanScroll);
+      observer.disconnect();
+    };
+  }, [lockedPlan, open, plans]);
+
   React.useEffect(() => {
     if (!open) return;
     setDraftTitle(diaryNewPlanTitle("", selected));
@@ -153,6 +197,16 @@ export function DiaryPlanDayPicker({
     setSessionCreatedPlanId(null);
     setCreating(false);
   }, [open, selected]);
+
+  function scrollPlanCards(direction: -1 | 1) {
+    const scroller = planScrollRef.current;
+    const card = scroller?.querySelector("[data-diary-plan-card]");
+    if (!scroller || !(card instanceof HTMLElement)) return;
+    scroller.scrollBy({
+      left: direction * (card.getBoundingClientRect().width + 8),
+      behavior: "smooth",
+    });
+  }
 
   function setPlanId(next: string) {
     if (isDiaryNewPlanId(next)) {
@@ -220,8 +274,14 @@ export function DiaryPlanDayPicker({
                       />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <DialogTitle className="font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 tracking-normal text-[var(--nora-text)]">
-                        Добавить рацион
+                      <DialogTitle className="flex min-w-0 items-baseline gap-1.5 font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 tracking-normal text-[var(--nora-text)]">
+                        <span className="truncate">Добавить рацион</span>
+                        <span
+                          className="shrink-0 font-light text-[#707070]"
+                          data-diary-plan-count=""
+                        >
+                          ({rationsCountLabel(plans.length)})
+                        </span>
                       </DialogTitle>
                       <DialogDescription className="sr-only">
                         {description}
@@ -244,12 +304,26 @@ export function DiaryPlanDayPicker({
                   </DialogClose>
                 </div>
               </DialogHeader>
+            </div>
               {!lockedPlan ? (
-                <div className="flex flex-col gap-2">
+                <div className="mt-4 flex shrink-0 flex-col gap-2 px-3.5">
+                  <div className="relative [container-type:inline-size]">
                   <div
                     aria-label="План назначения"
-                    className="no-scrollbar -mx-2 flex gap-2 overflow-x-auto overscroll-x-contain px-2 pb-0.5"
+                    className="no-scrollbar -mx-3.5 flex gap-2 overflow-x-auto overscroll-x-contain px-3.5"
                     data-diary-plan-select=""
+                    onScroll={(event) => {
+                      const scroller = event.currentTarget;
+                      if (scroller.clientWidth === 0) return;
+                      const edges = planScrollEdges(scroller);
+                      setPlanScrollMore((current) =>
+                        current === edges.more ? current : edges.more,
+                      );
+                      setPlanScrollBack((current) =>
+                        current === edges.back ? current : edges.back,
+                      );
+                    }}
+                    ref={planScrollRef}
                     role="listbox"
                   >
                     <button
@@ -264,16 +338,19 @@ export function DiaryPlanDayPicker({
                     >
                       <span
                         className={cn(
-                          "block aspect-square w-full rounded-[12px] p-0.5",
+                          PLAN_PICKER_COVER_CLASS,
                           creatingNew ? "bg-[var(--nora-tint)]" : "bg-transparent",
                         )}
                       >
-                        <span className="flex size-full items-center justify-center rounded-[10px] bg-[var(--nora-inset)]">
-                          <PlusIcon
-                            aria-hidden
-                            className="size-5 text-[var(--nora-text)]"
-                            strokeWidth={1.75}
-                          />
+                        <span className="flex size-full items-center justify-center rounded-[14px] bg-[var(--nora-inset)]">
+                          <span className="flex size-8 items-center justify-center rounded-full bg-[var(--nora-tint)] text-white">
+                            <PlusIcon
+                              aria-hidden
+                              className="size-4 text-white"
+                              color="white"
+                              strokeWidth={2}
+                            />
+                          </span>
                         </span>
                       </span>
                       <span
@@ -281,7 +358,7 @@ export function DiaryPlanDayPicker({
                           PLAN_PICKER_TITLE_CLASS,
                           creatingNew
                             ? "font-medium text-[var(--nora-text)]"
-                            : "font-normal text-[var(--nora-text-secondary)]",
+                            : "font-light text-[#707070]",
                         )}
                       >
                         Новый план
@@ -305,13 +382,16 @@ export function DiaryPlanDayPicker({
                         >
                           <span
                             className={cn(
-                              "block aspect-square w-full rounded-[12px] p-0.5",
+                              PLAN_PICKER_COVER_CLASS,
                               selectedPlan ? "bg-[var(--nora-tint)]" : "bg-transparent",
                             )}
                           >
                             <img
                               alt=""
-                              className="size-full rounded-[10px] bg-[var(--nora-inset)] object-cover"
+                              className={cn(
+                                "size-full rounded-[14px] bg-[var(--nora-inset)] object-cover",
+                                !selectedPlan && "grayscale",
+                              )}
                               onError={(event) => {
                                 const img = event.currentTarget;
                                 if (img.dataset.coverFallback === "1") return;
@@ -326,7 +406,7 @@ export function DiaryPlanDayPicker({
                               PLAN_PICKER_TITLE_CLASS,
                               selectedPlan
                                 ? "font-medium text-[var(--nora-text)]"
-                                : "font-normal text-[var(--nora-text-secondary)]",
+                                : "font-light text-[#707070]",
                             )}
                           >
                             {plan.title}
@@ -335,44 +415,74 @@ export function DiaryPlanDayPicker({
                       );
                     })}
                   </div>
-                  {creatingNew ? (
-                    <div data-diary-new-plan="">
-                      <MealDetailHeading>Название</MealDetailHeading>
-                      <NoraInput
-                        className={PLAN_TITLE_FIELD_CLASS}
-                        data-diary-plan-title=""
-                        disabled={busy}
-                        onChange={(event) => setDraftTitle(event.target.value)}
-                        placeholder="Например, Офис без срывов"
-                        value={draftTitle}
-                      />
-                      <div className="mt-2.5">
-                        <MealDetailHeading>Описание</MealDetailHeading>
-                        <NoraTextarea
-                          className={PLAN_DESC_FIELD_CLASS}
-                          data-diary-plan-description=""
-                          disabled={busy}
-                          onChange={(event) =>
-                            setDraftDescription(event.target.value)
-                          }
-                          placeholder="Коротко, что в плане"
-                          rows={3}
-                          value={draftDescription}
-                        />
-                      </div>
-                    </div>
+                  {planScrollBack ? (
+                    <button
+                      aria-label="Показать предыдущие планы"
+                      className={cn(PLAN_SCROLL_BUTTON_CLASS, "left-0")}
+                      data-diary-plan-scroll="back"
+                      onClick={() => scrollPlanCards(-1)}
+                      type="button"
+                    >
+                      <ChevronLeftIcon aria-hidden className="size-4" strokeWidth={2} />
+                    </button>
                   ) : null}
+                  {(planScrollMore ?? planRowOverflows) ? (
+                    <button
+                      aria-label="Показать ещё планы"
+                      className={cn(PLAN_SCROLL_BUTTON_CLASS, "right-0")}
+                      data-diary-plan-scroll=""
+                      onClick={() => scrollPlanCards(1)}
+                      type="button"
+                    >
+                      <ChevronRightIcon aria-hidden className="size-4" strokeWidth={2} />
+                    </button>
+                  ) : null}
+                  </div>
                 </div>
               ) : null}
-            </div>
-            <div className="shrink-0 px-2 pt-4">
+            <div className="shrink-0 px-3.5 pt-4">
               <div
                 aria-hidden
                 className="border-t border-[var(--nora-divider)]"
                 data-diary-plan-divider=""
               />
             </div>
-            <div className="min-h-0 overflow-y-auto flex flex-col gap-2.5 px-2 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-2 sm:pb-3.5">
+            {creatingNew ? (
+              <div
+                className="flex shrink-0 flex-col gap-2.5 px-3.5 pt-4"
+                data-diary-new-plan=""
+              >
+                <NoraInput
+                  aria-label="Название"
+                  className={PLAN_TITLE_FIELD_CLASS}
+                  data-diary-plan-title=""
+                  disabled={busy}
+                  onChange={(event) => setDraftTitle(event.target.value)}
+                  placeholder="Например, Офис без срывов"
+                  value={draftTitle}
+                />
+                <NoraTextarea
+                  aria-label="Описание"
+                  className={PLAN_DESC_FIELD_CLASS}
+                  data-diary-plan-description=""
+                  disabled={busy}
+                  onChange={(event) => setDraftDescription(event.target.value)}
+                  placeholder="Коротко, что в плане"
+                  rows={3}
+                  value={draftDescription}
+                />
+              </div>
+            ) : null}
+            {creatingNew ? (
+              <div className="shrink-0 px-3.5 pt-4">
+                <div
+                  aria-hidden
+                  className="border-t border-[var(--nora-divider)]"
+                  data-diary-new-plan-divider=""
+                />
+              </div>
+            ) : null}
+            <div className="min-h-0 overflow-y-auto flex flex-col gap-2.5 px-3.5 pt-4 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-3.5 sm:pb-3.5">
               <div className="flex flex-col gap-2.5">
                 {days.map((day) => {
                   const occupancy = diaryPlanDayOccupancy(
@@ -456,8 +566,13 @@ export function DiaryPlanDayPicker({
                     }}
                     type="button"
                   >
-                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-[var(--nora-border-strong)] bg-[var(--nora-panel)] text-[var(--nora-text)]">
-                      <PlusIcon aria-hidden className="size-3" strokeWidth={2} />
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--nora-tint)] text-white">
+                      <PlusIcon
+                        aria-hidden
+                        className="size-3.5 text-white"
+                        color="white"
+                        strokeWidth={2}
+                      />
                     </span>
                     <span className="min-w-0 flex-1 truncate font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text)]">
                       Добавить день

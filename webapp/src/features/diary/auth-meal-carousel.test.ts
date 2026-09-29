@@ -710,4 +710,17 @@ describe('auth draft demo choreography', () => {
     expect(authDemoMealShowsFeedChrome('plan-1', 'meal-02', true)).toBe(false)
     expect(authDemoMealShowsFeedChrome('meal-02', 'meal-02', false)).toBe(false)
   })
+
+  test('signup ration day picker uses plan covers instead of the old select', () => {
+    const sheet = readFileSync(
+      new URL('../mentor/AuthRationDayPickerSheet.tsx', import.meta.url),
+      'utf8',
+    )
+    expect(sheet).not.toContain('>План назначения<')
+    expect(sheet).not.toContain('>Дни плана<')
+    expect(sheet).not.toContain('NoraSelect')
+    expect(sheet).toContain('Новый план')
+    expect(sheet).toContain('rationsCountLabel(DEMO_RATIONS.length)')
+    expect(sheet).toContain("!selected && 'grayscale'")
+  })
 })

@@ -1,16 +1,11 @@
 import * as React from 'react'
-import { CalendarDaysIcon, Loader2Icon, XIcon } from 'lucide-react'
+import { CalendarDaysIcon, Loader2Icon, PlusIcon, XIcon } from 'lucide-react'
 
-import { NoraSelect } from '@/components/nora/primitives'
-import {
-  productSheetOverlayChipClass,
-  productToolbarSelectContentClass,
-  productToolbarSelectItemClass,
-} from '@/components/nora/product-sheet'
+import { productSheetOverlayChipClass } from '@/components/nora/product-sheet'
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { useLatest } from '@/lib/use-latest'
 import { cn } from '@/lib/utils'
-import { authDemoClear, authDemoTimeout } from '@/features/diary'
+import { authDemoClear, authDemoTimeout, rationsCountLabel } from '@/features/diary'
 
 import {
   authRationAddDemoDay,
@@ -23,6 +18,21 @@ import { rationPlanWeekDays } from './ration-assignments'
 import type { RationEntry } from './rations-catalog'
 
 const DEMO_PLAN_ID = 'auth-demo-week'
+
+const DEMO_RATIONS = [
+  { id: DEMO_PLAN_ID, title: 'План на неделю', image: '/rations/ration-01.jpg' },
+  { id: 'tone', title: 'Тонус и лёгкость', image: '/rations/ration-02.jpg' },
+  { id: 'even', title: 'Ровная неделя', image: '/rations/ration-03.jpg' },
+  { id: 'hearty', title: 'Сытная неделя', image: '/rations/ration-05.jpg' },
+] as const
+
+const DEMO_PLAN_CARD_CLASS =
+  'flex w-[calc((100%-2rem)/5)] min-w-[calc((100%-2rem)/5)] max-w-[calc((100%-2rem)/5)] shrink-0 flex-col gap-1.5'
+const DEMO_PLAN_COVER_CLASS =
+  'relative block w-full shrink-0 overflow-hidden rounded-[16px] p-0.5'
+const DEMO_PLAN_COVER_SQUARE_CLASS = 'relative block w-full before:block before:pb-[100%]'
+const DEMO_PLAN_TITLE_CLASS =
+  'block w-full truncate text-center font-[family-name:var(--nora-font)] text-[13px] leading-4'
 
 const DAY_ROW_CLASS = cn(
   'nora-press-grow ios-glass-glare-soft flex min-h-12 items-center gap-3 rounded-[14px] border-0 px-3.5 py-2.5 text-left',
@@ -133,8 +143,11 @@ export function AuthRationDayPickerSheet({
                 <CalendarDaysIcon aria-hidden className="size-4" strokeWidth={1.7} />
               </span>
               <div className="min-w-0 flex-1">
-                <DialogTitle className="font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 tracking-normal text-[var(--nora-text)]">
-                  Добавить рацион
+                <DialogTitle className="flex min-w-0 items-baseline gap-1.5 font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 tracking-normal text-[var(--nora-text)]">
+                  <span className="truncate">Добавить рацион</span>
+                  <span className="shrink-0 font-light text-[#707070]">
+                    ({rationsCountLabel(DEMO_RATIONS.length)})
+                  </span>
                 </DialogTitle>
                 <DialogDescription className="sr-only">
                   {ration.title}. Можно поставить в выбранный план, в один или несколько дней.
@@ -152,34 +165,85 @@ export function AuthRationDayPickerSheet({
             </span>
           </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <p className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
-            План назначения
-          </p>
-          <div className="rounded-[16px] bg-[var(--nora-inset)] p-2.5">
-            <NoraSelect
-              className="!h-10 !min-h-10 !max-h-10 rounded-[12px] bg-[var(--nora-panel)] px-3.5 text-[13px] font-normal leading-5"
-              contentClassName={productToolbarSelectContentClass}
-              disabled={busy}
-              itemClassName={productToolbarSelectItemClass}
-              items={[{ value: DEMO_PLAN_ID, label: 'План на неделю' }]}
-              onValueChange={() => undefined}
-              placeholder="План"
-              value={DEMO_PLAN_ID}
-            />
+      </div>
+      <div
+        className={cn(
+          'mt-4 shrink-0 px-3.5 transition-opacity ease-out',
+          collapsing && 'pointer-events-none opacity-0',
+        )}
+        style={{ transitionDuration: collapsing ? '180ms' : '300ms' }}
+      >
+        <div
+          aria-label="План назначения"
+          className="no-scrollbar -mx-3.5 flex gap-2 overflow-x-auto px-3.5"
+          data-ration-demo-plans=""
+        >
+          <div className={DEMO_PLAN_CARD_CLASS}>
+            <span className={cn(DEMO_PLAN_COVER_CLASS, 'bg-transparent')}>
+              <span className={DEMO_PLAN_COVER_SQUARE_CLASS}>
+                <span className="absolute inset-0 flex items-center justify-center rounded-[14px] bg-[var(--nora-inset)]">
+                  <span className="flex size-8 items-center justify-center rounded-full bg-[var(--nora-tint)] text-white">
+                    <PlusIcon aria-hidden className="size-4 text-white" color="white" strokeWidth={2} />
+                  </span>
+                </span>
+              </span>
+            </span>
+            <span className={cn(DEMO_PLAN_TITLE_CLASS, 'font-light text-[#707070]')}>
+              Новый план
+            </span>
           </div>
+          {DEMO_RATIONS.map((plan) => {
+            const selected = plan.id === DEMO_PLAN_ID
+            return (
+              <div className={DEMO_PLAN_CARD_CLASS} key={plan.id}>
+                <span
+                  className={cn(
+                    DEMO_PLAN_COVER_CLASS,
+                    selected ? 'bg-[var(--nora-tint)]' : 'bg-transparent',
+                  )}
+                >
+                  <span className={DEMO_PLAN_COVER_SQUARE_CLASS}>
+                    <img
+                      alt=""
+                      className={cn(
+                        'absolute inset-0 size-full rounded-[14px] bg-[var(--nora-inset)] object-cover',
+                        !selected && 'grayscale',
+                      )}
+                      src={plan.image}
+                    />
+                  </span>
+                </span>
+                <span
+                  className={cn(
+                    DEMO_PLAN_TITLE_CLASS,
+                    selected
+                      ? 'font-medium text-[var(--nora-text)]'
+                      : 'font-light text-[#707070]',
+                  )}
+                >
+                  {plan.title}
+                </span>
+              </div>
+            )
+          })}
         </div>
       </div>
       <div
         className={cn(
-          'flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pt-2 pb-3 transition-opacity ease-out',
+          'shrink-0 px-3.5 pt-4 transition-opacity ease-out',
+          collapsing && 'pointer-events-none opacity-0',
+        )}
+        style={{ transitionDuration: collapsing ? '180ms' : '300ms' }}
+      >
+        <div aria-hidden className="border-t border-[var(--nora-divider)]" />
+      </div>
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-3.5 pt-4 pb-3.5 transition-opacity ease-out',
           collapsing && 'pointer-events-none min-h-0 flex-none opacity-0',
         )}
         style={{ transitionDuration: collapsing ? '220ms' : '300ms' }}
       >
-        <p className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
-          Дни плана
-        </p>
         <div className="flex flex-col gap-2.5">
           {days.map((day) => {
             const dayBusy = addingDayKey === day.dayKey

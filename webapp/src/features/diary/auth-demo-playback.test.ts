@@ -13,6 +13,7 @@ import {
   authDemoResume,
   authDemoResetClock,
   authDemoSetPaused,
+  authDemoStep,
   authDemoTimeout,
 } from './auth-demo-playback'
 
@@ -84,6 +85,17 @@ describe('auth demo playback clock', () => {
   test('pause keeps the clock usable', () => {
     authDemoSetPaused(true)
     expect(authDemoIsPaused()).toBe(true)
+  })
+
+  test('a long hidden gap does not skip the next demo step', () => {
+    const fired: string[] = []
+    authDemoTimeout(() => fired.push('soon'), 200)
+    authDemoStep(1_000)
+    authDemoStep(1_000 + 30_000)
+    expect(fired).toEqual([])
+    expect(authDemoElapsedMs()).toBeLessThan(200)
+    authDemoStep(31_000 + 150)
+    expect(fired).toEqual(['soon'])
   })
 
   test('playFrom autoplay resumes after the seek is released', () => {

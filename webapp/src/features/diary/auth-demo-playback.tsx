@@ -22,6 +22,10 @@ const jobs = new Map<number, Job>()
 let raf = 0
 let lastStamp = 0
 let paused = false
+/** One hidden-tab frame can be many seconds. Applying it would skip the demo
+ *  or land it mid-transition with an empty white card. */
+const MAX_FRAME_MS = 100
+let visibilityBound = false
 let elapsedMs = 0
 let generation = 0
 let seekTarget: number | null = null
@@ -53,24 +57,54 @@ function pump(now: number) {
     return
   }
   if (lastStamp === 0) lastStamp = now
-  const dt = paused ? 0 : now - lastStamp
+  const gap = now - lastStamp
+  const dt = paused ? 0 : Math.min(Math.max(0, gap), MAX_FRAME_MS)
   lastStamp = now
   if (dt > 0) {
     elapsedMs += dt
     applyDt(dt)
     notify()
   }
-  if (jobs.size > 0) raf = window.requestAnimationFrame(pump)
-  else {
+  if (jobs.size > 0) {
+    if (typeof window !== 'undefined') raf = window.requestAnimationFrame(pump)
+  } else {
     raf = 0
     lastStamp = 0
   }
 }
 
+function wakeClock() {
+  lastStamp = 0
+  if (typeof window !== 'undefined' && raf) {
+    window.cancelAnimationFrame(raf)
+  }
+  raf = 0
+  if (typeof document !== 'undefined' && document.hidden) return
+  ensurePump()
+}
+
+function bindVisibility() {
+  if (visibilityBound || typeof document === 'undefined') return
+  visibilityBound = true
+  document.addEventListener('visibilitychange', wakeClock)
+  window.addEventListener('focus', wakeClock)
+  window.addEventListener('pageshow', wakeClock)
+}
+
 function ensurePump() {
+  bindVisibility()
   if (raf || seekTarget != null || typeof window === 'undefined') return
   lastStamp = 0
   raf = window.requestAnimationFrame(pump)
+}
+
+/** Test seam: advance the demo clock to `now` without waiting for a frame. */
+export function authDemoStep(now: number) {
+  if (typeof window !== 'undefined' && raf) {
+    window.cancelAnimationFrame(raf)
+    raf = 0
+  }
+  pump(now)
 }
 
 function stopCatchupTimer() {

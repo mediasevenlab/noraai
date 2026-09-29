@@ -1,7 +1,11 @@
 import { expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 
-import { formatDailyCalorieChip, formatDailyCalories } from '../src/features/diary/diary-feed'
+import {
+  formatDailyCalorieChip,
+  formatDailyCalories,
+  rationsCountLabel,
+} from '../src/features/diary/diary-feed'
 import {
   periodPickerActions,
   visibleMonthsForBounds,
@@ -32,6 +36,17 @@ const news = readJoined([
 test('calorie chip shows the same kcal unit as the menu', () => {
   expect(formatDailyCalorieChip(2200)).toBe(formatDailyCalories(2200))
   expect(formatDailyCalorieChip(2200)).toMatch(/ккал$/)
+})
+
+test('ration count in the plan picker uses the Russian plural', () => {
+  expect(rationsCountLabel(0)).toBe('0 рационов')
+  expect(rationsCountLabel(1)).toBe('1 рацион')
+  expect(rationsCountLabel(2)).toBe('2 рациона')
+  expect(rationsCountLabel(4)).toBe('4 рациона')
+  expect(rationsCountLabel(5)).toBe('5 рационов')
+  expect(rationsCountLabel(11)).toBe('11 рационов')
+  expect(rationsCountLabel(21)).toBe('21 рацион')
+  expect(rationsCountLabel(22)).toBe('22 рациона')
 })
 
 test('meal dialog hero is a fifth taller than the 240px default', () => {
@@ -1401,12 +1416,29 @@ test('own diary meals can be copied into a chosen weekly plan day', () => {
   expect(picker).not.toContain('Без повторов')
   expect(picker).not.toContain('NoraSelect')
   expect(picker).toContain('data-diary-plan-card="new"')
+  expect(picker).toContain('!selectedPlan && "grayscale"')
+  expect(picker).not.toContain('data-diary-plan-cover-wash')
+  expect(picker).not.toContain('mix-blend-color')
+  expect(picker).toContain('data-diary-plan-scroll="back"')
+  expect(picker).toContain('Показать предыдущие планы')
+  expect(picker).toContain('planScrollEdges')
   expect(picker).toContain('overflow-x-auto')
   expect(picker).toContain('Новый план')
   expect(picker).toContain('w-[calc((100%-2rem)/5)]')
+  expect(picker.indexOf('data-diary-plan-divider=""')).toBeLessThan(
+    picker.indexOf('data-diary-new-plan=""'),
+  )
+  expect(picker).not.toContain('>Название<')
+  expect(picker).not.toContain('>Описание<')
   expect(picker).toContain('data-diary-new-plan=""')
   expect(picker).toContain('data-diary-plan-title=""')
   expect(picker).toContain('data-diary-plan-description=""')
+  expect(picker.indexOf('data-diary-new-plan=""')).toBeLessThan(
+    picker.indexOf('data-diary-new-plan-divider=""'),
+  )
+  expect(picker).toContain('data-diary-plan-count=""')
+  expect(picker).toContain('rationsCountLabel(plans.length)')
+  expect(picker).toContain('max-md:hidden')
   expect(picker).toContain('data-diary-add-plan-day=""')
   expect(picker).toContain('Назовите план')
   expect(picker).toContain('Назовите план, добавьте дни и поставьте приём.')
@@ -1428,7 +1460,7 @@ test('own diary meals can be copied into a chosen weekly plan day', () => {
   expect(picker).not.toContain('CheckIcon')
   expect(picker).toContain('flex shrink-0 flex-col gap-2 px-2 pt-2')
   expect(picker).toContain('rounded-[16px] bg-[var(--nora-inset)] p-2.5')
-  expect(picker).toContain('flex flex-col gap-2.5 px-2 pt-3')
+  expect(picker).toContain('flex flex-col gap-2.5 px-3.5 pt-4')
   expect(picker).toContain('sr-only')
   expect(picker).not.toContain('line-clamp-2')
   expect(picker).toContain('Можно поставить в выбранный план, в один или несколько дней.')
@@ -1465,7 +1497,7 @@ test('plan day picker stays open and occupied days can be toggled off', () => {
   )
   expect(picker).toContain('flex shrink-0 flex-col gap-2 px-2 pt-2')
   expect(picker).toContain('rounded-[16px] bg-[var(--nora-inset)] p-2.5')
-  expect(picker).toContain('flex flex-col gap-2.5 px-2 pt-3')
+  expect(picker).toContain('flex flex-col gap-2.5 px-3.5 pt-4')
   expect(picker).toContain('data-diary-plan-divider=""')
   expect(picker).not.toContain('>Дни плана<')
   expect(picker).not.toContain('CheckIcon')
