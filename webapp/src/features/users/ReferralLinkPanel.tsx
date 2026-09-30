@@ -1,5 +1,5 @@
 import type { UserDto } from '@web-app-demo/contracts'
-import { CircleCheckIcon, LinkIcon } from 'lucide-react'
+import { CircleCheckIcon, LinkIcon } from '@/components/icons'
 import { useEffect, useState } from 'react'
 
 import { FieldDescription } from '@/components/ui/field'
@@ -109,7 +109,6 @@ export function ReferralLinkPanel({
   if (layout === 'entry') {
     return (
       <SettingsEntry
-        badge={variant === 'mentor' ? 'Наставник' : 'Ссылка'}
         description={copy.description}
         title={copy.title}
       >

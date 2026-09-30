@@ -2,7 +2,7 @@ import {
   AlignCenterHorizontalIcon,
   AlignEndHorizontalIcon,
   AlignStartHorizontalIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import { NoraIcon } from "@/components/nora-icon"
 import {

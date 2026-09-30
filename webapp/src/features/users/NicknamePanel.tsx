@@ -3,7 +3,7 @@ import {
   nicknameSchema,
   type UserDto,
 } from '@web-app-demo/contracts'
-import { AtSignIcon } from 'lucide-react'
+import { AtSignIcon } from '@/components/icons'
 import { useId, useState, type FormEvent } from 'react'
 
 import { NoraToast } from '@/components/nora'
@@ -72,7 +72,6 @@ export function NicknamePanel({ className, user }: { className?: string, user: U
 
   return (
     <SettingsEntry
-      badge="Публично"
       className={className}
       description="Для ссылок и публичного профиля."
       title="Никнейм"

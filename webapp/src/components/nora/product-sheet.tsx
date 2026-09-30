@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from 'react'
-import { GraduationCapIcon, ImagesIcon, NewspaperIcon, UtensilsCrossedIcon } from 'lucide-react'
+import { GraduationCapIcon, ImagesIcon, NewspaperIcon, UtensilsCrossedIcon } from '@/components/icons'
 
 import {
   noraPlaqueIconClass,
@@ -235,7 +235,7 @@ export function ProductFeedEmpty({
             <div className="mt-auto pt-3">
               <div
                 aria-hidden
-                className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]"
+                className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)] dark:border-[var(--nora-border-strong)]"
               />
               <div
                 className="flex w-full items-center py-3 [&_button]:w-full [&_button]:justify-center [&_button]:rounded-[12px]"

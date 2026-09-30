@@ -1,5 +1,5 @@
 import * as React from "react"
-import { CheckIcon, ChevronDownIcon, CopyIcon } from "lucide-react"
+import { CheckIcon, ChevronDownIcon, CopyIcon } from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"

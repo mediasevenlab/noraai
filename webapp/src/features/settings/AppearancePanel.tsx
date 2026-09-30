@@ -1,5 +1,5 @@
 import { useTheme } from 'next-themes'
-import { MonitorIcon, MoonIcon, SunIcon } from 'lucide-react'
+import { MonitorIcon, MoonIcon, SunIcon } from '@/components/icons'
 
 import { SettingsEntry, SettingsReadRows, useSettingsMode } from '@/components/settings-canvas'
 import {
@@ -38,7 +38,6 @@ export function AppearancePanel() {
 
   return (
     <SettingsEntry
-      badge="Оформление"
       description="Как в системе, светлая или тёмная."
       title="Внешний вид"
     >

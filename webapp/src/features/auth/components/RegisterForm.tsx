@@ -6,7 +6,7 @@ import {
   GraduationCapIcon,
   InfoIcon,
   Loader2Icon,
-} from 'lucide-react'
+} from '@/components/icons'
 import {
   registerRequestSchema,
   registrationMentorIdentifierSchema,
@@ -209,7 +209,7 @@ export function RegisterForm({
           <h1 className={authTitleClassName}>
             Создание аккаунта
           </h1>
-          <p className="text-[13px] leading-relaxed font-light text-[var(--nora-text-secondary)] text-balance">
+          <p className="text-[13px] leading-relaxed font-light text-[var(--nora-text-secondary)] text-balance dark:font-normal">
             Заполните форму, чтобы зарегистрироваться
           </p>
         </div>
@@ -236,7 +236,7 @@ export function RegisterForm({
                     return (
                       <label
                         className={cn(
-                          'relative box-border flex h-10 min-[768px]:h-[37px] cursor-pointer items-center justify-start gap-2 rounded-[var(--nora-radius-md)] bg-[var(--nora-panel)] px-3 shadow-[inset_0_0_0_1px_var(--settings-well-stroke,var(--nora-border))]',
+                          'relative box-border flex h-10 min-[768px]:h-[37px] cursor-pointer items-center justify-start gap-2 rounded-[var(--nora-radius-md)] bg-[var(--auth-field-bg,var(--nora-panel))] px-3 shadow-[inset_0_0_0_1px_var(--settings-well-stroke,var(--nora-border))]',
                           'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text)]',
                           'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
                           'has-focus-visible:shadow-[inset_0_0_0_1px_var(--nora-tint)]',
@@ -261,7 +261,7 @@ export function RegisterForm({
           />
 
           {selectedRole === 'user' && referralState === 'checking' && (
-            <p className="text-[11px] leading-relaxed font-normal text-[var(--nora-text-tertiary)]">
+            <p className="text-[11px] leading-relaxed font-normal text-[var(--nora-text-tertiary)] dark:text-[var(--nora-text-secondary)]">
               Проверяем реферальную ссылку…
             </p>
           )}

@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { format } from 'date-fns'
 import { ru as dateFnsRu } from 'date-fns/locale'
-import { CalendarDaysIcon, CalendarIcon, XIcon } from 'lucide-react'
+import { CalendarDaysIcon, CalendarIcon, XIcon } from '@/components/icons'
 import { type DateRange } from 'react-day-picker'
 import { ru as dayPickerRu } from 'react-day-picker/locale'
 
@@ -165,6 +165,10 @@ export type DiaryPeriodFilter = {
 export const diaryToolbarPillClass =
   'ios-float-pill flex h-9 shrink-0 items-center'
 
+/** Hairline between the calendar and search icons inside one pill. */
+export const diaryToolbarPairDividerClass =
+  'h-4 w-px shrink-0 bg-[color-mix(in_srgb,var(--nora-text)_14%,transparent)]'
+
 /** Inner control on a floating pill — no own fill or shadow. */
 export const diaryToolbarChipClass =
   'nora-press-grow !h-9 !min-h-9 !max-h-9 !rounded-full !border-0 !bg-transparent !shadow-none text-[13px] !font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-[popup-open]:text-[var(--nora-text)] focus-visible:shadow-[var(--nora-shadow-focus)] [&>svg]:!text-current [&>svg]:opacity-100'
@@ -251,16 +255,14 @@ const PERIOD_SHEET_ACTION_CLASS = cn(
   'nora-press-grow inline-flex !h-10 !min-h-10 !max-h-10 w-full items-center justify-center gap-1.5',
   '!rounded-[14px] border-0 !px-4 py-0',
   'font-[family-name:var(--nora-font)] [font-size:13px] !font-normal leading-none',
-  'enabled:text-[var(--nora-on-accent)] enabled:hover:text-[var(--nora-on-accent)]',
-  'enabled:[&_svg]:text-[var(--nora-on-accent)]',
+  'dark:disabled:bg-[var(--nora-inset)] dark:disabled:text-[var(--nora-text-tertiary)]',
 )
 
 const PERIOD_POPOVER_ACTION_CLASS = cn(
   'nora-press-grow inline-flex h-[var(--nora-control-h)] min-h-[var(--nora-control-h)] max-h-[var(--nora-control-h)] w-full items-center justify-center gap-1',
   'rounded-[var(--nora-radius-md)] border-0 !px-2.5 py-0',
   'font-[family-name:var(--nora-font)] text-xs !font-normal leading-none',
-  'enabled:text-[var(--nora-on-accent)] enabled:hover:text-[var(--nora-on-accent)]',
-  'enabled:[&_svg]:text-[var(--nora-on-accent)]',
+  'dark:disabled:bg-[var(--nora-inset)] dark:disabled:text-[var(--nora-text-tertiary)]',
 )
 
 function PeriodActions({
@@ -296,7 +298,10 @@ function PeriodActions({
         }
       >
         <NoraButton
-          className={compact ? PERIOD_POPOVER_ACTION_CLASS : PERIOD_SHEET_ACTION_CLASS}
+          className={cn(
+            compact ? PERIOD_POPOVER_ACTION_CLASS : PERIOD_SHEET_ACTION_CLASS,
+            'enabled:text-[var(--nora-on-accent)] enabled:hover:text-[var(--nora-on-accent)]',
+          )}
           disabled={!resetEnabled}
           onClick={onReset}
           variant="primary"
@@ -307,6 +312,7 @@ function PeriodActions({
           className={cn(
             compact ? PERIOD_POPOVER_ACTION_CLASS : PERIOD_SHEET_ACTION_CLASS,
             saveEnabled && productCardFooterCtaClass,
+            saveEnabled && 'enabled:!text-[var(--nora-panel)] enabled:hover:!text-[var(--nora-panel)]',
           )}
           disabled={!saveEnabled}
           onClick={onSave}

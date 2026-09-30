@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { MicIcon } from 'lucide-react'
+import { MicIcon } from '@/components/icons'
 
 import { ProductSheetTabFade, productSheetTabDockClass } from '@/components/nora/product-sheet'
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'

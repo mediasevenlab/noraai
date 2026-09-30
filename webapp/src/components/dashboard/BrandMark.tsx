@@ -1,4 +1,4 @@
-import { GalleryVerticalEnd } from 'lucide-react'
+import { GalleryVerticalEnd } from '@/components/icons'
 
 import { cn } from '@/lib/utils'
 

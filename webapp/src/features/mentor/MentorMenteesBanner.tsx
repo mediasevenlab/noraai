@@ -1,4 +1,4 @@
-import { UsersIcon } from 'lucide-react'
+import { UsersIcon } from '@/components/icons'
 
 import { SidebarRelationCard } from '@/components/dashboard/SidebarRelationCard'
 import { useMentorUsersQuery } from './queries'

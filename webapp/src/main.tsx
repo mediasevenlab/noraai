@@ -6,6 +6,9 @@ import { createRoot } from 'react-dom/client'
 
 import { applyHybridRuntimeFlags } from '@/components/modal-android'
 import { CardRadiusSync } from '@/components/card-radius-store'
+import { CompositionToneSync } from '@/components/composition-tone-store'
+import { SidebarShadeSync } from '@/components/sidebar-shade-store'
+import { IconPackSync } from '@/components/icon-pack-store'
 import { CardShadowSync } from '@/components/card-shadow-store'
 import { PlannedCoverBlurSync } from '@/components/planned-cover-blur-store'
 import { PlannedCoverGradeSync } from '@/components/planned-cover-grade-store'
@@ -54,6 +57,9 @@ flushSync(() => {
             <ModalMotionSync />
             <ModalOverlaySync />
             <CardRadiusSync />
+            <CompositionToneSync />
+            <SidebarShadeSync />
+            <IconPackSync />
             <CardShadowSync />
             <PlannedCoverWashSync />
             <PlannedCoverBlurSync />

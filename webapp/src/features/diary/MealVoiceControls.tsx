@@ -1,6 +1,6 @@
 import * as React from 'react'
-import { CheckIcon, Loader2Icon, MicIcon, XIcon } from 'lucide-react'
-import { toast } from 'sonner'
+import { CheckIcon, Loader2Icon, MicIcon, XIcon } from '@/components/icons'
+import { toast } from '@/components/ui/toast'
 
 import type { AuthenticatedTransport } from '@/platform/api'
 import { cn } from '@/lib/utils'

@@ -1,4 +1,4 @@
-import { CircleCheckIcon } from 'lucide-react'
+import { CircleCheckIcon } from '@/components/icons'
 import { useId, useState, type FormEvent } from 'react'
 
 import { Button } from '@/components/ui/button'

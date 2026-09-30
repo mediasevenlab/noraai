@@ -1,35 +1,25 @@
-import { ClapperboardIcon } from 'lucide-react'
+import { ClapperboardIcon } from '@/components/icons'
 
-import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MODAL_MOTIONS } from '@/components/modal-motion'
 import { setModalMotion, useModalMotion } from '@/components/modal-motion-store'
+
+import { HeaderMenuButton } from './HeaderMenuButton'
 
 export function ModalMotionMenu() {
   const motion = useModalMotion()
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            aria-label="Отдаление фона"
-            className="size-7"
-            size="icon"
-            type="button"
-            variant="ghost"
-          />
-        }
-      >
+      <HeaderMenuButton label="Отдаление фона">
         <ClapperboardIcon aria-hidden className="size-3.5" />
-      </DropdownMenuTrigger>
+      </HeaderMenuButton>
       <DropdownMenuContent align="end" className="min-w-44" sideOffset={8}>
         <DropdownMenuLabel>Отдаление фона</DropdownMenuLabel>
         <DropdownMenuRadioGroup

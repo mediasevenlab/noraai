@@ -4,7 +4,7 @@ import {
   questionnaireAnswersSchema,
 } from '@web-app-demo/contracts'
 import { useNavigate } from '@tanstack/react-router'
-import { ArrowLeftIcon, ArrowRightIcon, CheckIcon } from 'lucide-react'
+import { ArrowLeftIcon, ArrowRightIcon, CheckIcon } from '@/components/icons'
 import { useState } from 'react'
 
 import { NoraBadge, NoraButton } from '@/components/nora/primitives'

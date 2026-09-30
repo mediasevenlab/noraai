@@ -1,6 +1,6 @@
 import * as React from 'react'
-import { BookmarkIcon, GraduationCapIcon, LayoutGridIcon, Rows2Icon, UserIcon, UtensilsIcon } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { BookmarkIcon, GraduationCapIcon, LayoutGridIcon, Rows2Icon, UserIcon, UtensilsIcon } from '@/components/icons'
+import type { LucideIcon } from '@/components/icons'
 
 import {
   productFeedToolbarRowClass,
@@ -199,7 +199,7 @@ export function PlanToolbar({
           </div>
           {canCreate ? (
             <button
-              aria-label="Создать рацион"
+              aria-label="Создать"
               className={cn(
                 toolbarPillClass,
                 'nora-press-grow inline-flex shrink-0 flex-row items-center justify-center gap-1.5 whitespace-nowrap px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] [&>svg]:size-3.5',
@@ -210,7 +210,7 @@ export function PlanToolbar({
               type="button"
             >
               <UtensilsIcon aria-hidden className="size-3.5" />
-              <span className="hidden sm:inline">Создать рацион</span>
+              <span className="hidden sm:inline">Создать</span>
             </button>
           ) : null}
         </div>

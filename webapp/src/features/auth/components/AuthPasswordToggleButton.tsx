@@ -1,4 +1,4 @@
-import { EyeIcon, EyeOffIcon } from 'lucide-react'
+import { EyeIcon, EyeOffIcon } from '@/components/icons'
 
 import { authFieldAdornmentClassName, authFieldIconClassName } from './auth-control-styles'
 

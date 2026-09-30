@@ -1,35 +1,25 @@
-import { LayersIcon } from 'lucide-react'
+import { LayersIcon } from '@/components/icons'
 
-import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { PLANNED_COVER_WASHES } from '@/components/planned-cover-wash'
 import { setPlannedCoverWash, usePlannedCoverWash } from '@/components/planned-cover-wash-store'
+
+import { HeaderMenuButton } from './HeaderMenuButton'
 
 export function PlannedCoverWashMenu() {
   const wash = usePlannedCoverWash()
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            aria-label="Слой запланированных"
-            className="size-7"
-            size="icon"
-            type="button"
-            variant="ghost"
-          />
-        }
-      >
+      <HeaderMenuButton label="Слой запланированных">
         <LayersIcon aria-hidden className="size-3.5" />
-      </DropdownMenuTrigger>
+      </HeaderMenuButton>
       <DropdownMenuContent
         align="end"
         className="max-h-80 min-w-44 overflow-y-auto"

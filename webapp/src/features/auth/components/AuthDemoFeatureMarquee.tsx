@@ -19,7 +19,7 @@ import {
   UtensilsCrossedIcon,
   ZapIcon,
   type LucideIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 
 import {
   authDemoClear,

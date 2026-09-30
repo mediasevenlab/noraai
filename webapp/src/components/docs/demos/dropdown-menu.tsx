@@ -5,7 +5,7 @@ import {
   PlusIcon,
   SettingsIcon,
   UserIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 import {

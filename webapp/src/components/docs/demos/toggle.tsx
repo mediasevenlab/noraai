@@ -1,4 +1,4 @@
-import { BoldIcon, ItalicIcon, UnderlineIcon, BookmarkIcon } from "lucide-react"
+import { BoldIcon, ItalicIcon, UnderlineIcon, BookmarkIcon } from "@/components/icons"
 
 import { Toggle } from "@/components/ui/toggle"
 
@@ -11,7 +11,7 @@ export const toggleDoc: ComponentDoc = {
       title: "Basic",
       description: "Nora toolbar toggle — pressed = tint-dimmed.",
       code: `import { Toggle } from "@/components/ui/toggle"
-import { BoldIcon } from "lucide-react"
+import { BoldIcon } from "@/components/icons"
 
 <Toggle aria-label="Toggle bold">
   <BoldIcon />

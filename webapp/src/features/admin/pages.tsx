@@ -23,7 +23,6 @@ export function AdminUsers({ currentUser }: { currentUser: UserDto }) {
   return (
     <PageContainer>
       <NoraPageHeader
-        badge="Пользователи"
         description="Находите аккаунты и управляйте доступом без раскрытия учётных данных."
         showBrand
         title="Пользователи"

@@ -552,6 +552,7 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(coverBadge).toContain('{!selected ? (')
   expect(coverBadge).toContain('{plan.kcal} ккал')
   expect(coverBadge).toContain('data-plan-cover-kcal=""')
+  expect(coverBadge).toContain('tabular-nums md:hidden')
   expect(coverBadge.indexOf('ProductCardOriginBadge')).toBeLessThan(
     coverBadge.indexOf('data-plan-cover-kcal=""'),
   )

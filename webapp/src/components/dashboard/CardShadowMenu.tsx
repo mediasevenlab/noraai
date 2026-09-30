@@ -1,35 +1,25 @@
-import { EclipseIcon } from 'lucide-react'
+import { EclipseIcon } from '@/components/icons'
 
-import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { CARD_SHADOWS } from '@/components/card-shadow'
 import { setCardShadow, useCardShadow } from '@/components/card-shadow-store'
+
+import { HeaderMenuButton } from './HeaderMenuButton'
 
 export function CardShadowMenu() {
   const shadow = useCardShadow()
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            aria-label="Тень карточки"
-            className="size-7"
-            size="icon"
-            type="button"
-            variant="ghost"
-          />
-        }
-      >
+      <HeaderMenuButton label="Тень карточки">
         <EclipseIcon aria-hidden className="size-3.5" />
-      </DropdownMenuTrigger>
+      </HeaderMenuButton>
       <DropdownMenuContent align="end" className="min-w-44" sideOffset={8}>
         <DropdownMenuLabel>Тень карточки</DropdownMenuLabel>
         <DropdownMenuRadioGroup

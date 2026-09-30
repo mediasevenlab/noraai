@@ -3,7 +3,7 @@ import {
   TriangleAlertIcon,
   FileQuestionIcon,
   type LucideIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { useState } from 'react'

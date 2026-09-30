@@ -27,7 +27,7 @@ export const NORA_PALETTE = [
   { name: "Success", value: "#00cc88", usage: "успешные состояния, графики" },
   { name: "Panel Dark", value: "#111111", usage: "сайдбары и панели тёмной темы" },
   { name: "Canvas Dark", value: "#171717", usage: "фон рабочей области (dark)" },
-  { name: "Input Dark", value: "#2b2b2b", usage: "поля ввода, secondary (dark)" },
+  { name: "Input Dark", value: "#1f1f1f", usage: "поля ввода, secondary (dark)" },
   { name: "Canvas Light", value: "#eeeeee", usage: "фон рабочей области (light)" },
   { name: "Input Light", value: "#f3f3f3", usage: "поля ввода, secondary (light)" },
   { name: "Text Secondary Dark", value: "#999999", usage: "muted-foreground (dark)" },

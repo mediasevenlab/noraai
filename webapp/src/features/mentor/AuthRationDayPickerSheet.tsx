@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { CalendarDaysIcon, Loader2Icon, PlusIcon, XIcon } from 'lucide-react'
+import { CalendarDaysIcon, Loader2Icon, PlusIcon, XIcon } from '@/components/icons'
 
 import { productSheetOverlayChipClass } from '@/components/nora/product-sheet'
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog'

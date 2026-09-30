@@ -1,15 +1,15 @@
 import * as React from 'react'
-import { LayoutGridIcon, Rows2Icon, HeartIcon } from 'lucide-react'
+import { CalendarDaysIcon, LayoutGridIcon, Rows2Icon, HeartIcon, UtensilsIcon } from '@/components/icons'
 
 import { noraPageDescriptionClass, noraPageTitleClass } from '@/components/PageLayout'
 import { productFeedPageClass, productFeedToolbarRowClass, productToolbarSearchCollapseClass } from '@/components/nora/product-sheet'
-import { NoraBadge } from '@/components/nora/primitives'
 import { ProductToolbarSearch } from '@/components/nora/toolbar-search'
 import { useAuth } from '@/features/auth'
 import { cn } from '@/lib/utils'
 
 import {
   diaryToolbarIconButtonClass,
+  diaryToolbarPairDividerClass,
   diaryToolbarPillClass,
   DiaryPeriodPicker,
   type DiaryPeriodFilter,
@@ -27,7 +27,12 @@ import { SharedMealsFeed } from '../SharedMealsFeed'
 import { SharedRationsFeed } from '../SharedRationsFeed'
 
 const FEED_PILL_TAB_CLASS =
-  'ios-float-seg nora-press-grow inline-flex h-full flex-none items-center justify-center rounded-full px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-active:text-[var(--nora-text)]'
+  'ios-float-seg nora-press-grow inline-flex h-full flex-none items-center justify-center gap-1 rounded-full px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-active:text-[var(--nora-text)]'
+
+const FEED_KIND_ICON = {
+  Приёмы: UtensilsIcon,
+  Рационы: CalendarDaysIcon,
+} as const
 
 export function SharedMealsFeedPage({
   onOpenRation,
@@ -73,7 +78,6 @@ export function SharedMealsFeedPage({
         <header className="hidden md:block">
           <div className="mb-1.5 flex items-center gap-2">
             <h1 className={noraPageTitleClass}>Лента</h1>
-            <NoraBadge variant="blue">Лента</NoraBadge>
           </div>
           <p className={cn('mt-1.5', noraPageDescriptionClass)}>
             Приёмы и рационы, которыми поделились пользователи: состав, КБЖУ и лайки.
@@ -88,18 +92,22 @@ export function SharedMealsFeedPage({
                   className={cn(diaryToolbarPillClass, 'p-1')}
                   role="group"
                 >
-                  {FEED_KINDS.map((option) => (
-                    <button
-                      aria-pressed={kind === option}
-                      className={FEED_PILL_TAB_CLASS}
-                      data-active={kind === option || undefined}
-                      key={option}
-                      onClick={() => setKind(option)}
-                      type="button"
-                    >
-                      {option}
-                    </button>
-                  ))}
+                  {FEED_KINDS.map((option) => {
+                    const Icon = FEED_KIND_ICON[option]
+                    return (
+                      <button
+                        aria-pressed={kind === option}
+                        className={FEED_PILL_TAB_CLASS}
+                        data-active={kind === option || undefined}
+                        key={option}
+                        onClick={() => setKind(option)}
+                        type="button"
+                      >
+                        <Icon aria-hidden className="size-3.5 shrink-0" strokeWidth={1.75} />
+                        {option}
+                      </button>
+                    )
+                  })}
                 </div>
                 <button
                   aria-pressed={likedOnly}
@@ -150,6 +158,13 @@ export function SharedMealsFeedPage({
                         subjectKey="feed"
                       />
                     </div>
+                    <span
+                      aria-hidden
+                      className={cn(
+                        diaryToolbarPairDividerClass,
+                        searchOpen && 'max-md:hidden',
+                      )}
+                    />
                     <ProductToolbarSearch
                       expanded={searchOpen}
                       onExpandedChange={setSearchOpen}

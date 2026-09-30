@@ -1,8 +1,8 @@
 import * as React from 'react'
-import { CalendarRangeIcon } from 'lucide-react'
+import { CalendarRangeIcon } from '@/components/icons'
 import { useQueries, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { toast } from 'sonner'
+import { toast } from '@/components/ui/toast'
 
 import { NoraButton } from '@/components/nora/primitives'
 import {
@@ -132,7 +132,6 @@ export function MentorPlansPage() {
 
   return (
     <PlanPageShell
-      badge="Планы"
       description="Соберите план и отправьте его своим пользователям. У них он появится в разделе «План»."
       title="План"
     >
@@ -252,7 +251,6 @@ export function MentorPlanDetailPage({ planId }: { planId: string }) {
 
   return (
     <PlanPageShell
-      badge="План"
       coverImage={plan?.coverImage}
       description={plan?.description.trim() || 'Приёмы по дням этого плана.'}
       facts={

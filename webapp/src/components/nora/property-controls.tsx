@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ChevronDownIcon, ChevronUpIcon } from "lucide-react"
+import { ChevronDownIcon, ChevronUpIcon } from "@/components/icons"
 
 import {
   Popover,

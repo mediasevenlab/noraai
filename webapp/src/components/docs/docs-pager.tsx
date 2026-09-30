@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, ArrowRightIcon } from 'lucide-react'
+import { ArrowLeftIcon, ArrowRightIcon } from '@/components/icons'
 
 import { Button } from '@/components/ui/button'
 import { DocsLink } from '@/components/docs/docs-chrome'

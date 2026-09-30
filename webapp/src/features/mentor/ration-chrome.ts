@@ -46,7 +46,7 @@ export const RATION_PHOTO_SWIPE_PX = 36
 export const RATION_CARD_PREVIEW_MIN_CLASS = 'min-h-[220px]'
 
 export const RATION_GROUP_CHIP_CLASS = cn(
-  'ios-glass-glare inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0 bg-[color-mix(in_srgb,var(--nora-input-bg)_55%,var(--nora-canvas))] py-0 pr-2.5 pl-2 text-[12px] font-normal leading-none text-[var(--nora-text-secondary)] backdrop-blur-[16px]',
+  'ios-glass-glare inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0 bg-[var(--nora-input-bg)] py-0 pr-2.5 pl-2 text-[12px] font-normal leading-none text-[var(--nora-text-secondary)] backdrop-blur-[16px]',
 )
 
 export function formatRationGoalKcalCap(kcal: number) {

@@ -1,4 +1,4 @@
-import { MoreHorizontalIcon, SearchIcon } from 'lucide-react'
+import { MoreHorizontalIcon, SearchIcon } from '@/components/icons'
 import {
   userRoleSchema,
   type AdminUserSummary,

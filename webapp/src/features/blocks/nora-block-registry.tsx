@@ -35,7 +35,7 @@ import {
   Trash2Icon,
   TypeIcon,
   XIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import { useTheme } from "@/components/theme-provider"
 import {

@@ -1,18 +1,18 @@
-import { SlidersHorizontalIcon } from 'lucide-react'
+import { SlidersHorizontalIcon } from '@/components/icons'
 
 import { NoraSlider } from '@/components/nora/primitives'
-import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
   DEFAULT_PLANNED_COVER_GRADE,
   type PlannedCoverGrade,
 } from '@/components/planned-cover-grade'
 import { setPlannedCoverGrade, usePlannedCoverGrade } from '@/components/planned-cover-grade-store'
+
+import { HeaderMenuButton } from './HeaderMenuButton'
 
 const GRADE_SLIDERS = [
   { key: 'exposure', label: 'Экспозиция' },
@@ -33,19 +33,9 @@ export function PlannedCoverGradeMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            aria-label="Ч/б превью"
-            className="size-7"
-            size="icon"
-            type="button"
-            variant="ghost"
-          />
-        }
-      >
+      <HeaderMenuButton label="Ч/б превью">
         <SlidersHorizontalIcon aria-hidden className="size-3.5" />
-      </DropdownMenuTrigger>
+      </HeaderMenuButton>
       <DropdownMenuContent align="end" className="w-64 p-2" sideOffset={8}>
         <DropdownMenuLabel>Ч/б превью</DropdownMenuLabel>
         <div

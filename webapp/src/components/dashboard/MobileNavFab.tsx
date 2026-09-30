@@ -1,6 +1,6 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import type { UserDto } from '@web-app-demo/contracts'
-import type { LucideIcon } from 'lucide-react'
+import type { LucideIcon } from '@/components/icons'
 import {
   ChevronLeftIcon,
   LogOutIcon,
@@ -9,7 +9,7 @@ import {
   SunIcon,
   UserIcon,
   XIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 import * as React from 'react'
 import { useTheme } from 'next-themes'
 

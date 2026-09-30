@@ -1,4 +1,4 @@
-import { MoreHorizontalIcon, SearchIcon } from 'lucide-react'
+import { MoreHorizontalIcon, SearchIcon } from '@/components/icons'
 import type { AdminUserSummary } from '@web-app-demo/contracts'
 import { useState, type FormEvent } from 'react'
 

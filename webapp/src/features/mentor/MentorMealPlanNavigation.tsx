@@ -1,4 +1,4 @@
-import { CalendarRangeIcon } from 'lucide-react'
+import { CalendarRangeIcon } from '@/components/icons'
 import { Link, useRouterState } from '@tanstack/react-router'
 
 import {

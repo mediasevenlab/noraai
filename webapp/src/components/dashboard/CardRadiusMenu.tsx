@@ -1,35 +1,25 @@
-import { SquareRoundCornerIcon } from 'lucide-react'
+import { SquareRoundCornerIcon } from '@/components/icons'
 
-import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { CARD_RADII } from '@/components/card-radius'
 import { setCardRadius, useCardRadius } from '@/components/card-radius-store'
+
+import { HeaderMenuButton } from './HeaderMenuButton'
 
 export function CardRadiusMenu() {
   const radius = useCardRadius()
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            aria-label="Скругление карточки"
-            className="size-7"
-            size="icon"
-            type="button"
-            variant="ghost"
-          />
-        }
-      >
+      <HeaderMenuButton label="Скругление карточки">
         <SquareRoundCornerIcon aria-hidden className="size-3.5" />
-      </DropdownMenuTrigger>
+      </HeaderMenuButton>
       <DropdownMenuContent align="end" className="min-w-44" sideOffset={8}>
         <DropdownMenuLabel>Скругление карточки</DropdownMenuLabel>
         <DropdownMenuRadioGroup

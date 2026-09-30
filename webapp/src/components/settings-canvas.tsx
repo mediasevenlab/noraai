@@ -10,11 +10,10 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
-import { ArrowUpRightIcon, CheckIcon, PencilIcon, XIcon, type LucideIcon } from 'lucide-react'
+import { ArrowUpRightIcon, CheckIcon, PencilIcon, XIcon, type LucideIcon } from '@/components/icons'
 
 import { userGeneralSearch } from '@/features/navigation'
 
-import { NoraBadge } from '@/components/nora/primitives'
 import { cn } from '@/lib/utils'
 
 /** Как дата под названием приёма. */
@@ -23,7 +22,7 @@ const settingsCaptionClass =
 
 /** Как строка состава в окне приёма. */
 const settingsBodyClass =
-  'font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 text-[var(--nora-text-secondary)]'
+  'line-clamp-2 overflow-hidden font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 whitespace-normal text-[var(--nora-text-secondary)]'
 
 /**
  * Поля и кнопки: кегль 13px. На телефоне у настоящих полей ввода вычисленный
@@ -37,12 +36,12 @@ const settingsControlsClass = cn(
   '[&_[data-slot=field-group]]:!mt-0',
   '[&_[data-slot=field-label]]:!mb-0.5 [&_[data-slot=field-label]]:!font-[family-name:var(--nora-font)] [&_[data-slot=field-label]]:!text-[13px] [&_[data-slot=field-label]]:!font-medium [&_[data-slot=field-label]]:!leading-5 [&_[data-slot=field-label]]:!text-[var(--nora-text)]',
   '[&_[data-slot=field-description]]:!mt-0 [&_[data-slot=field-description]]:!font-[family-name:var(--nora-font)] [&_[data-slot=field-description]]:!text-[12px] [&_[data-slot=field-description]]:!font-light [&_[data-slot=field-description]]:!leading-5 [&_[data-slot=field-description]]:!text-[var(--nora-text-tertiary)]',
-  '[&_[data-slot=input]]:!bg-[var(--nora-panel)] [&_[data-slot=input]]:!px-3 [&_[data-slot=input]]:!text-[16px] [&_[data-slot=input]]:!font-normal [&_[data-slot=input]]:!leading-5',
-  '[&_[data-slot=input]:disabled]:!bg-[var(--nora-panel)] [&_[data-slot=input]:disabled]:!opacity-100 [&_[data-slot=input]:disabled]:!text-[var(--nora-text-secondary)]',
+  '[&_[data-slot=input]]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=input]]:!px-3 [&_[data-slot=input]]:!text-[16px] [&_[data-slot=input]]:!font-normal [&_[data-slot=input]]:!leading-5',
+  '[&_[data-slot=input]:disabled]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=input]:disabled]:!opacity-100 [&_[data-slot=input]:disabled]:!text-[var(--nora-text-secondary)]',
   'lg:[&_[data-slot=input]]:!h-8 lg:[&_[data-slot=input]]:!min-h-8 lg:[&_[data-slot=input]]:!text-[13px]',
-  '[&_[data-slot=select-trigger]]:!h-10 [&_[data-slot=select-trigger]]:!min-h-10 [&_[data-slot=select-trigger]]:!bg-[var(--nora-panel)] [&_[data-slot=select-trigger]]:!px-3 [&_[data-slot=select-trigger]]:!text-[13px] [&_[data-slot=select-trigger]]:!font-normal',
+  '[&_[data-slot=select-trigger]]:!h-10 [&_[data-slot=select-trigger]]:!min-h-10 [&_[data-slot=select-trigger]]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=select-trigger]]:!px-3 [&_[data-slot=select-trigger]]:!text-[13px] [&_[data-slot=select-trigger]]:!font-normal',
   'lg:[&_[data-slot=select-trigger]]:!h-8 lg:[&_[data-slot=select-trigger]]:!min-h-8',
-  '[&_[data-settings-field]]:!h-8 [&_[data-settings-field]]:!min-h-8 [&_[data-settings-field]]:!bg-[var(--nora-panel)] [&_[data-settings-field]]:!text-[13px]',
+  '[&_[data-settings-field]]:!h-8 [&_[data-settings-field]]:!min-h-8 [&_[data-settings-field]]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-settings-field]]:!text-[13px]',
   '[&_button:not([data-choice-plaque]):not([data-settings-field])]:!h-10 [&_button:not([data-choice-plaque]):not([data-settings-field])]:!min-h-10 [&_button:not([data-choice-plaque]):not([data-settings-field])]:!px-3 [&_button:not([data-choice-plaque]):not([data-settings-field])]:!text-[13px] [&_button:not([data-choice-plaque]):not([data-settings-field])]:!font-normal',
   'lg:[&_button:not([data-choice-plaque]):not([data-settings-field])]:!h-8 lg:[&_button:not([data-choice-plaque]):not([data-settings-field])]:!min-h-8',
   '[&_button:not([data-choice-plaque])_span]:!text-[13px] [&_button:not([data-choice-plaque])_span]:!font-normal',
@@ -193,14 +192,12 @@ function PhoneSheetHandle() {
 
 /** Один раздел настроек — как запись в списке версий. */
 export function SettingsEntry({
-  badge,
   children,
   className,
   description,
   marker,
   title,
 }: {
-  badge?: string
   children: ReactNode
   className?: string
   description: string
@@ -213,7 +210,7 @@ export function SettingsEntry({
         <h2 className="min-w-0 font-heading text-[18px] leading-tight font-bold tracking-[-0.02em] text-foreground lg:text-[24px]">
           {title}
         </h2>
-        {marker ?? (badge ? <NoraBadge className="hidden shrink-0 lg:inline-flex" variant="blue">{badge}</NoraBadge> : null)}
+        {marker}
       </div>
       <p className={cn('mt-1 max-w-[54ch]', settingsBodyClass, 'text-[var(--nora-text-tertiary)]')}>{description}</p>
       <div className={settingsControlsClass} data-settings-well="">
@@ -260,7 +257,7 @@ export function SettingsReadRows({
             {row.icon ? <SettingsFieldMark icon={row.icon} /> : null}
             <span className={cn(readRowClass, 'font-medium text-[var(--nora-text)]')}>{row.label}</span>
           </span>
-          <span className={cn(readRowClass, 'min-w-0 break-words text-right font-light text-[color-mix(in_srgb,white_10%,color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary))))]')}>
+          <span className={cn(readRowClass, 'min-w-0 break-words text-right font-light text-[color-mix(in_srgb,white_10%,color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary))))] dark:text-[var(--nora-text-secondary)]')}>
             {row.value || '—'}
           </span>
         </div>

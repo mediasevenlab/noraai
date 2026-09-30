@@ -6,8 +6,8 @@ import {
   Loader2Icon,
   PlusIcon,
   XIcon,
-} from 'lucide-react'
-import { toast } from 'sonner'
+} from '@/components/icons'
+import { toast } from '@/components/ui/toast'
 
 import { NoraSelect } from '@/components/nora/primitives'
 import { ProductSheetTabFade, productSheetTabDockClass, productToolbarSelectContentClass, productToolbarSelectItemClass } from '@/components/nora/product-sheet'
@@ -147,7 +147,7 @@ function MealRevealComposition({
           if (!visible.show) return null
           return (
             <li key={item.label}>
-              <span className="text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)]">
+              <span className="text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)] dark:text-[color-mix(in_srgb,var(--nora-text)_42%,var(--nora-text-secondary))]">
                 <ComposerTypedText
                   live={visible.labelLive}
                   onComplete={visible.labelLive ? advance : undefined}
@@ -196,7 +196,7 @@ function MicronutrientGrid({ items }: { items: MealMicronutrient[] }) {
     <ul className="grid list-disc grid-cols-2 gap-x-8 gap-y-2 pl-5 font-[family-name:var(--nora-font)]">
       {items.map((item) => (
         <li key={item.key} className="pr-2">
-          <span className="text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)]">
+          <span className="text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)] dark:text-[color-mix(in_srgb,var(--nora-text)_42%,var(--nora-text-secondary))]">
             {item.label}:
           </span>
           <span className="ml-1.5 text-[12px] font-light leading-5 tabular-nums text-[var(--nora-text-tertiary)]">
@@ -635,7 +635,7 @@ export function MealOpenDetail({
                     <ul className="mt-2 list-disc space-y-2.5 pl-5 font-[family-name:var(--nora-font)]">
                       {portionItems.map((item) => (
                         <li key={item.label}>
-                          <span className="text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)]">
+                          <span className="text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)] dark:text-[color-mix(in_srgb,var(--nora-text)_42%,var(--nora-text-secondary))]">
                             {item.label}
                           </span>
                           {portionItemHasMacros(item) ? (

@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { createPortal } from 'react-dom'
-import { GripVerticalIcon } from 'lucide-react'
+import { GripVerticalIcon } from '@/components/icons'
 
 import { productFeedGridClass } from '@/components/nora/product-sheet'
 import { NoraIconButton } from '@/components/nora/primitives'

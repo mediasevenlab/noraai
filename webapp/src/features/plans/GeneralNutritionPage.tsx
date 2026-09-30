@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, BookOpenIcon, CalendarDaysIcon, CameraIcon } from 'lucide-react'
+import { ArrowLeftIcon, BookOpenIcon, CalendarDaysIcon, CameraIcon } from '@/components/icons'
 
 import { DiaryNewsPage, requestAddMeal, DIARY_MOBILE_DOCK_MOVE_ID } from '@/features/diary'
 import { cn } from '@/lib/utils'
@@ -159,7 +159,6 @@ export function GeneralNutritionPage({
       <PlanPage
         heading={{
           ...GENERAL_HEADING,
-          badge: library === 'catalog' ? 'Каталог' : 'План',
           title: library === 'catalog' ? 'Каталог' : GENERAL_HEADING.title,
           description:
             library === 'catalog'
@@ -173,7 +172,7 @@ export function GeneralNutritionPage({
       />
     ) : (
       <DiaryNewsPage
-        heading={{ ...GENERAL_HEADING, badge: 'Дневник' }}
+        heading={GENERAL_HEADING}
         toolbarStart={desktopSwitcher}
       />
     )

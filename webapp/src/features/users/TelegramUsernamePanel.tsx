@@ -6,7 +6,7 @@ import {
   type TelegramLinkResponse,
   type UserDto,
 } from '@web-app-demo/contracts'
-import { SendIcon } from 'lucide-react'
+import { SendIcon } from '@/components/icons'
 import { useId, useState, type FormEvent } from 'react'
 
 import { NoraToast } from '@/components/nora'
@@ -113,7 +113,6 @@ export function TelegramUsernamePanel({
 
   return (
     <SettingsEntry
-      badge="Бот"
       description={
         variant === 'notify'
           ? 'Сообщение, когда подопечный добавит приём.'

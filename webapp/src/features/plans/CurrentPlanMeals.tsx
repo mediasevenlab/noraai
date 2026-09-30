@@ -1,8 +1,8 @@
 import * as React from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { CalendarIcon, ArrowLeftRightIcon, PlusIcon, Trash2Icon, UtensilsIcon, XIcon, ZapIcon } from 'lucide-react'
-import { toast } from 'sonner'
+import { CalendarIcon, ArrowLeftRightIcon, PlusIcon, Trash2Icon, UtensilsIcon, XIcon, ZapIcon } from '@/components/icons'
+import { toast } from '@/components/ui/toast'
 
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useAuth } from '@/features/auth'
@@ -81,7 +81,7 @@ import {
 const EMPTY_GALLERIES: Record<string, Record<string, string[]>> = {}
 
 const PLAN_DAY_BADGE_CLASS =
-  'ios-glass-glare inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0 bg-[color-mix(in_srgb,var(--nora-input-bg)_55%,var(--nora-canvas))] py-0 pr-2.5 pl-2 text-[12px] font-normal leading-none text-[var(--nora-text-secondary)] backdrop-blur-[16px]'
+  'ios-glass-glare inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0 bg-[var(--nora-input-bg)] py-0 pr-2.5 pl-2 text-[12px] font-normal leading-none text-[var(--nora-text-secondary)] backdrop-blur-[16px]'
 const PLAN_DAY_TAB_CLASS =
   'nora-press-grow relative flex h-[4.75rem] flex-col items-center justify-between rounded-full bg-[var(--nora-inset)] px-1 pb-2 pt-2.5 outline-none focus-visible:shadow-[var(--nora-shadow-focus)]'
 const PLAN_DAY_TAB_SELECTED_CLASS = 'bg-[#2C2C2E]'

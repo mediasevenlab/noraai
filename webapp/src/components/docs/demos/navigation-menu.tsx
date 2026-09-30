@@ -3,7 +3,7 @@ import {
   FileTextIcon,
   LayersIcon,
   BookOpenIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import {
   NavigationMenu,

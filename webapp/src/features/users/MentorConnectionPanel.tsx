@@ -1,5 +1,5 @@
 import { registrationMentorIdentifierSchema } from '@web-app-demo/contracts'
-import { CircleCheckIcon, CircleXIcon, UsersIcon } from 'lucide-react'
+import { CircleCheckIcon, CircleXIcon, UsersIcon } from '@/components/icons'
 import { useEffect, useId, useState } from 'react'
 
 import { SettingsEntry, SettingsFieldMark, SettingsReadRows, useSettingsMode } from '@/components/settings-canvas'
@@ -75,7 +75,6 @@ export function MentorConnectionPanel() {
 
   return (
     <SettingsEntry
-      badge="Доступ"
       description="Никнейм или ID наставника."
       title="Подключение к наставнику"
     >

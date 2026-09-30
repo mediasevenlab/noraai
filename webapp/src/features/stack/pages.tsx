@@ -1,4 +1,4 @@
-import { ArrowUpRightIcon } from 'lucide-react'
+import { ArrowUpRightIcon } from '@/components/icons'
 import { Link } from '@tanstack/react-router'
 
 import { STACK_ITEMS, STACK_META } from './model'

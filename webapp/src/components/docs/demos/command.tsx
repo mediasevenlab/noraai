@@ -16,7 +16,7 @@ import {
   LayersIcon,
   SettingsIcon,
   ComponentIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import type { ComponentDoc } from "./types"
 

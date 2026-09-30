@@ -5,7 +5,6 @@ function SubscriptionPaymentsPage() {
   return (
     <PageContainer>
       <NoraPageHeader
-        badge="Платежи"
         description="Оплата сервиса ещё не подключена."
         title="Подписка"
       />

@@ -1,4 +1,4 @@
-import { BadgeCheckIcon } from "lucide-react"
+import { BadgeCheckIcon } from "@/components/icons"
 
 import { Badge } from "@/components/ui/badge"
 
@@ -39,7 +39,7 @@ export function BadgeVariants() {
       title: "With icon",
       description: "Badges can include a leading icon.",
       code: `import { Badge } from "@/components/ui/badge"
-import { BadgeCheckIcon } from "lucide-react"
+import { BadgeCheckIcon } from "@/components/icons"
 
 export function BadgeWithIcon() {
   return (

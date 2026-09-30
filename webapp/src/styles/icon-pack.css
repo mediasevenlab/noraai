@@ -1,0 +1,24 @@
+/* Outside a button, the glyph receives the hover. */
+[data-icon-pack='lucide-animated'] [data-nora-animated-icon] {
+  pointer-events: auto;
+}
+
+/* On a button or a sidebar section, the whole control is the hover target. */
+[data-icon-pack='lucide-animated'] :is(button, [role='button'], [data-sidebar='menu-button']) [data-nora-animated-icon] {
+  pointer-events: none;
+}
+
+/* A quiet scale for glyphs without their own motion: Lucide Animated fallbacks, and every Hugeicons glyph. */
+[data-icon-pack='lucide-animated'] .nora-pack-fallback,
+[data-icon-pack='hugeicons'] .nora-pack-fallback {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-icon-pack='lucide-animated'] .nora-pack-fallback:hover,
+[data-icon-pack='lucide-animated'] :is(button, [role='button'], [data-sidebar='menu-button']):hover .nora-pack-fallback,
+[data-icon-pack='hugeicons'] .nora-pack-fallback:hover,
+[data-icon-pack='hugeicons'] :is(button, [role='button'], [data-sidebar='menu-button']):hover .nora-pack-fallback {
+  transform: scale(1.08);
+}

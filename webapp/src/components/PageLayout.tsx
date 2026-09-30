@@ -1,6 +1,5 @@
 import type { PropsWithChildren, ReactNode } from 'react'
 
-import { NoraBadge } from '@/components/nora/primitives'
 import { Typography } from '@/components/typography'
 
 export function PageContainer({ children }: PropsWithChildren) {
@@ -18,14 +17,12 @@ const noraDisplayTitleClass =
   'font-heading text-[28px] leading-[1.15] font-bold tracking-[-0.03em] text-[var(--nora-text)]'
 
 export const noraPageDescriptionClass =
-  'max-w-[440px] text-[13px] font-light leading-relaxed text-[color-mix(in_srgb,var(--nora-text-secondary)_50%,var(--nora-text-tertiary)_50%)]'
+  'line-clamp-2 max-w-[440px] overflow-hidden font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-relaxed whitespace-normal text-[color-mix(in_srgb,var(--nora-text-secondary)_50%,var(--nora-text-tertiary)_50%)]'
 
-/** Заголовок страницы. По умолчанию: title + badge (без «Nora»).
- *  Админ: `showBrand` + `titleSize="display"` — строка Nora/badge, затем крупный title. */
+/** Заголовок страницы. Админ: `showBrand` + `titleSize="display"` — строка Nora, затем крупный title. */
 export function NoraPageHeader({
   actions,
   align = 'start',
-  badge,
   description,
   showBrand = false,
   title,
@@ -33,7 +30,6 @@ export function NoraPageHeader({
 }: {
   actions?: ReactNode
   align?: 'start' | 'center'
-  badge: string
   description: string
   showBrand?: boolean
   title: string
@@ -52,14 +48,12 @@ export function NoraPageHeader({
         <>
           <div className={rowClass}>
             <span className={noraPageTitleClass}>Nora</span>
-            <NoraBadge variant="blue">{badge}</NoraBadge>
           </div>
           <h1 className={titleClass}>{title}</h1>
         </>
       ) : (
         <div className={rowClass}>
           <h1 className={titleClass}>{title}</h1>
-          <NoraBadge variant="blue">{badge}</NoraBadge>
         </div>
       )}
       <div

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { CircleCheckIcon, CircleIcon, XIcon } from 'lucide-react'
+import { CircleCheckIcon, CircleIcon, XIcon } from '@/components/icons'
 
 import {
   Dialog,

@@ -12,7 +12,7 @@ function plaqueClassName(checked: boolean, entry: boolean) {
   return cn(
     'flex cursor-pointer items-start gap-2 rounded-[var(--nora-radius-md)] px-3 py-2',
     entry
-      ? 'bg-[var(--nora-panel)]'
+      ? 'bg-[var(--settings-field-bg,var(--nora-panel))]'
       : 'bg-[var(--questionnaire-fill,var(--settings-substrate))] shadow-[inset_0_0_0_1px_var(--questionnaire-fill-stroke,var(--nora-border))]',
     'font-[family-name:var(--nora-font)] text-[var(--nora-text)]',
     'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
@@ -165,7 +165,7 @@ export function ChoicePlaquesField({
           aria-label={inputLabel ?? 'Уточнение'}
           className={
             entry
-              ? 'h-10 bg-[var(--nora-panel)] px-3 text-[16px] leading-5 lg:h-8 lg:text-[13px]'
+              ? 'h-10 bg-[var(--settings-field-bg,var(--nora-panel))] px-3 text-[16px] leading-5 lg:h-8 lg:text-[13px]'
               : 'h-10 min-h-10 w-full bg-[var(--questionnaire-fill,var(--settings-substrate))] px-3 text-[16px] font-normal leading-5 shadow-[inset_0_0_0_1px_var(--questionnaire-fill-stroke,var(--nora-border))] lg:h-8 lg:min-h-8 lg:text-[13px]'
           }
           onChange={(event) => emit(selectedOption, event.target.value)}

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { CalendarRangeIcon } from 'lucide-react'
+import { CalendarRangeIcon } from '@/components/icons'
 
 import { NoraButton } from '@/components/nora/primitives'
 import { ProductFeedEmpty, productFeedGridClass } from '@/components/nora/product-sheet'

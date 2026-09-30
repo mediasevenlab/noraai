@@ -4,7 +4,7 @@ import {
   DollarSignIcon,
   InboxIcon,
   UsersIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 import { Navigate, useParams } from '@tanstack/react-router'
 
 import { DocsPager } from '@/components/docs/docs-pager'

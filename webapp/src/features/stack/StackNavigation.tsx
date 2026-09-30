@@ -1,4 +1,4 @@
-import { FootprintsIcon, LayersIcon, type LucideIcon } from 'lucide-react'
+import { FootprintsIcon, LayersIcon, type LucideIcon } from '@/components/icons'
 import { Link, useRouterState } from '@tanstack/react-router'
 
 import { useSidebarSearchQuery } from '@/components/dashboard/SidebarSearch'

@@ -1,4 +1,4 @@
-import { InfoIcon, SparklesIcon } from "lucide-react"
+import { InfoIcon, SparklesIcon } from "@/components/icons"
 
 import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker"
 import {

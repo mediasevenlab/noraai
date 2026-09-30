@@ -5,10 +5,13 @@
 @import "./styles/modal-motion.css";
 @import "./styles/card-hover.css";
 @import "./styles/card-radius.css";
+@import "./styles/composition-tone.css";
+@import "./styles/sidebar-shade.css";
 @import "./styles/card-shadow.css";
 @import "./styles/planned-cover-wash.css";
 @import "./styles/planned-cover-blur.css";
 @import "./styles/composer-press.css";
+@import "./styles/icon-pack.css";
 
 @font-face {
     font-family: "Inter Variable";
@@ -253,7 +256,9 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
 }
 
 .scheme-editor-light.light-palette-breathtwo [data-sidebar="footer"] .text-muted-foreground,
-.scheme-editor-light.light-palette-breaththree [data-sidebar="footer"] .text-muted-foreground {
+.scheme-editor-light.light-palette-breaththree [data-sidebar="footer"] .text-muted-foreground,
+.scheme-editor-light.light-palette-breathtwo [data-sidebar="header"] .text-muted-foreground,
+.scheme-editor-light.light-palette-breaththree [data-sidebar="header"] .text-muted-foreground {
     color: var(--settings-row-value);
     font-weight: 300;
 }
@@ -425,9 +430,10 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
 
 .scheme-editor-dark .cn-toast[data-sonner-toast],
 [data-scheme='editor-dark'] .cn-toast[data-sonner-toast] {
-  background: color-mix(in srgb, var(--nora-input-bg) 78%, transparent) !important;
+  background: #2b2b2b !important;
+  color: #ffffff !important;
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 24%, transparent),
+    inset 0 0 0 1px #333333,
     0 8px 24px rgba(0, 0, 0, 0.36) !important;
 }
 

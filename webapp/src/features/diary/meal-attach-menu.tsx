@@ -1,6 +1,6 @@
 import * as React from 'react'
-import { CameraIcon, ImageIcon, PlusIcon } from 'lucide-react'
-import { toast } from 'sonner'
+import { CameraIcon, ImageIcon, PlusIcon } from '@/components/icons'
+import { toast } from '@/components/ui/toast'
 
 import {
   DropdownMenu,

@@ -1,4 +1,4 @@
-import { AppWindowIcon, CodeIcon } from "lucide-react"
+import { AppWindowIcon, CodeIcon } from "@/components/icons"
 
 import {
   Card,

@@ -15,7 +15,7 @@ import {
   UtensilsIcon,
   XIcon,
   ZapIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 
 import { NoraInput, NoraSelect, NoraTextarea } from '@/components/nora/primitives'
 import {

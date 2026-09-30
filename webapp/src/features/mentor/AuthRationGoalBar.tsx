@@ -1,4 +1,4 @@
-import { FlameIcon } from 'lucide-react'
+import { FlameIcon } from '@/components/icons'
 
 import {
   productToolbarSelectContentClass,

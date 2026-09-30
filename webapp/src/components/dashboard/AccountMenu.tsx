@@ -1,4 +1,4 @@
-import { LogOutIcon } from 'lucide-react'
+import { LogOutIcon } from '@/components/icons'
 import type { UserDto } from '@web-app-demo/contracts'
 import { useState } from 'react'
 

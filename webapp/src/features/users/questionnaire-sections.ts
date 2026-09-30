@@ -18,7 +18,7 @@ import {
   UserRoundIcon,
   UtensilsIcon,
   type LucideIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 
 export type FieldKey = keyof QuestionnaireAnswers
 export type FieldLayout = 'inline' | 'extended'

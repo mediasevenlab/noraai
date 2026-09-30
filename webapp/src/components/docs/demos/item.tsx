@@ -5,7 +5,7 @@ import {
   InboxIcon,
   PlusIcon,
   ShieldAlertIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import {
   Avatar,

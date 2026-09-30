@@ -1,4 +1,4 @@
-import { Loader2Icon, MailIcon } from "lucide-react"
+import { Loader2Icon, MailIcon } from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 
@@ -39,7 +39,7 @@ export function ButtonVariants() {
       title: "Sizes",
       description: "Default, xs, sm, lg, and icon size tokens.",
       code: `import { Button } from "@/components/ui/button"
-import { MailIcon } from "lucide-react"
+import { MailIcon } from "@/components/icons"
 
 export function ButtonSizes() {
   return (
@@ -88,7 +88,7 @@ export function ButtonSizes() {
       title: "With icon",
       description: "Buttons with leading or trailing icons.",
       code: `import { Button } from "@/components/ui/button"
-import { MailIcon } from "lucide-react"
+import { MailIcon } from "@/components/icons"
 
 export function ButtonWithIcon() {
   return (
@@ -121,7 +121,7 @@ export function ButtonWithIcon() {
       title: "Disabled & loading",
       description: "Disabled state and a loading pattern.",
       code: `import { Button } from "@/components/ui/button"
-import { Loader2Icon } from "lucide-react"
+import { Loader2Icon } from "@/components/icons"
 
 export function ButtonStates() {
   return (

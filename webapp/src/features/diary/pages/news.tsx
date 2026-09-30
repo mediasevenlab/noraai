@@ -4,22 +4,21 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  CirclePlusIcon,
   BookmarkIcon,
   CalendarIcon,
-  CameraIcon,
   ChartNoAxesCombinedIcon,
   FlameIcon,
   LayersIcon,
   LayoutGridIcon,
-  PlusIcon,
   Rows2Icon,
   SearchIcon,
   ShoppingBagIcon,
   UtensilsIcon,
   ZapIcon,
-} from "lucide-react";
+} from "@/components/icons";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/toast";
 
 import {
   noraPageDescriptionClass,
@@ -34,7 +33,6 @@ import {
 } from "@/components/nora/product-sheet";
 import { ProductToolbarSearch } from "@/components/nora/toolbar-search";
 import {
-  NoraBadge,
   NoraButton,
 } from "@/components/nora/primitives";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -65,6 +63,7 @@ import {
   DiaryPeriodPicker,
   diaryToolbarChipClass,
   diaryToolbarIconButtonClass,
+  diaryToolbarPairDividerClass,
   diaryToolbarPillClass,
   isMealInLocalDayRange,
   type DiaryPeriodFilter,
@@ -183,13 +182,13 @@ import type { MealMacrosRevealState } from "../meal-card-reveal";
 type FeedTab = "Все" | "Избранное";
 const SHOW_DIARY_WEEK_ACTIVITY = false;
 const DAY_STAT_CHIP_CLASS =
-  "ios-glass-glare inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0 bg-[color-mix(in_srgb,var(--nora-input-bg)_55%,var(--nora-canvas))] py-0 pr-2.5 pl-2 text-[12px] font-normal leading-none text-[var(--nora-text-secondary)] backdrop-blur-[16px]";
+  "ios-glass-glare inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0 bg-[var(--nora-input-bg)] py-0 pr-2.5 pl-2 font-[family-name:var(--nora-font)] text-[12px] font-normal leading-none tabular-nums text-[var(--nora-text-secondary)]";
 const DAY_DATE_CHIP_CLASS =
-  "ios-glass-glare inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0 bg-[#2C2C2E] py-0 pr-2.5 pl-2 text-[12px] font-normal leading-none text-white backdrop-blur-[16px]";
+  "ios-glass-glare inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0 bg-[var(--nora-text)] py-0 pr-2.5 pl-2 text-[12px] font-normal leading-none text-white dark:bg-[#2C2C2E]";
 const DAY_PLAN_CHIP_CLASS =
-  "ios-glass-glare inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0 bg-[var(--nora-tint)] py-0 pr-2.5 pl-2 text-[12px] font-normal leading-none text-white backdrop-blur-[16px]";
+  "ios-glass-glare inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0 bg-[var(--nora-tint)] py-0 pr-2.5 pl-2 text-[12px] font-normal leading-none text-white";
 const DAY_CHIPS_ROW_CLASS =
-  "relative z-[1] flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain max-md:-mx-2 max-md:px-2 py-3 -my-3 no-scrollbar md:overflow-visible";
+  "relative z-[1] flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain select-none max-md:-mx-2 max-md:px-2 py-3 -my-3 no-scrollbar md:overflow-visible";
 const FAVORITES_PICK_KEY = "favorites";
 const DIARY_MOVE_PILL_CLASS =
   "ios-float-pill inline-flex h-12 shrink-0 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[13px] font-normal leading-none text-[var(--nora-text)] outline-none transition-[transform,opacity] active:scale-95 focus-visible:shadow-[var(--nora-shadow-focus)] disabled:pointer-events-none disabled:opacity-100 disabled:!text-[var(--nora-text-tertiary)]";
@@ -211,10 +210,10 @@ function FeedAddToPlanChip({
       onClick={onMove}
       type="button"
     >
-      <PlusIcon
+      <CirclePlusIcon
         aria-hidden
         className={cn(
-          "size-[13px]",
+          "size-[14px]",
           pickedCount === 0
             ? "text-[var(--nora-text-tertiary)]"
             : "text-white",
@@ -426,36 +425,30 @@ function FeedDayStats({
         </div>
       </div>
       <div className="ml-auto flex w-max shrink-0 items-center gap-2">
-        <div className={cn(DAY_STAT_CHIP_CLASS, "gap-2")}>
+        <div className={cn(DAY_STAT_CHIP_CLASS, "gap-2 px-3")}>
           <span
             aria-label={`Белки ${formatCount(totals.protein)}`}
             className="inline-flex items-center gap-1 tabular-nums"
           >
-            <span aria-hidden className="text-[11px] font-medium">
-              Б:
-            </span>
+            <span aria-hidden>Б:</span>
             {formatCount(totals.protein)}
           </span>
           <span
             aria-label={`Жиры ${formatCount(totals.fat)}`}
             className="inline-flex items-center gap-1 tabular-nums"
           >
-            <span aria-hidden className="text-[11px] font-medium">
-              Ж:
-            </span>
+            <span aria-hidden>Ж:</span>
             {formatCount(totals.fat)}
           </span>
           <span
             aria-label={`Углеводы ${formatCount(totals.carbs)}`}
             className="inline-flex items-center gap-1 tabular-nums"
           >
-            <span aria-hidden className="text-[11px] font-medium">
-              У:
-            </span>
+            <span aria-hidden>У:</span>
             {formatCount(totals.carbs)}
           </span>
         </div>
-        <div className={DAY_STAT_CHIP_CLASS}>
+        <div className={cn(DAY_STAT_CHIP_CLASS, "px-3")}>
           <UtensilsIcon
             aria-hidden
             className="size-[13px]"
@@ -493,7 +486,6 @@ export function NewsPage({
   periodStartIso?: string;
   readOnly?: boolean;
   heading?: {
-    badge?: string;
     title: string;
     description?: string;
   };
@@ -1410,7 +1402,6 @@ export function NewsPage({
             <h1 className={noraPageTitleClass}>
               {heading?.title ?? "Мой дневник"}
             </h1>
-            <NoraBadge variant="blue">{heading?.badge ?? "Дневник"}</NoraBadge>
           </div>
           <p className={cn("mt-1.5", noraPageDescriptionClass)}>
             {heading?.description ?? "Записи о питании, привычках и прогрессе."}
@@ -1525,6 +1516,13 @@ export function NewsPage({
                           subjectKey={subjectId}
                         />
                       </div>
+                      <span
+                        aria-hidden
+                        className={cn(
+                          diaryToolbarPairDividerClass,
+                          searchOpen && "max-md:hidden",
+                        )}
+                      />
                       <ProductToolbarSearch
                         expanded={searchOpen}
                         onExpandedChange={setSearchOpen}
@@ -1568,7 +1566,7 @@ export function NewsPage({
                       <button
                         className={cn(
                           diaryToolbarPillClass,
-                          "nora-press-grow max-md:hidden gap-1 px-3 text-[13px] font-normal leading-none text-[var(--nora-text)]",
+                          "nora-press-grow max-md:hidden gap-1 px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] [&>svg]:size-3.5",
                         )}
                         type="button"
                         onClick={() => {
@@ -1576,7 +1574,7 @@ export function NewsPage({
                           setAddMealOpen(true);
                         }}
                       >
-                        <CameraIcon aria-hidden className="size-3.5 shrink-0" strokeWidth={1.75} />
+                        <CirclePlusIcon aria-hidden strokeWidth={1.75} />
                         Добавить
                       </button>
                     ) : null}
@@ -1642,7 +1640,7 @@ export function NewsPage({
                 ref={feedRootRef}
               >
                 {tab === "Избранное" ? (
-                  <section className="flex flex-col gap-5">
+                  <section className="isolate flex flex-col gap-5">
                     {toolbarDisabled || !canAddToPlan ? null : (
                       <FeedFavoritesPickBar
                         mealCount={filtered.length}
@@ -1682,7 +1680,7 @@ export function NewsPage({
                   dayGroups.map((group) => (
                     <section
                       className={cn(
-                        "flex flex-col gap-5",
+                        "isolate flex flex-col gap-5",
                         pickingDayKey &&
                           pickingDayKey !== group.dayKey &&
                           "opacity-45",
@@ -1925,7 +1923,7 @@ export function NewsPage({
               onClick={openBulkPlanPicker}
               type="button"
             >
-              <PlusIcon
+              <CirclePlusIcon
                 aria-hidden
                 className={
                   pickedIds.size === 0

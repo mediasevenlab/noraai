@@ -10,7 +10,7 @@ import {
   UserIcon,
   UsersIcon,
   WalletIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 import { useLocation, useNavigate } from '@tanstack/react-router'
 import type { UserDto } from '@web-app-demo/contracts'
 import type { PropsWithChildren } from 'react'

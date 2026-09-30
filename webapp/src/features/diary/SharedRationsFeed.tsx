@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ListIcon, PlusIcon, SearchIcon } from 'lucide-react'
-import { toast } from 'sonner'
+import { ListIcon, PlusIcon, SearchIcon } from '@/components/icons'
+import { toast } from '@/components/ui/toast'
 import type { ListSharedRationsResponse, SharedRation } from '@web-app-demo/contracts'
 
 import {
@@ -156,7 +156,7 @@ function SharedRationCardSkeleton({ layout = 'grid' }: { layout?: FeedCardLayout
         <div className={cn('flex flex-col px-3 sm:px-4', list ? 'mt-auto pt-2.5' : 'md:pt-2')}>
           <div
             aria-hidden
-            className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]"
+            className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)] dark:border-[var(--nora-border-strong)]"
           />
           <div className="flex items-center gap-2 py-2.5">
             <div className="size-6 animate-pulse rounded-full bg-[var(--nora-inset)]" />
@@ -265,7 +265,7 @@ function SharedRationCard({
         <div className={cn('flex flex-col px-3 sm:px-4', list ? 'mt-auto pt-2.5' : 'md:pt-2')}>
           <div
             aria-hidden
-            className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]"
+            className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)] dark:border-[var(--nora-border-strong)]"
           />
           <div
             className="flex items-center gap-2 py-2.5"

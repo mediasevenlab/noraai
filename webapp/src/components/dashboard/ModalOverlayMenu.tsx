@@ -1,35 +1,25 @@
-import { BlendIcon } from 'lucide-react'
+import { BlendIcon } from '@/components/icons'
 
-import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MODAL_OVERLAYS } from '@/components/modal-overlay'
 import { setModalOverlay, useModalOverlay } from '@/components/modal-overlay-store'
+
+import { HeaderMenuButton } from './HeaderMenuButton'
 
 export function ModalOverlayMenu() {
   const overlay = useModalOverlay()
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            aria-label="Фон окна"
-            className="size-7"
-            size="icon"
-            type="button"
-            variant="ghost"
-          />
-        }
-      >
+      <HeaderMenuButton label="Фон окна">
         <BlendIcon aria-hidden className="size-3.5" />
-      </DropdownMenuTrigger>
+      </HeaderMenuButton>
       <DropdownMenuContent
         align="end"
         className="max-h-[min(70vh,28rem)] min-w-56 overflow-y-auto"

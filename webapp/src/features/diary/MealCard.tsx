@@ -12,7 +12,7 @@ import {
   SparklesIcon,
   Trash2Icon,
   ZapIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 
 import {
   productCardAuthorAnchorClass,
@@ -53,10 +53,10 @@ import {
 import type { MealRevealMacroKey } from './meal-card-reveal'
 
 const MEAL_CARD_FOOTER_DIVIDER_CLASS =
-  'border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]'
+  'border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)] dark:border-[var(--nora-border-strong)]'
 const MEAL_CARD_FOOTER_CLASS = 'flex items-center justify-between gap-2 py-2.5'
 const MEAL_CARD_FOOTER_PLUS_CLASS =
-  'nora-press-grow size-6! shrink-0 rounded-full! bg-[var(--nora-input-bg)] text-[var(--nora-text-secondary)] shadow-none hover:bg-[color-mix(in_srgb,var(--nora-input-bg)_82%,var(--nora-text)_10%)] hover:text-[var(--nora-text)] active:bg-[color-mix(in_srgb,var(--nora-input-bg)_75%,var(--nora-text)_12%)] [&_svg]:size-4'
+  'nora-press-grow size-6! shrink-0 rounded-full! bg-[var(--nora-input-bg)] text-[var(--nora-text-secondary)] shadow-none hover:bg-[color-mix(in_srgb,var(--nora-input-bg)_82%,var(--nora-text)_10%)] hover:text-[var(--nora-text)] active:bg-[color-mix(in_srgb,var(--nora-input-bg)_75%,var(--nora-text)_12%)] dark:bg-[var(--nora-button-bg-hover)] dark:hover:bg-[color-mix(in_srgb,white_12%,var(--nora-button-bg-hover))] dark:active:bg-[color-mix(in_srgb,white_18%,var(--nora-button-bg-hover))] [&_svg]:size-4'
 const FEED_AUTHOR_CHIP_CLASS = cn(
   'ios-glass-glare-soft inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border-0 py-1 pr-2.5 pl-1',
   productSheetFrostFillClass,
@@ -90,7 +90,7 @@ function MacrosLine({
   return (
     <p
       className={cn(
-        'min-w-0 truncate font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)] tabular-nums',
+        'min-w-0 truncate font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)] tabular-nums dark:font-normal dark:text-[var(--nora-text-secondary)]',
         className,
       )}
     >
@@ -141,7 +141,7 @@ function RollingMacroValue({
   }, [intervalMs, max, min, rolling, value])
 
   return (
-    <span className={cn('inline-block text-end font-semibold tabular-nums', widthClass)}>
+    <span className={cn('inline-block text-end font-semibold tabular-nums dark:text-[var(--nora-text)]', widthClass)}>
       {shown}
     </span>
   )
@@ -170,7 +170,7 @@ export function MealMacrosPlaque({
     <div className="pointer-events-none flex items-center gap-1.5">
       <div className={cn(shell, 'gap-1 pl-2.5 pr-3')}>
         <ZapIcon aria-hidden className="size-[15px] shrink-0" strokeWidth={1.75} />
-        <span className="whitespace-nowrap text-[11px] font-medium leading-none">
+        <span className="whitespace-nowrap text-[11px] font-medium leading-none dark:text-[var(--nora-text)]">
           <RollingMacroValue
             intervalMs={48}
             max={740}
@@ -930,7 +930,7 @@ export function MealCard({
           </div>
           <ul
             className={cn(
-              'mt-2 mb-2 h-[3.75rem] shrink-0 overflow-clip font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]',
+              'mt-2 mb-2 h-[3.75rem] shrink-0 overflow-clip font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-composition)] dark:font-normal',
               list && 'max-md:mt-1 max-md:mb-1',
               list && variant !== 'feed' && 'max-md:h-10',
             )}

@@ -1,4 +1,4 @@
-import { PanelBottomIcon } from 'lucide-react'
+import { PanelBottomIcon } from '@/components/icons'
 
 import { Button } from '@/components/ui/button'
 import { setSidebarPromoCards, useSidebarPromoCards } from '@/components/sidebar-promo-store'

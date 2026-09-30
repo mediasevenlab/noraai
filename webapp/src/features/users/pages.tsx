@@ -107,7 +107,6 @@ export function AccountProfile({
   return (
     <PageContainer>
       <NoraPageHeader
-        badge="Профиль"
         description="Основные данные аккаунта рабочей области."
         showBrand={showBrand}
         title="Профиль"

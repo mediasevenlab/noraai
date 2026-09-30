@@ -1,35 +1,25 @@
-import { ApertureIcon } from 'lucide-react'
+import { ApertureIcon } from '@/components/icons'
 
-import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { PLANNED_COVER_BLURS } from '@/components/planned-cover-blur'
 import { setPlannedCoverBlur, usePlannedCoverBlur } from '@/components/planned-cover-blur-store'
+
+import { HeaderMenuButton } from './HeaderMenuButton'
 
 export function PlannedCoverBlurMenu() {
   const blur = usePlannedCoverBlur()
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            aria-label="Блюр запланированных"
-            className="size-7"
-            size="icon"
-            type="button"
-            variant="ghost"
-          />
-        }
-      >
+      <HeaderMenuButton label="Блюр запланированных">
         <ApertureIcon aria-hidden className="size-3.5" />
-      </DropdownMenuTrigger>
+      </HeaderMenuButton>
       <DropdownMenuContent
         align="end"
         className="max-h-80 min-w-44 overflow-y-auto"

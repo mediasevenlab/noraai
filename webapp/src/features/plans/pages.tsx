@@ -1,11 +1,11 @@
 import * as React from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowLeftIcon, BookmarkIcon, CalendarRangeIcon, PencilIcon, UtensilsIcon } from 'lucide-react'
+import { ArrowLeftIcon, BookmarkIcon, CalendarRangeIcon, PencilIcon, UtensilsIcon } from '@/components/icons'
 import { format } from 'date-fns'
 import { ru as dateFnsRu } from 'date-fns/locale'
 import { useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { toast } from '@/components/ui/toast'
 
 import { NoraButton } from '@/components/nora/primitives'
 import { cn } from '@/lib/utils'
@@ -98,7 +98,6 @@ export function PlanPage({
   toolbarStart,
 }: {
   heading?: {
-    badge: string
     description: string
     title: string
   }
@@ -483,7 +482,6 @@ export function PlanPage({
   return (
     <>
     <PlanPageShell
-      badge={heading?.badge ?? 'Планы'}
       description={
         heading?.description
         ?? 'Семь дней без привязки к календарной неделе. Выберите план и дату старта — день 1 начнётся с неё.'
@@ -800,17 +798,6 @@ export function CurrentPlanPage({
     }
     setDockEdit(document.getElementById(PLAN_MOBILE_DOCK_EDIT_ID))
   }, [planId, sharedRationId, showMobileBackDock])
-  const badge = plan
-    ? feedPreview
-      ? 'Лента'
-      : catalogView
-        ? 'Каталог'
-        : isAuthoredPlanId(plan.id)
-          ? 'Мой'
-          : isAssignedPlanId(plan.id)
-            ? 'Наставник'
-            : 'Неделя'
-    : 'План'
   const loadingPlan = isPending || Boolean(sharedRationId && sharedRationsQuery.isPending)
   const loadError = isError || Boolean(sharedRationId && sharedRationsQuery.isError)
   const backListLabel = sharedRationId ? 'К ленте' : 'К планам'
@@ -1092,7 +1079,6 @@ export function CurrentPlanPage({
   return (
     <>
     <PlanPageShell
-      badge={badge}
       description={
         plan?.description.trim()
           ? plan.description

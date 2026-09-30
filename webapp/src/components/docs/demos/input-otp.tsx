@@ -1,6 +1,6 @@
 import * as React from "react"
 import { REGEXP_ONLY_DIGITS, REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp"
-import { RefreshCwIcon } from "lucide-react"
+import { RefreshCwIcon } from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 import {

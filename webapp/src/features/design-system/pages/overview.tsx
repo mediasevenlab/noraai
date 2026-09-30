@@ -33,7 +33,7 @@ export function DsOverviewPage() {
           <DocsCardLink
             to={dsPath('colors')}
             title="Editor Dark"
-            description="Тёмная тема редактора: панели #111, канвас #171717, текст #FFF/#999."
+            description="Тёмная тема редактора: панели #111, холст #171717, контролы #1f1f1f, текст #FFF/#999."
           />
           <DocsCardLink
             to={dsPath('colors')}
@@ -48,7 +48,7 @@ export function DsOverviewPage() {
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           {[
-            { bg: '#111', swatches: ['#0099ff', '#2b2b2b', '#fff'] },
+            { bg: '#171717', swatches: ['#0099ff', '#1f1f1f', '#fff'] },
             { bg: '#fff', swatches: ['#0099ff', '#f3f3f3', '#222'] },
             { bg: '#000', swatches: ['#0099ff', '#cbff00', '#141414'] },
           ].map((preview, i) => (

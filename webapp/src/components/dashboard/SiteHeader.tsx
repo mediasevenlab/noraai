@@ -1,4 +1,4 @@
-import { MoonIcon, SunIcon } from 'lucide-react'
+import { MoonIcon, SunIcon } from '@/components/icons'
 import { useTheme } from 'next-themes'
 import { isDefaultUserEmail, type UserDto } from '@web-app-demo/contracts'
 
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   AccountMenuContent,
   useAccountLogout,
@@ -18,6 +19,9 @@ import {
 } from './AccountMenu'
 import type { DashboardNavigationItem } from './NavMain'
 import { CardRadiusMenu } from './CardRadiusMenu'
+import { CompositionToneMenu } from './CompositionToneMenu'
+import { SidebarShadeMenu } from './SidebarShadeMenu'
+import { IconPackMenu } from './IconPackMenu'
 import { CardShadowMenu } from './CardShadowMenu'
 import { PlannedCoverBlurMenu } from './PlannedCoverBlurMenu'
 import { PlannedCoverGradeMenu } from './PlannedCoverGradeMenu'
@@ -83,6 +87,9 @@ export function SiteHeader({
         {showAppearanceMenus ? (
           <>
             {user.role === 'user' || user.role === 'mentor' ? <SidebarPromoToggle /> : null}
+            <IconPackMenu />
+            <CompositionToneMenu />
+            <SidebarShadeMenu />
             <LightPaletteMenu />
             <ModalOverlayMenu />
             <ModalMotionMenu />
@@ -108,23 +115,34 @@ export function SiteHeader({
           )}
         </Button>
         <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                aria-label={`Меню аккаунта: ${displayName}`}
-                className="size-7 rounded-full p-0"
-                size="icon"
-                type="button"
-                variant="ghost"
-              />
-            }
-          >
-            <Avatar className="size-7">
-              <AvatarFallback className="text-[10px]">
-                {userInitials(user)}
-              </AvatarFallback>
-            </Avatar>
-          </DropdownMenuTrigger>
+          <TooltipProvider delay={250}>
+            <Tooltip>
+              <DropdownMenuTrigger
+                render={
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        aria-label={`Меню аккаунта: ${displayName}`}
+                        className="size-7 rounded-full p-0"
+                        size="icon"
+                        type="button"
+                        variant="ghost"
+                      />
+                    }
+                  />
+                }
+              >
+                <Avatar className="size-7">
+                  <AvatarFallback className="text-[10px]">
+                    {userInitials(user)}
+                  </AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+              <TooltipContent side="bottom" sideOffset={8}>
+                Аккаунт
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <DropdownMenuContent align="end" className="account-workspace-menu min-w-56" sideOffset={8}>
             <AccountMenuContent
               logoutPending={logoutPending}

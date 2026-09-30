@@ -1,0 +1,21 @@
+:root {
+  --nora-sidebar-shade: 0%;
+}
+
+html[data-sidebar-shade='0'] { --nora-sidebar-shade: 0%; }
+html[data-sidebar-shade='1'] { --nora-sidebar-shade: 1%; }
+html[data-sidebar-shade='2'] { --nora-sidebar-shade: 2%; }
+html[data-sidebar-shade='3'] { --nora-sidebar-shade: 3%; }
+html[data-sidebar-shade='4'] { --nora-sidebar-shade: 4%; }
+html[data-sidebar-shade='5'] { --nora-sidebar-shade: 5%; }
+html[data-sidebar-shade='6'] { --nora-sidebar-shade: 6%; }
+html[data-sidebar-shade='7'] { --nora-sidebar-shade: 7%; }
+html[data-sidebar-shade='8'] { --nora-sidebar-shade: 8%; }
+
+html[data-sidebar-shade]:not([data-sidebar-shade='0']) [data-sidebar='sidebar'] {
+  background-color: color-mix(in srgb, black var(--nora-sidebar-shade), var(--sidebar));
+  --nora-input-bg: color-mix(in srgb, black var(--nora-sidebar-shade), var(--nora-sidebar-search-bg));
+  --nora-row-hover: color-mix(in srgb, black var(--nora-sidebar-shade), var(--nora-sidebar-item-hover));
+  --nora-row-active-bg: color-mix(in srgb, black var(--nora-sidebar-shade), var(--nora-sidebar-item-active));
+  --sidebar-accent: var(--nora-row-active-bg);
+}

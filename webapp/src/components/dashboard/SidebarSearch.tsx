@@ -6,7 +6,7 @@ import {
   useRef,
   type ReactNode,
 } from 'react'
-import { SearchIcon } from 'lucide-react'
+import { SearchIcon } from '@/components/icons'
 
 import { NoraSearch } from '@/components/nora/primitives'
 
@@ -62,8 +62,8 @@ export function SidebarSearchField({
         onChange={(event) => onChange(event.target.value)}
         placeholder="Поиск…"
         aria-label="Поиск по меню"
-        className="w-full min-w-0"
-        inputClassName="font-medium text-[var(--nora-input-text)] placeholder:font-normal placeholder:text-[var(--nora-input-placeholder)]"
+        className="w-full min-w-0 dark:[&_span]:!text-[var(--nora-text-secondary)]"
+        inputClassName="font-medium text-[var(--nora-input-text)] placeholder:font-normal placeholder:text-[var(--nora-input-placeholder)] dark:placeholder:font-[450] dark:placeholder:text-[var(--nora-text-secondary)]"
       />
     </div>
   )

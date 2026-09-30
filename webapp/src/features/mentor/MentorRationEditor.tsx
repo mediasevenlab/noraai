@@ -19,8 +19,8 @@ import {
   UtensilsIcon,
   XIcon,
   ZapIcon,
-} from 'lucide-react'
-import { toast } from 'sonner'
+} from '@/components/icons'
+import { toast } from '@/components/ui/toast'
 
 import { NoraInput, NoraSelect, NoraTextarea } from '@/components/nora/primitives'
 import {

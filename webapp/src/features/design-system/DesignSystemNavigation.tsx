@@ -1,4 +1,4 @@
-import { BookOpenIcon, ChevronRightIcon } from 'lucide-react'
+import { BookOpenIcon, ChevronRightIcon } from '@/components/icons'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 

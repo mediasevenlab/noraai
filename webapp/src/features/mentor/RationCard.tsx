@@ -6,7 +6,7 @@ import {
   ShoppingBagIcon,
   Trash2Icon,
   ZapIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 
 import { NoraButton, NoraIconButton } from '@/components/nora/primitives'
 import {
@@ -429,7 +429,7 @@ export function RationCard({
         <div className="pt-3">
           <div
             aria-hidden
-            className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]"
+            className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)] dark:border-[var(--nora-border-strong)]"
           />
           <div
             className="flex items-center gap-2 py-3"

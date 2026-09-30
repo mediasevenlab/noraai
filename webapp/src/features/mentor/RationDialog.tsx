@@ -5,7 +5,7 @@ import {
   ShoppingBasketIcon,
   UtensilsIcon,
   XIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 
 import {
   ProductCardOriginBadge,

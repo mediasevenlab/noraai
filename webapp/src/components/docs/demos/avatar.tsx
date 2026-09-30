@@ -1,4 +1,4 @@
-import { CheckIcon } from "lucide-react"
+import { CheckIcon } from "@/components/icons"
 
 import {
   Avatar,
@@ -20,7 +20,7 @@ export const avatarDoc: ComponentDoc = {
   AvatarBadge,
   AvatarFallback,
 } from "@/components/ui/avatar"
-import { CheckIcon } from "lucide-react"
+import { CheckIcon } from "@/components/icons"
 
 export function AvatarFallbackDemo() {
   return (

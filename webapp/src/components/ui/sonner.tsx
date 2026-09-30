@@ -5,7 +5,7 @@ import {
   TriangleAlertIcon,
   OctagonXIcon,
   Loader2Icon,
-} from "lucide-react"
+} from "@/components/icons"
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 

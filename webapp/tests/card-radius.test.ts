@@ -18,7 +18,7 @@ describe('card radius', () => {
   test('exposes ten named radius variants', () => {
     expect(CARD_RADII).toHaveLength(10)
     expect(new Set(CARD_RADII.map((item) => item.id)).size).toBe(10)
-    expect(DEFAULT_CARD_RADIUS).toBe('12')
+    expect(DEFAULT_CARD_RADIUS).toBe('16')
     expect(CARD_RADII.find((item) => item.id === DEFAULT_CARD_RADIUS)?.label).toContain(
       'по умолчанию',
     )
@@ -31,9 +31,9 @@ describe('card radius', () => {
     expect(parseCardRadiusId('')).toBe(DEFAULT_CARD_RADIUS)
   })
 
-  test('uses 12px as the stylesheet fallback before a picker value is applied', () => {
+  test('uses 16px as the stylesheet fallback before a picker value is applied', () => {
     expect(css).toMatch(
-      /:root \{\s*--meal-card-radius: 12px;\s*--meal-card-preview-radius: 8px;/,
+      /:root \{\s*--meal-card-radius: 16px;\s*--meal-card-preview-radius: 12px;/,
     )
   })
 

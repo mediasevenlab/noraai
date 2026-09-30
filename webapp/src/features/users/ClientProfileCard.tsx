@@ -3,7 +3,7 @@ import {
   type QuestionnaireAnswers,
   type UserDto,
 } from '@web-app-demo/contracts'
-import { CheckIcon, PencilIcon, XIcon, type LucideIcon } from 'lucide-react'
+import { CheckIcon, PencilIcon, XIcon, type LucideIcon } from '@/components/icons'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { SettingsEntry, SettingsFieldMark, useSettingsDraft, useSettingsMode } from '@/components/settings-canvas'
 import { cn } from '@/lib/utils'
@@ -282,7 +282,7 @@ function ProfileSectionEntry({
                 </span>
                 <span
                   className={cn(
-                    'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 break-words text-[color-mix(in_srgb,white_10%,color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary))))]',
+                    'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 break-words text-[color-mix(in_srgb,white_10%,color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary))))] dark:text-[var(--nora-text-secondary)]',
                     extended ? 'whitespace-pre-wrap' : 'text-right',
                   )}
                 >

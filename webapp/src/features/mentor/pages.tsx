@@ -7,7 +7,7 @@ import {
   noraPageTitleClass,
 } from '@/components/PageLayout'
 import { SettingsCanvas } from '@/components/settings-canvas'
-import { NoraBadge, NoraSelect } from '@/components/nora/primitives'
+import { NoraSelect } from '@/components/nora/primitives'
 import { productFeedPageClass, productToolbarSelectContentClass, productToolbarSelectItemClass } from '@/components/nora/product-sheet'
 import { DiaryNewsPage } from '@/features/diary'
 import {
@@ -58,7 +58,6 @@ function MenteeViewSelect({
 export function MentorHome({ user }: { user: UserDto }) {
   return (
     <MentorHomeShell
-      badge="Главная"
       description="Управляйте подключёнными пользователями и настройками наставника."
       title={`Добро пожаловать, ${user.displayName ?? user.email}`}
     />
@@ -69,7 +68,6 @@ export function MentorUsers() {
   return (
     <PageContainer>
       <NoraPageHeader
-        badge="Пользователи"
         description="Добавляйте обычных пользователей по никнейму или ID."
         title="Пользователи"
       />
@@ -138,12 +136,6 @@ export function MentorMenteeDiary({
         ) : undefined
       }
       heading={{
-        badge:
-          view === 'questionnaire'
-            ? 'Профиль'
-            : view === 'plan'
-              ? 'План'
-              : 'Дневник',
         title,
         description: viewDescription,
       }}
@@ -184,12 +176,10 @@ export function MentorSettings({ user }: { user: UserDto }) {
 }
 
 function MentorHomeShell({
-  badge = 'Главная',
   description,
   title = 'Главная',
   children,
 }: {
-  badge?: string
   description: string
   title?: string
   children?: ReactNode
@@ -211,7 +201,6 @@ function MentorHomeShell({
         <header className="hidden md:block">
           <div className="mb-1.5 flex items-center gap-2">
             <h1 className={noraPageTitleClass}>{title}</h1>
-            <NoraBadge variant="blue">{badge}</NoraBadge>
           </div>
           <p className={`mt-1.5 ${noraPageDescriptionClass}`}>{description}</p>
         </header>

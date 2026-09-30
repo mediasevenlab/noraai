@@ -1,4 +1,4 @@
-import { HomeIcon, InboxIcon, SettingsIcon } from "lucide-react"
+import { HomeIcon, InboxIcon, SettingsIcon } from "@/components/icons"
 
 import {
   Sidebar,

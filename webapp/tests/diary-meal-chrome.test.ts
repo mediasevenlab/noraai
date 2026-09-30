@@ -146,7 +146,7 @@ test('diary toolbar can show the whole selected plan', () => {
   expect(toolbar).not.toContain('CircleCheckIcon')
   expect(toolbar).not.toContain('CalendarRangeIcon')
   expect(toolbar).toContain('[&>svg]:size-3.5')
-  expect(toolbar).toContain('CameraIcon')
+  expect(toolbar).toContain('CirclePlusIcon')
   expect(page).toContain('setShowWholePlan((current) => !current)')
   expect(page).toContain('showWholePlan,')
 })
@@ -489,7 +489,7 @@ test('page chrome keeps the section heading scale', () => {
   )
   expect(layout).toContain('font-heading text-[22px] font-bold tracking-[-0.03em]')
   expect(layout).toContain(
-    'text-[13px] font-light leading-relaxed text-[color-mix(in_srgb,var(--nora-text-secondary)_50%,var(--nora-text-tertiary)_50%)]',
+    'text-[13px] font-[250] leading-relaxed whitespace-normal text-[color-mix(in_srgb,var(--nora-text-secondary)_50%,var(--nora-text-tertiary)_50%)]',
   )
   expect(layout).not.toContain('export const noraPageTitleClass = noraProductTitleClass')
 })
@@ -508,9 +508,8 @@ test('day stats use modal-tab capsules in one scroll row', () => {
     'inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0',
   )
   expect(news).toContain(
-    'bg-[color-mix(in_srgb,var(--nora-input-bg)_55%,var(--nora-canvas))]',
+    'bg-[var(--nora-input-bg)]',
   )
-  expect(news).toContain('backdrop-blur-[16px]')
   expect(stats).toContain('DAY_STAT_CHIP_CLASS')
   expect(stats).toContain('DAY_DATE_CHIP_CLASS')
   expect(stats).not.toContain('DAY_PAST_CHIP_CLASS')
@@ -524,7 +523,7 @@ test('day stats use modal-tab capsules in one scroll row', () => {
   expect(stats).toContain('bg-[var(--nora-badge-red-bg)]')
   expect(stats).toContain('DAY_CHIPS_ROW_CLASS')
   expect(news).toContain(
-    'relative z-[1] flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain max-md:-mx-2 max-md:px-2 py-3 -my-3 no-scrollbar md:overflow-visible',
+    'relative z-[1] flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain select-none max-md:-mx-2 max-md:px-2 py-3 -my-3 no-scrollbar md:overflow-visible',
   )
   expect(stats).not.toContain('max-md:-mt-3')
   expect(stats).toContain('flex w-max shrink-0 items-center gap-2')
@@ -1041,7 +1040,7 @@ test('mobile meal cards follow the ration thumbnail type scale', () => {
   expect(news).toContain("const MEAL_CARD_FOOTER_DIVIDER_CLASS =")
   expect(news).toContain("const MEAL_CARD_FOOTER_CLASS = 'flex items-center justify-between gap-2 py-2.5'")
   expect(news).toContain(
-    "'border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]'",
+    "'border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)] dark:border-[var(--nora-border-strong)]'",
   )
   expect(card).toContain('data-slot="meal-card-footer"')
   expect(card).toContain('text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]')
@@ -1370,7 +1369,7 @@ test('own diary meals can be copied into a chosen weekly plan day', () => {
   )
   expect(newsPage).toContain('!bg-[var(--nora-tint)] !text-white')
   expect(newsPage).not.toContain('disabled:opacity-50')
-  expect(newsPage).toContain("bg-[#2C2C2E] py-0")
+  expect(newsPage).toContain("bg-[var(--nora-text)] py-0")
   expect(newsPage).toContain('dataset.diaryPicking')
   expect(newsPage).toContain('pickingDayKey !== group.dayKey &&')
   expect(newsPage).toContain('"opacity-45"')

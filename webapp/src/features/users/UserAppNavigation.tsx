@@ -1,4 +1,4 @@
-import { Columns2Icon, ImagesIcon, LayoutGridIcon } from 'lucide-react'
+import { Columns2Icon, ImagesIcon, LayoutGridIcon } from '@/components/icons'
 import { Link, useRouterState } from '@tanstack/react-router'
 
 import { useFilteredBySidebarSearch } from '@/components/dashboard/SidebarSearch'

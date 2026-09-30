@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { format } from 'date-fns'
 import { ru as dateFnsRu } from 'date-fns/locale'
-import { XIcon } from 'lucide-react'
+import { XIcon } from '@/components/icons'
 
 import {
   Dialog,
@@ -59,7 +59,7 @@ const CLOSE_CLASS = cn(
 
 const CHIP_CLASS = cn(
   'ios-glass-glare inline-flex h-7 min-h-7 max-h-7 shrink-0 items-center gap-1 rounded-full border-0',
-  'bg-[color-mix(in_srgb,var(--nora-input-bg)_55%,var(--nora-canvas))] py-0 pr-2.5 pl-2',
+  'bg-[var(--nora-input-bg)] py-0 pr-2.5 pl-2',
   'text-[12px] font-normal leading-none text-[var(--nora-text-secondary)] backdrop-blur-[16px]',
 )
 

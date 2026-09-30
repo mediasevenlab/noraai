@@ -1,17 +1,17 @@
-import { PaletteIcon } from 'lucide-react'
+import { PaletteIcon } from '@/components/icons'
 import { useTheme } from 'next-themes'
 
-import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { LIGHT_PALETTES } from '@/components/light-palette'
 import { setLightPalette, useLightPalette } from '@/components/theme-provider'
+
+import { HeaderMenuButton } from './HeaderMenuButton'
 
 export function LightPaletteMenu() {
   const { resolvedTheme } = useTheme()
@@ -21,19 +21,9 @@ export function LightPaletteMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            aria-label="Цветовая схема"
-            className="size-7"
-            size="icon"
-            type="button"
-            variant="ghost"
-          />
-        }
-      >
+      <HeaderMenuButton label="Цветовая схема">
         <PaletteIcon aria-hidden className="size-3.5" />
-      </DropdownMenuTrigger>
+      </HeaderMenuButton>
       <DropdownMenuContent align="end" className="min-w-44" sideOffset={8}>
         <DropdownMenuLabel>Цветовая схема</DropdownMenuLabel>
         <DropdownMenuRadioGroup

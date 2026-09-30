@@ -1,0 +1,23 @@
+:root {
+  --nora-composition: var(--nora-text-tertiary);
+}
+
+html[data-composition-tone='current'] {
+  --nora-composition: var(--nora-text-tertiary);
+}
+
+html[data-composition-tone='soft'] {
+  --nora-composition: color-mix(in srgb, var(--nora-text-secondary) 40%, var(--nora-text-tertiary));
+}
+
+html[data-composition-tone='mid'] {
+  --nora-composition: var(--nora-text-secondary);
+}
+
+html[data-composition-tone='strong'] {
+  --nora-composition: color-mix(in srgb, var(--nora-text) 45%, var(--nora-text-secondary));
+}
+
+html[data-composition-tone='title'] {
+  --nora-composition: var(--nora-text);
+}

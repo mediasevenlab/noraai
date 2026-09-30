@@ -7,11 +7,11 @@ import {
   PencilIcon,
   UtensilsIcon,
   XIcon,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+} from '@/components/icons'
+import type { LucideIcon } from '@/components/icons'
 
 import { noraPageDescriptionClass, noraPageTitleClass } from '@/components/PageLayout'
-import { NoraBadge, noraProductTitleClass } from '@/components/nora/primitives'
+import { noraProductTitleClass } from '@/components/nora/primitives'
 import {
   productFeedPageClass,
   productSheetOverlayChipClass,
@@ -63,7 +63,6 @@ const HEADER_CHIP_CLASS = cn(
 )
 
 export function PlanPageShell({
-  badge,
   children,
   coverImage,
   description,
@@ -72,7 +71,6 @@ export function PlanPageShell({
   showHeaderOnMobile = false,
   title,
 }: {
-  badge: string
   children: React.ReactNode
   coverImage?: string
   description: string
@@ -127,9 +125,8 @@ export function PlanPageShell({
           <div className={showHeaderOnMobile ? 'hidden md:block' : undefined}>
             <div className="mb-1.5 flex items-center gap-2">
               <h1 className={noraPageTitleClass}>{title}</h1>
-              <NoraBadge variant="blue">{badge}</NoraBadge>
             </div>
-            <p className={cn('mt-1.5 whitespace-pre-line', noraPageDescriptionClass)}>
+            <p className={cn('mt-1.5', noraPageDescriptionClass)}>
               {description}
             </p>
           </div>

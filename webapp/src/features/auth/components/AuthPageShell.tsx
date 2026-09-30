@@ -2,7 +2,7 @@ import {
   GalleryVerticalEndIcon,
   MoonIcon,
   SunIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 import { useTheme } from 'next-themes'
 import { Link } from '@tanstack/react-router'
 import { useEffect, type ReactNode } from 'react'
@@ -73,7 +73,7 @@ function AuthThemeToggle({ className }: { className?: string }) {
     <Button
       aria-label={isDark ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
       className={cn(
-        'size-8 rounded-full bg-[var(--nora-panel)] text-[var(--nora-text-secondary)] shadow-[inset_0_0_0_1px_var(--settings-well-stroke,var(--nora-border))] hover:bg-[color-mix(in_srgb,var(--nora-text)_6%,var(--nora-panel))] hover:text-[var(--nora-text)]',
+        'size-8 rounded-full bg-[var(--nora-panel)] text-[var(--nora-text-secondary)] shadow-[inset_0_0_0_1px_var(--nora-border)] hover:bg-[color-mix(in_srgb,var(--nora-text)_6%,var(--nora-panel))] hover:text-[var(--nora-text)]',
         className,
       )}
       onClick={() => setTheme(isDark ? 'light' : 'dark')}

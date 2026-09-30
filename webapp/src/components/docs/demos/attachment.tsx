@@ -3,7 +3,7 @@ import {
   FileTextIcon,
   ImageIcon,
   XIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import {
   Attachment,
@@ -36,7 +36,7 @@ export const attachmentDoc: ComponentDoc = {
   AttachmentMedia,
   AttachmentTitle,
 } from "@/components/ui/attachment"
-import { FileTextIcon, XIcon } from "lucide-react"
+import { FileTextIcon, XIcon } from "@/components/icons"
 
 export function AttachmentDemo() {
   return (

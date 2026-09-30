@@ -2,7 +2,7 @@ import {
   UserPlusIcon,
   UsersIcon,
   ShieldUserIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 
 import { SectionCards } from '@/components/dashboard'
 import {

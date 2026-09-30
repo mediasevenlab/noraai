@@ -1,4 +1,4 @@
-import { ChevronRightIcon, LayoutTemplateIcon } from 'lucide-react'
+import { ChevronRightIcon, LayoutTemplateIcon } from '@/components/icons'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 

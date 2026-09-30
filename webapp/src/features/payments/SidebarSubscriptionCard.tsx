@@ -1,4 +1,4 @@
-import { ChevronRightIcon, CreditCardIcon } from 'lucide-react'
+import { ChevronRightIcon, CreditCardIcon } from '@/components/icons'
 
 import { DashboardLink } from '@/components/dashboard/DashboardLink'
 import {

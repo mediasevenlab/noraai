@@ -3,7 +3,7 @@ import {
   CheckIcon,
   Loader2Icon,
   XIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 import type { AdminUserSummary } from '@web-app-demo/contracts'
 
 import { NoraSelect } from '@/components/nora/primitives'

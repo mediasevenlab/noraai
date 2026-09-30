@@ -18,7 +18,7 @@
 .scheme-editor-dark .composer-press-surface.meal-composer-field,
 [data-scheme='editor-dark'] .composer-press-surface.meal-composer-field {
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 10%, transparent),
+    inset 0 0.5px 0 color-mix(in srgb, white 10%, transparent),
     0 0 0 1px color-mix(in srgb, white 7%, transparent),
     0 8px 24px rgba(0, 0, 0, 0.44);
 }
@@ -26,7 +26,7 @@
 .scheme-editor-dark .composer-press-surface.meal-composer-field[data-focused],
 [data-scheme='editor-dark'] .composer-press-surface.meal-composer-field[data-focused] {
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+    inset 0 0.5px 0 color-mix(in srgb, white 14%, transparent),
     0 0 0 1px color-mix(in srgb, white 12%, transparent),
     0 16px 40px rgba(0, 0, 0, 0.58);
 }

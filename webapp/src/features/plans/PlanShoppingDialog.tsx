@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { CalendarDaysIcon, CalendarIcon, ShoppingBagIcon, XIcon } from 'lucide-react'
+import { CalendarDaysIcon, CalendarIcon, ShoppingBagIcon, XIcon } from '@/components/icons'
 
 import { productSheetOverlayChipClass } from '@/components/nora/product-sheet'
 import {

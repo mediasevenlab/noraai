@@ -21,7 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { PanelLeftIcon } from "lucide-react"
+import { PanelLeftIcon } from "@/components/icons"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -496,7 +496,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 
 const sidebarMenuButtonVariants = cva(
   // Nav items: 13/20 regular, same as meal-card composition
-  "peer/menu-button group/menu-button flex w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 text-left text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)] ring-sidebar-ring outline-hidden transition-[width,height,padding,background-color,color] duration-[var(--nora-duration,0.15s)] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:gap-0! group-data-[collapsible=icon]:p-2! group-data-[collapsible=icon]:justify-center! hover:bg-[var(--nora-row-hover)] hover:text-[var(--nora-text)] focus-visible:shadow-[var(--nora-shadow-focus)] focus-visible:ring-0 active:bg-[var(--nora-row-hover)] active:text-[var(--nora-text)] disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-[var(--nora-row-hover)] data-active:bg-[var(--nora-row-active-bg)] data-active:font-normal data-active:text-[var(--nora-text)] [&_svg]:size-3.5 [&_svg]:shrink-0 [&_svg]:text-[var(--nora-text-tertiary)] hover:[&_svg]:text-[var(--nora-text)] data-active:[&_svg]:text-[var(--nora-text)] [&>span:last-child]:truncate group-data-[collapsible=icon]:[&>span]:hidden group-data-[collapsible=icon]:[&>div:not(:first-child)]:hidden",
+  "peer/menu-button group/menu-button flex w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 text-left text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)] ring-sidebar-ring outline-hidden transition-[width,height,padding,background-color,color] duration-[var(--nora-duration,0.15s)] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:gap-0! group-data-[collapsible=icon]:p-2! group-data-[collapsible=icon]:justify-center! hover:bg-[var(--nora-row-hover)] hover:text-[var(--nora-text)] focus-visible:shadow-[var(--nora-shadow-focus)] focus-visible:ring-0 active:bg-[var(--nora-row-hover)] active:text-[var(--nora-text)] disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-[var(--nora-row-hover)] data-active:bg-[var(--nora-row-active-bg)] data-active:font-normal data-active:text-[var(--nora-text)] [&_svg]:size-3.5 [&_svg]:shrink-0 [&_svg]:text-[var(--nora-text-tertiary)] dark:[&_svg]:text-[var(--nora-text-secondary)] hover:[&_svg]:text-[var(--nora-text)] data-active:[&_svg]:text-[var(--nora-text)] dark:hover:[&_svg]:text-[var(--nora-text)] dark:data-active:[&_svg]:text-[var(--nora-text)] [&>span:last-child]:truncate group-data-[collapsible=icon]:[&>span]:hidden group-data-[collapsible=icon]:[&>div:not(:first-child)]:hidden",
   {
     variants: {
       variant: {

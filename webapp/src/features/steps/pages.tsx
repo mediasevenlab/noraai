@@ -1,4 +1,4 @@
-import { ArrowUpRightIcon, GitBranchIcon } from 'lucide-react'
+import { ArrowUpRightIcon, GitBranchIcon } from '@/components/icons'
 import { Link } from '@tanstack/react-router'
 
 import { STEP_ITEMS, STEPS_META } from './model'

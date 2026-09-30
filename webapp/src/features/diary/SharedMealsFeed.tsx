@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SearchIcon } from "lucide-react";
-import { toast } from "sonner";
+import { SearchIcon } from "@/components/icons";
+import { toast } from "@/components/ui/toast";
 import type { ListMealsResponse } from "@web-app-demo/contracts";
 
 import {

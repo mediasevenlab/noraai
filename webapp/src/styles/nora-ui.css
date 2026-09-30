@@ -31,26 +31,29 @@
   --nora-bg: #111111;
   --nora-canvas: #171717;
   --nora-panel: #111111;
-  --nora-surface: #1a1a1a;
+  --nora-surface: #1f1f1f;
   --nora-popover: #1f1f1f;
-  --nora-modal: #1a1a1a;
+  --nora-modal: #1f1f1f;
   --nora-inset: #2b2b2b;
-  --settings-substrate: color-mix(in srgb, white 8%, var(--nora-panel));
-  --questionnaire-fill: var(--nora-input-bg);
+  --settings-substrate: #1f1f1f;
+  --questionnaire-fill: #2b2b2b;
   --questionnaire-fill-stroke: transparent;
   --questionnaire-mark: transparent;
   --questionnaire-card: var(--nora-panel);
   --questionnaire-back: var(--nora-button-bg);
   --questionnaire-preview-label: #c2c2c2;
   --questionnaire-preview-value: #8a8a8a;
-  --settings-divider: color-mix(in srgb, white 5%, var(--settings-substrate));
-  --settings-divider-glint: color-mix(in srgb, white 10%, var(--settings-substrate));
-  --settings-well-stroke: color-mix(in srgb, white 14%, var(--settings-substrate));
-  --settings-well-glint: color-mix(in srgb, white 22%, var(--settings-substrate));
+  --settings-divider: #141414;
+  --settings-divider-glint: rgba(255, 255, 255, 0.05);
+  --settings-field-bg: #2b2b2b;
+  --auth-field-bg: #1f1f1f;
+  --settings-well-stroke: transparent;
+  --settings-well-glint: rgba(255, 255, 255, 0.08);
 
   --nora-text: #ffffff;
   --nora-text-secondary: #999999;
-  --nora-text-tertiary: #666666;
+  /* Quiet step stays readable on #1f cards. Placeholders stay #666. */
+  --nora-text-tertiary: #8f8f8f;
   --nora-text-dimmed: #555555;
 
   --nora-tint: #0099ff;
@@ -64,24 +67,24 @@
   --nora-success: #3aaa5c;
   --nora-success-dimmed: rgba(58, 170, 92, 0.18);
 
-  --nora-button-bg: #242424;
+  --nora-button-bg: #1f1f1f;
   --nora-button-bg-hover: #2b2b2b;
   --nora-button-text: #ffffff;
-  --nora-button-secondary-bg: #2b2b2b;
+  --nora-button-secondary-bg: #1f1f1f;
   --nora-button-on-tint-text: #ffffff;
 
-  /* Match Framer marketplace control (#242424) so trigger + menu share one surface */
-  --nora-input-bg: #242424;
+  /* Framer editor control: search, inputs, selected rows */
+  --nora-input-bg: #1f1f1f;
   --nora-input-text: #ffffff;
   --nora-input-placeholder: #666666;
 
-  --nora-divider: rgba(255, 255, 255, 0.06);
-  /* Dense sidebar section rules — softer than content dividers */
-  --nora-sidebar-divider: rgba(255, 255, 255, 0.03);
-  --nora-border: #252525;
+  --nora-divider: #212121;
+  /* Dense sidebar section rules — same hairline as the editor panels */
+  --nora-sidebar-divider: #212121;
+  --nora-border: #2b2b2b;
   --nora-border-strong: #333333;
   --nora-row-hover: rgba(255, 255, 255, 0.05);
-  --nora-row-active-bg: #242424;
+  --nora-row-active-bg: #1f1f1f;
 
   /* Kbd: resting + on tint (меню highlight) */
   --nora-kbd-bg: rgba(255, 255, 255, 0.12);
@@ -89,13 +92,13 @@
   --nora-kbd-on-tint-bg: rgba(0, 0, 0, 0.28);
   --nora-kbd-on-tint-text: #ffffff;
 
-  --nora-toast-bg: #222222;
+  --nora-toast-bg: #1f1f1f;
   --nora-toast-text: #ffffff;
   --nora-toast-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06);
   --nora-toast-action-bg: rgba(255, 255, 255, 0.12);
   --nora-toast-action-text: #ffffff;
   --nora-toast-action-hover: rgba(255, 255, 255, 0.18);
-  --nora-tooltip-bg: #222222;
+  --nora-tooltip-bg: #2b2b2b;
   --nora-tooltip-text: #ffffff;
   --nora-badge-neutral-bg: rgba(153, 153, 153, 0.15);
   --nora-badge-neutral-text: #999999;
@@ -126,17 +129,33 @@
   --nora-shadow-popover: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
   /* Framer marketplace menu: soft lift + solid #333 border on the panel */
   --nora-shadow-menu: 0 3px 6px 0 rgba(0, 0, 0, 0.08);
-  --nora-menu-bg: #242424;
+  --nora-menu-bg: #1f1f1f;
   --nora-menu-border: #333333;
-  --nora-menu-item-hover: #333333;
-  /* Segmented thumb must read “raised” vs track (lighter than --nora-input-bg #242) */
-  --nora-segmented-active: #333333;
+  --nora-menu-item-hover: #2b2b2b;
+  /* Segmented thumb sits one step above the #1f1f1f track */
+  --nora-segmented-active: #2b2b2b;
   --nora-shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
   --nora-shadow-button: 0px 2px 4px 0px rgba(0, 0, 0, 0.2);
   --nora-shadow-focus: inset 0 0 0 1px #0099ff, 0 0 5px #0099ff;
 
   color-scheme: dark;
   color: var(--nora-text);
+}
+
+/* Dialog hairlines sit on #1f. The page divider #212 disappears there. */
+.scheme-editor-dark [data-slot="dialog-content"] {
+  --nora-divider: #333333;
+}
+
+/* Hint chips sit one step above the page so they don't disappear into #171 / #111. */
+.scheme-editor-dark [data-slot="tooltip-content"] {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45), inset 0 0 0 1px #333333;
+}
+
+/* Card ingredients follow the same #999 as the meal window, unless a lighter tone is chosen. */
+.scheme-editor-dark:not([data-composition-tone]),
+.scheme-editor-dark[data-composition-tone="current"] {
+  --nora-composition: var(--nora-text-secondary);
 }
 
 .scheme-editor-light,
@@ -670,7 +689,7 @@
 [data-scheme="editor-dark"] .ios-float-pill {
   background: var(--nora-input-bg);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+    inset 0 0.5px 0 color-mix(in srgb, white 14%, transparent),
     inset 0 0 0 1px color-mix(in srgb, white 8%, transparent),
     0 1px 2px rgba(0, 0, 0, 0.18),
     0 4px 12px rgba(0, 0, 0, 0.12);
@@ -681,7 +700,7 @@
 .scheme-editor-dark [data-settings-dock] > button,
 [data-scheme="editor-dark"] [data-settings-dock] > button {
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+    inset 0 0.5px 0 color-mix(in srgb, white 14%, transparent),
     inset 0 0 0 1px color-mix(in srgb, white 8%, transparent),
     0 1px 2px rgba(0, 0, 0, 0.28),
     0 8px 22px rgba(0, 0, 0, 0.36);
@@ -696,7 +715,7 @@
 .scheme-editor-dark .ios-float-pill[data-search-open],
 [data-scheme="editor-dark"] .ios-float-pill[data-search-open] {
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+    inset 0 0.5px 0 color-mix(in srgb, white 14%, transparent),
     inset 0 0 0 1px color-mix(in srgb, white 8%, transparent),
     0 1px 2px rgba(0, 0, 0, 0.16),
     0 3px 8px rgba(0, 0, 0, 0.1);
@@ -728,7 +747,7 @@
   .scheme-editor-dark .ios-float-pill[data-search-open],
   [data-scheme="editor-dark"] .ios-float-pill[data-search-open] {
     box-shadow:
-      inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+      inset 0 0.5px 0 color-mix(in srgb, white 14%, transparent),
       inset 0 0 0 1px color-mix(in srgb, white 8%, transparent),
       0 1px 2px rgba(0, 0, 0, 0.196),
       0 8px 22px rgba(0, 0, 0, 0.252);
@@ -739,7 +758,7 @@
   .scheme-editor-dark [data-settings-dock] > button,
   [data-scheme="editor-dark"] [data-settings-dock] > button {
     box-shadow:
-      inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+      inset 0 0.5px 0 color-mix(in srgb, white 14%, transparent),
       inset 0 0 0 1px color-mix(in srgb, white 8%, transparent),
       0 1px 2px rgba(0, 0, 0, 0.28),
       0 8px 22px rgba(0, 0, 0, 0.36);
@@ -777,7 +796,7 @@
 .scheme-editor-dark .ios-glass-fab,
 [data-scheme="editor-dark"] .ios-glass-fab {
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 28%, transparent),
+    inset 0 0.5px 0 color-mix(in srgb, white 28%, transparent),
     0 10px 28px rgba(0, 0, 0, 0.42);
 }
 
@@ -785,20 +804,20 @@
 [data-scheme="editor-dark"] .ios-glass-chip,
 .scheme-editor-dark .ios-glass-glare,
 [data-scheme="editor-dark"] .ios-glass-glare {
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 24%, transparent);
+  box-shadow: inset 0 0.5px 0 color-mix(in srgb, white 24%, transparent);
 }
 
 .scheme-editor-dark .ios-glass-glare.ios-float-chip,
 [data-scheme="editor-dark"] .ios-glass-glare.ios-float-chip {
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 24%, transparent),
+    inset 0 0.5px 0 color-mix(in srgb, white 24%, transparent),
     0 2px 6px rgba(0, 0, 0, 0.22),
     0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
 .scheme-editor-dark .ios-glass-glare-soft,
 [data-scheme="editor-dark"] .ios-glass-glare-soft {
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 12%, transparent) !important;
+  box-shadow: inset 0 0.5px 0 color-mix(in srgb, white 12%, transparent) !important;
 }
 
 .scheme-editor-dark [data-slot="sheet-content"].ios-glass-sheet,
@@ -806,14 +825,14 @@
   background: color-mix(in srgb, var(--nora-panel) 52%, transparent);
   border-color: color-mix(in srgb, white 16%, transparent) !important;
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 22%, transparent),
+    inset 0 0.5px 0 color-mix(in srgb, white 22%, transparent),
     0 22px 56px rgba(0, 0, 0, 0.48);
 }
 
 .scheme-editor-dark .ios-glass-tile,
 [data-scheme="editor-dark"] .ios-glass-tile {
   background: color-mix(in srgb, white 8%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 16%, transparent);
+  box-shadow: inset 0 0.5px 0 color-mix(in srgb, white 16%, transparent);
 }
 
 .scheme-editor-dark .ios-glass-glyph,
@@ -903,7 +922,7 @@ html[data-android] .ios-glass-glare-soft {
   background: var(--nora-input-bg);
   color: var(--nora-text);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, white 14%, transparent),
+    inset 0 0.5px 0 color-mix(in srgb, white 14%, transparent),
     0 1px 2px rgba(0, 0, 0, 0.2);
 }
 

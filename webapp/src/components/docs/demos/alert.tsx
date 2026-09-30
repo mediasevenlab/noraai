@@ -1,4 +1,4 @@
-import { AlertCircleIcon, CheckCircle2Icon, TerminalIcon } from "lucide-react"
+import { AlertCircleIcon, CheckCircle2Icon, TerminalIcon } from "@/components/icons"
 
 import {
   Alert,
@@ -17,7 +17,7 @@ export const alertDoc: ComponentDoc = {
       title: "Default",
       description: "Informational alert with icon.",
       code: `import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { TerminalIcon } from "lucide-react"
+import { TerminalIcon } from "@/components/icons"
 
 export function AlertDemo() {
   return (

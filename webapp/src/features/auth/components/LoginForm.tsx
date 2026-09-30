@@ -65,7 +65,7 @@ export function LoginForm({ returnTo }: { returnTo?: string }) {
           <h1 className={authTitleClassName}>
             Вход в аккаунт
           </h1>
-          <p className="text-[13px] leading-relaxed font-light text-[var(--nora-text-secondary)] text-balance">
+          <p className="text-[13px] leading-relaxed font-light text-[var(--nora-text-secondary)] text-balance dark:font-normal">
             Введите email и пароль, чтобы продолжить
           </p>
         </div>

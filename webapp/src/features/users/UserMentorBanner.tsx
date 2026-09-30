@@ -1,4 +1,4 @@
-import { GraduationCapIcon } from 'lucide-react'
+import { GraduationCapIcon } from '@/components/icons'
 
 import { SidebarRelationCard } from '@/components/dashboard/SidebarRelationCard'
 import { useCurrentUserMentorQuery } from './queries'

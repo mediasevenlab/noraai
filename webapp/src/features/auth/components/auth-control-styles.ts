@@ -3,7 +3,7 @@
  * on a phone so iOS does not zoom — see `[data-auth-field]`.
  */
 export const authControlClassName =
-  'h-full min-h-0 !bg-[var(--nora-panel)] px-3 pt-2.5 pb-2.5 min-[768px]:pt-[8.5px] min-[768px]:pb-[8.5px] font-[family-name:var(--nora-font)] text-[13px] font-normal !text-[var(--nora-text)] !leading-5 max-[767px]:!text-[16px] shadow-[inset_0_0_0_1px_var(--settings-well-stroke,var(--nora-border))]'
+  'h-full min-h-0 !bg-[var(--auth-field-bg,var(--nora-panel))] px-3 pt-2.5 pb-2.5 min-[768px]:pt-[8.5px] min-[768px]:pb-[8.5px] font-[family-name:var(--nora-font)] text-[13px] font-normal !text-[var(--nora-text)] !leading-5 max-[767px]:!text-[16px] shadow-[inset_0_0_0_1px_var(--settings-well-stroke,var(--nora-border))]'
 
 /** Same title as a profile or questionnaire section. */
 export const authTitleClassName =
@@ -22,4 +22,4 @@ export const authFieldAdornmentClassName =
 export const authFieldIconClassName = 'size-4 shrink-0 max-[767px]:size-[calc(1rem/0.875)]'
 
 export const authFormClassName =
-  'flex flex-col gap-8 font-[family-name:var(--nora-font)] [&_[data-slot=field-description]:not([data-auth-footer])]:!text-[12px] [&_[data-slot=field-description]]:!font-light [&_[data-slot=field-description]]:!leading-5 [&_[data-slot=field-description]]:!text-[var(--nora-text-tertiary)]'
+  'flex flex-col gap-8 font-[family-name:var(--nora-font)] [&_[data-slot=field-description]:not([data-auth-footer])]:!text-[12px] [&_[data-slot=field-description]]:!font-light [&_[data-slot=field-description]]:!leading-5 [&_[data-slot=field-description]]:!text-[var(--nora-text-tertiary)] dark:[&_[data-slot=field-description]]:!font-normal dark:[&_[data-slot=field-description]]:!text-[var(--nora-text-secondary)]'

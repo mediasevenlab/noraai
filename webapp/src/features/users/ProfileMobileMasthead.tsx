@@ -1,6 +1,6 @@
 import type { UserDto } from '@web-app-demo/contracts'
 import { useNavigate } from '@tanstack/react-router'
-import { BadgeCheck as BadgeCheckIcon, CameraIcon } from 'lucide-react'
+import { BadgeCheck as BadgeCheckIcon, CameraIcon } from '@/components/icons'
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 import { useSettingsDraft, useSettingsMode } from '@/components/settings-canvas'

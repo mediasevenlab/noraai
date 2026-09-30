@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { BookmarkIcon, CircleCheckIcon, EllipsisIcon, ListIcon, Share2Icon, ShoppingBagIcon, Trash2Icon } from 'lucide-react'
+import { BookmarkIcon, CircleCheckIcon, EllipsisIcon, ListIcon, Share2Icon, ShoppingBagIcon, Trash2Icon } from '@/components/icons'
 
 import { NoraButton, NoraIconButton } from '@/components/nora/primitives'
 import {
@@ -28,10 +28,14 @@ import { WEEK_PLAN_CARD_SLOTS, averageMealsPerDayLabel, type WeekPlan } from './
 const PLAN_CARD_PREVIEW_SIZE_CLASS =
   'h-[204px] w-full overflow-hidden bg-[var(--nora-inset)] sm:h-[216px] md:h-[224px]'
 
+const PLAN_CARD_META_CLASS =
+  'font-[family-name:var(--nora-font)] text-[12px] font-normal leading-none tabular-nums'
+
 const PLAN_COVER_BADGE_CLASS = cn(
   'ios-glass-glare-soft inline-flex h-[22px] min-h-[22px] max-h-[22px] min-w-[22px] items-center justify-center rounded-full border-0 px-[9px]',
-  'font-[family-name:var(--nora-font)] text-[11.5px] font-medium leading-none backdrop-blur-[10px]',
-  'bg-[color-mix(in_srgb,var(--nora-panel)_88%,transparent)] text-[var(--nora-text)]',
+  PLAN_CARD_META_CLASS,
+  'backdrop-blur-[10px]',
+  'bg-[color-mix(in_srgb,var(--nora-panel)_88%,transparent)] text-[var(--nora-text-secondary)]',
 )
 
 const PLAN_CARD_FOOTER_ICON_CLASS =
@@ -73,11 +77,13 @@ function PlanSummaryPlaque({
             : 'bg-transparent text-[var(--nora-text-tertiary)]',
         )}
       >
-        <ListIcon aria-hidden className="size-3.5" strokeWidth={2} />
+        <ListIcon aria-hidden className="size-3.5" strokeWidth={1.75} />
       </span>
       <span
         className={cn(
-          'min-w-0 flex-1 truncate text-left font-[family-name:var(--nora-font)] text-[12px] font-normal leading-4',
+          'min-w-0 flex-1 truncate text-left',
+          PLAN_CARD_META_CLASS,
+          'leading-4',
           filled ? 'text-[var(--nora-text)]' : 'text-[var(--nora-text-tertiary)]',
         )}
       >
@@ -87,8 +93,8 @@ function PlanSummaryPlaque({
         className={cn(
           'inline-flex h-7 shrink-0 items-center justify-center rounded-full px-2.5 max-md:hidden',
           'bg-[color-mix(in_srgb,var(--nora-panel)_80%,transparent)]',
-          'font-[family-name:var(--nora-font)] text-[11px] font-medium leading-none tabular-nums',
-          filled ? 'text-[var(--nora-text)]' : 'text-[var(--nora-text-tertiary)]',
+          PLAN_CARD_META_CLASS,
+          filled ? 'text-[var(--nora-text-secondary)]' : 'text-[var(--nora-text-tertiary)]',
         )}
       >
         {plan.kcal} ккал
@@ -98,8 +104,8 @@ function PlanSummaryPlaque({
         className={cn(
           'inline-flex size-7 shrink-0 items-center justify-center rounded-full',
           'bg-[color-mix(in_srgb,var(--nora-panel)_80%,transparent)]',
-          'font-[family-name:var(--nora-font)] text-[11px] font-medium leading-none tabular-nums',
-          filled ? 'text-[var(--nora-text)]' : 'text-[var(--nora-text-tertiary)]',
+          PLAN_CARD_META_CLASS,
+          filled ? 'text-[var(--nora-text-secondary)]' : 'text-[var(--nora-text-tertiary)]',
         )}
       >
         {plan.mealsCount}
@@ -200,7 +206,7 @@ export function WeekPlanCard({
               ) : null}
               {!selected ? (
                 <span
-                  className={cn(PLAN_COVER_BADGE_CLASS, 'tabular-nums')}
+                  className={cn(PLAN_COVER_BADGE_CLASS, 'tabular-nums md:hidden')}
                   data-plan-cover-kcal=""
                 >
                   {plan.kcal} ккал
@@ -210,7 +216,7 @@ export function WeekPlanCard({
                 <span
                   className={cn(
                     PLAN_COVER_BADGE_CLASS,
-                    'tabular-nums !bg-[var(--nora-tint)] !text-white',
+                    'text-[11px] tabular-nums !bg-[var(--nora-tint)] !text-white',
                   )}
                 >
                   {activeRange}
@@ -275,7 +281,7 @@ export function WeekPlanCard({
           <div
             aria-hidden
             className={cn(
-              'border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]',
+              'border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)] dark:border-[var(--nora-border-strong)]',
               list && 'max-md:hidden',
             )}
           />
@@ -288,7 +294,7 @@ export function WeekPlanCard({
               <NoraButton
                 aria-pressed={selected}
                 className={cn(
-                  'nora-press-grow min-w-0 flex-1 [&_svg]:size-[11px]',
+                  'nora-press-grow min-w-0 flex-1 [&_svg]:size-3.5',
                   !selected && productCardFooterCtaClass,
                 )}
                 onClick={onSelect}
@@ -451,7 +457,7 @@ export function WeekPlanCardSkeleton({
         <div
           aria-hidden
           className={cn(
-            'border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]',
+            'border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)] dark:border-[var(--nora-border-strong)]',
             list && 'max-md:hidden',
           )}
         />

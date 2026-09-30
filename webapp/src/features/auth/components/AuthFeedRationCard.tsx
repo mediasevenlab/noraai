@@ -1,4 +1,4 @@
-import { BookmarkIcon, CircleCheckIcon, ListIcon, Share2Icon, ShoppingBagIcon } from 'lucide-react'
+import { BookmarkIcon, CircleCheckIcon, ListIcon, Share2Icon, ShoppingBagIcon } from '@/components/icons'
 
 import { NoraButton, NoraIconButton } from '@/components/nora/primitives'
 import {
@@ -125,12 +125,12 @@ export function AuthFeedRationCard({
       <div className="mt-auto flex flex-col px-4 pt-2">
         <div
           aria-hidden
-          className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)]"
+          className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)] dark:border-[var(--nora-border-strong)]"
         />
         <div className="flex items-center gap-2 py-3" data-slot="meal-card-footer">
           <NoraButton
             className={cn(
-              'nora-press-grow min-w-0 flex-1 [&_svg]:size-[11px]',
+              'nora-press-grow min-w-0 flex-1 [&_svg]:size-4',
               !selectAdded && productCardFooterCtaClass,
             )}
             data-demo-pressed={selectPressed ? '' : undefined}

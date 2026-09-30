@@ -2,7 +2,7 @@ import * as React from 'react'
 import { format } from 'date-fns'
 import { ru as dateFnsRu } from 'date-fns/locale'
 import { ru as dayPickerRu } from 'react-day-picker/locale'
-import { CalendarDaysIcon, XIcon } from 'lucide-react'
+import { CalendarDaysIcon, XIcon } from '@/components/icons'
 
 import { NoraButton } from '@/components/nora/primitives'
 import { productSheetOverlayChipClass } from '@/components/nora/product-sheet'

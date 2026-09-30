@@ -1,4 +1,4 @@
-import { EllipsisVerticalIcon } from 'lucide-react'
+import { EllipsisVerticalIcon } from '@/components/icons'
 import type { UserDto } from '@web-app-demo/contracts'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -76,7 +76,7 @@ export function NavUser({
                   {user.email}
                 </span>
               </div>
-              <EllipsisVerticalIcon className="ml-auto size-3.5 text-[var(--nora-text-tertiary)] group-data-[collapsible=icon]:hidden" />
+              <EllipsisVerticalIcon className="ml-auto size-3.5 text-[var(--nora-text-tertiary)] dark:text-[var(--nora-text-secondary)] group-data-[collapsible=icon]:hidden" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"

@@ -1,4 +1,4 @@
-import { AtSignIcon, ChevronLeftIcon, ChevronRightIcon, GiftIcon, HashIcon, SearchIcon, UserRoundIcon } from 'lucide-react'
+import { AtSignIcon, ChevronLeftIcon, ChevronRightIcon, GiftIcon, HashIcon, SearchIcon, UserRoundIcon } from '@/components/icons'
 import { useState, type FormEvent, type MouseEvent } from 'react'
 
 import { DataTableFrame } from '@/components/dashboard'
@@ -183,7 +183,6 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
   if (layout === 'entry') {
     return (
       <SettingsEntry
-        badge="Люди"
         description="Кто зарегистрировался по вашей ссылке."
         title="Каталог"
       >

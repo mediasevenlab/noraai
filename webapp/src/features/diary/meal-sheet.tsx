@@ -8,7 +8,7 @@ import {
   Minimize2Icon,
   UtensilsIcon,
   XIcon,
-} from 'lucide-react'
+} from '@/components/icons'
 
 import {
   productSheetCardFrameClass,
@@ -36,7 +36,7 @@ export const MEAL_DETAIL_TAB_CLASS = cn(
   'data-active:hover:!bg-[var(--nora-text)] data-active:hover:!text-[var(--nora-panel)]',
 )
 export const MEAL_COMPOSER_FIELD_CLASS =
-  'meal-composer-field relative flex flex-col rounded-[20px] bg-[var(--nora-panel)] px-4 pt-4 pb-3'
+  'meal-composer-field relative flex flex-col rounded-[20px] bg-[var(--nora-panel)] px-4 pt-4 pb-3 dark:bg-[var(--nora-button-bg-hover)]'
 
 const MEAL_MODAL_SEND_BASE =
   'ios-glass-glare inline-flex size-8 shrink-0 items-center justify-center rounded-full border-0 outline-none backdrop-blur-[16px] shadow-[inset_0_1px_0_color-mix(in_srgb,white_55%,transparent)] disabled:opacity-100'

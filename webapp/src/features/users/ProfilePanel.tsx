@@ -1,5 +1,5 @@
 import type { UserDto } from '@web-app-demo/contracts'
-import { MailIcon, UserRoundIcon } from 'lucide-react'
+import { MailIcon, UserRoundIcon } from '@/components/icons'
 import { useId, useState, type FormEvent } from 'react'
 
 import { SettingsEntry, SettingsFieldMark, SettingsReadRows, useSettingsDraft } from '@/components/settings-canvas'
@@ -51,7 +51,6 @@ export function ProfilePanel({ className, user }: { className?: string, user: Us
 
   return (
     <SettingsEntry
-      badge="Аккаунт"
       className={className}
       description="Имя в приложении."
       title="Данные профиля"
