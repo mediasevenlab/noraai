@@ -126,7 +126,11 @@ export function AuthDemoEmbedPage() {
       className="h-dvh w-full bg-transparent"
       plain
       showThemeToggle={false}
-      surface={surface}
+      surface={
+        surface === 'signup-user' || surface === 'signup-mentor' || surface === 'login'
+          ? surface
+          : 'login'
+      }
     />
   )
 }
