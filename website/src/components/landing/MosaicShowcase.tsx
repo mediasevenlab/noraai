@@ -2,7 +2,7 @@ import { useReducedMotion } from 'motion/react'
 
 import { cn } from '@/lib/utils'
 
-const TAGS = ['#Клиенты', '#Наставники', '#Занятые', '#Удалёнка'] as const
+const TAGS = ['#Дневник', '#Рационы', '#Калории', '#Наставник'] as const
 
 type PhotoTile = { type: 'photo'; src: string; alt: string }
 type IconTile = { type: 'icon'; icon: string; label: string; color: string }
@@ -10,25 +10,25 @@ type Tile = PhotoTile | IconTile
 
 /** Habitline mosaic rows — same assets, size, order, and ticker motion. */
 const ROW_ONE: Tile[] = [
-  { type: 'icon', icon: '/landing/mosaic/icon-phone.svg', label: 'Phone off by 10:30', color: 'rgb(0, 89, 255)' },
-  { type: 'photo', src: '/landing/mosaic/tile-journal.jpg', alt: 'Journal' },
-  { type: 'icon', icon: '/landing/mosaic/icon-walk.svg', label: 'Morning walk', color: 'rgb(255, 76, 0)' },
-  { type: 'photo', src: '/landing/mosaic/tile-water.jpg', alt: 'Water bottle' },
-  { type: 'icon', icon: '/landing/mosaic/icon-focus.svg', label: 'Focus session', color: 'rgb(18, 167, 10)' },
-  { type: 'photo', src: '/landing/mosaic/tile-meditate.jpg', alt: 'Meditate' },
-  { type: 'icon', icon: '/landing/mosaic/icon-stretch.svg', label: 'Stretch for 5 minutes', color: 'rgb(2, 131, 167)' },
-  { type: 'photo', src: '/landing/mosaic/tile-thumb.jpg', alt: 'Routine' },
+  { type: 'icon', icon: '/landing/mosaic/icon-diary.svg', label: 'Дневник питания', color: 'rgb(0, 89, 255)' },
+  { type: 'photo', src: '/landing/mosaic/tile-meal.jpg', alt: 'Завтрак и дневник' },
+  { type: 'icon', icon: '/landing/mosaic/icon-calories.svg', label: 'Калории за день', color: 'rgb(255, 76, 0)' },
+  { type: 'photo', src: '/landing/mosaic/tile-plate.jpg', alt: 'Тарелка с рыбой и овощами' },
+  { type: 'icon', icon: '/landing/mosaic/icon-macros.svg', label: 'КБЖУ', color: 'rgb(18, 167, 10)' },
+  { type: 'photo', src: '/landing/mosaic/tile-macros.jpg', alt: 'Продукты для КБЖУ' },
+  { type: 'icon', icon: '/landing/mosaic/icon-plan.svg', label: 'План на неделю', color: 'rgb(2, 131, 167)' },
+  { type: 'photo', src: '/landing/mosaic/tile-prep.jpg', alt: 'Заготовки на неделю' },
 ]
 
 const ROW_TWO: Tile[] = [
-  { type: 'icon', icon: '/landing/mosaic/icon-workspace.svg', label: 'Clean workspace', color: 'rgb(255, 0, 0)' },
-  { type: 'photo', src: '/landing/mosaic/tile-workspace.jpg', alt: 'Workspace' },
-  { type: 'icon', icon: '/landing/mosaic/icon-meditate.svg', label: 'Meditate', color: 'rgb(144, 0, 255)' },
-  { type: 'photo', src: '/landing/mosaic/tile-stretch.jpg', alt: 'Stretch' },
-  { type: 'icon', icon: '/landing/mosaic/icon-water.svg', label: 'Track water', color: 'rgb(0, 34, 255)' },
-  { type: 'photo', src: '/landing/mosaic/tile-focus.jpg', alt: 'Focus' },
-  { type: 'icon', icon: '/landing/mosaic/icon-journal.svg', label: 'Write journal', color: 'rgb(255, 0, 161)' },
-  { type: 'photo', src: '/landing/mosaic/tile-walk.jpg', alt: 'Walk' },
+  { type: 'icon', icon: '/landing/mosaic/icon-shopping.svg', label: 'Список покупок', color: 'rgb(255, 0, 0)' },
+  { type: 'photo', src: '/landing/mosaic/tile-groceries.jpg', alt: 'Продукты из списка покупок' },
+  { type: 'icon', icon: '/landing/mosaic/icon-water-drop.svg', label: 'Норма воды', color: 'rgb(144, 0, 255)' },
+  { type: 'photo', src: '/landing/mosaic/tile-glass.jpg', alt: 'Стакан воды' },
+  { type: 'icon', icon: '/landing/mosaic/icon-ration.svg', label: 'Свой рацион', color: 'rgb(0, 34, 255)' },
+  { type: 'photo', src: '/landing/mosaic/tile-home-meal.jpg', alt: 'Домашний рацион' },
+  { type: 'icon', icon: '/landing/mosaic/icon-mentor.svg', label: 'С наставником', color: 'rgb(255, 0, 161)' },
+  { type: 'photo', src: '/landing/mosaic/tile-mentor-notes.jpg', alt: 'Заметки к рациону' },
 ]
 
 function MosaicTile({ tile }: { tile: Tile }) {
@@ -56,7 +56,9 @@ function MosaicTile({ tile }: { tile: Tile }) {
       >
         <img alt="" aria-hidden="true" className="size-6 object-contain" src={tile.icon} />
       </span>
-      <span className="max-w-[110px] text-[16px] leading-snug text-[#131515]">{tile.label}</span>
+      <span className="landing-mosaic-label max-w-[118px] text-[16px] leading-[1.25] text-[#131515]">
+        {tile.label}
+      </span>
     </div>
   )
 }
@@ -105,26 +107,26 @@ export default function MosaicShowcase() {
     >
       <div className="site-container text-center">
         <h1
-          className="mx-auto max-w-3xl font-heading text-[1.75rem] leading-[1.15] font-medium tracking-tight text-balance sm:text-[2.15rem] sm:leading-[1.12] lg:text-[2.75rem] lg:leading-[1.1]"
+          className="mx-auto max-w-3xl font-heading text-[1.75rem] leading-[1.2] font-medium tracking-tight sm:text-[2.15rem] lg:text-[2.75rem] lg:leading-[1.15]"
           id="mosaic-title"
         >
-          Соберите устойчивые{' '}
+          Привычки питания{' '}
           <span className="landing-heading-pill inline-block align-middle">
             <img
               alt=""
               aria-hidden="true"
               className="size-full object-cover"
-              src="/landing/mosaic/about-1.jpg"
+              src="/landing/mosaic/heading-avocado.jpg"
             />
-          </span>{' '}
-          привычки питания — утро, день{' '}
+          </span>
+          <br />
           <img
             alt=""
             aria-hidden="true"
             className="landing-heading-emoji inline-block align-middle"
-            src="/landing/mosaic/heading-cloud.svg"
+            src="/landing/mosaic/heading-carrot.png"
           />{' '}
-          и фокус остаются простыми.
+          остаются простыми.
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
           Люди используют 24nutrition, чтобы вести дневник и держать ритм без лишней сложности.
@@ -154,7 +156,7 @@ export default function MosaicShowcase() {
               alt="Приложение на телефоне"
               className="h-auto w-[min(58vw,260px)] drop-shadow-[0_24px_60px_rgba(0,0,0,0.28)] sm:w-[300px] lg:w-[340px]"
               draggable={false}
-              src="/landing/mosaic/phone.png"
+              src="/landing/mosaic/iphone-16-2.png"
             />
           </div>
 

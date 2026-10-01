@@ -8,7 +8,7 @@ import {
   useSearch,
 } from '@tanstack/react-router'
 import type { RegistrationRole, UserDto, UserRole } from '@web-app-demo/contracts'
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 import {
   NotFoundSection,
@@ -29,13 +29,15 @@ import {
 import { StackPage } from '@/features/stack'
 import { StepsPage } from '@/features/steps'
 import {
+  AuthDemoPanel,
   AuthPageShell,
   LoginForm,
   RegisterForm,
   useAuth,
 } from '@/features/auth'
-import { SharedMealsFeedPage } from '@/features/diary'
+import { SharedMealsFeedPage, authDemoPlayFrom, authDemoSetPaused } from '@/features/diary'
 import { homePathForRole, postAuthPath, userFeedSearch, userGeneralSearch } from '@/features/navigation'
+import { useDismissAppBootSplash } from '@/platform/app-boot-splash'
 import {
   MentorHome,
   MentorMenteeDiary,
@@ -78,6 +80,55 @@ export function HomePage() {
       ? `/login?returnTo=${encodeURIComponent(returnTo)}`
       : '/login'
   return <HrefRedirect href={destination} />
+}
+
+export function AuthDemoEmbedPage() {
+  const { surface } = useSearch({ from: '/embed/auth-demo' })
+  const framed = typeof window !== 'undefined' && window.parent !== window
+  useDismissAppBootSplash()
+  useEffect(() => {
+    if (!framed) return
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== window.parent) return
+      if (event.data?.type === 'auth-demo-restart') {
+        authDemoPlayFrom(0, { autoplay: true })
+        return
+      }
+      if (event.data?.type === 'auth-demo-pause') authDemoSetPaused(true)
+    }
+    window.addEventListener('message', onMessage)
+    window.parent.postMessage({ type: 'auth-demo-ready', surface }, '*')
+    return () => window.removeEventListener('message', onMessage)
+  }, [framed, surface])
+  useEffect(() => {
+    const nodes = [document.documentElement, document.body, document.getElementById('root')].filter(
+      (node): node is HTMLElement => node instanceof HTMLElement,
+    )
+    const previous = nodes.map((node) => ({
+      background: node.style.background,
+      overflow: node.style.overflow,
+    }))
+    for (const node of nodes) {
+      node.style.setProperty('background', 'transparent', 'important')
+      node.style.setProperty('overflow', 'hidden', 'important')
+    }
+    return () => {
+      nodes.forEach((node, index) => {
+        node.style.background = previous[index]?.background ?? ''
+        node.style.overflow = previous[index]?.overflow ?? ''
+      })
+    }
+  }, [])
+  return (
+    <AuthDemoPanel
+      key={surface}
+      autoplay={!framed}
+      className="h-dvh w-full bg-transparent"
+      plain
+      showThemeToggle={false}
+      surface={surface}
+    />
+  )
 }
 
 export function LoginPage() {

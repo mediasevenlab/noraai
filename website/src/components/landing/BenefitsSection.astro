@@ -3,9 +3,10 @@ import BenefitsSectionReact from './BenefitsSection.tsx'
 
 interface Props {
   signupHref: string
+  demoSrcs: string[]
 }
 
-const { signupHref } = Astro.props
+const { signupHref, demoSrcs } = Astro.props
 ---
 
-<BenefitsSectionReact client:visible signupHref={signupHref} />
+<BenefitsSectionReact client:visible demoSrcs={demoSrcs} signupHref={signupHref} />

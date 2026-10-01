@@ -25,6 +25,12 @@ function webappHref(path: `/${string}`) {
 
 const loginHref = webappHref('/login')
 const signupHref = webappHref('/signup')
+const authDemoBase = `${publicWebappUrl || 'http://localhost:5173'}/embed/auth-demo`
+const authDemoSrcs = [
+  `${authDemoBase}?surface=login`,
+  `${authDemoBase}?surface=signup-user`,
+  `${authDemoBase}?surface=signup-mentor`,
+]
 ---
 
 <BaseLayout canonicalUrl={canonicalUrl} description={description} title={title}>
@@ -99,7 +105,7 @@ const signupHref = webappHref('/signup')
   <main id="main-content">
     <MosaicShowcase />
     <WhyChooseSection href={signupHref} />
-    <BenefitsSection signupHref={signupHref} />
+    <BenefitsSection demoSrcs={authDemoSrcs} signupHref={signupHref} />
     <FeatureShowcase />
     <TestimonialsSection />
     <FaqSection />

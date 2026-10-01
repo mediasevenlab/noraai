@@ -49,10 +49,22 @@ export function AuthDayShoppingSheet({
 
   React.useEffect(() => {
     if (!pressedKey) return
-    const node = rootRef.current?.querySelector<HTMLElement>(
+    const root = rootRef.current
+    const node = root?.querySelector<HTMLElement>(
       `[data-shopping-item="${CSS.escape(pressedKey)}"]`,
     )
-    node?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    const scroller = root?.querySelector<HTMLElement>('[data-day-shopping-list]')
+    if (!node || !scroller) return
+    const scrollerRect = scroller.getBoundingClientRect()
+    const nodeRect = node.getBoundingClientRect()
+    const delta =
+      nodeRect.top < scrollerRect.top
+        ? nodeRect.top - scrollerRect.top
+        : nodeRect.bottom > scrollerRect.bottom
+          ? nodeRect.bottom - scrollerRect.bottom
+          : 0
+    if (Math.abs(delta) < 1) return
+    scroller.scrollTo({ top: scroller.scrollTop + delta, behavior: 'smooth' })
   }, [pressedKey])
 
   React.useEffect(() => {

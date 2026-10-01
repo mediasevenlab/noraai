@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ElementType } from 'react'
+import { useEffect, useMemo, useRef, useState, type ElementType, type RefObject } from 'react'
 import {
   useMotionValue,
   useMotionValueEvent,
@@ -25,6 +25,8 @@ type ScrollRevealTextProps = {
    */
   variant?: RevealVariant
   offset?: RevealOffset
+  /** Scroll progress follows this element instead of the text itself. */
+  scrollTarget?: RefObject<HTMLElement | null>
 }
 
 const VARIANT_OFFSETS = {
@@ -95,6 +97,7 @@ export default function ScrollRevealText({
   id,
   variant = Tag === 'h1' || Tag === 'h2' ? 'primary' : 'secondary',
   offset,
+  scrollTarget,
 }: ScrollRevealTextProps) {
   const reduceMotion = useReducedMotion()
   const containerRef = useRef<HTMLElement | null>(null)
@@ -108,7 +111,7 @@ export default function ScrollRevealText({
   }, [])
 
   const { scrollYProgress } = useScroll({
-    target: scrollReady ? containerRef : undefined,
+    target: scrollReady ? (scrollTarget ?? containerRef) : undefined,
     offset: resolvedOffset,
   })
 

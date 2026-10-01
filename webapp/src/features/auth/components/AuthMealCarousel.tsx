@@ -186,9 +186,24 @@ const AUTH_DEMO_CAPTION_ICONS = {
 
 export function AuthMealCarousel({
   surface = 'login',
+  plain = false,
 }: {
   surface?: AuthDemoSurface
+  /** Landing embed: pull side cards inward so the frame does not crop them. */
+  plain?: boolean
 }) {
+  const [sideSpreadRem, setSideSpreadRem] = React.useState<number | null>(() =>
+    plain && typeof window !== 'undefined' ? embedSideSpreadRem() : null,
+  )
+
+  React.useEffect(() => {
+    if (!plain) return
+    const update = () => setSideSpreadRem(embedSideSpreadRem())
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [plain])
+
   const meals = React.useMemo(() => authPreviewMeals().slice(0, 5), [])
   const lossRation = React.useMemo(() => authPreviewRation(), [])
   const gainRation = React.useMemo(() => authPreviewGainRation(), [])
@@ -1377,6 +1392,14 @@ export function AuthMealCarousel({
               aria-label="Создать"
               className={MENTOR_CREATE_CLASS}
               data-demo-pressed={mentorCreatePressed ? '' : undefined}
+              style={
+                plain
+                  ? {
+                      boxShadow:
+                        'inset 0 1px 0 color-mix(in srgb, white 70%, transparent), 0 6px 16px rgba(0, 0, 0, 0.14)',
+                    }
+                  : undefined
+              }
               type="button"
             >
               <PlusIcon aria-hidden className="size-4" />
@@ -1387,6 +1410,7 @@ export function AuthMealCarousel({
       ) : null}
       {showShareAudience ? (
         <AuthShareAudienceHint
+          outerRem={plain ? plainCarouselOuterRem(sideSpreadRem) : undefined}
           pulse={shareAudiencePulse}
           reduceMotion={reduceMotion}
         />
@@ -1437,9 +1461,11 @@ export function AuthMealCarousel({
             style={{
               filter: dimSide
                 ? 'blur(3px) saturate(0.88) brightness(0.97)'
-                : 'blur(0px) saturate(1) brightness(1)',
+                : expanded && plain
+                  ? 'blur(0px) saturate(1) brightness(1) drop-shadow(0 22px 48px rgba(0,0,0,0.18)) drop-shadow(0 2px 8px rgba(0,0,0,0.08))'
+                  : 'blur(0px) saturate(1) brightness(1)',
               opacity: visible ? 1 : 0,
-              transform: carouselTransform(offset, expanded),
+              transform: carouselTransform(offset, expanded, plain ? sideSpreadRem : null),
               transitionDuration: reduceMotion ? '0ms' : `${frameMs}ms`,
               zIndex: showDetail ? 5 : isFront ? 3 : visible ? 2 : 1,
             }}
@@ -1780,10 +1806,17 @@ export function AuthMealCarousel({
       {saveToast ? (
         <div
           className="pointer-events-none absolute z-[8]"
-          style={{
-            left: 'calc(50% + 9.5rem)',
-            top: 'calc(50% + 12.4rem)',
-          }}
+          style={
+            plain
+              ? {
+                  right: `calc(50% - ${plainCarouselOuterRem(sideSpreadRem)}rem)`,
+                  top: 'calc(50% + 12.4rem)',
+                }
+              : {
+                  left: 'calc(50% + 9.5rem)',
+                  top: 'calc(50% + 12.4rem)',
+                }
+          }
         >
           <AuthDemoSaveToast leaving={toastLeaving} />
         </div>
@@ -1796,7 +1829,7 @@ export function AuthMealCarousel({
 function AuthDemoSaveToast({ leaving }: { leaving?: boolean }) {
   return (
     <div
-      className="isolate flex h-10 w-max items-center gap-2 whitespace-nowrap rounded-full bg-[var(--nora-panel)] px-3 font-[family-name:var(--nora-font)] text-[12px] font-medium text-[var(--nora-text)] shadow-[0_8px_22px_rgba(0,0,0,0.28)]"
+      className="isolate flex h-10 w-max items-center gap-2 whitespace-nowrap rounded-full bg-[var(--nora-panel)] px-3 font-[family-name:var(--nora-font)] text-[12px] font-medium text-[var(--nora-text)] shadow-[0_8px_18px_rgba(0,0,0,0.1)]"
       data-auth-demo-save-toast=""
       role="status"
       style={{
@@ -1816,10 +1849,14 @@ function AuthDemoSaveToast({ leaving }: { leaving?: boolean }) {
 function AuthShareAudienceHint({
   pulse,
   reduceMotion,
+  outerRem,
 }: {
   pulse: boolean
   reduceMotion: boolean
+  /** Landing frame: keep the capsule inside the visible side-card edge. */
+  outerRem?: number
 }) {
+  const edgeRem = outerRem ?? authDemoLeftCardInsetRem(false)
   return (
     <div
       aria-hidden
@@ -1827,7 +1864,7 @@ function AuthShareAudienceHint({
       data-slot="auth-share-audience"
       style={{
         // Right edge flush with the blurred side card behind the front card.
-        right: `calc(50% - ${authDemoLeftCardInsetRem(false)}rem)`,
+        right: `calc(50% - ${edgeRem}rem)`,
         top: 'calc(50% + 12.4rem)',
         animation: reduceMotion
           ? undefined
@@ -1835,7 +1872,7 @@ function AuthShareAudienceHint({
       }}
     >
       <div
-        className="isolate flex h-10 w-max items-center rounded-full bg-[var(--nora-panel)] px-2.5 shadow-[0_8px_22px_rgba(0,0,0,0.28)]"
+        className="isolate flex h-10 w-max items-center rounded-full bg-[var(--nora-panel)] px-2.5 shadow-[0_8px_18px_rgba(0,0,0,0.1)]"
         style={
           pulse && !reduceMotion
             ? {
@@ -1963,13 +2000,31 @@ function AuthDemoCaption({
   )
 }
 
-function carouselTransform(offset: number, expanded: boolean) {
+/** Distance from the carousel center to the outer edge of a side card in the embed. */
+function plainCarouselOuterRem(sideSpreadRem: number | null) {
+  const spread =
+    sideSpreadRem ?? (typeof window !== 'undefined' ? embedSideSpreadRem() : AUTH_MEAL_SIDE_X_REM.closed)
+  const sideX = Math.min(AUTH_MEAL_SIDE_X_REM.closed, Math.max(2.75, spread))
+  return sideX + (AUTH_MEAL_CARD_WIDTH_REM * AUTH_MEAL_SIDE_SCALE) / 2
+}
+
+/** How far side cards can sit before their outer edge meets the embed frame. */
+function embedSideSpreadRem() {
+  const root = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+  const halfCard = (AUTH_MEAL_CARD_WIDTH_REM * AUTH_MEAL_SIDE_SCALE * root) / 2
+  const inset = 12
+  return (window.innerWidth / 2 - inset - halfCard) / root
+}
+
+function carouselTransform(offset: number, expanded: boolean, sideSpreadRem: number | null = null) {
   if (offset === 0) {
     return expanded
       ? `translate(-50%, -50%) scale(${AUTH_MEAL_OPEN_SCALE})`
       : 'translate(-50%, -50%)'
   }
-  const sideX = expanded ? AUTH_MEAL_SIDE_X_REM.open : AUTH_MEAL_SIDE_X_REM.closed
+  const design = expanded ? AUTH_MEAL_SIDE_X_REM.open : AUTH_MEAL_SIDE_X_REM.closed
+  const sideX =
+    sideSpreadRem == null ? design : Math.min(design, Math.max(2.75, sideSpreadRem))
   const sideY = expanded ? 20 : 14
   if (offset === -1) {
     return `translate(-50%, -50%) translate(-${sideX}rem, ${sideY}px) scale(${AUTH_MEAL_SIDE_SCALE})`

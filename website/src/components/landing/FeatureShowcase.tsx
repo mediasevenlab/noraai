@@ -21,8 +21,8 @@ const FEATURE_CARDS = [
   },
   {
     label: '03 — Планы и рационы',
-    image: '/landing/appminimal/feature-03.png',
-    imageAlt: 'Экран плана питания',
+    image: '/landing/appminimal/feature-plans.png',
+    imageAlt: 'Дневник питания с планом на день',
     title: 'Держите неделю под контролем',
     description:
       'Собирайте недельные планы, копируйте дни и работайте с наставником без таблиц и хаоса в чатах.',
@@ -57,24 +57,30 @@ function FeatureCard({
 
       <div
         className={cn(
-          'relative mx-auto mt-5 w-full max-w-[300px] flex-1 sm:max-w-[340px]',
-          wide && 'sm:max-w-[380px]'
+          'relative mx-auto mt-5 w-full flex-1',
+          wide ? 'max-w-5xl' : 'max-w-[300px] sm:max-w-[340px]',
         )}
       >
         <div
           className={cn(
-            'landing-feature-phone relative mx-auto h-full min-h-[24rem] w-full overflow-hidden sm:min-h-[28rem]',
-            wide && 'sm:min-h-[30rem]'
+            'relative mx-auto h-full w-full overflow-hidden',
+            wide
+              ? 'flex min-h-[16rem] items-center sm:min-h-[18rem]'
+              : 'landing-feature-phone min-h-[24rem] sm:min-h-[28rem]',
           )}
         >
           <img
             alt={card.imageAlt}
-            className="absolute inset-x-0 top-0 mx-auto h-full w-auto max-w-full object-contain object-top"
+            className={cn(
+              wide
+                ? 'mx-auto h-auto w-full rounded-2xl object-contain'
+                : 'absolute inset-x-0 top-0 mx-auto h-full w-auto max-w-full object-contain object-top',
+            )}
             decoding="async"
-            height={1734}
+            height={wide ? 1200 : 1734}
             loading="lazy"
             src={card.image}
-            width={854}
+            width={wide ? 1920 : 854}
           />
         </div>
       </div>

@@ -87,7 +87,7 @@ describe('auth mentor ration create choreography', () => {
     expect(sheet).not.toContain('RationCard')
     expect(sheet).not.toContain('authMentorCreateExistingRation')
     expect(sheet).toContain('onRevealCreated')
-    expect(sheet).toContain('scrollIntoView')
+    expect(sheet).toContain('scroller.scrollTo')
     expect(sheet).toContain('data-mentor-create-focus')
     expect(sheet).toContain('Завтрак')
     expect(sheet).toContain('Обед')

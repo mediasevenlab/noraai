@@ -305,16 +305,19 @@ export function AuthDemoPlaybackProvider({
   children,
   startMs = 0,
   endMs = Number.POSITIVE_INFINITY,
+  autoplay = true,
 }: {
   children: React.ReactNode
   startMs?: number
   endMs?: number
+  /** Landing embeds stay parked until the visible block asks them to play. */
+  autoplay?: boolean
 }) {
-  const [pausedState, setPausedState] = React.useState(false)
+  const [pausedState, setPausedState] = React.useState(!autoplay)
   const [generationState, setGenerationState] = React.useState(0)
   React.useLayoutEffect(() => {
-    authDemoPlayFrom(startMs, { autoplay: true })
-  }, [startMs])
+    authDemoPlayFrom(startMs, { autoplay })
+  }, [autoplay, startMs])
   React.useEffect(() => {
     return () => {
       authDemoResetClock()

@@ -600,6 +600,18 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
   }
 }
 
+[data-auth-demo-plain] [data-auth-demo-caption] {
+  display: none;
+}
+
+/* The embed frame is narrower than the md breakpoint, so meal covers
+   would use the short phone height inside the desktop 365px card. */
+[data-slot='auth-meal-carousel'] [data-slot='meal-cover'] {
+  aspect-ratio: auto;
+  height: 168px;
+  max-height: none;
+}
+
 .auth-demo-marquee-mask {
   -webkit-mask-image: linear-gradient(
     to right,

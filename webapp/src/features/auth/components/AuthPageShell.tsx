@@ -25,7 +25,13 @@ import { Button } from '@/components/ui/button'
 import { SmokeBackground } from '@/components/ui/spooky-smoke-animation'
 import { cn } from '@/lib/utils'
 
-function AuthDemoStage({ surface }: { surface: AuthDemoSurface }) {
+function AuthDemoStage({
+  surface,
+  plain = false,
+}: {
+  surface: AuthDemoSurface
+  plain?: boolean
+}) {
   const playback = useAuthDemoPlayback()
   const generation = playback?.generation ?? 0
   const remountHold = useAuthDemoRemountHold()
@@ -56,10 +62,10 @@ function AuthDemoStage({ surface }: { surface: AuthDemoSurface }) {
       <div
         className={cn(
           'absolute inset-0 flex h-full w-full justify-center',
-          remountHold && 'invisible',
+          remountHold && !plain && 'invisible',
         )}
       >
-        <AuthMealCarousel key={generation} surface={surface} />
+        <AuthMealCarousel key={generation} plain={plain} surface={surface} />
       </div>
     </div>
   )
@@ -90,6 +96,54 @@ function AuthThemeToggle({ className }: { className?: string }) {
   )
 }
 
+export function AuthDemoPanel({
+  surface = 'login',
+  className,
+  showThemeToggle = true,
+  plain = false,
+  autoplay = true,
+}: {
+  surface?: AuthDemoSurface
+  className?: string
+  showThemeToggle?: boolean
+  /** Landing embed: cards only, no smoke. The page behind the frame shows through. */
+  plain?: boolean
+  /** When false, the clock stays at the first frame until playFrom. */
+  autoplay?: boolean
+}) {
+  const surfaceWindow = authDemoSurfaceWindow(surface)
+
+  return (
+    <AuthDemoPlaybackProvider
+      autoplay={autoplay}
+      endMs={surfaceWindow.endMs}
+      key={surface}
+      startMs={surfaceWindow.startMs}
+    >
+      <section
+        className={cn('relative overflow-hidden', plain ? 'bg-transparent' : 'bg-black', className)}
+        data-auth-demo-plain={plain ? '' : undefined}
+      >
+        {plain ? null : (
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-black">
+            <SmokeBackground className="size-full" smokeColor="#0099ff" />
+          </div>
+        )}
+        <div className="relative z-[1] flex h-full min-h-svh flex-col px-6 pb-16 pt-6 md:px-10 md:pb-20 md:pt-10">
+          <div className="flex min-h-0 flex-1 justify-center">
+            <AuthDemoStage plain={plain} surface={surface} />
+          </div>
+        </div>
+        {showThemeToggle ? (
+          <div className="absolute top-6 right-6 z-10 flex items-center gap-1.5 md:top-10 md:right-10">
+            <AuthThemeToggle className="bg-[var(--nora-panel)]/80 shadow-[inset_0_0_0_1px_var(--nora-border,rgba(0,0,0,0.08))] backdrop-blur-sm hover:bg-[var(--nora-panel)]" />
+          </div>
+        ) : null}
+      </section>
+    </AuthDemoPlaybackProvider>
+  )
+}
+
 export function AuthPageShell({
   children,
   surface = 'login',
@@ -98,7 +152,6 @@ export function AuthPageShell({
   surface?: AuthDemoSurface
 }) {
   useDismissAppBootSplash()
-  const surfaceWindow = authDemoSurfaceWindow(surface)
 
   return (
     <main className="relative grid min-h-svh lg:grid-cols-2">
@@ -121,25 +174,7 @@ export function AuthPageShell({
           <div className="w-full max-w-[22rem]">{children}</div>
         </div>
       </section>
-      <AuthDemoPlaybackProvider
-        endMs={surfaceWindow.endMs}
-        key={surface}
-        startMs={surfaceWindow.startMs}
-      >
-        <section className="relative hidden overflow-hidden bg-black lg:block">
-          <div aria-hidden className="pointer-events-none absolute inset-0 bg-black">
-            <SmokeBackground className="size-full" smokeColor="#0099ff" />
-          </div>
-          <div className="relative z-[1] flex h-full min-h-svh flex-col px-6 pb-16 pt-6 md:px-10 md:pb-20 md:pt-10">
-            <div className="flex min-h-0 flex-1 justify-center">
-              <AuthDemoStage surface={surface} />
-            </div>
-          </div>
-          <div className="absolute top-6 right-6 z-10 flex items-center gap-1.5 md:top-10 md:right-10">
-            <AuthThemeToggle className="bg-[var(--nora-panel)]/80 shadow-[inset_0_0_0_1px_var(--nora-border,rgba(0,0,0,0.08))] backdrop-blur-sm hover:bg-[var(--nora-panel)]" />
-          </div>
-        </section>
-      </AuthDemoPlaybackProvider>
+      <AuthDemoPanel className="hidden lg:block" surface={surface} />
       <div className="absolute top-6 right-6 z-10 md:top-10 md:right-10 lg:hidden">
         <AuthThemeToggle />
       </div>

@@ -1,3 +1,5 @@
+import { useRef } from 'react'
+
 import { PinContainer } from '@/components/ui/3d-pin'
 import ScrollRevealText from './ScrollRevealText'
 
@@ -7,7 +9,7 @@ const items = [
     title: 'Быстрый старт',
     description:
       'Зарегистрируйтесь и сразу откройте дневник: первый день питания можно собрать за несколько минут.',
-    image: '/landing/why-choose/why-01.jpg',
+    image: '/landing/why-choose/why-01-frame4.png',
     imageAlt: 'Интерфейс приложения — быстрый старт',
     imageFirst: true,
   },
@@ -16,7 +18,7 @@ const items = [
     title: 'Планы и дневник вместе',
     description:
       'Недельный план и факт приёмов в одном месте — без таблиц и переписок в разных чатах.',
-    image: '/landing/why-choose/why-02.jpg',
+    image: '/landing/why-choose/why-02-frame5.png',
     imageAlt: 'Интерфейс приложения — планы и дневник',
     imageFirst: false,
   },
@@ -25,22 +27,29 @@ const items = [
     title: 'Наставник рядом',
     description:
       'Получайте рационы и правки от наставника прямо в приложении — клиенту и наставнику удобно работать вместе.',
-    image: '/landing/why-choose/why-03.jpg',
+    image: '/landing/why-choose/why-03-frame6.png',
     imageAlt: 'Интерфейс приложения — работа с наставником',
     imageFirst: true,
   },
 ] as const
+
+// The whole block shares one trigger: titles finish as the section enters,
+// so they are already readable once the block is on screen.
+const headingOffset = ['start 1.12', 'start 0.92'] as const
 
 type WhyChooseSectionProps = {
   href: string
 }
 
 export default function WhyChooseSection({ href }: WhyChooseSectionProps) {
+  const sectionRef = useRef<HTMLElement>(null)
+
   return (
     <section
       aria-labelledby="why-title"
       className="relative z-0 h-full overflow-hidden border-b pt-20 pb-16 sm:pt-24 sm:pb-20 lg:pb-24"
       id="why"
+      ref={sectionRef}
     >
       <div className="site-container relative">
         <div className="w-full space-y-5 lg:w-3/5">
@@ -48,6 +57,8 @@ export default function WhyChooseSection({ href }: WhyChooseSectionProps) {
             as="h2"
             className="mb-6 w-full max-w-lg text-left font-heading text-3xl font-semibold tracking-tighter text-balance sm:text-4xl lg:text-5xl"
             id="why-title"
+            offset={headingOffset}
+            scrollTarget={sectionRef}
             text="Почему 24nutrition?"
             variant="primary"
           />
@@ -86,6 +97,8 @@ export default function WhyChooseSection({ href }: WhyChooseSectionProps) {
                     <ScrollRevealText
                       as="h3"
                       className="my-3 font-heading text-3xl leading-none font-semibold tracking-tighter"
+                      offset={headingOffset}
+                      scrollTarget={sectionRef}
                       text={item.title}
                       variant="secondary"
                     />

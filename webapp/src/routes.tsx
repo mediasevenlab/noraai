@@ -23,6 +23,18 @@ const indexRoute = createRoute({
   component: lazyRouteComponent(() => import('./pages'), 'HomePage'),
 })
 
+const authDemoEmbedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/embed/auth-demo',
+  validateSearch: (search: Record<string, unknown>) => ({
+    surface:
+      search.surface === 'signup-user' || search.surface === 'signup-mentor'
+        ? search.surface
+        : 'login',
+  }),
+  component: lazyRouteComponent(() => import('./pages'), 'AuthDemoEmbedPage'),
+})
+
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
@@ -320,6 +332,7 @@ const mentorPlanDetailRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  authDemoEmbedRoute,
   loginRoute,
   signupRoute,
   forgotPasswordRoute,

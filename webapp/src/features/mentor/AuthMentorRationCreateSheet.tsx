@@ -179,12 +179,19 @@ export function AuthMentorRationCreateSheet({
   ].join(':')
 
   React.useEffect(() => {
-    const root = scrollRef.current
-    const node = root?.querySelector<HTMLElement>('[data-mentor-create-focus]')
-    node?.scrollIntoView({
-      block: state.focus === 'add-meal' || state.focus === 'save' ? 'end' : 'center',
-      behavior: 'smooth',
-    })
+    const scroller = scrollRef.current
+    const node = scroller?.querySelector<HTMLElement>('[data-mentor-create-focus]')
+    if (!scroller || !node) return
+    // Scroll only the sheet. scrollIntoView also moves the landing page
+    // when this demo runs inside the benefits iframe.
+    const scrollerRect = scroller.getBoundingClientRect()
+    const nodeRect = node.getBoundingClientRect()
+    const delta =
+      state.focus === 'add-meal' || state.focus === 'save'
+        ? nodeRect.bottom - scrollerRect.bottom
+        : nodeRect.top + nodeRect.height / 2 - (scrollerRect.top + scrollerRect.height / 2)
+    if (Math.abs(delta) < 1) return
+    scroller.scrollTo({ top: scroller.scrollTop + delta, behavior: 'smooth' })
   }, [followKey, state.focus])
 
   React.useEffect(() => {
