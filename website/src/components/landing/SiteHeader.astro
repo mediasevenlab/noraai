@@ -95,9 +95,7 @@ const navigation = [
   const COMPACT_TOP_PX = 96
 
   function resolvedTheme() {
-    const stored = localStorage.getItem(THEME_KEY)
-    if (stored === 'light' || stored === 'dark') return stored
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'
   }
 
   function applyTheme(theme: 'light' | 'dark') {

@@ -120,16 +120,10 @@ export default function MosaicShowcase() {
             />
           </span>
           <br />
-          <img
-            alt=""
-            aria-hidden="true"
-            className="landing-heading-emoji inline-block align-middle"
-            src="/landing/mosaic/heading-carrot.png"
-          />{' '}
-          остаются простыми.
+          становятся простыми.
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
-          Люди используют 24nutrition, чтобы вести дневник и держать ритм без лишней сложности.
+          Ведите персональный дневник и держите ритм без лишней сложности.
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
           {TAGS.map((tag) => (
@@ -156,7 +150,7 @@ export default function MosaicShowcase() {
               alt="Приложение на телефоне"
               className="h-auto w-[min(58vw,260px)] drop-shadow-[0_24px_60px_rgba(0,0,0,0.28)] sm:w-[300px] lg:w-[340px]"
               draggable={false}
-              src="/landing/mosaic/iphone-16-2.png"
+              src="/landing/mosaic/iphone-foreground-2.png"
             />
           </div>
 

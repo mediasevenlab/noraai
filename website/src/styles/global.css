@@ -90,10 +90,10 @@
     --landing-nav-border: rgba(0, 0, 0, 0.08);
     --landing-nav-fg: #222222;
     --landing-nav-muted: rgba(34, 34, 34, 0.62);
-    --landing-nav-cta: #111111;
-    --landing-nav-cta-hover: #000000;
+    --landing-nav-cta: #0099ff;
+    --landing-nav-cta-hover: #0088ff;
     --landing-nav-cta-fg: #ffffff;
-    --landing-nav-mark-bg: #0099ff;
+    --landing-nav-mark-bg: #111111;
     --landing-nav-mark-fg: #ffffff;
     --landing-nav-panel: rgba(255, 255, 255, 0.96);
     --landing-tint-soft: rgba(0, 153, 255, 0.12);
@@ -141,11 +141,11 @@
     --landing-nav-border: rgba(255, 255, 255, 0.1);
     --landing-nav-fg: #ffffff;
     --landing-nav-muted: rgba(255, 255, 255, 0.7);
-    --landing-nav-cta: #ffffff;
-    --landing-nav-cta-hover: #e8e8e8;
-    --landing-nav-cta-fg: #111111;
-    --landing-nav-mark-bg: #0099ff;
-    --landing-nav-mark-fg: #ffffff;
+    --landing-nav-cta: #0099ff;
+    --landing-nav-cta-hover: #0088ff;
+    --landing-nav-cta-fg: #ffffff;
+    --landing-nav-mark-bg: #ffffff;
+    --landing-nav-mark-fg: #111111;
     --landing-nav-panel: rgba(17, 17, 17, 0.96);
     --landing-tint-soft: rgba(0, 153, 255, 0.16);
     --landing-tint-softer: rgba(0, 153, 255, 0.1);
@@ -323,7 +323,7 @@
     padding: 5px 8px;
     border-radius: 4px;
     color: var(--landing-nav-muted);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 400;
     letter-spacing: 0;
     text-decoration: none;
@@ -402,7 +402,7 @@
     display: grid;
     grid-template-columns: 1fr;
     color: var(--landing-nav-muted);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 400;
     text-decoration: none;
     padding: 5px 8px;
@@ -767,8 +767,8 @@
 }
 
 .landing-feature-phone {
-  -webkit-mask-image: linear-gradient(to bottom, #000 58%, transparent 96%);
-  mask-image: linear-gradient(to bottom, #000 58%, transparent 96%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 68%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 68%, transparent 100%);
 }
 
 .landing-testimonials-stage {

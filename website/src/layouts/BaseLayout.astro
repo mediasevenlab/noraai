@@ -38,13 +38,7 @@ const { canonicalUrl, description, title } = Astro.props
         try {
           var key = 'web_app_demo_theme'
           var stored = localStorage.getItem(key)
-          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-          var theme =
-            stored === 'light' || stored === 'dark'
-              ? stored
-              : prefersDark
-                ? 'dark'
-                : 'light'
+          var theme = stored === 'dark' ? 'dark' : 'light'
           var root = document.documentElement
           if (theme === 'dark') root.classList.add('dark')
           else root.classList.remove('dark')

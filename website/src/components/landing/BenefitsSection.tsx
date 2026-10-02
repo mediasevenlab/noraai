@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ArrowUpRight, BotMessageSquare, ChartPie, Layers } from 'lucide-react'
 
 import { buttonVariants } from '@/components/ui/button'
@@ -47,22 +47,29 @@ const MOBILE_DEMO_HEIGHT = 720
 
 function FittedMobileDemo({ active, src }: { active: boolean; src: string }) {
   const hostRef = useRef<HTMLDivElement>(null)
-  const [scale, setScale] = useState(0.4)
+  const [scale, setScale] = useState(0.45)
 
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
     const update = () => {
       const box = host.getBoundingClientRect()
-      if (box.width < 1 || box.height < 1) return
-      setScale(Math.min(box.width / MOBILE_DEMO_WIDTH, box.height / MOBILE_DEMO_HEIGHT))
+      if (box.width < 8 || box.height < 8) return
+      const next = Math.min(box.width / MOBILE_DEMO_WIDTH, box.height / MOBILE_DEMO_HEIGHT)
+      if (next > 0) setScale(next)
     }
     update()
     const observer = new ResizeObserver(update)
     observer.observe(host)
-    return () => observer.disconnect()
+    window.addEventListener('resize', update)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', update)
+    }
   }, [])
 
+  // zoom, not transform: mobile browsers leave an iframe blank when an ancestor
+  // is scaled with CSS transform, so the card shows only the gray fill.
   return (
     <div ref={hostRef} className="relative size-full overflow-hidden">
       <div
@@ -73,13 +80,30 @@ function FittedMobileDemo({ active, src }: { active: boolean; src: string }) {
           transform: `translate(-50%, -50%) scale(${scale})`,
         }}
       >
-        <DiaryDemo active={active} src={src} />
+        <DiaryDemo
+          active={active}
+          frameStyle={{
+            width: '100%',
+            height: '100%',
+            // Safari leaves a transformed iframe blank unless it has its own paint layer.
+            WebkitMaskImage: '-webkit-radial-gradient(white, black)',
+          }}
+          src={src}
+        />
       </div>
     </div>
   )
 }
 
-function DiaryDemo({ active, src }: { active: boolean; src: string }) {
+function DiaryDemo({
+  active,
+  frameStyle,
+  src,
+}: {
+  active: boolean
+  frameStyle?: CSSProperties
+  src: string
+}) {
   const frameRef = useRef<HTMLIFrameElement>(null)
   const activeRef = useRef(active)
   activeRef.current = active
@@ -113,9 +137,10 @@ function DiaryDemo({ active, src }: { active: boolean; src: string }) {
   return (
     <iframe
       ref={frameRef}
-      className="pointer-events-none size-full border-0 bg-transparent"
+      className="pointer-events-none border-0 bg-transparent"
       scrolling="no"
       src={src}
+      style={frameStyle ?? { width: '100%', height: '100%' }}
       tabIndex={-1}
       title="Дневник питания"
     />
@@ -129,9 +154,7 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
     BENEFITS.map(() => ({ opacity: 0.3, y: 30, imageOpacity: 0 })),
   )
   const [demoActive, setDemoActive] = useState<boolean[]>(() => BENEFITS.map(() => false))
-  const [wide, setWide] = useState(() =>
-    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 768px)').matches,
-  )
+  const [wide, setWide] = useState(false)
 
   const noteDemo = (index: number, opacity: number) => {
     setDemoActive((current) => {

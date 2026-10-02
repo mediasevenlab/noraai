@@ -48,9 +48,12 @@ flushSync(() => {
         <TooltipProvider>
           <ThemeProvider
             attribute="class"
-            defaultTheme="system"
+            defaultTheme="light"
             disableTransitionOnChange
-            enableSystem
+            enableSystem={false}
+            forcedTheme={
+              window.location.pathname.includes('/embed/') ? 'light' : undefined
+            }
             storageKey="web_app_demo_theme"
           >
             <NoraSchemeSync />

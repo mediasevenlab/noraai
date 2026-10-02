@@ -68,11 +68,9 @@
       // Apply saved theme before paint so --nora-* resolve without a flash.
       (function () {
         try {
+          var embed = location.pathname.indexOf('/embed/') !== -1
           var stored = localStorage.getItem('web_app_demo_theme')
-          var dark =
-            stored === 'dark' ||
-            (stored !== 'light' &&
-              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          var dark = !embed && stored === 'dark'
           var root = document.documentElement
           var classes = root.classList
           classes.remove(

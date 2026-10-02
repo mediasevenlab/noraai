@@ -5,24 +5,24 @@ import ScrollRevealText from './ScrollRevealText'
 const FEATURE_CARDS = [
   {
     label: '01 — Персональные цели',
-    image: '/landing/appminimal/feature-01.png',
-    imageAlt: 'Экран выбора уровня активности',
+    image: '/landing/appminimal/feature-phone-01.png',
+    imageAlt: 'Экран выбора рациона',
     title: 'Начните с целей, которые вам подходят',
     description:
       'Ведите дневник питания, следите за прогрессом и держите привычки в одном спокойном приложении для повседневной жизни.',
   },
   {
     label: 'Профиль — 02',
-    image: '/landing/appminimal/feature-02.png',
-    imageAlt: 'Экран роста и веса',
+    image: '/landing/appminimal/feature-phone-02.png',
+    imageAlt: 'Экран дня рациона',
     title: 'Соберите план вокруг своего тела',
     description:
       'Соберите ключевые данные о себе и получите рекомендации, которые подходят именно вашему сценарию.',
   },
   {
     label: '03 — Планы и рационы',
-    image: '/landing/appminimal/feature-plans.png',
-    imageAlt: 'Дневник питания с планом на день',
+    image: '/landing/appminimal/feature-plans-frame-2.png',
+    imageAlt: 'Дневник питания на экране ноутбука',
     title: 'Держите неделю под контролем',
     description:
       'Собирайте недельные планы, копируйте дни и работайте с наставником без таблиц и хаоса в чатах.',
@@ -57,8 +57,8 @@ function FeatureCard({
 
       <div
         className={cn(
-          'relative mx-auto mt-5 w-full flex-1',
-          wide ? 'max-w-5xl' : 'max-w-[300px] sm:max-w-[340px]',
+          'relative mt-5 w-full flex-1',
+          wide ? 'max-w-none' : 'mx-auto w-full max-w-[15.95rem] sm:max-w-[18.59rem]',
         )}
       >
         <div
@@ -66,7 +66,7 @@ function FeatureCard({
             'relative mx-auto h-full w-full overflow-hidden',
             wide
               ? 'flex min-h-[16rem] items-center sm:min-h-[18rem]'
-              : 'landing-feature-phone min-h-[24rem] sm:min-h-[28rem]',
+              : 'landing-feature-phone h-full min-h-[22rem] sm:min-h-[26rem]',
           )}
         >
           <img
@@ -74,18 +74,23 @@ function FeatureCard({
             className={cn(
               wide
                 ? 'mx-auto h-auto w-full rounded-2xl object-contain'
-                : 'absolute inset-x-0 top-0 mx-auto h-full w-auto max-w-full object-contain object-top',
+                : 'absolute top-0 left-1/2 h-auto w-[15.95rem] max-w-none -translate-x-1/2 sm:w-[18.59rem]',
             )}
             decoding="async"
-            height={wide ? 1200 : 1734}
+            height={wide ? 2304 : 1050}
             loading="lazy"
             src={card.image}
-            width={wide ? 1920 : 854}
+            width={wide ? 4096 : 516}
           />
         </div>
       </div>
 
-      <div className="relative z-10 mt-auto flex items-end justify-between gap-4 pt-2">
+      <div
+        className={cn(
+          'relative z-10 mt-auto flex items-end justify-between gap-4',
+          wide ? 'pt-8' : 'pt-2',
+        )}
+      >
         <div className={cn('min-w-0 space-y-2', wide ? 'max-w-xl' : 'max-w-md')}>
           <h3 className="font-heading text-2xl font-semibold tracking-tight text-balance sm:text-[1.75rem]">
             {card.title}
