@@ -69,9 +69,9 @@ import type { MealEntry } from './meals-catalog'
 
 const EMPTY_MEAL_MACROS = { kcal: 0, protein: 0, fat: 0, carbs: 0 } as const
 
-/** Login demo only: the meal dialog preview is 30% shorter than the product hero. */
+/** Fixed card inside a narrow frame: taller than a phone strip, shorter than the desktop dialog. */
 const AUTH_DEMO_MEAL_HERO_FRAME_CLASS =
-  'h-[min(36.96vw,202px)] max-h-[min(36.96vw,202px)] transition-[height,max-height] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] sm:h-[225px] sm:max-h-none group-data-[hero-expanded]/preview:h-[min(61.6vw,336px)] group-data-[hero-expanded]/preview:max-h-[min(61.6vw,336px)] sm:group-data-[hero-expanded]/preview:h-[225px] sm:group-data-[hero-expanded]/preview:max-h-none'
+  'h-[240px] max-h-none transition-[height,max-height] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)]'
 
 const WELCOME_MESSAGE: ComposerChatMessage = {
   role: 'assistant',

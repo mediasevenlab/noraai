@@ -2057,7 +2057,8 @@ function plainCarouselOuterRem(sideSpreadRem: number | null) {
 function embedSideSpreadRem(viewportWidth = window.innerWidth) {
   const root = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
   const halfCard = (AUTH_MEAL_CARD_WIDTH_REM * AUTH_MEAL_SIDE_SCALE * root) / 2
-  const inset = 4
+  // Keep a sliver of the smoke between the side cards and the rounded frame.
+  const inset = 20
   return (viewportWidth / 2 - inset - halfCard) / root
 }
 

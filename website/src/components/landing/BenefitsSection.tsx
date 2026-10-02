@@ -298,11 +298,23 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
                 {demoSrcs.map((src, index) => (
                   <div
                     key={src}
-                    className="absolute inset-0 z-[1] p-4 sm:p-5"
+                    className="absolute inset-0 z-[1]"
                     style={{ opacity: styles[index]?.imageOpacity ?? 0 }}
                   >
-                    <div className="size-full overflow-hidden">
-                      {wide ? <DiaryDemo active={demoActive[index] ?? false} src={src} /> : null}
+                    <div className="size-full overflow-hidden rounded-2xl">
+                      {wide ? (
+                        <DiaryDemo
+                          active={demoActive[index] ?? false}
+                          frameStyle={{
+                            width: '100%',
+                            height: '100%',
+                            border: 0,
+                            borderRadius: '1rem',
+                            background: '#000',
+                          }}
+                          src={src}
+                        />
+                      ) : null}
                     </div>
                   </div>
                 ))}

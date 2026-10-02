@@ -88,7 +88,7 @@ export function AuthPlanMealIdleSheet({
               'transition-[height,max-height,filter] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0',
               collapsing
                 ? 'h-[168px] max-h-[168px] sm:!h-[168px] sm:!max-h-[168px] duration-[620ms]'
-                : 'duration-700',
+                : '!h-[240px] !max-h-none duration-700',
               !done && RATION_PENDING_COVER_CLASS,
             )}
             images={images}
