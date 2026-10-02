@@ -4,6 +4,7 @@ import { ArrowUpRight, BotMessageSquare, ChartPie, Layers } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import ScrollRevealText from './ScrollRevealText'
+import { SmokeBackground } from './SmokeBackground'
 
 type BenefitItem = {
   title: string
@@ -35,64 +36,6 @@ const BENEFITS: BenefitItem[] = [
 type BenefitsSectionProps = {
   signupHref: string
   demoSrcs: string[]
-}
-
-/**
- * Stage matches the carousel, not a desktop column. Side cards spread to
- * about 440px; captions need ~720px of height. A wider stage only adds
- * empty margin and shrinks the demo inside the phone card.
- */
-const MOBILE_DEMO_WIDTH = 440
-const MOBILE_DEMO_HEIGHT = 720
-
-function FittedMobileDemo({ active, src }: { active: boolean; src: string }) {
-  const hostRef = useRef<HTMLDivElement>(null)
-  const [scale, setScale] = useState(0.45)
-
-  useEffect(() => {
-    const host = hostRef.current
-    if (!host) return
-    const update = () => {
-      const box = host.getBoundingClientRect()
-      if (box.width < 8 || box.height < 8) return
-      const next = Math.min(box.width / MOBILE_DEMO_WIDTH, box.height / MOBILE_DEMO_HEIGHT)
-      if (next > 0) setScale(next)
-    }
-    update()
-    const observer = new ResizeObserver(update)
-    observer.observe(host)
-    window.addEventListener('resize', update)
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('resize', update)
-    }
-  }, [])
-
-  // zoom, not transform: mobile browsers leave an iframe blank when an ancestor
-  // is scaled with CSS transform, so the card shows only the gray fill.
-  return (
-    <div ref={hostRef} className="relative size-full overflow-hidden">
-      <div
-        className="absolute top-1/2 left-1/2"
-        style={{
-          width: MOBILE_DEMO_WIDTH,
-          height: MOBILE_DEMO_HEIGHT,
-          transform: `translate(-50%, -50%) scale(${scale})`,
-        }}
-      >
-        <DiaryDemo
-          active={active}
-          frameStyle={{
-            width: '100%',
-            height: '100%',
-            // Safari leaves a transformed iframe blank unless it has its own paint layer.
-            WebkitMaskImage: '-webkit-radial-gradient(white, black)',
-          }}
-          src={src}
-        />
-      </div>
-    </div>
-  )
 }
 
 function DiaryDemo({
@@ -137,7 +80,7 @@ function DiaryDemo({
   return (
     <iframe
       ref={frameRef}
-      className="pointer-events-none border-0 bg-transparent"
+      className="pointer-events-none block size-full border-0 bg-transparent"
       scrolling="no"
       src={src}
       style={frameStyle ?? { width: '100%', height: '100%' }}
@@ -352,11 +295,14 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
           <div className="relative hidden md:block">
             {/* Flow: gray panel stays viewport-tall while left copy scrolls */}
             <div className="sticky top-0 z-0 h-svh w-full py-6 lg:py-8">
-              <div className="relative h-full w-full overflow-hidden rounded-2xl bg-muted">
+              <div className="relative h-full w-full overflow-hidden rounded-2xl bg-black">
+                <div aria-hidden className="pointer-events-none absolute inset-0">
+                  <SmokeBackground className="size-full" smokeColor="#0099ff" />
+                </div>
                 {demoSrcs.map((src, index) => (
                   <div
                     key={src}
-                    className="absolute inset-0 p-4 sm:p-5"
+                    className="absolute inset-0 z-[1] p-4 sm:p-5"
                     style={{ opacity: styles[index]?.imageOpacity ?? 0 }}
                   >
                     <div className="size-full overflow-hidden">
@@ -382,16 +328,20 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
                 mobileRefs.current[index] = node
               }}
             >
-              <div className="relative h-[28rem] overflow-hidden rounded-2xl bg-muted">
-                <div className="absolute inset-0 p-4">
-                  <div className="size-full overflow-hidden">
-                    {!wide ? (
-                      <FittedMobileDemo
-                        active={demoActive[index] ?? false}
-                        src={demoSrcs[index] ?? ''}
-                      />
-                    ) : null}
-                  </div>
+              <div
+                className="relative h-[34rem] overflow-hidden rounded-2xl bg-black"
+                style={{ WebkitMaskImage: '-webkit-radial-gradient(white, black)' }}
+              >
+                <div aria-hidden className="pointer-events-none absolute inset-0">
+                  <SmokeBackground className="size-full" smokeColor="#0099ff" />
+                </div>
+                <div className="absolute inset-1 z-[1]">
+                  {!wide ? (
+                    <DiaryDemo
+                      active={demoActive[index] ?? false}
+                      src={demoSrcs[index] ?? ''}
+                    />
+                  ) : null}
                 </div>
               </div>
               <div className="flex max-w-md items-start gap-3">

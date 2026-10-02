@@ -125,11 +125,11 @@ export default function MosaicShowcase() {
         <p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
           Ведите персональный дневник и держите ритм без лишней сложности.
         </p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+        <div className="mt-6 flex flex-nowrap items-center justify-center gap-1 min-[380px]:gap-1.5 sm:gap-2">
           {TAGS.map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-[#efefef] px-3.5 py-1.5 text-sm font-medium text-[#222] dark:bg-muted dark:text-foreground"
+              className="shrink-0 whitespace-nowrap rounded-full bg-[#efefef] px-2 py-1 text-[11px] font-medium text-[#222] min-[380px]:px-2.5 min-[380px]:text-[12px] sm:px-3.5 sm:py-1.5 sm:text-sm dark:bg-muted dark:text-foreground"
             >
               {tag}
             </span>
@@ -150,7 +150,7 @@ export default function MosaicShowcase() {
               alt="Приложение на телефоне"
               className="h-auto w-[min(58vw,260px)] drop-shadow-[0_24px_60px_rgba(0,0,0,0.28)] sm:w-[300px] lg:w-[340px]"
               draggable={false}
-              src="/landing/mosaic/iphone-foreground-2.png"
+              src="/landing/mosaic/iphone-foreground-5.png"
             />
           </div>
 

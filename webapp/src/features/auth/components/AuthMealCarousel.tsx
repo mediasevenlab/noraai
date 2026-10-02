@@ -145,15 +145,21 @@ function mentorDemoWeek<T extends { days: number }>(ration: T): T {
 const CARD_FRAME_CLASS = 'h-[365px] w-[16.75rem]'
 const OPEN_FRAME_CLASS = 'h-[min(44rem,calc(100svh-10rem))] w-[24.5rem]'
 const OPEN_MENTOR_FRAME_CLASS = 'h-[min(47rem,calc(100svh-8rem))] w-[24.5rem]'
+/** Phone embed: captions are hidden, so the sheet can use the frame height. */
+const OPEN_FRAME_COMPACT_CLASS = 'h-[min(44rem,calc(100svh-2rem))] w-[24.5rem]'
+const OPEN_MENTOR_FRAME_COMPACT_CLASS = 'h-[min(47rem,calc(100svh-2rem))] w-[24.5rem]'
 const MENTOR_CREATE_CLASS = cn(
   'nora-press-grow ios-glass-glare inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border-0 px-3',
   'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-none text-[var(--nora-text-secondary)]',
   'bg-[var(--nora-inset)] shadow-[var(--nora-shadow-modal)]',
 )
 const OPEN_DAY_PICKER_FRAME_CLASS = 'h-[min(34rem,calc(100svh-10rem))] w-[24.5rem]'
+const OPEN_DAY_PICKER_FRAME_COMPACT_CLASS = 'h-[min(34rem,calc(100svh-2rem))] w-[24.5rem]'
 /** Same width as the other demo sheets; tall enough for the seven plan days. */
 const OPEN_PLAN_PICKER_FRAME_CLASS = 'h-[min(38rem,calc(100svh-10rem))] w-[24.5rem]'
+const OPEN_PLAN_PICKER_FRAME_COMPACT_CLASS = 'h-[min(38rem,calc(100svh-2rem))] w-[24.5rem]'
 const OPEN_PLAN_START_FRAME_CLASS = 'h-[min(26rem,calc(100svh-10rem))] w-[24.5rem]'
+const OPEN_PLAN_START_FRAME_COMPACT_CLASS = 'h-[min(26rem,calc(100svh-2rem))] w-[24.5rem]'
 const MOTION_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
 const PRESS_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 const CAPTION_FADE_MS = 340
@@ -195,10 +201,16 @@ export function AuthMealCarousel({
   const [sideSpreadRem, setSideSpreadRem] = React.useState<number | null>(() =>
     plain && typeof window !== 'undefined' ? embedSideSpreadRem() : null,
   )
+  const [compactFrame, setCompactFrame] = React.useState(
+    () => plain && typeof window !== 'undefined' && window.innerWidth <= 520,
+  )
 
   React.useEffect(() => {
     if (!plain) return
-    const update = () => setSideSpreadRem(embedSideSpreadRem())
+    const update = () => {
+      setSideSpreadRem(embedSideSpreadRem())
+      setCompactFrame(window.innerWidth <= 520)
+    }
     update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
@@ -1332,7 +1344,7 @@ export function AuthMealCarousel({
       >
         <AuthDemoCaption captionId={pitchCaptionId} reduceMotion={reduceMotion} />
       </div>
-      <div className="relative z-[6] h-[5.5rem] shrink-0" aria-hidden />
+      {compactFrame ? null : <div className="relative z-[6] h-[5.5rem] shrink-0" aria-hidden />}
       <div
         aria-hidden
         className="relative flex min-h-0 flex-1 items-center justify-center"
@@ -1478,14 +1490,24 @@ export function AuthMealCarousel({
                 expanded && 'rounded-[22px]',
                 expanded
                   ? openSheet === 'day-picker'
-                    ? OPEN_PLAN_PICKER_FRAME_CLASS
+                    ? compactFrame
+                      ? OPEN_PLAN_PICKER_FRAME_COMPACT_CLASS
+                      : OPEN_PLAN_PICKER_FRAME_CLASS
                     : openSheet === 'plan-start'
-                      ? OPEN_PLAN_START_FRAME_CLASS
+                      ? compactFrame
+                        ? OPEN_PLAN_START_FRAME_COMPACT_CLASS
+                        : OPEN_PLAN_START_FRAME_CLASS
                       : openSheet === 'shopping'
-                      ? OPEN_DAY_PICKER_FRAME_CLASS
+                      ? compactFrame
+                        ? OPEN_DAY_PICKER_FRAME_COMPACT_CLASS
+                        : OPEN_DAY_PICKER_FRAME_CLASS
                       : openSheet === 'mentor-create'
-                        ? OPEN_MENTOR_FRAME_CLASS
-                        : OPEN_FRAME_CLASS
+                        ? compactFrame
+                          ? OPEN_MENTOR_FRAME_COMPACT_CLASS
+                          : OPEN_MENTOR_FRAME_CLASS
+                        : compactFrame
+                          ? OPEN_FRAME_COMPACT_CLASS
+                          : OPEN_FRAME_CLASS
                   : CARD_FRAME_CLASS,
                 dimSide && 'pointer-events-none',
                 'after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-[color-mix(in_srgb,var(--nora-canvas)_16%,transparent)] after:transition-opacity after:duration-700 after:ease-[cubic-bezier(0.22,1,0.36,1)]',
@@ -2014,7 +2036,7 @@ function plainCarouselOuterRem(sideSpreadRem: number | null) {
 function embedSideSpreadRem() {
   const root = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
   const halfCard = (AUTH_MEAL_CARD_WIDTH_REM * AUTH_MEAL_SIDE_SCALE * root) / 2
-  const inset = 12
+  const inset = 4
   return (window.innerWidth / 2 - inset - halfCard) / root
 }
 

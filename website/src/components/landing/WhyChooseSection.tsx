@@ -9,7 +9,7 @@ const items = [
     title: 'Быстрый старт',
     description:
       'Зарегистрируйтесь и сразу откройте дневник: первый день питания можно собрать за несколько минут.',
-    image: '/landing/why-choose/why-01-frame8.png',
+    image: '/landing/why-choose/why-01-frame4.png',
     imageAlt: 'Интерфейс приложения — быстрый старт',
     imageFirst: true,
   },
@@ -18,7 +18,7 @@ const items = [
     title: 'Планы и дневник',
     description:
       'Недельный план и факт приёмов в одном месте — без таблиц и переписок в разных чатах.',
-    image: '/landing/why-choose/why-02-frame9.png',
+    image: '/landing/why-choose/why-02-frame5.png',
     imageAlt: 'Интерфейс приложения — планы и дневник',
     imageFirst: false,
   },
@@ -27,7 +27,7 @@ const items = [
     title: 'Наставник рядом',
     description:
       'Получайте рационы и правки от наставника прямо в приложении — клиенту и наставнику удобно работать вместе.',
-    image: '/landing/why-choose/why-03-frame10.png',
+    image: '/landing/why-choose/why-03-frame6.png',
     imageAlt: 'Интерфейс приложения — работа с наставником',
     imageFirst: true,
   },
