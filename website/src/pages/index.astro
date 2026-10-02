@@ -25,7 +25,14 @@ function webappHref(path: `/${string}`) {
 
 const loginHref = webappHref('/login')
 const signupHref = webappHref('/signup')
-const authDemoBase = `${publicWebappUrl || 'http://localhost:5173'}/embed/auth-demo`
+// The diary page is served on this same host in production. Baking localhost
+// into the static page makes a phone load an empty frame: the address points
+// at the phone itself, so neither the cards nor the smoke inside that frame appear.
+const authDemoBase = publicWebappUrl
+  ? `${publicWebappUrl}/embed/auth-demo`
+  : import.meta.env.DEV
+    ? 'http://localhost:5173/embed/auth-demo'
+    : '/embed/auth-demo'
 const authDemoSrcs = [
   `${authDemoBase}?surface=login`,
   `${authDemoBase}?surface=signup-user`,
