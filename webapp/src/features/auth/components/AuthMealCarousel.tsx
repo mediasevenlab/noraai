@@ -160,6 +160,12 @@ const OPEN_PLAN_PICKER_FRAME_CLASS = 'h-[min(38rem,calc(100svh-10rem))] w-[24.5r
 const OPEN_PLAN_PICKER_FRAME_COMPACT_CLASS = 'h-[min(38rem,calc(100svh-2rem))] w-[24.5rem]'
 const OPEN_PLAN_START_FRAME_CLASS = 'h-[min(26rem,calc(100svh-10rem))] w-[24.5rem]'
 const OPEN_PLAN_START_FRAME_COMPACT_CLASS = 'h-[min(26rem,calc(100svh-2rem))] w-[24.5rem]'
+/** Phone embed lays out a 720px-tall stage, then scales it with the cards. */
+const OPEN_FRAME_FIT_CLASS = 'h-[43rem] w-[24.5rem]'
+const OPEN_DAY_PICKER_FRAME_FIT_CLASS = 'h-[34rem] w-[24.5rem]'
+const OPEN_PLAN_PICKER_FRAME_FIT_CLASS = 'h-[38rem] w-[24.5rem]'
+const OPEN_PLAN_START_FRAME_FIT_CLASS = 'h-[26rem] w-[24.5rem]'
+const PHONE_EMBED_STAGE_WIDTH = 440
 const MOTION_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
 const PRESS_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 const CAPTION_FADE_MS = 340
@@ -191,15 +197,20 @@ const AUTH_DEMO_CAPTION_ICONS = {
 } satisfies Record<AuthDemoCaptionId, LucideIcon>
 
 export function AuthMealCarousel({
+  fittedPhone = false,
   surface = 'login',
   plain = false,
 }: {
   surface?: AuthDemoSurface
   /** Landing embed: pull side cards inward so the frame does not crop them. */
   plain?: boolean
+  /** Short landing frame: sheets use the 720px stage height and scale with the cards. */
+  fittedPhone?: boolean
 }) {
   const [sideSpreadRem, setSideSpreadRem] = React.useState<number | null>(() =>
-    plain && typeof window !== 'undefined' ? embedSideSpreadRem() : null,
+    plain && typeof window !== 'undefined'
+      ? embedSideSpreadRem(fittedPhone ? PHONE_EMBED_STAGE_WIDTH : window.innerWidth)
+      : null,
   )
   const [compactFrame, setCompactFrame] = React.useState(
     () => plain && typeof window !== 'undefined' && window.innerWidth <= 520,
@@ -208,13 +219,13 @@ export function AuthMealCarousel({
   React.useEffect(() => {
     if (!plain) return
     const update = () => {
-      setSideSpreadRem(embedSideSpreadRem())
+      setSideSpreadRem(embedSideSpreadRem(fittedPhone ? PHONE_EMBED_STAGE_WIDTH : window.innerWidth))
       setCompactFrame(window.innerWidth <= 520)
     }
     update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
-  }, [plain])
+  }, [fittedPhone, plain])
 
   const meals = React.useMemo(() => authPreviewMeals().slice(0, 5), [])
   const lossRation = React.useMemo(() => authPreviewRation(), [])
@@ -1490,24 +1501,34 @@ export function AuthMealCarousel({
                 expanded && 'rounded-[22px]',
                 expanded
                   ? openSheet === 'day-picker'
-                    ? compactFrame
-                      ? OPEN_PLAN_PICKER_FRAME_COMPACT_CLASS
-                      : OPEN_PLAN_PICKER_FRAME_CLASS
+                    ? fittedPhone
+                      ? OPEN_PLAN_PICKER_FRAME_FIT_CLASS
+                      : compactFrame
+                        ? OPEN_PLAN_PICKER_FRAME_COMPACT_CLASS
+                        : OPEN_PLAN_PICKER_FRAME_CLASS
                     : openSheet === 'plan-start'
-                      ? compactFrame
-                        ? OPEN_PLAN_START_FRAME_COMPACT_CLASS
-                        : OPEN_PLAN_START_FRAME_CLASS
-                      : openSheet === 'shopping'
-                      ? compactFrame
-                        ? OPEN_DAY_PICKER_FRAME_COMPACT_CLASS
-                        : OPEN_DAY_PICKER_FRAME_CLASS
-                      : openSheet === 'mentor-create'
-                        ? compactFrame
-                          ? OPEN_MENTOR_FRAME_COMPACT_CLASS
-                          : OPEN_MENTOR_FRAME_CLASS
+                      ? fittedPhone
+                        ? OPEN_PLAN_START_FRAME_FIT_CLASS
                         : compactFrame
-                          ? OPEN_FRAME_COMPACT_CLASS
-                          : OPEN_FRAME_CLASS
+                          ? OPEN_PLAN_START_FRAME_COMPACT_CLASS
+                          : OPEN_PLAN_START_FRAME_CLASS
+                      : openSheet === 'shopping'
+                      ? fittedPhone
+                        ? OPEN_DAY_PICKER_FRAME_FIT_CLASS
+                        : compactFrame
+                          ? OPEN_DAY_PICKER_FRAME_COMPACT_CLASS
+                          : OPEN_DAY_PICKER_FRAME_CLASS
+                      : openSheet === 'mentor-create'
+                        ? fittedPhone
+                          ? OPEN_FRAME_FIT_CLASS
+                          : compactFrame
+                            ? OPEN_MENTOR_FRAME_COMPACT_CLASS
+                            : OPEN_MENTOR_FRAME_CLASS
+                        : fittedPhone
+                          ? OPEN_FRAME_FIT_CLASS
+                          : compactFrame
+                            ? OPEN_FRAME_COMPACT_CLASS
+                            : OPEN_FRAME_CLASS
                   : CARD_FRAME_CLASS,
                 dimSide && 'pointer-events-none',
                 'after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-[color-mix(in_srgb,var(--nora-canvas)_16%,transparent)] after:transition-opacity after:duration-700 after:ease-[cubic-bezier(0.22,1,0.36,1)]',
@@ -2033,11 +2054,11 @@ function plainCarouselOuterRem(sideSpreadRem: number | null) {
 }
 
 /** How far side cards can sit before their outer edge meets the embed frame. */
-function embedSideSpreadRem() {
+function embedSideSpreadRem(viewportWidth = window.innerWidth) {
   const root = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
   const halfCard = (AUTH_MEAL_CARD_WIDTH_REM * AUTH_MEAL_SIDE_SCALE * root) / 2
   const inset = 4
-  return (window.innerWidth / 2 - inset - halfCard) / root
+  return (viewportWidth / 2 - inset - halfCard) / root
 }
 
 function carouselTransform(offset: number, expanded: boolean, sideSpreadRem: number | null = null) {

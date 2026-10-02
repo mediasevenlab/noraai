@@ -5,7 +5,7 @@ import {
 } from '@/components/icons'
 import { useTheme } from 'next-themes'
 import { Link } from '@tanstack/react-router'
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import {
   authDemoSurfaceWindow,
@@ -25,10 +25,69 @@ import { Button } from '@/components/ui/button'
 import { SmokeBackground } from '@/components/ui/spooky-smoke-animation'
 import { cn } from '@/lib/utils'
 
+/** Layout size where the open sheet keeps the same proportions as the cards. */
+const PHONE_EMBED_WIDTH = 440
+const PHONE_EMBED_HEIGHT = 720
+
+function phoneEmbedFitActive(plain: boolean) {
+  return plain && typeof window !== 'undefined' && window.innerHeight < 640
+}
+
+function PhoneEmbedFrame({ active, children }: { active: boolean; children: ReactNode }) {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState({ scale: 1, left: 0, top: 0 })
+
+  useEffect(() => {
+    if (!active) return
+    const host = hostRef.current
+    if (!host) return
+    const update = () => {
+      const box = host.getBoundingClientRect()
+      if (box.width < 1 || box.height < 1) return
+      const scale = Math.min(box.width / PHONE_EMBED_WIDTH, box.height / PHONE_EMBED_HEIGHT)
+      setFit({
+        scale,
+        left: (box.width - PHONE_EMBED_WIDTH * scale) / 2,
+        top: (box.height - PHONE_EMBED_HEIGHT * scale) / 2,
+      })
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(host)
+    window.addEventListener('resize', update)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [active])
+
+  if (!active) return children
+
+  return (
+    <div ref={hostRef} className="absolute inset-0 z-[1]">
+      <div
+        className="absolute"
+        style={{
+          width: PHONE_EMBED_WIDTH,
+          height: PHONE_EMBED_HEIGHT,
+          left: fit.left,
+          top: fit.top,
+          transform: `scale(${fit.scale})`,
+          transformOrigin: 'top left',
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
 function AuthDemoStage({
+  fittedPhone = false,
   surface,
   plain = false,
 }: {
+  fittedPhone?: boolean
   surface: AuthDemoSurface
   plain?: boolean
 }) {
@@ -65,7 +124,12 @@ function AuthDemoStage({
           remountHold && !plain && 'invisible',
         )}
       >
-        <AuthMealCarousel key={generation} plain={plain} surface={surface} />
+        <AuthMealCarousel
+          fittedPhone={fittedPhone}
+          key={generation}
+          plain={plain}
+          surface={surface}
+        />
       </div>
     </div>
   )
@@ -112,6 +176,15 @@ export function AuthDemoPanel({
   autoplay?: boolean
 }) {
   const surfaceWindow = authDemoSurfaceWindow(surface)
+  const [fittedPhone, setFittedPhone] = useState(() => phoneEmbedFitActive(plain))
+
+  useEffect(() => {
+    if (!plain) return
+    const update = () => setFittedPhone(phoneEmbedFitActive(true))
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [plain])
 
   return (
     <AuthDemoPlaybackProvider
@@ -127,11 +200,20 @@ export function AuthDemoPanel({
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-black">
           <SmokeBackground className="size-full" smokeColor="#0099ff" />
         </div>
-        <div className="relative z-[1] flex h-full min-h-svh flex-col px-6 pb-16 pt-6 md:px-10 md:pb-20 md:pt-10">
-          <div className="flex min-h-0 flex-1 justify-center">
-            <AuthDemoStage plain={plain} surface={surface} />
+        <PhoneEmbedFrame active={fittedPhone}>
+          <div
+            className={cn(
+              'relative z-[1] flex h-full flex-col',
+              fittedPhone
+                ? 'h-full w-full'
+                : 'min-h-svh px-6 pb-16 pt-6 md:px-10 md:pb-20 md:pt-10',
+            )}
+          >
+            <div className="flex min-h-0 flex-1 justify-center">
+              <AuthDemoStage fittedPhone={fittedPhone} plain={plain} surface={surface} />
+            </div>
           </div>
-        </div>
+        </PhoneEmbedFrame>
         {showThemeToggle ? (
           <div className="absolute top-6 right-6 z-10 flex items-center gap-1.5 md:top-10 md:right-10">
             <AuthThemeToggle className="bg-[var(--nora-panel)]/80 shadow-[inset_0_0_0_1px_var(--nora-border,rgba(0,0,0,0.08))] backdrop-blur-sm hover:bg-[var(--nora-panel)]" />
