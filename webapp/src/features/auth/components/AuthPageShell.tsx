@@ -106,7 +106,7 @@ export function AuthDemoPanel({
   surface?: AuthDemoSurface
   className?: string
   showThemeToggle?: boolean
-  /** Landing embed: cards only, no smoke. The page behind the frame shows through. */
+  /** Landing embed: hide captions and pull side cards in. Smoke stays in this document so iOS paints the frame. */
   plain?: boolean
   /** When false, the clock stays at the first frame until playFrom. */
   autoplay?: boolean
@@ -121,14 +121,12 @@ export function AuthDemoPanel({
       startMs={surfaceWindow.startMs}
     >
       <section
-        className={cn('relative overflow-hidden', plain ? 'bg-transparent' : 'bg-black', className)}
+        className={cn('relative overflow-hidden bg-black', className)}
         data-auth-demo-plain={plain ? '' : undefined}
       >
-        {plain ? null : (
-          <div aria-hidden className="pointer-events-none absolute inset-0 bg-black">
-            <SmokeBackground className="size-full" smokeColor="#0099ff" />
-          </div>
-        )}
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-black">
+          <SmokeBackground className="size-full" smokeColor="#0099ff" />
+        </div>
         <div className="relative z-[1] flex h-full min-h-svh flex-col px-6 pb-16 pt-6 md:px-10 md:pb-20 md:pt-10">
           <div className="flex min-h-0 flex-1 justify-center">
             <AuthDemoStage plain={plain} surface={surface} />

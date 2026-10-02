@@ -4,7 +4,6 @@ import { ArrowUpRight, BotMessageSquare, ChartPie, Layers } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import ScrollRevealText from './ScrollRevealText'
-import { SmokeBackground } from './SmokeBackground'
 
 type BenefitItem = {
   title: string
@@ -80,7 +79,7 @@ function DiaryDemo({
   return (
     <iframe
       ref={frameRef}
-      className="pointer-events-none block size-full border-0 bg-transparent"
+      className="pointer-events-none block size-full border-0 bg-black"
       scrolling="no"
       src={src}
       style={frameStyle ?? { width: '100%', height: '100%' }}
@@ -296,9 +295,6 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
             {/* Flow: gray panel stays viewport-tall while left copy scrolls */}
             <div className="sticky top-0 z-0 h-svh w-full py-6 lg:py-8">
               <div className="relative h-full w-full overflow-hidden rounded-2xl bg-black">
-                <div aria-hidden className="pointer-events-none absolute inset-0">
-                  <SmokeBackground className="size-full" smokeColor="#0099ff" />
-                </div>
                 {demoSrcs.map((src, index) => (
                   <div
                     key={src}
@@ -328,21 +324,22 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
                 mobileRefs.current[index] = node
               }}
             >
-              <div
-                className="relative h-[34rem] overflow-hidden rounded-2xl bg-black"
-                style={{ WebkitMaskImage: '-webkit-radial-gradient(white, black)' }}
-              >
-                <div aria-hidden className="pointer-events-none absolute inset-0">
-                  <SmokeBackground className="size-full" smokeColor="#0099ff" />
-                </div>
-                <div className="absolute inset-1 z-[1]">
-                  {!wide ? (
-                    <DiaryDemo
-                      active={demoActive[index] ?? false}
-                      src={demoSrcs[index] ?? ''}
-                    />
-                  ) : null}
-                </div>
+              <div className="relative h-[34rem] rounded-2xl bg-black">
+                {!wide ? (
+                  <DiaryDemo
+                    active={demoActive[index] ?? false}
+                    frameStyle={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      border: 0,
+                      borderRadius: '1rem',
+                      background: '#000',
+                    }}
+                    src={demoSrcs[index] ?? ''}
+                  />
+                ) : null}
               </div>
               <div className="flex max-w-md items-start gap-3">
                 <Icon aria-hidden="true" className="mt-1.5 size-6 shrink-0" />

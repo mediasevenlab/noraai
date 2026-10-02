@@ -109,11 +109,11 @@ export function AuthDemoEmbedPage() {
       overflow: node.style.overflow,
     }))
     for (const node of nodes) {
-      node.style.setProperty('background', 'transparent', 'important')
+      // An opaque document is required: iOS Safari drops a transparent iframe,
+      // so the landing would show only the panel behind it.
+      node.style.setProperty('background', '#000000', 'important')
       node.style.setProperty('overflow', 'hidden', 'important')
     }
-    // Dark color-scheme paints a black canvas through a transparent root, so the
-    // landing gray panel disappears behind the demo.
     const root = document.documentElement
     const previousColorScheme = root.style.colorScheme
     root.style.setProperty('color-scheme', 'light', 'important')
@@ -130,7 +130,7 @@ export function AuthDemoEmbedPage() {
     <AuthDemoPanel
       key={surface}
       autoplay={!framed}
-      className="h-dvh w-full bg-transparent"
+      className="h-dvh w-full bg-black"
       plain
       showThemeToggle={false}
       surface={
