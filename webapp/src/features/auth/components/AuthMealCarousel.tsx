@@ -1461,9 +1461,11 @@ export function AuthMealCarousel({
             style={{
               filter: dimSide
                 ? 'blur(3px) saturate(0.88) brightness(0.97)'
-                : expanded && plain
-                  ? 'blur(0px) saturate(1) brightness(1) drop-shadow(0 22px 48px rgba(0,0,0,0.18)) drop-shadow(0 2px 8px rgba(0,0,0,0.08))'
-                  : 'blur(0px) saturate(1) brightness(1)',
+                : expanded
+                  ? 'blur(0px) saturate(1) brightness(1) drop-shadow(0 23px 50px rgba(0,0,0,0.16)) drop-shadow(0 2px 9px rgba(0,0,0,0.07))'
+                  : isFront
+                    ? 'blur(0px) saturate(1) brightness(1) drop-shadow(0 19px 38px rgba(0,0,0,0.15)) drop-shadow(0 2px 8px rgba(0,0,0,0.07))'
+                    : 'blur(0px) saturate(1) brightness(1)',
               opacity: visible ? 1 : 0,
               transform: carouselTransform(offset, expanded, plain ? sideSpreadRem : null),
               transitionDuration: reduceMotion ? '0ms' : `${frameMs}ms`,

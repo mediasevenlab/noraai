@@ -3,7 +3,6 @@ import { ArrowUpRight, BotMessageSquare, ChartPie, Layers } from 'lucide-react'
 
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import GraySmoke from './GraySmoke'
 import ScrollRevealText from './ScrollRevealText'
 
 type BenefitItem = {
@@ -14,21 +13,21 @@ type BenefitItem = {
 
 const BENEFITS: BenefitItem[] = [
   {
-    title: 'Дневник за день на одном экране',
+    title: 'Приём пищи с фото или голоса',
     description:
-      'Видите приёмы пищи, КБЖУ и заметки без таблиц и разрозненных чатов — всё нужное за сегодня собрано в одном спокойном интерфейсе.',
+      'Откройте карточку и пришлите снимок тарелки, пару слов или голосовое — блюдо, калории и состав появятся без таблиц и взвешивания.',
     icon: ChartPie,
   },
   {
-    title: 'Планы и дневник рядом',
+    title: 'Рацион на выбранные дни',
     description:
-      'Недельный план и факт приёмов живут вместе: проще держаться курса и не тратить время на ручные сверки в разных приложениях.',
+      'Возьмите готовый план и отметьте дни недели. Меню встанет туда, куда нужно, а свободные дни останутся вашими.',
     icon: BotMessageSquare,
   },
   {
-    title: 'Понятный сценарий день за днём',
+    title: 'Наставник собирает рацион',
     description:
-      'Добавляйте приёмы, отмечайте выполненное и двигайтесь по плану без лишней сложности — интерфейс подстраивается под привычный ритм.',
+      'Название, короткое описание и дни — в одной карточке. Клиент получает готовый план, без таблиц и правок в чатах.',
     icon: Layers,
   },
 ]
@@ -36,6 +35,48 @@ const BENEFITS: BenefitItem[] = [
 type BenefitsSectionProps = {
   signupHref: string
   demoSrcs: string[]
+}
+
+/**
+ * Stage matches the carousel, not a desktop column. Side cards spread to
+ * about 440px; captions need ~720px of height. A wider stage only adds
+ * empty margin and shrinks the demo inside the phone card.
+ */
+const MOBILE_DEMO_WIDTH = 440
+const MOBILE_DEMO_HEIGHT = 720
+
+function FittedMobileDemo({ active, src }: { active: boolean; src: string }) {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(0.4)
+
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host) return
+    const update = () => {
+      const box = host.getBoundingClientRect()
+      if (box.width < 1 || box.height < 1) return
+      setScale(Math.min(box.width / MOBILE_DEMO_WIDTH, box.height / MOBILE_DEMO_HEIGHT))
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(host)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div ref={hostRef} className="relative size-full overflow-hidden">
+      <div
+        className="absolute top-1/2 left-1/2"
+        style={{
+          width: MOBILE_DEMO_WIDTH,
+          height: MOBILE_DEMO_HEIGHT,
+          transform: `translate(-50%, -50%) scale(${scale})`,
+        }}
+      >
+        <DiaryDemo active={active} src={src} />
+      </div>
+    </div>
+  )
 }
 
 function DiaryDemo({ active, src }: { active: boolean; src: string }) {
@@ -229,7 +270,7 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
           <a
             className={cn(
               buttonVariants({ size: 'lg' }),
-              'h-10 gap-2 rounded-lg px-6 text-base ring-2 ring-primary/60',
+              'h-10 gap-2 rounded-lg px-6 text-sm',
             )}
             href={signupHref}
           >
@@ -239,7 +280,7 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
           <a
             className={cn(
               buttonVariants({ size: 'lg', variant: 'secondary' }),
-              'h-10 gap-2 rounded-lg px-6 text-base ring-2 ring-secondary/60',
+              'h-10 gap-2 rounded-lg px-6 text-sm',
             )}
             href="#features"
           >
@@ -289,7 +330,6 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
             {/* Flow: gray panel stays viewport-tall while left copy scrolls */}
             <div className="sticky top-0 z-0 h-svh w-full py-6 lg:py-8">
               <div className="relative h-full w-full overflow-hidden rounded-2xl bg-muted">
-                {wide ? <GraySmoke /> : null}
                 {demoSrcs.map((src, index) => (
                   <div
                     key={src}
@@ -320,11 +360,13 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
               }}
             >
               <div className="relative h-[28rem] overflow-hidden rounded-2xl bg-muted">
-                {!wide ? <GraySmoke /> : null}
                 <div className="absolute inset-0 p-4">
                   <div className="size-full overflow-hidden">
                     {!wide ? (
-                      <DiaryDemo active={demoActive[index] ?? false} src={demoSrcs[index] ?? ''} />
+                      <FittedMobileDemo
+                        active={demoActive[index] ?? false}
+                        src={demoSrcs[index] ?? ''}
+                      />
                     ) : null}
                   </div>
                 </div>

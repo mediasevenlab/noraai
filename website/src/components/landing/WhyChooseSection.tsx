@@ -9,16 +9,16 @@ const items = [
     title: 'Быстрый старт',
     description:
       'Зарегистрируйтесь и сразу откройте дневник: первый день питания можно собрать за несколько минут.',
-    image: '/landing/why-choose/why-01-frame4.png',
+    image: '/landing/why-choose/why-01-frame8.png',
     imageAlt: 'Интерфейс приложения — быстрый старт',
     imageFirst: true,
   },
   {
     number: '02',
-    title: 'Планы и дневник вместе',
+    title: 'Планы и дневник',
     description:
       'Недельный план и факт приёмов в одном месте — без таблиц и переписок в разных чатах.',
-    image: '/landing/why-choose/why-02-frame5.png',
+    image: '/landing/why-choose/why-02-frame9.png',
     imageAlt: 'Интерфейс приложения — планы и дневник',
     imageFirst: false,
   },
@@ -27,7 +27,7 @@ const items = [
     title: 'Наставник рядом',
     description:
       'Получайте рационы и правки от наставника прямо в приложении — клиенту и наставнику удобно работать вместе.',
-    image: '/landing/why-choose/why-03-frame6.png',
+    image: '/landing/why-choose/why-03-frame10.png',
     imageAlt: 'Интерфейс приложения — работа с наставником',
     imageFirst: true,
   },
@@ -79,8 +79,8 @@ export default function WhyChooseSection({ href }: WhyChooseSectionProps) {
               title="Подробнее"
             >
               <div className="group/card relative z-0 w-full rounded-3xl bg-muted/70 p-4">
-                <div className="flex flex-col">
-                  <div className={item.imageFirst ? 'order-1' : 'order-2'}>
+                <div className="flex flex-col gap-6">
+                  <div className={item.imageFirst ? 'order-1' : 'order-1 lg:order-2'}>
                     <img
                       alt={item.imageAlt}
                       className="h-70 w-full rounded-3xl object-cover group-hover/card:shadow-xl"
@@ -91,9 +91,11 @@ export default function WhyChooseSection({ href }: WhyChooseSectionProps) {
                     />
                   </div>
                   <div
-                    className={`mt-4 w-full p-3 ${item.imageFirst ? 'order-2' : 'order-1'}`}
+                    className={`w-full p-3 ${item.imageFirst ? 'order-2' : 'order-2 lg:order-1'}`}
                   >
-                    <p className="leading-none tracking-tighter opacity-50">{item.number}</p>
+                    <p className="inline-flex size-8 items-center justify-center rounded-full bg-background text-xs leading-none font-medium tracking-tight text-muted-foreground">
+                      {item.number}
+                    </p>
                     <ScrollRevealText
                       as="h3"
                       className="my-3 font-heading text-3xl leading-none font-semibold tracking-tighter"

@@ -112,11 +112,18 @@ export function AuthDemoEmbedPage() {
       node.style.setProperty('background', 'transparent', 'important')
       node.style.setProperty('overflow', 'hidden', 'important')
     }
+    // Dark color-scheme paints a black canvas through a transparent root, so the
+    // landing gray panel disappears behind the demo.
+    const root = document.documentElement
+    const previousColorScheme = root.style.colorScheme
+    root.style.setProperty('color-scheme', 'light', 'important')
     return () => {
       nodes.forEach((node, index) => {
         node.style.background = previous[index]?.background ?? ''
         node.style.overflow = previous[index]?.overflow ?? ''
       })
+      if (previousColorScheme) root.style.colorScheme = previousColorScheme
+      else root.style.removeProperty('color-scheme')
     }
   }, [])
   return (
