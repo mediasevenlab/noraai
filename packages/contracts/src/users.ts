@@ -65,7 +65,7 @@ export const questionnaireAnswersSchema = z
     goal: requiredAnswerText(),
     goalDetail: optionalAnswerText().default(''),
     targetWeight: optionalAnswerText(120).default(''),
-    timeline: requiredAnswerText(),
+    timeline: optionalAnswerText(120).default(''),
     activity: requiredAnswerText(),
     activityDetail: optionalAnswerText().default(''),
     meals: requiredAnswerText(),
@@ -87,6 +87,7 @@ export type QuestionnaireAnswers = z.infer<typeof questionnaireAnswersSchema>
 export const QUESTIONNAIRE_OPTIONAL_KEYS = [
   'goalDetail',
   'targetWeight',
+  'timeline',
   'activityDetail',
   'routineDetail',
   'notes',

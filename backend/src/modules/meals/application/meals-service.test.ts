@@ -1154,6 +1154,85 @@ describe('MealsService', () => {
     expect(refined.meal.assumptions).toContain('Добавлено своё фото')
   })
 
+  test('refineMeal keeps every attached photo', async () => {
+    const existing = mealRecord({
+      title: 'Овсянка',
+      ingredients: 'Овсянка',
+      category: 'Завтрак',
+      mealSlot: 'Завтрак',
+      kcal: 300,
+      protein: 10,
+      fat: 8,
+      carbs: 40,
+    })
+    let savedKeys: string[] = []
+    let attachCount = 0
+    const service = new MealsService({
+      analyzer: {
+        analyze: async () => {
+          throw new Error('unused')
+        },
+        refine: async (input) => {
+          attachCount = input.attachImages?.length ?? 0
+          return {
+            ok: true as const,
+            model: 'gemini-test',
+            meal: {
+              title: 'Овсянка',
+              excerpt: 'Овсянка',
+              body: '',
+              category: 'Завтрак',
+              mealType: 'Завтрак',
+              tags: [] as string[],
+              nutrition: { kcal: 300, protein: 10, fat: 8, carbs: 40 },
+              clientNoteStructured: '',
+              composition: [{ label: 'Овсянка ~200 г', kcal: 300, protein: 10, fat: 8, carbs: 40 }],
+              assumptions: [],
+              micronutrients: [],
+            },
+          }
+        },
+      },
+      imageStore: {
+        saveImage: async () => {
+          const imageKey = `meals/extra-${savedKeys.length + 1}.jpg`
+          savedKeys = [...savedKeys, imageKey]
+          return { imageKey, imageMime: 'image/jpeg' }
+        },
+        readImage: async () => Buffer.from('cover-bytes'),
+      },
+      imageUrlBuilder: imageUrls((id) => `/img/${id}`),
+      repository: repositoryStub({
+        findMealById: async () => existing,
+        updateMealContent: async (_id, content) => {
+          savedKeys = content.versions.at(-1)?.extraImageKeys ?? savedKeys
+          return mealRecord({
+            ...content,
+            id: existing.id,
+            userId: existing.userId,
+            imageKey: existing.imageKey,
+            imageMime: existing.imageMime,
+          })
+        },
+      }),
+    })
+
+    await service.refineMeal(
+      { id: existing.userId, role: 'user' },
+      existing.id,
+      {
+        message: 'добавил ещё',
+        images: [
+          { imageBase64: 'one', imageMime: 'image/jpeg' },
+          { imageBase64: 'two', imageMime: 'image/png' },
+        ],
+      },
+    )
+
+    expect(attachCount).toBe(2)
+    expect(savedKeys).toEqual(['meals/extra-1.jpg', 'meals/extra-2.jpg'])
+  })
+
   test('refineMeal with attach photo keeps the current foods and adds the photo foods', async () => {
     const existing = mealRecord({
       title: 'Рецепт шашлыка из свинины в духовке',

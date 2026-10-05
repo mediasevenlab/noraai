@@ -8,7 +8,7 @@ import {
   ZapIcon,
 } from '@/components/icons'
 
-import { NoraButton, NoraIconButton } from '@/components/nora/primitives'
+import { NoraButton, NoraHoverTip, NoraIconButton } from '@/components/nora/primitives'
 import {
   productCardGoalAnchorClass,
   productCardFooterCtaClass,
@@ -453,26 +453,30 @@ export function RationCard({
               {hideAdd ? 'Открыть' : used ? 'Добавлен в план' : addLabel}
             </NoraButton>
             <div className="flex items-center gap-1" onClick={(event) => event.stopPropagation()}>
-              <NoraIconButton
-                aria-label={saved ? 'Убрать' : 'Сохранить'}
-                active={saved}
-                className={cn(
-                  'nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent active:!bg-transparent [&_svg]:size-4',
-                  saved
-                    ? 'text-[var(--nora-tint)] hover:!text-[var(--nora-tint)]'
-                    : 'hover:text-[var(--nora-text)]',
-                )}
-                onClick={onToggleSave}
-              >
-                <BookmarkIcon className={cn('size-4', saved && 'fill-current')} />
-              </NoraIconButton>
-              <NoraIconButton
-                aria-label="Корзина"
-                className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
-                onClick={() => setShoppingOpen(true)}
-              >
-                <ShoppingBagIcon className="size-4" />
-              </NoraIconButton>
+              <NoraHoverTip label={saved ? 'Убрать' : 'Сохранить'}>
+                <NoraIconButton
+                  aria-label={saved ? 'Убрать' : 'Сохранить'}
+                  active={saved}
+                  className={cn(
+                    'nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent active:!bg-transparent [&_svg]:size-4',
+                    saved
+                      ? 'text-[var(--nora-tint)] hover:!text-[var(--nora-tint)]'
+                      : 'hover:text-[var(--nora-text)]',
+                  )}
+                  onClick={onToggleSave}
+                >
+                  <BookmarkIcon className={cn('size-4', saved && 'fill-current')} />
+                </NoraIconButton>
+              </NoraHoverTip>
+              <NoraHoverTip label="Корзина">
+                <NoraIconButton
+                  aria-label="Корзина"
+                  className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
+                  onClick={() => setShoppingOpen(true)}
+                >
+                  <ShoppingBagIcon className="size-4" />
+                </NoraIconButton>
+              </NoraHoverTip>
             </div>
           </div>
         </div>

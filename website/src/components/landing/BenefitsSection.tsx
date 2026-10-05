@@ -79,10 +79,11 @@ function DiaryDemo({
   return (
     <iframe
       ref={frameRef}
-      className="pointer-events-none block size-full border-0 bg-black"
+      className="pointer-events-none block size-full overflow-hidden border-0 bg-black"
+      loading="eager"
       scrolling="no"
       src={src}
-      style={frameStyle ?? { width: '100%', height: '100%' }}
+      style={frameStyle ?? { width: '100%', height: '100%', overflow: 'hidden' }}
       tabIndex={-1}
       title="Дневник питания"
     />
@@ -97,6 +98,9 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
   )
   const [demoActive, setDemoActive] = useState<boolean[]>(() => BENEFITS.map(() => false))
   const [wide, setWide] = useState(false)
+  // SSR includes the desktop frames so they start loading with the page.
+  // After mount, phones swap to the stacked frames and drop the hidden ones.
+  const [layout, setLayout] = useState<'ssr' | 'desktop' | 'mobile'>('ssr')
 
   const noteDemo = (index: number, opacity: number) => {
     setDemoActive((current) => {
@@ -113,7 +117,11 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
 
   useEffect(() => {
     const query = window.matchMedia('(min-width: 768px)')
-    const apply = () => setWide(query.matches)
+    const apply = () => {
+      const desktop = query.matches
+      setWide(desktop)
+      setLayout(desktop ? 'desktop' : 'mobile')
+    }
     apply()
     query.addEventListener('change', apply)
     return () => query.removeEventListener('change', apply)
@@ -302,7 +310,7 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
                     style={{ opacity: styles[index]?.imageOpacity ?? 0 }}
                   >
                     <div className="size-full overflow-hidden rounded-2xl">
-                      {wide ? (
+                      {layout !== 'mobile' ? (
                         <DiaryDemo
                           active={demoActive[index] ?? false}
                           frameStyle={{
@@ -311,6 +319,7 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
                             border: 0,
                             borderRadius: '1rem',
                             background: '#000',
+                            overflow: 'hidden',
                           }}
                           src={src}
                         />
@@ -336,8 +345,8 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
                 mobileRefs.current[index] = node
               }}
             >
-              <div className="relative h-[34rem] rounded-2xl bg-black">
-                {!wide ? (
+              <div className="relative h-[34rem] overflow-hidden rounded-2xl bg-black">
+                {layout === 'mobile' ? (
                   <DiaryDemo
                     active={demoActive[index] ?? false}
                     frameStyle={{
@@ -348,6 +357,7 @@ export default function BenefitsSection({ signupHref, demoSrcs }: BenefitsSectio
                       border: 0,
                       borderRadius: '1rem',
                       background: '#000',
+                      overflow: 'hidden',
                     }}
                     src={demoSrcs[index] ?? ''}
                   />

@@ -269,6 +269,7 @@ export async function refineMealWithGemini(
     coverMime?: string
     attachBase64?: string
     attachMime?: string
+    attachImages?: Array<{ base64: string; mime?: string }>
   },
 ): Promise<MealsGeminiResponse> {
   const parts: Array<Record<string, unknown>> = [
@@ -284,16 +285,23 @@ export async function refineMealWithGemini(
       },
     })
   }
-  if (input.attachBase64) {
+  const attachImages = input.attachImages?.length
+    ? input.attachImages
+    : input.attachBase64
+      ? [{ base64: input.attachBase64, mime: input.attachMime }]
+      : []
+  if (attachImages.length > 0) {
     parts.push({
-      text: 'Дополнительное фото пользователя. Если на кадре еда — добавь эти продукты к текущему составу. Если этикетка/КБЖУ — уточни веса, не удаляя остальные позиции.',
+      text: 'Дополнительные фото пользователя. Если на кадре еда — добавь эти продукты к текущему составу. Если этикетка/КБЖУ — уточни веса, не удаляя остальные позиции. Учти каждый кадр.',
     })
-    parts.push({
-      inline_data: {
-        mime_type: normalizeImageMime(input.attachMime),
-        data: input.attachBase64,
-      },
-    })
+    for (const image of attachImages) {
+      parts.push({
+        inline_data: {
+          mime_type: normalizeImageMime(image.mime),
+          data: image.base64,
+        },
+      })
+    }
   }
   const message = input.message.trim()
   if (message) {
@@ -303,7 +311,7 @@ export async function refineMealWithGemini(
         message,
       ].join('\n'),
     })
-  } else if (input.attachBase64) {
+  } else if (attachImages.length > 0) {
     parts.push({
       text: 'Пользователь приложил фото без текста. Добавь к текущему составу продукты с фото, существующие позиции сохрани, пересчитай КБЖУ на объединённый приём.',
     })

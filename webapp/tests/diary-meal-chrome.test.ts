@@ -431,18 +431,18 @@ test('mobile diary hides the page title block', () => {
   expect(news).not.toContain('font-heading text-[22px] font-bold tracking-[-0.03em]')
 })
 
-test('true empty diary feed shows a skeleton card grid', () => {
-  expect(news).toContain('<ProductFeedSkeletonSlots')
-  expect(news).toContain("className={cardLayout === 'list' ? 'max-md:grid-cols-1' : undefined}")
-  expect(news).toContain('<SkeletonMealCard layout={cardLayout} />')
-  expect(news).toContain('PRODUCT_FEED_SKELETON_COUNT')
-  expect(news).toContain('data-slot="feed-skeleton"')
+test('empty diary shows a plaque, and loading shows a spinner', () => {
+  expect(news).toContain('<SectionLoading')
+  expect(news).toContain('Загрузка дневника')
+  expect(news).toContain('data-slot="section-loading"')
+  expect(news).toContain('В дневнике пока пусто')
+  expect(news).toContain('data-slot="section-empty"')
   expect(news).toContain('Ничего не найдено')
-  expect(news).not.toContain('Пока нет записей')
+  expect(news).not.toContain('<ProductFeedSkeletonSlots')
+  expect(news).not.toContain('<SkeletonMealCard layout={cardLayout} />')
 })
 
-test('feed empty messages use a placeholder card instead of a shopping plaque', () => {
-  expect(news).toContain('data-slot="feed-empty"')
+test('feed empty messages use a section plaque', () => {
   expect(news).toContain('<ProductFeedEmpty')
   expect(news).toContain('origin="diary"')
   expect(news).not.toContain('shadow-[inset_0_0_0_1px_var(--dash-card-ring)]')
@@ -459,15 +459,10 @@ test('feed empty messages use a placeholder card instead of a shopping plaque', 
     'utf8',
   )
   const feedEmpty = sheet.slice(sheet.indexOf('export function ProductFeedEmpty'))
-  expect(feedEmpty).toContain('productFeedGridClass')
-  expect(feedEmpty).toContain('data-slot="meal-card"')
-  expect(feedEmpty).toContain('data-empty-card=""')
-  expect(feedEmpty).toContain('data-slot="meal-card-preview"')
-  expect(feedEmpty).toContain('data-slot="empty-card-footer"')
-  expect(feedEmpty).toContain('[&_button]:w-full')
-  expect(feedEmpty).toContain('[&_button]:rounded-[12px]')
-  expect(feedEmpty).not.toContain('[&_button]:rounded-full')
-  expect(feedEmpty).not.toContain('<NoraEmpty')
+  expect(feedEmpty).toContain('data-slot="section-empty"')
+  expect(feedEmpty).toContain('<NoraEmpty')
+  expect(feedEmpty).not.toContain('data-slot="meal-card"')
+  expect(feedEmpty).not.toContain('data-empty-card=""')
   expect(empty).toContain('export const noraPlaqueClass')
   expect(empty).toContain('export const noraPlaqueIconClass')
   expect(empty).toContain('size-8 shrink-0')
@@ -477,7 +472,6 @@ test('feed empty messages use a placeholder card instead of a shopping plaque', 
   expect(empty).toContain('className={noraProductTitleClass}')
   expect(empty).not.toContain('text-xs font-semibold')
   expect(empty).not.toContain('[&_svg]:size-7')
-  expect(empty).not.toContain('[&_svg]:size-4')
   expect(sheet).not.toContain("'px-3 py-6 sm:px-4 sm:py-8'")
   expect(sheet).not.toContain("'px-6 py-12 sm:py-14'")
 })
@@ -1289,6 +1283,11 @@ test('meal photos crossfade in the feed and dialog instead of sliding', () => {
   expect(news).toContain('prefetchMealPhoto')
   expect(news).toContain('const MEAL_PHOTO_FADE_MS = 280')
   expect(news).not.toContain("import useEmblaCarousel from 'embla-carousel-react'")
+  expect(slides).toContain('Предыдущее фото')
+  expect(slides).toContain('Следующее фото')
+  expect(slides).toContain('md:group-hover/photos:opacity-100')
+  expect(slides).toContain('hidden size-7 -translate-y-1/2 md:inline-flex')
+  expect(news).toContain("window.matchMedia('(min-width: 768px)')")
 })
 
 test('forming meal rolls KBJU and spins the active step instead of tab skeletons', () => {
@@ -1311,7 +1310,7 @@ test('formed meal keeps the same hero and reveals title after KBJU settle', () =
   expect(news).toContain('locked={mealCardRevealLocksTabs(reveal)}')
   expect(news).toContain('pace="fast"')
   expect(news).toContain("setRefineReveal('waiting')")
-  expect(news).toContain('mealRefiningSteps(Boolean(attach))')
+  expect(news).toContain('mealRefiningSteps(ready.length > 0)')
   expect(news).not.toContain('MealGeneratingSkeleton')
 })
 

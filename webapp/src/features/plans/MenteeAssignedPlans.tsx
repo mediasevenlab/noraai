@@ -2,7 +2,7 @@ import * as React from 'react'
 import { CalendarRangeIcon } from '@/components/icons'
 
 import { NoraButton } from '@/components/nora/primitives'
-import { ProductFeedEmpty, productFeedGridClass } from '@/components/nora/product-sheet'
+import { ProductFeedEmpty, SectionLoading, productFeedGridClass } from '@/components/nora/product-sheet'
 import { useAuth } from '@/features/auth'
 import {
   mentorRationToEntry,
@@ -11,7 +11,7 @@ import {
 import { parsePlanGoal } from '@/platform/authored-plans'
 
 import { CurrentPlanMeals } from './CurrentPlanMeals'
-import { WeekPlanCard, WeekPlanCardSkeleton } from './WeekPlanCard'
+import { WeekPlanCard } from './WeekPlanCard'
 import { buildWeekPlanFromRation } from './week-plan'
 
 export function MenteeAssignedPlans({ userId }: { userId: string }) {
@@ -35,11 +35,7 @@ export function MenteeAssignedPlans({ userId }: { userId: string }) {
   const openPlan = openPlanId ? cards.find((plan) => plan.id === openPlanId) ?? null : null
 
   if (assignment.isPending) {
-    return (
-      <section className={productFeedGridClass}>
-        <WeekPlanCardSkeleton />
-      </section>
-    )
+    return <SectionLoading label="Загрузка планов" />
   }
 
   if (assignment.isError) {

@@ -19,6 +19,32 @@ import {
   type MealImagePickSource,
 } from './meal-image-pick'
 
+export function queueMealImageFile(
+  file: File,
+  handlers: {
+    onAttached: (input: {
+      id: string
+      base64: string
+      mime: MealImageMime
+      name: string
+    }) => void
+    onPicked?: (input: { id: string; file: File }) => void
+    onPickFailed?: (id: string) => void
+  },
+) {
+  const id =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${file.name}`
+  handlers.onPicked?.({ id, file })
+  void fileToMealImage(file)
+    .then((parsed) => handlers.onAttached({ id, ...parsed, name: file.name }))
+    .catch((error: unknown) => {
+      handlers.onPickFailed?.(id)
+      toast.error(error instanceof Error ? error.message : 'Не удалось добавить фото')
+    })
+}
+
 const plusButtonClass = (disabled: boolean) =>
   cn(
     'nora-press-grow ios-glass-glare inline-flex size-8 shrink-0 items-center justify-center rounded-full border-0 bg-[var(--nora-input-bg)]/72 text-[var(--nora-text)] outline-none backdrop-blur-[16px] shadow-[inset_0_1px_0_color-mix(in_srgb,white_70%,transparent)]',
@@ -33,6 +59,7 @@ export function MealAttachMenu({
   onAttached,
   onPicked,
   onPickFailed,
+  onFiles,
 }: {
   disabled?: boolean
   pressed?: boolean
@@ -45,6 +72,8 @@ export function MealAttachMenu({
   /** Fires as soon as a file is chosen, before it is read — use for instant preview. */
   onPicked?: (input: { id: string; file: File }) => void
   onPickFailed?: (id: string) => void
+  /** Several files at once: gallery multi-select. The caller applies the attach limit. */
+  onFiles?: (files: File[]) => void
 }) {
   const galleryRef = React.useRef<HTMLInputElement>(null)
   const cameraRef = React.useRef<HTMLInputElement>(null)
@@ -68,29 +97,28 @@ export function MealAttachMenu({
 
   function applyFile(file: File | undefined) {
     if (!file) return
-    const id =
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${file.name}`
-    onPicked?.({ id, file })
-    void fileToMealImage(file)
-      .then((parsed) => onAttached({ id, ...parsed, name: file.name }))
-      .catch((error: unknown) => {
-        onPickFailed?.(id)
-        toast.error(error instanceof Error ? error.message : 'Не удалось добавить фото')
-      })
+    queueMealImageFile(file, { onAttached, onPicked, onPickFailed })
+  }
+
+  function applyFiles(files: File[]) {
+    if (files.length === 0) return
+    if (onFiles) {
+      onFiles(files)
+      return
+    }
+    for (const file of files) applyFile(file)
   }
 
   function onInputChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
+    const files = [...(event.target.files ?? [])]
     event.target.value = ''
-    applyFile(file)
+    applyFiles(files)
   }
 
   async function pickSource(source: MealImagePickSource) {
     const picked = await pickHybridMealImage(source)
     if (picked.kind === 'file') {
-      applyFile(picked.file)
+      applyFiles([picked.file])
       return
     }
     if (picked.kind === 'canceled') return
@@ -107,6 +135,7 @@ export function MealAttachMenu({
       <input
         {...galleryProps}
         className="hidden"
+        multiple
         onChange={onInputChange}
         ref={galleryRef}
         type="file"

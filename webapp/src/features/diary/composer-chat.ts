@@ -1,3 +1,5 @@
+import { MEAL_ATTACH_LIMIT } from './meal-image-pick'
+
 export type ComposerChatRole = 'user' | 'assistant'
 
 export type ComposerChatMessage = {
@@ -20,7 +22,7 @@ export function composerAppPhotoAcceptedMessage(count: number) {
   if (count <= 1) {
     return '📷 Фото принято. Можно прислать ещё блюдо или этикетку, затем голос, текст или нажмите отправку.'
   }
-  return `📷 Фото ${count}/5. Можно ещё фото блюд или этикетки, затем голос, текст или отправку.`
+  return `📷 Фото ${count}/${MEAL_ATTACH_LIMIT}. Можно ещё фото блюд или этикетки, затем голос, текст или отправку.`
 }
 
 export function mergeComposerChat(

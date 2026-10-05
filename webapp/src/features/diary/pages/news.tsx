@@ -26,7 +26,7 @@ import {
 } from "@/components/PageLayout";
 import {
   ProductFeedEmpty,
-  ProductFeedSkeletonSlots,
+  SectionLoading,
   productFeedPageClass,
   productFeedToolbarRowClass,
   productToolbarSearchCollapseClass,
@@ -119,6 +119,7 @@ import {
 import {
   currentWeekPlanStampId,
   isDiaryFeedMealVisible,
+  isDiaryMealOnCurrentDay,
   isDiaryMealOnFutureDay,
   isRationPlanDone,
   isRationPlanPending,
@@ -165,7 +166,6 @@ import {
   Cover,
   MealCard,
   MealMacrosPlaque,
-  SkeletonMealCard,
   commitMealVersionExtras,
   imagesForDiaryMeal,
 } from "../MealCard";
@@ -176,7 +176,10 @@ import {
   MEAL_DIALOG_FRAME_CLASS,
   MealDialogHero,
   RATION_PENDING_COVER_CLASS,
+  useMealDialogDismissLocked,
 } from "../meal-sheet";
+import { DeleteCardDialog } from "../DeleteCardDialog";
+import { mealCardDeletePrompt } from "../delete-card-prompt";
 import type { MealMacrosRevealState } from "../meal-card-reveal";
 
 type FeedTab = "Все" | "Избранное";
@@ -505,6 +508,7 @@ export function NewsPage({
   onMealsViewed?: (mealIds: string[]) => void;
 } = {}) {
   const auth = useAuth();
+  const mealDialogDismissLocked = useMealDialogDismissLocked();
   const { user } = auth;
   const queryClient = useQueryClient();
   const subjectId =
@@ -544,6 +548,8 @@ export function NewsPage({
     () => new Set(),
   );
   const [openId, setOpenId] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<MealEntry | null>(null);
+  const [deletingCard, setDeletingCard] = React.useState(false);
   const [openMacrosReveal, setOpenMacrosReveal] =
     React.useState<MealMacrosRevealState>({
       rolling: false,
@@ -585,6 +591,7 @@ export function NewsPage({
   }, []);
   const reportMealsViewedRef = React.useRef(reportMealsViewed);
   reportMealsViewedRef.current = reportMealsViewed;
+  const planDoneInFlightRef = React.useRef(new Set<string>());
 
   React.useEffect(() => {
     if (readOnly || user?.role !== "user") return;
@@ -721,6 +728,31 @@ export function NewsPage({
     () => (mealsQuery.data?.items ?? []).map(mealDtoToEntry),
     [mealsQuery.data?.items],
   );
+  React.useEffect(() => {
+    if (!isOwnAccount) return;
+    setCompletedIds((current) => {
+      const inFlight = planDoneInFlightRef.current;
+      let changed = false;
+      const next = new Set(current);
+      for (const meal of userMeals) {
+        if (!meal.id || inFlight.has(meal.id)) continue;
+        if (!isRationPlanPending(meal, new Set()) && !isRationPlanDone(meal, new Set())) {
+          continue;
+        }
+        const serverDone = isRationPlanDone(meal, new Set());
+        if (serverDone && !next.has(meal.id)) {
+          next.add(meal.id);
+          changed = true;
+        } else if (!serverDone && next.has(meal.id)) {
+          next.delete(meal.id);
+          changed = true;
+        }
+      }
+      if (!changed) return current;
+      writeCompletedRationMealIds(savedScope, next);
+      return next;
+    });
+  }, [isOwnAccount, savedScope.email, savedScope.userId, userMeals]);
   const dailyCalories =
     calorieTarget ??
     questionnaireDailyCalorieTarget(questionnaireQuery.data?.answers) ??
@@ -795,7 +827,6 @@ export function NewsPage({
   }
 
   function diaryPlanSlotIndex(meal: MealEntry) {
-    if (diaryAtById[meal.id]) return null;
     if (!isRationPlanPending(meal, completedIds)) return null;
     const planId = diaryPlanIdForMeal(meal, selectedPlanIds);
     if (!planId) return null;
@@ -822,14 +853,17 @@ export function NewsPage({
   function toggleRationMealDone(id: string) {
     if (readOnly || !subjectId) return;
     const meal = userMeals.find((item) => item.id === id);
-    if (meal && isDiaryMealOnFutureDay({ at: diaryAtForMeal(meal) })) return;
+    if (!meal) return;
+    const shownAt = diaryAtForMeal(meal);
+    if (!isDiaryMealOnCurrentDay({ at: shownAt })) return;
+    planDoneInFlightRef.current.add(id);
     const previous = new Set(completedIds);
     const previousDiaryAt = diaryAtById;
     const next = new Set(completedIds);
-    const willComplete = !next.has(id);
+    const willComplete = !isRationPlanDone(meal, completedIds);
     if (willComplete) next.add(id);
     else next.delete(id);
-    const stayAt = meal ? diaryAtById[id] ?? diaryAtForMeal(meal) : undefined;
+    const stayAt = shownAt;
     const previousMeals = queryClient.getQueryData<{
       items: Array<{ id: string; recordedAt: string; assumptions?: string[] }>;
     }>(mealsQueryKeys.forSubject(subjectId));
@@ -854,18 +888,24 @@ export function NewsPage({
     setCompletedIds(next);
     writeCompletedRationMealIds(savedScope, next);
     if (stayAt) {
-      const nextAt = { ...diaryAtById, [id]: stayAt };
+      const nextAt = { ...diaryAtById };
+      if (willComplete) nextAt[id] = stayAt;
+      else delete nextAt[id];
       setDiaryAtById(nextAt);
       writeDiaryPlanAtById(savedScope, nextAt);
     }
     if (willComplete) toast.success("Приём отмечен как выполненный");
     else toast("Приём снова в плане");
-    if (!meal || !(meal.fromApi || isApiMealId(meal.id))) return;
+    if (!meal || !(meal.fromApi || isApiMealId(meal.id))) {
+      planDoneInFlightRef.current.delete(id);
+      return;
+    }
     void setMyMealPlanDone(auth.transport, id, {
       done: willComplete,
       ...(stayAt ? { recordedAt: stayAt } : {}),
     })
       .then((result) => {
+        planDoneInFlightRef.current.delete(id);
         const pinned = stayAt
           ? { ...result.meal, recordedAt: stayAt }
           : result.meal;
@@ -883,6 +923,7 @@ export function NewsPage({
         );
       })
       .catch(() => {
+        planDoneInFlightRef.current.delete(id);
         setCompletedIds(previous);
         setDiaryAtById(previousDiaryAt);
         writeDiaryPlanAtById(savedScope, previousDiaryAt);
@@ -1214,7 +1255,6 @@ export function NewsPage({
             completedIds,
             undefined,
             showWholePlan && selectedIds.size > 0,
-            new Set(Object.keys(diaryAtById)),
           ),
         );
       }
@@ -1372,15 +1412,15 @@ export function NewsPage({
           void shareMeal(meal);
         }}
         onDelete={
-          isDiaryMealOnFutureDay(meal)
-            ? undefined
-            : () => {
-                void deleteMeal(meal);
-              }
+          isDiaryMealOnFutureDay(meal) ? undefined : () => setDeleteTarget(meal)
         }
       />
     );
   }
+
+  const deletePrompt = deleteTarget
+    ? mealCardDeletePrompt(deleteTarget, keepsWeeklyPlanOnDiaryDelete(deleteTarget))
+    : null;
 
   return (
     <div className="news-page relative min-h-full">
@@ -1606,11 +1646,22 @@ export function NewsPage({
                 origin="diary"
                 title="Не удалось загрузить дневник"
               />
-            ) : mealsQuery.isPending ||
-              (filtered.length === 0 && !feedFiltersActive) ? (
-              <ProductFeedSkeletonSlots
-                className={cardLayout === 'list' ? 'max-md:grid-cols-1' : undefined}
-                Card={() => <SkeletonMealCard layout={cardLayout} />}
+            ) : mealsQuery.isPending ? (
+              <SectionLoading label="Загрузка дневника" />
+            ) : filtered.length === 0 && !feedFiltersActive ? (
+              <ProductFeedEmpty
+                description="Добавьте приём — он появится в этом разделе."
+                origin="diary"
+                title="В дневнике пока пусто"
+              />
+            ) : filtered.length === 0 &&
+              tab === "Избранное" &&
+              !query.trim() &&
+              periodFilter == null ? (
+              <ProductFeedEmpty
+                description="Отметьте приём закладкой — он появится здесь."
+                icon={<BookmarkIcon aria-hidden strokeWidth={1.75} />}
+                title="В избранном пока пусто"
               />
             ) : filtered.length === 0 ? (
               <ProductFeedEmpty
@@ -1744,7 +1795,7 @@ export function NewsPage({
       </div>
 
       <Dialog
-        disablePointerDismissal
+        disablePointerDismissal={mealDialogDismissLocked}
         open={!!openMeal}
         onOpenChange={(o) => {
           if (!o) {
@@ -1789,7 +1840,7 @@ export function NewsPage({
                 completedIds={completedIds}
                 previewOnly={isDiaryMealOnFutureDay(openMeal)}
                 onCompletePlan={
-                  tab === "Избранное"
+                  tab === "Избранное" || !isDiaryMealOnCurrentDay(openMeal)
                     ? undefined
                     : () => toggleRationMealDone(openMeal.id)
                 }
@@ -1937,6 +1988,25 @@ export function NewsPage({
             dockMove,
           )
         : null}
+      <DeleteCardDialog
+        confirmLabel={deletePrompt?.confirmLabel ?? "Удалить"}
+        description={deletePrompt?.description ?? ""}
+        onConfirm={() => {
+          if (!deleteTarget || deletingCard) return;
+          const meal = deleteTarget;
+          setDeletingCard(true);
+          void deleteMeal(meal).finally(() => {
+            setDeletingCard(false);
+            setDeleteTarget(null);
+          });
+        }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        open={deleteTarget !== null}
+        pending={deletingCard}
+        title={deletePrompt?.title ?? "Удалить карточку?"}
+      />
     </div>
   );
 }

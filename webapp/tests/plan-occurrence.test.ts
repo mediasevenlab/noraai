@@ -106,25 +106,18 @@ describe('diary vs weekly plan occurrences', () => {
     expect(patched[0]?.recordedAt).toBe(TUESDAY_THIS_WEEK.toISOString())
   })
 
-  test('completed plan meals stay on the occurrence day when a plan start is set', () => {
-    const start = new Date(2026, 8, 3, 12, 0, 0)
+  test('completed plan meals stay on the day they were eaten when a plan starts again', () => {
+    const start = new Date(2026, 9, 5, 12, 0, 0)
     const eaten = {
       ...pendingPlanMeal,
       assumptions: [...pendingPlanMeal.assumptions, RATION_DIARY_DONE_MARK],
     }
-    const at = planOccurrenceDiaryAt(eaten, undefined, TUESDAY_THIS_WEEK, start)
-    expect(new Date(at).getFullYear()).toBe(2026)
-    expect(new Date(at).getMonth()).toBe(8)
-    expect(new Date(at).getDate()).toBe(4)
-    expect(new Date(at).getHours()).toBe(8)
-    expect(new Date(at).getMinutes()).toBe(30)
-  })
-
-  test('local complete via completedIds still remaps when a plan start is set', () => {
-    const start = new Date(2026, 8, 3, 12, 0, 0)
+    const at = planOccurrenceDiaryAt(eaten, undefined, new Date(2026, 9, 5, 12), start)
+    expect(at).toBe(eaten.at)
     const completed = new Set([pendingPlanMeal.id])
-    const at = planOccurrenceDiaryAt(pendingPlanMeal, completed, TUESDAY_THIS_WEEK, start)
-    expect(new Date(at).getDate()).toBe(4)
+    expect(planOccurrenceDiaryAt(pendingPlanMeal, completed, new Date(2026, 9, 5, 12), start)).toBe(
+      pendingPlanMeal.at,
+    )
   })
 
   test('feed copies without a week plan are not treated as a plan template', () => {
@@ -334,18 +327,44 @@ describe('diary vs weekly plan occurrences', () => {
     expect(new Date(appleAt).getMinutes()).toBe(30)
   })
 
-  test('frozen diary stamps win over a later plan layout', () => {
-    const frozenAt = new Date(2026, 8, 10, 10, 0, 0).toISOString()
-    const layout = { '2026-09-02': [pendingPlanMeal.id] }
+  test('a stale diary stamp does not keep a pending meal on the old plan', () => {
+    const frozenAt = new Date(2026, 8, 28, 10, 0, 0).toISOString()
+    const start = new Date(2026, 9, 5, 12, 0, 0)
+    const now = new Date(2026, 9, 5, 12, 0, 0)
+    const at = planOccurrenceDiaryAtWithLayout(pendingPlanMeal, {
+      frozenAt,
+      now,
+      planStart: start,
+      planMeals: [pendingPlanMeal],
+    })
+    expect(at).not.toBe(frozenAt)
+    expect(at).toBe(planOccurrenceDiaryAt(pendingPlanMeal, undefined, now, start))
+    expect(new Date(at).getMonth()).toBe(9)
+  })
+
+  test('completed meals keep the eaten day when the ration is started again', () => {
+    const eatenAt = new Date(2026, 8, 28, 10, 0, 0).toISOString()
+    const done = {
+      ...pendingPlanMeal,
+      at: eatenAt,
+      assumptions: [...pendingPlanMeal.assumptions, RATION_DIARY_DONE_MARK],
+    }
+    const start = new Date(2026, 9, 5, 12, 0, 0)
     expect(
-      planOccurrenceDiaryAtWithLayout(pendingPlanMeal, {
-        frozenAt,
-        now: TUESDAY_THIS_WEEK,
-        planStart: new Date(2026, 8, 3, 12, 0, 0),
-        layout,
-        planMeals: [pendingPlanMeal],
+      planOccurrenceDiaryAtWithLayout(done, {
+        frozenAt: eatenAt,
+        now: start,
+        planStart: start,
+        layout: { '2026-10-05': [done.id] },
+        planMeals: [done],
       }),
-    ).toBe(frozenAt)
+    ).toBe(eatenAt)
+    expect(
+      isDiaryFeedMealVisible({ ...done, at: eatenAt }, PLAN_ID, undefined, start),
+    ).toBe(true)
+    expect(
+      isDiaryFeedMealVisible({ ...pendingPlanMeal, at: eatenAt }, PLAN_ID, undefined, start),
+    ).toBe(false)
   })
 
   test('meals missing from the layout keep the occurrence stamp', () => {

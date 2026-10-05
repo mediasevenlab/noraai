@@ -23,19 +23,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from '@/components/ui/empty'
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
+import { ProductFeedEmpty, SectionLoading } from '@/components/nora/product-sheet'
 import {
   Table,
   TableBody,
@@ -328,13 +322,7 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
 }
 
 function DirectoryLoading() {
-  return (
-    <div aria-label="Загрузка пользователей" className="grid gap-3 p-3.5" role="status">
-      <Skeleton className="h-10 w-full" />
-      <Skeleton className="h-10 w-full" />
-      <Skeleton className="h-10 w-full" />
-    </div>
-  )
+  return <SectionLoading className="min-h-32 py-8" label="Загрузка пользователей" />
 }
 
 function DirectoryError({
@@ -361,17 +349,14 @@ function DirectoryError({
 
 function DirectoryEmpty({ hasQuery }: { hasQuery: boolean }) {
   return (
-    <div className="p-3.5">
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>Пользователи не найдены</EmptyTitle>
-          <EmptyDescription>
-            {hasQuery
-              ? 'Попробуйте другое имя или email.'
-              : 'Пока нет доступных аккаунтов.'}
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    </div>
+    <ProductFeedEmpty
+      className="px-3.5"
+      description={
+        hasQuery
+          ? 'Попробуйте другое имя или почту.'
+          : 'Когда появятся аккаунты, они будут в этом списке.'
+      }
+      title={hasQuery ? 'Никого не нашли' : 'Пользователей пока нет'}
+    />
   )
 }

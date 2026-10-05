@@ -77,6 +77,14 @@ type MealCreateInput = Omit<CreateMealFromBotRequest, 'telegramUpdateId'> & {
   }>
 }
 
+function refineImages(input: RefineMealRequest) {
+  if (input.images?.length) return input.images
+  if (input.imageBase64) {
+    return [{ imageBase64: input.imageBase64, imageMime: input.imageMime }]
+  }
+  return []
+}
+
 export class MealsService {
   constructor(private readonly dependencies: MealsServiceDependencies) {}
   async analyzeMeal(input: MealsGeminiRequest) {
@@ -664,15 +672,16 @@ export class MealsService {
     if (!canRefineMeal(this.toVersioned(ensured))) {
       throw new MealsFailure('bad_request', 'Достигнут лимит уточнений (5)')
     }
+    const images = refineImages(input)
     const message =
       input.message.trim()
-      || (input.imageBase64 ? REFINE_ATTACH_PHOTO_INSTRUCTION : '')
-    if (!message && !input.imageBase64) {
+      || (images.length > 0 ? REFINE_ATTACH_PHOTO_INSTRUCTION : '')
+    if (!message && images.length === 0) {
       throw new MealsFailure('bad_request', 'message or image required')
     }
     // Text-only refine: card JSON already has title/portion/macros — skip cover
     // photo to cut Gemini latency (often several seconds for the image alone).
-    const needsCoverPhoto = Boolean(input.imageBase64)
+    const needsCoverPhoto = images.length > 0
     let coverBase64: string | undefined
     let coverMime: string | undefined
     if (needsCoverPhoto && ensured.imageKey) {
@@ -687,12 +696,16 @@ export class MealsService {
       message,
       coverBase64,
       coverMime,
-      attachBase64: input.imageBase64,
-      attachMime: input.imageMime,
+      attachBase64: images[0]?.imageBase64,
+      attachMime: images[0]?.imageMime,
+      attachImages: images.map((image) => ({
+        base64: image.imageBase64,
+        mime: image.imageMime,
+      })),
     })
     const analyzed = mapGeminiCardToMealFields(result.meal)
     const current = this.toVersioned(ensured)
-    const fields = input.imageBase64
+    const fields = images.length > 0
       ? applyAdditivePhotoRefine(
           {
             title: current.title,
@@ -713,7 +726,7 @@ export class MealsService {
       : analyzed
     const extraImageKeys = await this.extraImageKeysAfterRefine(ensured, mealId, input)
     let assumptions = preserveMealShareAssumptions(ensured.assumptions, fields.assumptions)
-    if (input.imageBase64) assumptions = withAuthorPhotoMark(assumptions)
+    if (images.length > 0) assumptions = withAuthorPhotoMark(assumptions)
     const refinedBase = ensureMealVersions({
       ...current,
       title: fields.title,
@@ -731,7 +744,7 @@ export class MealsService {
     })
     const withHistory = appendMealVersion(
       { ...refinedBase, extraImageKeys },
-      input.message.trim() || (input.imageBase64 ? 'фото' : 'уточнение'),
+      input.message.trim() || (images.length > 0 ? 'фото' : 'уточнение'),
     )
     const saved = await this.dependencies.repository.updateMealContent(mealId, {
       title: withHistory.title,
@@ -1028,16 +1041,21 @@ export class MealsService {
     input: RefineMealRequest,
   ) {
     const inherited = extraImageKeysForActiveVersion(meal.versions, meal.activeVersionId)
-    if (!input.imageBase64) return inherited
-    const saved = await this.dependencies.imageStore.saveImage({
-      userId: meal.userId,
-      mealId,
-      imageBase64: input.imageBase64,
-      imageMime: input.imageMime,
-      variant: 'extra',
-    })
-    if (saved.imageKey === meal.imageKey || inherited.includes(saved.imageKey)) return inherited
-    return [...inherited, saved.imageKey]
+    const images = refineImages(input)
+    if (images.length === 0) return inherited
+    const keys = [...inherited]
+    for (const image of images) {
+      const saved = await this.dependencies.imageStore.saveImage({
+        userId: meal.userId,
+        mealId,
+        imageBase64: image.imageBase64,
+        imageMime: image.imageMime,
+        variant: 'extra',
+      })
+      if (saved.imageKey === meal.imageKey || keys.includes(saved.imageKey)) continue
+      keys.push(saved.imageKey)
+    }
+    return keys
   }
 
   private extraImageKeysForClient(meal: MealRecord) {

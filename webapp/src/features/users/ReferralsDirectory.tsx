@@ -12,13 +12,7 @@ import {
   PaginationItem,
   PaginationLink,
 } from '@/components/ui/pagination'
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from '@/components/ui/empty'
-import { Skeleton } from '@/components/ui/skeleton'
+import { ProductFeedEmpty, SectionLoading } from '@/components/nora/product-sheet'
 import {
   Table,
   TableBody,
@@ -64,12 +58,7 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
 
   const tableBody = (
     <>
-      {referrals.isPending && (
-        <div aria-label="Загрузка рефералов" className="grid gap-3" role="status">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      )}
+      {referrals.isPending && <SectionLoading className="min-h-32 py-8" label="Загрузка рефералов" />}
       {referrals.isError && (
         <Alert variant="destructive">
           <AlertTitle>Не удалось загрузить рефералов</AlertTitle>
@@ -77,14 +66,14 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
         </Alert>
       )}
       {referrals.data?.items.length === 0 && (
-        <Empty className={layout === 'entry' ? 'bg-transparent px-3 py-2.5 shadow-none backdrop-blur-none' : undefined}>
-          <EmptyHeader>
-            <EmptyTitle>Рефералы не найдены</EmptyTitle>
-            <EmptyDescription>
-              {query ? 'Рефералы не найдены.' : 'У вас пока нет рефералов.'}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <ProductFeedEmpty
+          description={
+            query
+              ? 'По этой строке рефералов нет.'
+              : 'Люди, которые придут по вашей ссылке, появятся здесь.'
+          }
+          title={query ? 'Никого не нашли' : 'Рефералов пока нет'}
+        />
       )}
       {referrals.data && referrals.data.items.length > 0 && (
         <Table className="w-full table-fixed text-xs">

@@ -11,7 +11,7 @@ const TESTIMONIALS = [
       'Пробовала десятки приложений для питания, но только здесь дневник и планы ощущаются простыми. Онбординг и недельный план помогают держаться без перегруза.',
     name: 'Анна Соколова',
     role: 'Студентка',
-    avatar: '/landing/appminimal/avatars/sarah.jpg',
+    avatar: '/landing/appminimal/avatars/sarah.webp',
     seed: 18,
   },
   {
@@ -20,7 +20,7 @@ const TESTIMONIALS = [
       'Приложение помогло понять привычки и улучшать рацион постепенно каждую неделю. Не резкие перемены, а устойчивый режим, который реально держится.',
     name: 'Алексей Иванов',
     role: 'Фитнес-энтузиаст',
-    avatar: '/landing/appminimal/avatars/alex.jpg',
+    avatar: '/landing/appminimal/avatars/alex.webp',
     seed: 32,
   },
   {
@@ -29,7 +29,7 @@ const TESTIMONIALS = [
       'Между работой и семьёй редко находилось время вести питание. Дневник и планы помогли выстроить режим без лишнего стресса.',
     name: 'Елена Морозова',
     role: 'Проект-менеджер',
-    avatar: '/landing/appminimal/avatars/jessica.jpg',
+    avatar: '/landing/appminimal/avatars/jessica.webp',
     seed: 47,
   },
   {
@@ -38,7 +38,7 @@ const TESTIMONIALS = [
       'Онбординг сразу понял цели и собрал план под мой ритм. Через пару недель я стабильнее следил за рационом и прогрессом.',
     name: 'Михаил Орлов',
     role: 'Разработчик',
-    avatar: '/landing/appminimal/avatars/michael.jpg',
+    avatar: '/landing/appminimal/avatars/michael.webp',
     seed: 61,
   },
   {
@@ -47,7 +47,7 @@ const TESTIMONIALS = [
       'Ежедневный прогресс держал в тонусе. Вместо идеала я сосредоточился на регулярности — и результат пришёл сам.',
     name: 'Екатерина Волкова',
     role: 'Маркетолог',
-    avatar: '/landing/appminimal/avatars/emily.jpg',
+    avatar: '/landing/appminimal/avatars/emily.webp',
     seed: 74,
   },
   {
@@ -56,7 +56,7 @@ const TESTIMONIALS = [
       'Большинство приложений перегружены. Здесь с первого дня понятно, что делать, и есть ровно то, что нужно для питания и планов.',
     name: 'Даниил Новиков',
     role: 'Продакт-дизайнер',
-    avatar: '/landing/appminimal/avatars/daniel.jpg',
+    avatar: '/landing/appminimal/avatars/daniel.webp',
     seed: 89,
   },
 ] as const
@@ -89,10 +89,10 @@ function TestimonialCard({ item }: { item: (typeof TESTIMONIALS)[number] }) {
             alt=""
             className="size-10 rounded-full object-cover"
             decoding="async"
-            height={80}
+            height={160}
             loading="lazy"
             src={item.avatar}
-            width={80}
+            width={160}
           />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold tracking-tight">{item.name}</p>

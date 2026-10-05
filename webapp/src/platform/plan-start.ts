@@ -31,6 +31,21 @@ function parseStartMap(raw: string | null): Record<string, string> {
   }
 }
 
+/**
+ * A new choice starts today. An already selected plan keeps its start when
+ * that start is today or later; a leftover start from a previous month does not.
+ */
+export function suggestedPlanStartDate(
+  stored: Date | null,
+  selected: boolean,
+  now = new Date(),
+): Date {
+  const today = startOfLocalDay(now)
+  if (!selected || !stored) return today
+  const start = startOfLocalDay(stored)
+  return start.getTime() < today.getTime() ? today : start
+}
+
 function readStartMap(scope: SavedAccountScope | string): Record<string, string> {
   if (typeof localStorage === 'undefined') return {}
   const merged: Record<string, string> = {}

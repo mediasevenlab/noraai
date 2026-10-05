@@ -11,24 +11,24 @@ type Tile = PhotoTile | IconTile
 /** Habitline mosaic rows — same assets, size, order, and ticker motion. */
 const ROW_ONE: Tile[] = [
   { type: 'icon', icon: '/landing/mosaic/icon-diary.svg', label: 'Дневник питания', color: 'rgb(0, 89, 255)' },
-  { type: 'photo', src: '/landing/mosaic/tile-meal.jpg', alt: 'Завтрак и дневник' },
+  { type: 'photo', src: '/landing/mosaic/tile-meal.webp', alt: 'Завтрак и дневник' },
   { type: 'icon', icon: '/landing/mosaic/icon-calories.svg', label: 'Калории за день', color: 'rgb(255, 76, 0)' },
-  { type: 'photo', src: '/landing/mosaic/tile-plate.jpg', alt: 'Тарелка с рыбой и овощами' },
+  { type: 'photo', src: '/landing/mosaic/tile-plate.webp', alt: 'Тарелка с рыбой и овощами' },
   { type: 'icon', icon: '/landing/mosaic/icon-macros.svg', label: 'КБЖУ', color: 'rgb(18, 167, 10)' },
-  { type: 'photo', src: '/landing/mosaic/tile-macros.jpg', alt: 'Продукты для КБЖУ' },
+  { type: 'photo', src: '/landing/mosaic/tile-macros.webp', alt: 'Продукты для КБЖУ' },
   { type: 'icon', icon: '/landing/mosaic/icon-plan.svg', label: 'План на неделю', color: 'rgb(2, 131, 167)' },
-  { type: 'photo', src: '/landing/mosaic/tile-prep.jpg', alt: 'Заготовки на неделю' },
+  { type: 'photo', src: '/landing/mosaic/tile-prep.webp', alt: 'Заготовки на неделю' },
 ]
 
 const ROW_TWO: Tile[] = [
   { type: 'icon', icon: '/landing/mosaic/icon-shopping.svg', label: 'Список покупок', color: 'rgb(255, 0, 0)' },
-  { type: 'photo', src: '/landing/mosaic/tile-groceries.jpg', alt: 'Продукты из списка покупок' },
+  { type: 'photo', src: '/landing/mosaic/tile-groceries.webp', alt: 'Продукты из списка покупок' },
   { type: 'icon', icon: '/landing/mosaic/icon-water-drop.svg', label: 'Норма воды', color: 'rgb(144, 0, 255)' },
-  { type: 'photo', src: '/landing/mosaic/tile-glass.jpg', alt: 'Стакан воды' },
+  { type: 'photo', src: '/landing/mosaic/tile-glass.webp', alt: 'Стакан воды' },
   { type: 'icon', icon: '/landing/mosaic/icon-ration.svg', label: 'Свой рацион', color: 'rgb(0, 34, 255)' },
-  { type: 'photo', src: '/landing/mosaic/tile-home-meal.jpg', alt: 'Домашний рацион' },
+  { type: 'photo', src: '/landing/mosaic/tile-home-meal.webp', alt: 'Домашний рацион' },
   { type: 'icon', icon: '/landing/mosaic/icon-mentor.svg', label: 'С наставником', color: 'rgb(255, 0, 161)' },
-  { type: 'photo', src: '/landing/mosaic/tile-mentor-notes.jpg', alt: 'Заметки к рациону' },
+  { type: 'photo', src: '/landing/mosaic/tile-mentor-notes.webp', alt: 'Заметки к рациону' },
 ]
 
 function MosaicTile({ tile }: { tile: Tile }) {
@@ -38,8 +38,12 @@ function MosaicTile({ tile }: { tile: Tile }) {
         <img
           alt={tile.alt}
           className="size-full rounded-[20px] object-cover"
+          decoding="async"
           draggable={false}
+          height={300}
+          loading="eager"
           src={tile.src}
+          width={300}
         />
       </div>
     )
@@ -116,7 +120,11 @@ export default function MosaicShowcase() {
               alt=""
               aria-hidden="true"
               className="size-full object-cover"
-              src="/landing/mosaic/heading-avocado.jpg"
+              decoding="async"
+              fetchPriority="high"
+              height={142}
+              src="/landing/mosaic/heading-avocado.webp"
+              width={320}
             />
           </span>
           <br />
@@ -149,8 +157,12 @@ export default function MosaicShowcase() {
             <img
               alt="Приложение на телефоне"
               className="h-auto w-[min(58vw,260px)] drop-shadow-[0_24px_60px_rgba(0,0,0,0.28)] sm:w-[300px] lg:w-[340px]"
+              decoding="async"
               draggable={false}
-              src="/landing/mosaic/iphone-foreground-5.png"
+              fetchPriority="high"
+              height={1050}
+              src="/landing/mosaic/iphone-foreground-5.webp"
+              width={516}
             />
           </div>
 

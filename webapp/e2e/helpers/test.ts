@@ -76,7 +76,6 @@ export async function completeUserQuestionnaire(page: Page) {
 
   await expect(page.getByRole('heading', { level: 1, name: 'Цель' })).toBeVisible()
   await choosePlaque(page, /Похудение/)
-  await choosePlaque(page, /3 месяца/)
   await page.getByLabel(/^Комментарий/).fill('Хочу стабильный прогресс.')
   await goNext(page)
 

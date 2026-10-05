@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { BookmarkIcon, CircleCheckIcon, EllipsisIcon, ListIcon, Share2Icon, ShoppingBagIcon, Trash2Icon } from '@/components/icons'
 
-import { NoraButton, NoraIconButton } from '@/components/nora/primitives'
+import { NoraButton, NoraHoverTip, NoraIconButton } from '@/components/nora/primitives'
 import {
   ProductCardOriginBadge,
   productCardFooterCtaClass,
@@ -306,39 +306,45 @@ export function WeekPlanCard({
             ) : null}
             <div className="flex items-center gap-1">
               <div className="hidden items-center gap-1 md:flex">
-                <NoraIconButton
-                  aria-label={shareLabel}
-                  active={shared}
-                  className={PLAN_CARD_FOOTER_ICON_CLASS}
-                  disabled={shareDisabled}
-                  onClick={onShare}
-                >
-                  <Share2Icon className="size-4" />
-                </NoraIconButton>
-                {onToggleSave ? (
+                <NoraHoverTip label={shareLabel}>
                   <NoraIconButton
-                    aria-label={saveLabel}
-                    active={saved}
-                    className={cn(
-                      PLAN_CARD_FOOTER_ICON_CLASS,
-                      saved
-                        ? 'text-[var(--nora-tint)] hover:!text-[var(--nora-tint)]'
-                        : undefined,
-                    )}
-                    onClick={onToggleSave}
+                    aria-label={shareLabel}
+                    active={shared}
+                    className={PLAN_CARD_FOOTER_ICON_CLASS}
+                    disabled={shareDisabled}
+                    onClick={onShare}
                   >
-                    <BookmarkIcon className={cn('size-4', saved && 'fill-current')} />
+                    <Share2Icon className="size-4" />
                   </NoraIconButton>
+                </NoraHoverTip>
+                {onToggleSave ? (
+                  <NoraHoverTip label={saveLabel}>
+                    <NoraIconButton
+                      aria-label={saveLabel}
+                      active={saved}
+                      className={cn(
+                        PLAN_CARD_FOOTER_ICON_CLASS,
+                        saved
+                          ? 'text-[var(--nora-tint)] hover:!text-[var(--nora-tint)]'
+                          : undefined,
+                      )}
+                      onClick={onToggleSave}
+                    >
+                      <BookmarkIcon className={cn('size-4', saved && 'fill-current')} />
+                    </NoraIconButton>
+                  </NoraHoverTip>
                 ) : null}
               </div>
-              <NoraIconButton
-                aria-label="Корзина"
-                className={PLAN_CARD_FOOTER_ICON_CLASS}
-                disabled={shoppingMeals.length === 0}
-                onClick={() => setShoppingOpen(true)}
-              >
-                <ShoppingBagIcon className="size-4" />
-              </NoraIconButton>
+              <NoraHoverTip label="Корзина">
+                <NoraIconButton
+                  aria-label="Корзина"
+                  className={PLAN_CARD_FOOTER_ICON_CLASS}
+                  disabled={shoppingMeals.length === 0}
+                  onClick={() => setShoppingOpen(true)}
+                >
+                  <ShoppingBagIcon className="size-4" />
+                </NoraIconButton>
+              </NoraHoverTip>
               <DropdownMenu>
                 <DropdownMenuTrigger
                   aria-label="Ещё"

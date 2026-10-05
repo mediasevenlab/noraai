@@ -9,7 +9,7 @@ const items = [
     title: 'Быстрый старт',
     description:
       'Зарегистрируйтесь и сразу откройте дневник: первый день питания можно собрать за несколько минут.',
-    image: '/landing/why-choose/why-01-frame4.png',
+    image: '/landing/why-choose/why-01-frame4.webp',
     imageAlt: 'Интерфейс приложения — быстрый старт',
     imageFirst: true,
   },
@@ -18,7 +18,7 @@ const items = [
     title: 'Планы и дневник',
     description:
       'Недельный план и факт приёмов в одном месте — без таблиц и переписок в разных чатах.',
-    image: '/landing/why-choose/why-02-frame5.png',
+    image: '/landing/why-choose/why-02-frame5.webp',
     imageAlt: 'Интерфейс приложения — планы и дневник',
     imageFirst: false,
   },
@@ -27,7 +27,7 @@ const items = [
     title: 'Наставник рядом',
     description:
       'Получайте рационы и правки от наставника прямо в приложении — клиенту и наставнику удобно работать вместе.',
-    image: '/landing/why-choose/why-03-frame6.png',
+    image: '/landing/why-choose/why-03-frame6.webp',
     imageAlt: 'Интерфейс приложения — работа с наставником',
     imageFirst: true,
   },
@@ -35,7 +35,7 @@ const items = [
 
 // The whole block shares one trigger: titles finish as the section enters,
 // so they are already readable once the block is on screen.
-const headingOffset = ['start 1.12', 'start 0.92'] as const
+const headingOffset: ['start 1.12', 'start 0.92'] = ['start 1.12', 'start 0.92']
 
 type WhyChooseSectionProps = {
   href: string
@@ -84,10 +84,11 @@ export default function WhyChooseSection({ href }: WhyChooseSectionProps) {
                     <img
                       alt={item.imageAlt}
                       className="h-70 w-full rounded-3xl object-cover group-hover/card:shadow-xl"
-                      height={1000}
-                      loading="eager"
+                      decoding="async"
+                      height={945}
+                      loading="lazy"
                       src={item.image}
-                      width={1000}
+                      width={1212}
                     />
                   </div>
                   <div

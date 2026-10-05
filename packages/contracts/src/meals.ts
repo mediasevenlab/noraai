@@ -315,16 +315,27 @@ export const createUserMealRequestSchema = z
   })
   .strict()
 export const createUserMealResponseSchema = createMealFromBotResponseSchema
+export const refineMealImageSchema = z
+  .object({
+    imageBase64: mealImageBase64Schema,
+    imageMime: mealImageMimeSchema.optional(),
+  })
+  .strict()
 export const refineMealRequestSchema = z
   .object({
     message: z.string().trim().max(4000).default(''),
     imageBase64: mealImageBase64Schema.optional(),
     imageMime: mealImageMimeSchema.optional(),
+    images: z.array(refineMealImageSchema).max(8).optional(),
   })
   .strict()
-  .refine((value) => Boolean(value.message.trim()) || Boolean(value.imageBase64), {
-    message: 'message or imageBase64 required',
-  })
+  .refine(
+    (value) =>
+      Boolean(value.message.trim())
+      || Boolean(value.imageBase64)
+      || Boolean(value.images?.some((image) => image.imageBase64)),
+    { message: 'message or imageBase64 required' },
+  )
 export const selectMealVersionRequestSchema = z
   .object({
     versionId: z.string().uuid(),

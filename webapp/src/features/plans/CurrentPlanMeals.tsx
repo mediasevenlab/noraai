@@ -45,6 +45,7 @@ import {
   readSavedMealIds,
   reconcileLocalFavoriteIds,
   shareMyMeal,
+  useMealDialogDismissLocked,
   useMealsQuery,
   useUserFavoritesQuery,
   writeSavedMealIds,
@@ -52,6 +53,8 @@ import {
   type MealEntry,
   type MealMacrosRevealState,
 } from '@/features/diary'
+import { DeleteCardDialog } from '@/features/diary/DeleteCardDialog'
+import { planMealDeletePrompt } from '@/features/diary/delete-card-prompt'
 import { noraPageDescriptionClass } from '@/components/PageLayout'
 import { cn } from '@/lib/utils'
 import { putUserFavorites } from '@/platform/account-favorites'
@@ -129,6 +132,7 @@ export function CurrentPlanMeals({
   layoutRevision?: number
 }) {
   const auth = useAuth()
+  const mealDialogDismissLocked = useMealDialogDismissLocked()
   const queryClient = useQueryClient()
   const user = auth.user
   const subjectId = user?.role === 'user' ? user.id : undefined
@@ -160,6 +164,8 @@ export function CurrentPlanMeals({
   const boardDays = previewDays ?? appliedDays
   const filledDays = React.useMemo(() => filledPlanBoardDays(boardDays), [boardDays])
   const [openId, setOpenId] = React.useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = React.useState<MealEntry | null>(null)
+  const [deletingCard, setDeletingCard] = React.useState(false)
   const [openMacrosReveal, setOpenMacrosReveal] = React.useState<MealMacrosRevealState>({
     rolling: false,
   })
@@ -519,7 +525,7 @@ export function CurrentPlanMeals({
         key={meal.id}
         meal={meal}
         onDelete={() => {
-          if (!readOnly) void deleteMeal(meal)
+          if (!readOnly) setDeleteTarget(meal)
         }}
         onOpen={() => setOpenId(meal.id)}
         onAddToPlan={
@@ -585,6 +591,10 @@ export function CurrentPlanMeals({
       </div>
     )
   }
+
+  const deletePrompt = deleteTarget
+    ? planMealDeletePrompt(deleteTarget, isRationPlanDone(deleteTarget, completedIds))
+    : null
 
   return (
     <>
@@ -741,7 +751,7 @@ export function CurrentPlanMeals({
           )
         : null}
       <Dialog
-        disablePointerDismissal
+        disablePointerDismissal={mealDialogDismissLocked}
         open={Boolean(openMeal)}
         onOpenChange={(open) => {
           if (!open) {
@@ -807,6 +817,25 @@ export function CurrentPlanMeals({
           plans={[{ id: planId, title: 'Этот план' }]}
         />
       ) : null}
+      <DeleteCardDialog
+        confirmLabel={deletePrompt?.confirmLabel ?? 'Удалить'}
+        description={deletePrompt?.description ?? ''}
+        onConfirm={() => {
+          if (!deleteTarget || deletingCard) return
+          const meal = deleteTarget
+          setDeletingCard(true)
+          void deleteMeal(meal).finally(() => {
+            setDeletingCard(false)
+            setDeleteTarget(null)
+          })
+        }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+        open={deleteTarget !== null}
+        pending={deletingCard}
+        title={deletePrompt?.title ?? 'Удалить карточку?'}
+      />
     </>
   )
 }

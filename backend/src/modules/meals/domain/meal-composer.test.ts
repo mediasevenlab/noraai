@@ -200,7 +200,7 @@ describe('in-app meal composer turns', () => {
         'Наставник пока не получил уведомление — приём в дневнике есть.',
       ].join('\n'),
     )
-    expect(MEAL_MAX_PHOTOS).toBe(5)
+    expect(MEAL_MAX_PHOTOS).toBe(8)
   })
 })
 

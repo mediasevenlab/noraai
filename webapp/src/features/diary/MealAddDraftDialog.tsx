@@ -31,9 +31,15 @@ import {
   type MealMacrosRevealState,
 } from './meal-card-reveal'
 import { isComposerAnalyzingPlaceholder } from './meal-forming-steps'
-import { MealAttachMenu } from './meal-attach-menu'
+import { MealAttachMenu, queueMealImageFile } from './meal-attach-menu'
 import { MealAddHeroPreview } from './meal-add-hero-preview'
-import { type MealImageMime } from './meal-image-pick'
+import {
+  MEAL_ATTACH_LIMIT,
+  mealAttachLimitMessage,
+  pastedMealImageFiles,
+  takeMealAttachRoom,
+  type MealImageMime,
+} from './meal-image-pick'
 import { MealVoiceControls } from './MealVoiceControls'
 import { appendVoiceTranscript } from './voice-input'
 import type { MealEntry } from './meals-catalog'
@@ -54,6 +60,7 @@ import {
   MealDialogCloseButton,
   MealDialogHero,
   mealComposerSendTone,
+  useMealDialogDismissLocked,
 } from './meal-sheet'
 
 const EMPTY_MEAL_MACROS = { kcal: 0, protein: 0, fat: 0, carbs: 0 } as const
@@ -82,6 +89,7 @@ export function MealAddDraftDialog({
   }) => void
 }) {
   const auth = useAuth()
+  const dismissLocked = useMealDialogDismissLocked()
   const [note, setNote] = React.useState('')
   const [attaches, setAttaches] = React.useState<
     Array<{
@@ -107,6 +115,7 @@ export function MealAddDraftDialog({
   const revealForIdRef = React.useRef<string | null>(null)
   const formingForRevealRef = React.useRef(false)
   const chatRef = React.useRef<HTMLDivElement>(null)
+  const reservedAttachesRef = React.useRef(0)
   const createdRef = React.useRef<string | null>(null)
   const [openedAt, setOpenedAt] = React.useState<string | null>(null)
   if (open && !openedAt) setOpenedAt(new Date().toISOString())
@@ -232,6 +241,7 @@ export function MealAddDraftDialog({
     turnQueueRef.current = Promise.resolve()
     const id = window.setTimeout(() => {
       setNote('')
+      reservedAttachesRef.current = 0
       setAttaches((current) => {
         for (const item of current) {
           if (item.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl)
@@ -366,18 +376,20 @@ export function MealAddDraftDialog({
       item?.previewUrl
       || (item?.base64 ? `data:${item.mime};base64,${item.base64}` : undefined)
     const remaining = Math.max(0, attaches.length - 1)
+    reservedAttachesRef.current = remaining
     const deletedMessage: ComposerChatMessage = {
       role: 'assistant',
       text:
         remaining <= 0
           ? '📷 Фото удалено. Пришлите фото еды, затем голос или текст.'
-          : `📷 Фото удалено. Осталось ${remaining}/5. Можно добавить ещё или отправить.`,
+          : `📷 Фото удалено. Осталось ${remaining}/${MEAL_ATTACH_LIMIT}. Можно добавить ещё или отправить.`,
       ...(previewUrl ? { imageUrl: previewUrl, imageFilter: 'grayscale' as const } : {}),
     }
     setMessages((current) => appendAssistantMessage(current, deletedMessage))
     if (item?.base64) {
       const snapshot = await runTurn({ action: 'remove-photo', photoIndex: index })
       if (!snapshot) {
+        reservedAttachesRef.current = attaches.length
         setMessages((current) => {
           const last = current.at(-1)
           if (
@@ -394,8 +406,87 @@ export function MealAddDraftDialog({
     setAttaches((current) => current.filter((_, itemIndex) => itemIndex !== index))
   }
 
+  function acceptComposerFiles(files: File[]) {
+    if (busy || hasMeal || showFormingSteps || files.length === 0) return
+    const room = takeMealAttachRoom(
+      Math.max(attaches.length, reservedAttachesRef.current),
+      files.length,
+    )
+    if (room.taken === 0) {
+      toast.message(mealAttachLimitMessage())
+      return
+    }
+    if (room.overflow) toast.message(mealAttachLimitMessage())
+    reservedAttachesRef.current = Math.max(attaches.length, reservedAttachesRef.current) + room.taken
+    for (const file of files.slice(0, room.taken)) {
+      queueMealImageFile(file, {
+        onPicked: ({ id, file: picked }) => {
+          const previewUrl = URL.createObjectURL(picked)
+          setAttaches((current) => [
+            ...current,
+            {
+              id,
+              base64: '',
+              mime: (picked.type as MealImageMime) || 'image/jpeg',
+              name: picked.name,
+              previewUrl,
+            },
+          ])
+          setMessages((current) =>
+            appendAssistantMessage(current, {
+              role: 'assistant',
+              text: composerAppPhotoAcceptedMessage(
+                current.filter((message) => message.imageUrl).length + 1,
+              ),
+              imageUrl: previewUrl,
+            }),
+          )
+        },
+        onPickFailed: (id) => {
+          reservedAttachesRef.current = Math.max(0, reservedAttachesRef.current - 1)
+          setAttaches((current) => {
+            const removed = current.find((item) => item.id === id)
+            if (removed?.previewUrl?.startsWith('blob:')) {
+              URL.revokeObjectURL(removed.previewUrl)
+            }
+            return current.filter((item) => item.id !== id)
+          })
+          setMessages((current) => [
+            ...current,
+            {
+              role: 'assistant',
+              text: '❌ Не удалось прикрепить фото. Попробуйте ещё раз.',
+            },
+          ])
+        },
+        onAttached: (parsed) => {
+          setAttaches((current) =>
+            current.map((item) =>
+              item.id === parsed.id
+                ? {
+                    ...item,
+                    base64: parsed.base64,
+                    mime: parsed.mime,
+                    name: parsed.name,
+                  }
+                : item,
+            ),
+          )
+          void runTurn(
+            {
+              action: 'photo',
+              imageBase64: parsed.base64,
+              imageMime: parsed.mime,
+            },
+            { quiet: true },
+          )
+        },
+      })
+    }
+  }
+
   return (
-    <Dialog disablePointerDismissal open={open} onOpenChange={handleOpenChange}>
+    <Dialog disablePointerDismissal={dismissLocked} open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className={MEAL_DIALOG_FRAME_CLASS}
         data-modal-frame="meal"
@@ -476,7 +567,7 @@ export function MealAddDraftDialog({
               <div className={productSheetTabDockClass}>
                 <ProductSheetTabFade />
                 {!showDetail ? (
-                  <div className="relative mb-2 flex h-8 items-center justify-end">
+                  <div className="relative mb-2 flex h-8 items-center justify-end md:hidden">
                     <MealDialogCloseButton />
                   </div>
                 ) : null}
@@ -503,6 +594,10 @@ export function MealAddDraftDialog({
                     data-meal-composer=""
                     disabled={busy}
                     onChange={(event) => setNote(event.target.value)}
+                    onPaste={(event) => {
+                      const files = pastedMealImageFiles(event)
+                      if (files.length > 0) acceptComposerFiles(files)
+                    }}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' && !event.shiftKey) {
                         event.preventDefault()
@@ -516,64 +611,8 @@ export function MealAddDraftDialog({
                   <div className="flex items-center gap-2 pt-4">
                     <MealAttachMenu
                       disabled={busy}
-                      onPicked={({ id, file }) => {
-                        const previewUrl = URL.createObjectURL(file)
-                        setAttaches((current) => [
-                          ...current.slice(-4),
-                          {
-                            id,
-                            base64: '',
-                            mime: (file.type as MealImageMime) || 'image/jpeg',
-                            name: file.name,
-                            previewUrl,
-                          },
-                        ])
-                        setMessages((current) =>
-                          appendAssistantMessage(current, {
-                            role: 'assistant',
-                            text: composerAppPhotoAcceptedMessage(current.filter((message) => message.imageUrl).length + 1),
-                            imageUrl: previewUrl,
-                          }),
-                        )
-                      }}
-                      onPickFailed={(id) => {
-                        setAttaches((current) => {
-                          const removed = current.find((item) => item.id === id)
-                          if (removed?.previewUrl?.startsWith('blob:')) {
-                            URL.revokeObjectURL(removed.previewUrl)
-                          }
-                          return current.filter((item) => item.id !== id)
-                        })
-                        setMessages((current) => [
-                          ...current,
-                          {
-                            role: 'assistant',
-                            text: '❌ Не удалось прикрепить фото. Попробуйте ещё раз.',
-                          },
-                        ])
-                      }}
-                      onAttached={(parsed) => {
-                        setAttaches((current) =>
-                          current.map((item) =>
-                            item.id === parsed.id
-                              ? {
-                                  ...item,
-                                  base64: parsed.base64,
-                                  mime: parsed.mime,
-                                  name: parsed.name,
-                                }
-                              : item,
-                          ),
-                        )
-                        void runTurn(
-                          {
-                            action: 'photo',
-                            imageBase64: parsed.base64,
-                            imageMime: parsed.mime,
-                          },
-                          { quiet: true },
-                        )
-                      }}
+                      onAttached={() => undefined}
+                      onFiles={acceptComposerFiles}
                     />
                     <div className="flex-1" />
                     <MealVoiceControls

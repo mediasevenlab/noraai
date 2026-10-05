@@ -130,19 +130,35 @@ const MEAL_DETAIL_TAB_ICONS = {
 
 export const MEAL_TAB_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
 
+/** Phone sheet stays open until the close control. A desktop modal also closes from the backdrop. */
+export function useMealDialogDismissLocked() {
+  const query = '(min-width: 768px)'
+  const [desktop, setDesktop] = React.useState(
+    () => typeof window !== 'undefined' && window.matchMedia(query).matches,
+  )
+  React.useEffect(() => {
+    const media = window.matchMedia(query)
+    const sync = () => setDesktop(media.matches)
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
+  return !desktop
+}
+
 export function MealDialogCloseButton({ className }: { className?: string }) {
   return (
     <DialogClose
       aria-label="Закрыть"
       className={cn(
-        'nora-press-grow ios-glass-glare-soft inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 p-0 leading-none outline-none',
+        'nora-press-grow ios-glass-glare-soft inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 p-0 leading-none outline-none',
         '!bg-[var(--nora-inset)] !text-[var(--nora-text-secondary)]',
         'hover:!bg-[color-mix(in_srgb,var(--nora-inset)_88%,var(--nora-text)_6%)] hover:!text-[var(--nora-text)]',
         '[&_svg]:block [&_svg]:shrink-0 [&_svg]:text-current',
         className,
       )}
     >
-      <XIcon aria-hidden className="size-3.5" strokeWidth={2.25} />
+      <XIcon aria-hidden className="size-4" strokeWidth={2.25} />
     </DialogClose>
   )
 }
@@ -207,7 +223,10 @@ export function MealDetailTabRow({
       </div>
       {hideClose ? null : (
         <span
-          className={cn('inline-flex motion-reduce:transition-none', entered ? 'opacity-100' : 'opacity-0')}
+          className={cn(
+            'inline-flex motion-reduce:transition-none md:hidden',
+            entered ? 'opacity-100' : 'opacity-0',
+          )}
           style={fadeStyle}
         >
           <MealDialogCloseButton />
@@ -273,12 +292,12 @@ export const MEAL_DIALOG_HERO_EXPAND_CLASS = cn(
   'hover:text-[var(--nora-text)] focus-visible:shadow-[var(--nora-shadow-focus)]',
 )
 
+/** Desktop close sits in the preview corner and shows on hover. */
 export const MEAL_DIALOG_HERO_CLOSE_CLASS = cn(
-  MEAL_DIALOG_OVERLAY_CHIP_CLASS,
-  'nora-press-grow absolute top-3.5 right-3.5 z-[2] hidden size-6 sm:inline-flex',
-  'pointer-events-none opacity-0 transition-[opacity,color]',
-  'group-hover/preview:pointer-events-auto group-hover/preview:opacity-100',
-  'hover:text-[var(--nora-text)] focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:shadow-[var(--nora-shadow-focus)]',
+  'absolute top-2 right-2 z-[2] hidden size-7 md:inline-flex',
+  'pointer-events-none opacity-0 transition-opacity',
+  'md:group-hover/preview:pointer-events-auto md:group-hover/preview:opacity-100',
+  'focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:shadow-[var(--nora-shadow-focus)]',
 )
 
 export function MealDialogHero({

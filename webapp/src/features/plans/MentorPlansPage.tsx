@@ -7,10 +7,10 @@ import { toast } from '@/components/ui/toast'
 import { NoraButton } from '@/components/nora/primitives'
 import {
   ProductFeedEmpty,
-  ProductFeedSkeletonSlots,
+  SectionLoading,
 } from '@/components/nora/product-sheet'
 import { useAuth } from '@/features/auth'
-import { daysCountLabel, mealsCountLabel, mealsQueryKeys, shareMyRation, SkeletonMealCard, useSharedRationsQuery } from '@/features/diary'
+import { daysCountLabel, mealsCountLabel, mealsQueryKeys, shareMyRation, useSharedRationsQuery } from '@/features/diary'
 import {
   emptyRationDraft,
   getMentorUserPlans,
@@ -32,7 +32,7 @@ import { CurrentPlanMeals } from './CurrentPlanMeals'
 import { PlanPageShell } from './PlanPageShell'
 import { planFeedGridClass, readPlanCardLayout, writePlanCardLayout, type PlanCardLayout } from './plan-card-layout'
 import { PlanToolbar, visiblePlanCards, type PlanFeedTab } from './PlanToolbar'
-import { WeekPlanCard, WeekPlanCardSkeleton } from './WeekPlanCard'
+import { WeekPlanCard } from './WeekPlanCard'
 import { buildWeekPlanFromRation, sharedRationSnapshotFromWeekPlan } from './week-plan'
 
 export function MentorPlansPage() {
@@ -161,9 +161,7 @@ export function MentorPlansPage() {
           title="Не удалось загрузить планы"
         />
       ) : plansQuery.isPending ? (
-        <section className={planFeedGridClass(cardLayout)}>
-          <WeekPlanCardSkeleton layout={cardLayout} />
-        </section>
+        <SectionLoading label="Загрузка планов" />
       ) : cards.length === 0 ? (
         <ProductFeedEmpty
           description="Создайте план и отправьте его пользователю через кнопку на карточке."
@@ -277,7 +275,7 @@ export function MentorPlanDetailPage({ planId }: { planId: string }) {
           title="Не удалось загрузить план"
         />
       ) : plansQuery.isPending ? (
-        <ProductFeedSkeletonSlots Card={SkeletonMealCard} />
+        <SectionLoading label="Загрузка плана" />
       ) : plan == null ? (
         <ProductFeedEmpty
           action={

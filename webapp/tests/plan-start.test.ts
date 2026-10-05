@@ -1,6 +1,10 @@
 import { expect, test } from 'bun:test'
 
-import { readPlanStartDate, writePlanStartDate } from '../src/platform/plan-start'
+import {
+  readPlanStartDate,
+  suggestedPlanStartDate,
+  writePlanStartDate,
+} from '../src/platform/plan-start'
 import { planSlotIndex, planSlotLabel } from '../src/platform/plan-slots'
 
 test('plan slots are ordinal days, Monday stamp is Day 1', () => {
@@ -33,6 +37,17 @@ test('plan start date is stored per plan for the account', () => {
     expect(start?.getMonth()).toBe(8)
     expect(start?.getDate()).toBe(3)
     expect(readPlanStartDate(scope, 'other')).toBeNull()
+    const today = new Date(2026, 9, 5, 15, 0, 0)
+    const stale = new Date(2026, 8, 28, 12, 0, 0)
+    const fresh = suggestedPlanStartDate(stale, false, today)
+    expect(fresh.getFullYear()).toBe(2026)
+    expect(fresh.getMonth()).toBe(9)
+    expect(fresh.getDate()).toBe(5)
+    const kept = suggestedPlanStartDate(new Date(2026, 9, 8), true, today)
+    expect(kept.getDate()).toBe(8)
+    const replaced = suggestedPlanStartDate(stale, true, today)
+    expect(replaced.getMonth()).toBe(9)
+    expect(replaced.getDate()).toBe(5)
   } finally {
     Object.defineProperty(globalThis, 'localStorage', {
       configurable: true,

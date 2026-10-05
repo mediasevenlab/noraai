@@ -6,7 +6,7 @@ import type { ListSharedRationsResponse, SharedRation } from '@web-app-demo/cont
 
 import {
   ProductFeedEmpty,
-  ProductFeedSkeletonSlots,
+  SectionLoading,
   productCardAuthorAnchorClass,
   productCardCoverKcalBadgeClass,
   productCardGoalAnchorClass,
@@ -16,7 +16,7 @@ import {
   productSheetFrostFillClass,
   type ProductCardOrigin,
 } from '@/components/nora/product-sheet'
-import { NoraAvatar, NoraButton, NoraIconButton } from '@/components/nora/primitives'
+import { NoraAvatar, NoraButton, NoraHoverTip, NoraIconButton } from '@/components/nora/primitives'
 import { useAuth } from '@/features/auth'
 import { cn } from '@/lib/utils'
 
@@ -122,52 +122,6 @@ function RationSummaryPlaque({ ration }: { ration: SharedRation }) {
 const FEED_RATION_PLUS_CLASS =
   'nora-press-grow size-6! shrink-0 rounded-full! bg-[var(--nora-input-bg)] text-[var(--nora-text-secondary)] shadow-none hover:bg-[color-mix(in_srgb,var(--nora-input-bg)_82%,var(--nora-text)_10%)] hover:text-[var(--nora-text)] active:bg-[color-mix(in_srgb,var(--nora-input-bg)_75%,var(--nora-text)_12%)] [&_svg]:size-4'
 
-function SharedRationCardSkeleton({ layout = 'grid' }: { layout?: FeedCardLayout }) {
-  const list = layout === 'list'
-  return (
-    <article
-      aria-label="Черновик рациона"
-      className={cn(
-        'flex h-full min-w-0 flex-col',
-        list ? 'max-md:flex-row max-md:items-stretch' : 'max-md:min-h-[327px]',
-        list && productListCardHeightClass,
-        productDesktopCardMinHeightClass,
-      )}
-      data-card-layout={layout}
-      data-slot="meal-card-skeleton"
-    >
-      <div className={cn('shrink-0 px-2 pt-2', list && 'max-md:flex max-md:self-stretch max-md:p-2')}>
-        <div
-          className={cn(
-            'h-[204px] w-full animate-pulse bg-[var(--nora-inset)] sm:h-[216px] md:h-[224px]',
-            list && 'max-md:aspect-square max-md:!h-full max-md:!w-auto max-md:!max-h-none',
-          )}
-        />
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div
-          className={cn(
-            'flex flex-col justify-center px-3 sm:px-4',
-            list ? 'pt-2.5' : 'min-h-0 flex-1 md:flex-none md:pt-2.5',
-          )}
-        >
-          <div className="h-10 animate-pulse rounded-[12px] bg-[var(--nora-inset)]" />
-        </div>
-        <div className={cn('flex flex-col px-3 sm:px-4', list ? 'mt-auto pt-2.5' : 'md:pt-2')}>
-          <div
-            aria-hidden
-            className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)] dark:border-[var(--nora-border-strong)]"
-          />
-          <div className="flex items-center gap-2 py-2.5">
-            <div className="size-6 animate-pulse rounded-full bg-[var(--nora-inset)]" />
-            <div className="ml-auto h-6 w-8 animate-pulse rounded bg-[var(--nora-inset)]" />
-          </div>
-        </div>
-      </div>
-    </article>
-  )
-}
-
 function SharedRationCard({
   ration,
   addLabel,
@@ -272,31 +226,35 @@ function SharedRationCard({
             data-slot="meal-card-footer"
             onClick={(event) => event.stopPropagation()}
           >
-            <NoraIconButton
-              aria-label={addLabel}
-              className={cn(FEED_RATION_PLUS_CLASS, list && 'max-md:hidden')}
-              disabled={!canAdd || adding}
-              onClick={(event) => {
-                event.stopPropagation()
-                onAdd()
-              }}
-            >
-              <PlusIcon className="size-4" />
-            </NoraIconButton>
+            <NoraHoverTip label={addLabel}>
+              <NoraIconButton
+                aria-label={addLabel}
+                className={cn(FEED_RATION_PLUS_CLASS, list && 'max-md:hidden')}
+                disabled={!canAdd || adding}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onAdd()
+                }}
+              >
+                <PlusIcon className="size-4" />
+              </NoraIconButton>
+            </NoraHoverTip>
             {list ? <FeedListAuthorLabel name={ration.authorName ?? 'Пользователь'} /> : null}
             <div className="ml-auto flex shrink-0 items-center gap-1">
               {list ? (
-                <NoraIconButton
-                  aria-label={addLabel}
-                  className={cn(FEED_RATION_PLUS_CLASS, 'md:hidden')}
-                  disabled={!canAdd || adding}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onAdd()
-                  }}
-                >
-                  <PlusIcon className="size-4" />
-                </NoraIconButton>
+                <NoraHoverTip label={addLabel}>
+                  <NoraIconButton
+                    aria-label={addLabel}
+                    className={cn(FEED_RATION_PLUS_CLASS, 'md:hidden')}
+                    disabled={!canAdd || adding}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onAdd()
+                    }}
+                  >
+                    <PlusIcon className="size-4" />
+                  </NoraIconButton>
+                </NoraHoverTip>
               ) : null}
               <MealLikeButton
                 likeCount={ration.likeCount}
@@ -437,11 +395,16 @@ export function SharedRationsFeed({
     )
   }
 
-  if (rationsQuery.isLoading || (rations.length === 0 && !filtersActive)) {
+  if (rationsQuery.isLoading) {
+    return <SectionLoading label="Загрузка рационов" />
+  }
+
+  if (rations.length === 0 && !filtersActive) {
     return (
-      <ProductFeedSkeletonSlots
-        className={layout === 'list' ? 'max-md:grid-cols-1' : undefined}
-        Card={() => <SharedRationCardSkeleton layout={layout} />}
+      <ProductFeedEmpty
+        description="Опубликованные рационы появятся здесь."
+        origin={origin}
+        title="Рационов пока нет"
       />
     )
   }

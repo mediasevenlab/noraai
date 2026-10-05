@@ -11,13 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from '@/components/ui/empty'
-import { Skeleton } from '@/components/ui/skeleton'
+import { ProductFeedEmpty, SectionLoading } from '@/components/nora/product-sheet'
 import {
   Table,
   TableBody,
@@ -107,10 +101,7 @@ export function MentorUserDirectory() {
           }
         >
           {users.isPending && (
-            <div aria-label="Загрузка пользователей" className="grid gap-3 p-3.5" role="status">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
+            <SectionLoading className="min-h-32 py-8" label="Загрузка пользователей" />
           )}
           {users.isError && (
             <div className="p-3.5">
@@ -121,18 +112,15 @@ export function MentorUserDirectory() {
             </div>
           )}
           {users.data?.items.length === 0 && (
-            <div className="p-3.5">
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>Пользователи не найдены</EmptyTitle>
-                  <EmptyDescription>
-                    {query
-                      ? 'Подключённые пользователи не найдены.'
-                      : 'У вас пока нет подключённых пользователей.'}
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            </div>
+            <ProductFeedEmpty
+              className="px-3.5"
+              description={
+                query
+                  ? 'Попробуйте другое имя или почту.'
+                  : 'Подключённые пользователи появятся в этом списке.'
+              }
+              title={query ? 'Никого не нашли' : 'Подопечных пока нет'}
+            />
           )}
           {users.data && users.data.items.length > 0 && (
             <Table className="w-full table-fixed text-xs">

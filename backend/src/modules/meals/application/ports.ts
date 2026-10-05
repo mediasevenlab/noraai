@@ -189,6 +189,7 @@ export type MealAnalyzer = {
     coverMime?: string
     attachBase64?: string
     attachMime?: string
+    attachImages?: Array<{ base64: string; mime?: string }>
   }): Promise<MealsGeminiResponse>
   transcribe?(input: MealsTranscribeRequest): Promise<MealsTranscribeResponse>
 }

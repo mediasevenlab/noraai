@@ -12,24 +12,14 @@ import {
   AlertTitle,
 } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
+import { SectionLoading } from '@/components/nora/product-sheet'
 import { useAdminDashboardQuery } from './queries'
 
 export function AdminMetrics() {
   const query = useAdminDashboardQuery()
 
   if (query.isPending) {
-    return (
-      <div
-        aria-label="Loading dashboard"
-        className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
-        role="status"
-      >
-        <Skeleton className="h-40 rounded-4xl" />
-        <Skeleton className="h-40 rounded-4xl" />
-        <Skeleton className="h-40 rounded-4xl" />
-      </div>
-    )
+    return <SectionLoading label="Загрузка сводки" />
   }
 
   if (query.isError) {

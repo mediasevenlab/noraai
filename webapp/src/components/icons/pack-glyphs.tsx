@@ -112,7 +112,6 @@ import { SparklesIcon as Huge_SparklesIcon } from '@hugeicons/core-free-icons'
 import { SquareRoundCornerIcon as Huge_SquareRoundCornerIcon } from '@hugeicons/core-free-icons'
 import { Sun01Icon as Huge_Sun01Icon } from '@hugeicons/core-free-icons'
 import { Target01Icon as Huge_Target01Icon } from '@hugeicons/core-free-icons'
-import { TrashIcon as Huge_TrashIcon } from '@hugeicons/core-free-icons'
 import { TriangleAlertIcon as Huge_TriangleAlertIcon } from '@hugeicons/core-free-icons'
 import { UserIcon as Huge_UserIcon } from '@hugeicons/core-free-icons'
 import { UserPlusIcon as Huge_UserPlusIcon } from '@hugeicons/core-free-icons'
@@ -1061,8 +1060,8 @@ export const PACK_GLYPHS: Record<string, Partial<Record<string, PackGlyph>>> = {
     clarity: draw(ICONS['clarity'].TargetIcon, 'fill'),
     codicon: draw(ICONS['codicon'].TargetIcon, 'fill'),
   },
+  // Hugeicons trash is hard to read, so that pack keeps the Lucide can.
   Trash2Icon: {
-    hugeicons: huge(Huge_TrashIcon),
     devigner: draw(ICONS['devigner'].Trash2Icon, 'stroke'),
     keyline: draw(ICONS['keyline'].Trash2Icon, 'stroke'),
     akar: draw(ICONS['akar'].Trash2Icon, 'stroke'),

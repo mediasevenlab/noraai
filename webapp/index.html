@@ -34,6 +34,22 @@
       html.dark #app-boot,
       html.scheme-editor-dark #app-boot { background: #171717; }
       #app-boot[hidden] { display: none !important; }
+      html[data-embed],
+      html[data-embed] body,
+      html[data-embed] #root {
+        background: #000 !important;
+        overflow: hidden !important;
+        height: 100%;
+        scrollbar-width: none;
+      }
+      html[data-embed]::-webkit-scrollbar,
+      html[data-embed] body::-webkit-scrollbar,
+      html[data-embed] #root::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
+      }
+      html[data-embed] #app-boot { display: none !important; }
       #app-boot .mark {
         width: 56px;
         height: 54px;
@@ -72,6 +88,7 @@
           var stored = localStorage.getItem('web_app_demo_theme')
           var dark = !embed && stored === 'dark'
           var root = document.documentElement
+          if (embed) root.setAttribute('data-embed', '')
           var classes = root.classList
           classes.remove(
             'dark',

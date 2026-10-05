@@ -9,4 +9,4 @@ interface Props {
 const { signupHref, demoSrcs } = Astro.props
 ---
 
-<BenefitsSectionReact client:visible demoSrcs={demoSrcs} signupHref={signupHref} />
+<BenefitsSectionReact client:load demoSrcs={demoSrcs} signupHref={signupHref} />

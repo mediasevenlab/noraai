@@ -1,11 +1,7 @@
-import type { ComponentType, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { GraduationCapIcon, ImagesIcon, NewspaperIcon, UtensilsCrossedIcon } from '@/components/icons'
 
-import {
-  noraPlaqueIconClass,
-  noraProductMetaClass,
-  noraProductTitleClass,
-} from '@/components/nora/primitives'
+import { NoraEmpty, NoraSpinner } from '@/components/nora/primitives'
 import { cn } from '@/lib/utils'
 
 export type ProductCardOrigin = 'diary' | 'feed' | 'rations' | 'mentor-rations'
@@ -157,26 +153,28 @@ export const productDesktopCardMinHeightClass = 'md:min-h-[365px]'
 export const productCardFooterCtaClass =
   'bg-[var(--nora-text)] text-[var(--nora-panel)] hover:bg-[color-mix(in_srgb,var(--nora-text)_88%,var(--nora-panel))] hover:text-[var(--nora-panel)]'
 
-export const PRODUCT_FEED_SKELETON_COUNT = 10
-
-/** True-empty and pending feeds — shimmering card grid, not an empty plaque. */
-export function ProductFeedSkeletonSlots({
-  Card,
+/** Pending section — one spinner, not a grid of placeholder cards. */
+export function SectionLoading({
   className,
+  label = 'Загрузка',
 }: {
-  Card: ComponentType
   className?: string
+  label?: string
 }) {
   return (
-    <section className={cn(productFeedGridClass, className)} data-slot="feed-skeleton">
-      {Array.from({ length: PRODUCT_FEED_SKELETON_COUNT }, (_, index) => (
-        <Card key={index} />
-      ))}
-    </section>
+    <div
+      aria-live="polite"
+      className={cn('flex min-h-40 items-center justify-center py-10', className)}
+      data-slot="section-loading"
+      role="status"
+    >
+      <NoraSpinner className="size-6 motion-reduce:animate-none" />
+      <span className="sr-only">{label}</span>
+    </div>
   )
 }
 
-/** Filtered-empty / error — placeholder card in the feed grid. */
+/** Empty section, failed load, or a filter with no matches. */
 export function ProductFeedEmpty({
   action,
   className,
@@ -196,57 +194,14 @@ export function ProductFeedEmpty({
   const resolvedIcon =
     icon ?? (OriginIcon ? <OriginIcon aria-hidden strokeWidth={1.75} /> : undefined)
   return (
-    <section className={productFeedGridClass} data-slot="feed-empty">
-      <article
-        aria-label={typeof title === 'string' ? title : undefined}
-        className={cn('flex h-full min-w-0 flex-col', className)}
-        data-empty-card=""
-        data-slot="meal-card"
-        role="status"
-      >
-        <div className="relative shrink-0 px-2 pt-2">
-          <div
-            className="relative flex aspect-[4/3] w-full max-h-[132px] items-center justify-center bg-[var(--nora-inset)] sm:max-h-[148px] md:aspect-auto md:h-[168px] md:max-h-none"
-            data-slot="meal-card-preview"
-          >
-            {resolvedIcon ? (
-              <span className={cn(noraPlaqueIconClass, 'size-10 [&_svg]:size-4')}>
-                {resolvedIcon}
-              </span>
-            ) : null}
-          </div>
-        </div>
-        <div
-          className={cn(
-            'flex flex-1 flex-col px-3 pt-3 sm:px-4 sm:pt-3.5',
-            action ? undefined : 'pb-3 sm:pb-3.5',
-          )}
-        >
-          <h3 className={cn(noraProductTitleClass, 'text-pretty')}>{title}</h3>
-          {description ? (
-            <p
-              className={cn(noraProductMetaClass, 'mt-2 text-pretty')}
-              data-slot="empty-description"
-            >
-              {description}
-            </p>
-          ) : null}
-          {action ? (
-            <div className="mt-auto pt-3">
-              <div
-                aria-hidden
-                className="border-t border-[color-mix(in_srgb,var(--nora-divider)_70%,transparent)] dark:border-[var(--nora-border-strong)]"
-              />
-              <div
-                className="flex w-full items-center py-3 [&_button]:w-full [&_button]:justify-center [&_button]:rounded-[12px]"
-                data-slot="empty-card-footer"
-              >
-                {action}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </article>
-    </section>
+    <div className={cn('py-2', className)} data-slot="section-empty">
+      <NoraEmpty
+        action={action}
+        className="w-full"
+        description={description}
+        icon={resolvedIcon}
+        title={title}
+      />
+    </div>
   )
 }

@@ -106,6 +106,7 @@ export {
   MEAL_DIALOG_COVER_CLASS,
   MEAL_DIALOG_FRAME_CLASS,
   MealDialogHero,
+  useMealDialogDismissLocked,
 } from './meal-sheet'
 export { feedDayHeading, isApiMealId, favoriteMealIdsForSync, reconcileLocalFavoriteIds, daysCountLabel, mealsCountLabel, mealsPerDayLabel, rationsCountLabel, calorieBalanceTone, CALORIE_BALANCE_CHIP_CLASS } from './diary-feed'
 export {

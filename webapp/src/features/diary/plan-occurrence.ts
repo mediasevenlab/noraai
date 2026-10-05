@@ -95,7 +95,7 @@ export function planOccurrenceDiaryAt(
   planStart: Date | null = null,
 ) {
   if (!isRationImportedMeal(meal)) return meal.at
-  if (planStart == null && isRationPlanDone(meal, completedIds)) return meal.at
+  if (isRationPlanDone(meal, completedIds)) return meal.at
   if (planStart == null && !isRationPlanPending(meal, completedIds)) return meal.at
   const stamp = new Date(meal.at)
   const start = startOfLocalDay(planStart ?? now)
@@ -224,10 +224,9 @@ export function planOccurrenceDiaryAtWithLayout(
 ) {
   const now = input.now ?? new Date()
   const planStart = input.planStart ?? null
-  if (input.frozenAt) return input.frozenAt
-  if (isRationPlanDone(meal, input.completedIds)) {
-    return planOccurrenceDiaryAt(meal, input.completedIds, now, planStart)
-  }
+  const done = isRationPlanDone(meal, input.completedIds)
+  if (done && input.frozenAt) return input.frozenAt
+  if (done) return meal.at
   const layoutAt = pendingPlanLayoutDiaryAt(
     meal,
     input.layout ?? null,

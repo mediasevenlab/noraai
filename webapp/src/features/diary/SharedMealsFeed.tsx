@@ -6,7 +6,7 @@ import type { ListMealsResponse } from "@web-app-demo/contracts";
 
 import {
   ProductFeedEmpty,
-  ProductFeedSkeletonSlots,
+  SectionLoading,
   type ProductCardOrigin,
 } from "@/components/nora/product-sheet";
 import { NoraButton } from "@/components/nora/primitives";
@@ -67,7 +67,6 @@ import {
   Cover,
   MealCard,
   MealMacrosPlaque,
-  SkeletonMealCard,
   imagesForDiaryMeal,
 } from "./MealCard";
 import { MealOpenDetail } from "./MealOpenDetail";
@@ -75,6 +74,7 @@ import {
   MEAL_DIALOG_COVER_CLASS,
   MEAL_DIALOG_FRAME_CLASS,
   MealDialogHero,
+  useMealDialogDismissLocked,
 } from "./meal-sheet";
 import type { MealMacrosRevealState } from "./meal-card-reveal";
 
@@ -114,6 +114,7 @@ export function SharedMealsFeed({
   period?: DiaryPeriodFilter | null;
 }) {
   const auth = useAuth();
+  const mealDialogDismissLocked = useMealDialogDismissLocked();
   const queryClient = useQueryClient();
   const mealsQuery = useSharedMealsQuery();
   const subjectId = auth.user?.role === "user" ? auth.user.id : undefined;
@@ -403,16 +404,16 @@ export function SharedMealsFeed({
     );
   }
 
-  if (mealsQuery.isLoading || (meals.length === 0 && !filtersActive)) {
+  if (mealsQuery.isLoading) {
+    return <SectionLoading label="Загрузка ленты" />;
+  }
+
+  if (meals.length === 0 && !filtersActive) {
     return (
-      <ProductFeedSkeletonSlots
-        className={layout === "list" ? "max-md:grid-cols-1" : undefined}
-        Card={() => (
-          <SkeletonMealCard
-            className={layout === "list" ? "max-md:min-h-[155px]" : "max-md:min-h-[327px]"}
-            layout={layout}
-          />
-        )}
+      <ProductFeedEmpty
+        description="Опубликованные приёмы появятся здесь."
+        origin={origin}
+        title="В ленте пока пусто"
       />
     );
   }
@@ -464,7 +465,7 @@ export function SharedMealsFeed({
         ))}
       </section>
       <Dialog
-        disablePointerDismissal
+        disablePointerDismissal={mealDialogDismissLocked}
         open={!!openMeal}
         onOpenChange={(open) => {
           if (!open) {

@@ -7,7 +7,7 @@ import {
 
 /** Wait after photo-without-caption before auto-finalize (extra photos / voice / text). */
 export const MEAL_SESSION_MS = 20_000
-export const MEAL_MAX_PHOTOS = 5
+export const MEAL_MAX_PHOTOS = 8
 export const MEAL_ALBUM_WAIT_MS = 900
 
 export { looksLikeTelegramPhone, formatTelegramPhoneDisplay }

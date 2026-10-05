@@ -42,6 +42,8 @@ const authDemoSrcs = [
 
 <BaseLayout canonicalUrl={canonicalUrl} description={description} title={title}>
   <Fragment slot="head">
+    <link rel="preload" as="image" href="/landing/mosaic/iphone-foreground-5.webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="/landing/mosaic/heading-avocado.webp" fetchpriority="high" />
     <style is:inline>
       html.landing-session-check body { visibility: hidden; }
     </style>

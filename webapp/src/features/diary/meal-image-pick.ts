@@ -2,6 +2,7 @@ export type MealImagePickSource = 'gallery' | 'camera'
 export type MealAttachPickerMode = 'menu' | 'direct'
 export type MealImageMime = 'image/jpeg' | 'image/png' | 'image/webp'
 
+export const MEAL_ATTACH_LIMIT = 8
 export const MEAL_IMAGE_MAX_BYTES = 5 * 1024 * 1024
 /** Long edge for stored/upload photos: sharp enough for meal analysis, small on the wire. */
 export const MEAL_IMAGE_MAX_EDGE = 1280
@@ -18,6 +19,52 @@ export function mealImagePickInputProps(source: MealImagePickSource): {
     return { accept: 'image/*', capture: 'environment' }
   }
   return { accept: 'image/*' }
+}
+
+export function mealAttachLimitMessage() {
+  return `Можно прикрепить не больше ${MEAL_ATTACH_LIMIT} фото`
+}
+
+export function takeMealAttachRoom(used: number, incoming: number) {
+  const room = Math.max(0, MEAL_ATTACH_LIMIT - Math.max(0, used))
+  const taken = Math.min(Math.max(0, incoming), room)
+  return { taken, overflow: incoming > taken }
+}
+
+/** Images on the clipboard, including a desktop screenshot paste. Text stays untouched. */
+export function clipboardImageFiles(
+  data: {
+    items?: ArrayLike<{ kind: string; type: string; getAsFile: () => File | null }>
+    files?: Iterable<File>
+  } | null,
+): File[] {
+  if (!data) return []
+  const files: File[] = []
+  const items = data.items
+  if (items) {
+    for (const item of Array.from(items)) {
+      if (item.kind !== 'file' || !item.type.startsWith('image/')) continue
+      const file = item.getAsFile()
+      if (file) files.push(file)
+    }
+  }
+  if (files.length === 0 && data.files) {
+    for (const file of data.files) {
+      if (file.type.startsWith('image/')) files.push(file)
+    }
+  }
+  return files
+}
+
+/** Image paste becomes files. A text paste is left for the field. */
+export function pastedMealImageFiles(event: {
+  clipboardData: Parameters<typeof clipboardImageFiles>[0]
+  preventDefault: () => void
+}): File[] {
+  const files = clipboardImageFiles(event.clipboardData)
+  if (files.length === 0) return []
+  event.preventDefault()
+  return files
 }
 
 /** Phones: plus opens a gallery/camera menu. Desktop: plus opens the file picker. */

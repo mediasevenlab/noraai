@@ -5,7 +5,7 @@ import ScrollRevealText from './ScrollRevealText'
 const FEATURE_CARDS = [
   {
     label: '01 — Персональные цели',
-    image: '/landing/appminimal/feature-phone-01.png',
+    image: '/landing/appminimal/feature-phone-01.webp',
     imageAlt: 'Экран выбора рациона',
     title: 'Начните с целей, которые вам подходят',
     description:
@@ -13,7 +13,7 @@ const FEATURE_CARDS = [
   },
   {
     label: 'Профиль — 02',
-    image: '/landing/appminimal/feature-phone-02.png',
+    image: '/landing/appminimal/feature-phone-02.webp',
     imageAlt: 'Экран дня рациона',
     title: 'Соберите план вокруг своего тела',
     description:
@@ -21,7 +21,7 @@ const FEATURE_CARDS = [
   },
   {
     label: '03 — Планы и рационы',
-    image: '/landing/appminimal/feature-plans-frame-2.png',
+    image: '/landing/appminimal/feature-plans-frame-2.webp',
     imageAlt: 'Дневник питания на экране ноутбука',
     title: 'Держите неделю под контролем',
     description:
@@ -77,10 +77,10 @@ function FeatureCard({
                 : 'absolute top-0 left-1/2 h-auto w-[15.95rem] max-w-none -translate-x-1/2 sm:w-[18.59rem]',
             )}
             decoding="async"
-            height={wide ? 2304 : 1050}
+            height={wide ? 1125 : 1050}
             loading="lazy"
             src={card.image}
-            width={wide ? 4096 : 516}
+            width={wide ? 2000 : 516}
           />
         </div>
       </div>

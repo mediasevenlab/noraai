@@ -1,12 +1,15 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
+  clipboardImageFiles,
   fileToMealImage,
   isAllowedMealImageFile,
   mealAttachPickerMode,
   mealImageOutputSize,
   mealImagePickInputProps,
   nextJpegQuality,
+  pastedMealImageFiles,
+  takeMealAttachRoom,
 } from '../src/features/diary/meal-image-pick'
 
 describe('meal image pick', () => {
@@ -47,5 +50,41 @@ describe('meal image pick', () => {
   test('steps jpeg quality down until the floor', () => {
     expect(nextJpegQuality(0.82)).toBe(0.74)
     expect(nextJpegQuality(0.54)).toBeNull()
+  })
+
+  test('clipboard paste keeps images and leaves text alone', () => {
+    const shot = new File(['png'], 'screenshot.png', { type: 'image/png' })
+    const fromItems = clipboardImageFiles({
+      items: [
+        { kind: 'string', type: 'text/plain', getAsFile: () => null },
+        { kind: 'file', type: 'image/png', getAsFile: () => shot },
+      ],
+      files: [],
+    })
+    expect(fromItems).toEqual([shot])
+    expect(clipboardImageFiles({ items: [], files: [shot] })).toEqual([shot])
+    expect(
+      clipboardImageFiles({
+        items: [{ kind: 'string', type: 'text/plain', getAsFile: () => null }],
+        files: [],
+      }),
+    ).toEqual([])
+
+    let prevented = false
+    expect(
+      pastedMealImageFiles({
+        clipboardData: { items: [], files: [] },
+        preventDefault: () => {
+          prevented = true
+        },
+      }),
+    ).toEqual([])
+    expect(prevented).toBe(false)
+  })
+
+  test('attach room keeps earlier photos and reports the overflow', () => {
+    expect(takeMealAttachRoom(6, 3)).toEqual({ taken: 2, overflow: true })
+    expect(takeMealAttachRoom(8, 1)).toEqual({ taken: 0, overflow: true })
+    expect(takeMealAttachRoom(1, 2)).toEqual({ taken: 2, overflow: false })
   })
 })

@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
 const font = "font-[family-name:var(--nora-font)] text-xs font-normal"
@@ -136,6 +137,24 @@ export function NoraButton({
 
 type NoraIconButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   active?: boolean
+}
+
+/** Desktop hover label for an icon-only control. Hidden on the phone. */
+export function NoraHoverTip({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<span className="inline-flex" />}>{children}</TooltipTrigger>
+      <TooltipContent className="max-md:hidden" side="top" sideOffset={8}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  )
 }
 
 export function NoraIconButton({

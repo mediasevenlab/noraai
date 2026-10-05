@@ -96,7 +96,7 @@ export function QuestionnaireFieldControl({
   return (
     <NoraInput
       aria-invalid={invalid || undefined}
-      aria-label={variant === 'entry' && field.unit ? measureLabel(field) : field.label}
+      aria-label={field.unit ? measureLabel(field) : field.label}
       className={
         variant === 'entry'
           ? `h-10 w-full px-3 lg:h-8 ${entryControlClass}`

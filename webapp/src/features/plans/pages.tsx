@@ -8,10 +8,12 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/components/ui/toast'
 
 import { NoraButton } from '@/components/nora/primitives'
+import { DeleteCardDialog } from '@/features/diary/DeleteCardDialog'
+import { planCardDeletePrompt } from '@/features/diary/delete-card-prompt'
 import { cn } from '@/lib/utils'
 import {
   ProductFeedEmpty,
-  ProductFeedSkeletonSlots,
+  SectionLoading,
   productFeedToolbarRowClass,
 } from '@/components/nora/product-sheet'
 import { useAuth } from '@/features/auth'
@@ -36,7 +38,6 @@ import {
   mealsQueryKeys,
   planOccurrenceDiaryAt,
   shareMyRation,
-  SkeletonMealCard,
   usableMealCover,
   useSharedRationsQuery,
 } from '@/features/diary'
@@ -47,7 +48,7 @@ import {
   writeAssignedPlans,
 } from '@/platform/authored-plans'
 import { notifyHybridFavoriteAdded } from '@/platform/hybrid-notifications'
-import { readPlanStartDate } from '@/platform/plan-start'
+import { readPlanStartDate, suggestedPlanStartDate } from '@/platform/plan-start'
 import { dayKeyFromDate, startOfLocalDay } from '@/platform/plan-slots'
 import { withAuthoredPlan, withoutAuthoredPlan } from '@/platform/plan-library-local'
 
@@ -87,7 +88,7 @@ import { PlanStartDialog } from './PlanStartDialog'
 import { useSyncedPlanLibrary } from './use-plan-library'
 import { PlanToolbar, visiblePlanCards, partitionPlanCards, PlanGroupHeading, PLAN_GROUP_ICONS, planToolbarPillClass, type PlanFeedTab, type PlanLibrary } from './PlanToolbar'
 import { useCurrentWeekPlan } from './use-current-week-plan'
-import { WeekPlanCard, WeekPlanCardSkeleton } from './WeekPlanCard'
+import { WeekPlanCard } from './WeekPlanCard'
 import { buildWeekPlan, buildWeekPlanFromCatalog, buildWeekPlanFromRation, buildWeekPlanFromSharedRation, formatPlanActiveRange, nextPlanDayCount, padPlanDaysForEditor, planOccupancyMarks, rationDaysFromSharedRation, removeEmptyPlanDay, sharedRationSnapshotFromWeekPlan, type WeekPlan } from './week-plan'
 
 export function PlanPage({
@@ -140,6 +141,9 @@ export function PlanPage({
   const [searchOpen, setSearchOpen] = React.useState(false)
   const [createDraft, setCreateDraft] = React.useState<RationDraft | null>(null)
   const [startPickerPlanId, setStartPickerPlanId] = React.useState<string | null>(null)
+  const [deletePlanTarget, setDeletePlanTarget] = React.useState<{ id: string; title: string } | null>(
+    null,
+  )
   const [creating, setCreating] = React.useState(false)
   const [dockAction, setDockAction] = React.useState<HTMLElement | null>(null)
   const savedIdentity = `${savedScope.userId}:${savedScope.email ?? ''}`
@@ -452,7 +456,11 @@ export function PlanPage({
           void selectPlan(plan.id)
         }}
         onToggleSave={() => toggleSave(plan.id, plan.title)}
-        onDelete={isAuthoredPlanId(plan.id) ? () => deletePlan(plan.id) : undefined}
+        onDelete={
+          isAuthoredPlanId(plan.id)
+            ? () => setDeletePlanTarget({ id: plan.id, title: plan.title })
+            : undefined
+        }
         onShare={() => void toggleShare(plan)}
         canShare={
           isAuthoredPlanId(plan.id) &&
@@ -512,9 +520,7 @@ export function PlanPage({
           title="Не удалось загрузить план"
         />
       ) : isPending ? (
-        <section className={planFeedGridClass(cardLayout)}>
-          <WeekPlanCardSkeleton layout={cardLayout} />
-        </section>
+        <SectionLoading label="Загрузка планов" />
       ) : cards.length === 0 ? (
         <ProductFeedEmpty
           action={
@@ -601,9 +607,10 @@ export function PlanPage({
           startPickerPlan?.days.length ?? 0,
           authored.find((item) => item.id === startPickerPlanId)?.dayCount ?? 0,
         )}
-        initialDate={
-          (startPickerPlanId ? readPlanStartDate(savedScope, startPickerPlanId) : null) ?? new Date()
-        }
+        initialDate={suggestedPlanStartDate(
+          startPickerPlanId ? readPlanStartDate(savedScope, startPickerPlanId) : null,
+          Boolean(startPickerPlanId && selectedPlanIds.has(startPickerPlanId)),
+        )}
         onClear={
           startPickerPlanId && selectedPlanIds.has(startPickerPlanId)
             ? clearSelectedPlan
@@ -642,7 +649,21 @@ export function PlanPage({
           <div className={`${MOBILE_DOCK_BOTTOM_CLASS} left-4 flex items-center gap-2`}>
             {createFab}
           </div>
-        ) : null}
+        )         : null}
+      <DeleteCardDialog
+        confirmLabel={planCardDeletePrompt(deletePlanTarget?.title ?? '').confirmLabel}
+        description={planCardDeletePrompt(deletePlanTarget?.title ?? '').description}
+        onConfirm={() => {
+          if (!deletePlanTarget) return
+          deletePlan(deletePlanTarget.id)
+          setDeletePlanTarget(null)
+        }}
+        onOpenChange={(open) => {
+          if (!open) setDeletePlanTarget(null)
+        }}
+        open={deletePlanTarget !== null}
+        title={planCardDeletePrompt(deletePlanTarget?.title ?? '').title}
+      />
     </>
   )
 }
@@ -1101,7 +1122,7 @@ export function CurrentPlanPage({
           title="Не удалось загрузить план"
         />
       ) : loadingPlan ? (
-        <ProductFeedSkeletonSlots Card={SkeletonMealCard} />
+        <SectionLoading label="Загрузка плана" />
       ) : plan == null ? (
         <ProductFeedEmpty
           action={

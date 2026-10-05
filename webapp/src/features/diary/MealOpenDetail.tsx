@@ -5,7 +5,6 @@ import {
   HistoryIcon,
   Loader2Icon,
   PlusIcon,
-  XIcon,
 } from '@/components/icons'
 import { toast } from '@/components/ui/toast'
 
@@ -33,7 +32,7 @@ import { ComposerPressSurface } from './ComposerPressSurface'
 import { useAuthDemoSeeking } from './auth-demo-playback'
 import { ComposerTypedText } from './composer-typed-text'
 import { formatMealStamp, isApiMealId } from './diary-feed'
-import { MealFormingStepList } from './composer-ui'
+import { ComposerAttachChips, MealFormingStepList } from './composer-ui'
 import { RationPlanDoneButton, MealAuthorByline } from './MealCard'
 import {
   advanceMealRevealCursor,
@@ -50,9 +49,15 @@ import {
   type MealRevealCursor,
 } from './meal-card-reveal'
 import { mealRefiningSteps } from './meal-forming-steps'
-import { MealAttachMenu } from './meal-attach-menu'
+import { MealAttachMenu, queueMealImageFile } from './meal-attach-menu'
 import { isPlannedDiaryMeal, isRationPlanDone } from './ration-import'
-import { mealImageFromUrl, type MealImageMime } from './meal-image-pick'
+import {
+  mealAttachLimitMessage,
+  mealImageFromUrl,
+  pastedMealImageFiles,
+  takeMealAttachRoom,
+  type MealImageMime,
+} from './meal-image-pick'
 import { MealVoiceControls } from './MealVoiceControls'
 import { appendVoiceTranscript } from './voice-input'
 import {
@@ -70,7 +75,6 @@ import {
 } from './meals-catalog'
 import { mealsQueryKeys } from './queries'
 import {
-  MEAL_ATTACH_REMOVE_CLASS,
   MEAL_COMPOSER_FIELD_CLASS,
   MEAL_MODAL_CHIP_CLASS,
   MEAL_TAB_EASE,
@@ -314,9 +318,10 @@ export function MealOpenDetail({
   const micronutrientGroups = partitionMealMicronutrients(micronutrients)
   const assumptions = assumptionsForMeal(meal)
   const [note, setNote] = React.useState('')
-  const [attach, setAttach] = React.useState<{ base64: string; mime: MealImageMime; name: string } | null>(
-    null,
-  )
+  const [attaches, setAttaches] = React.useState<
+    Array<{ id: string; base64: string; mime: MealImageMime; name: string }>
+  >([])
+  const pendingAttachesRef = React.useRef(0)
   const [busy, setBusy] = React.useState(false)
   const [sending, setSending] = React.useState(false)
   const [refineReveal, setRefineReveal] = React.useState<'off' | 'waiting' | 'settle' | 'title' | 'composition'>('off')
@@ -347,14 +352,15 @@ export function MealOpenDetail({
     hasDraft:
       canRefine
       && !refineLimitReached
-      && (note.trim().length > 0 || Boolean(attach)),
+      && (note.trim().length > 0 || attaches.some((item) => item.base64)),
   })
 
   const [resetMealId, setResetMealId] = React.useState(meal.id)
   if (meal.id !== resetMealId && refineReveal === 'off' && !sending) {
     setResetMealId(meal.id)
     setNote('')
-    setAttach(null)
+    pendingAttachesRef.current = 0
+    setAttaches([])
     setBusy(false)
     setDetailTabUncontrolled('Состав')
     setFrozenTitle(meal.title)
@@ -435,7 +441,8 @@ export function MealOpenDetail({
 
   async function sendClarification() {
     const text = note.trim()
-    if (!text && !attach) {
+    const ready = attaches.filter((item) => item.base64)
+    if (!text && ready.length === 0) {
       toast.message('Добавьте уточнение или фото состава')
       return
     }
@@ -449,7 +456,7 @@ export function MealOpenDetail({
     setBusy(true)
     setSending(true)
     setFrozenTitle(meal.title)
-    setRefineSteps(mealRefiningSteps(Boolean(attach)))
+    setRefineSteps(mealRefiningSteps(ready.length > 0))
     setDetailTabUncontrolled('Состав')
     setRefineReveal('waiting')
     setMacroSettled(0)
@@ -457,8 +464,12 @@ export function MealOpenDetail({
       const mealId = await ensurePersistedMealId()
       const body = {
         message: text,
-        imageBase64: attach?.base64,
-        imageMime: attach?.mime,
+        imageBase64: ready[0]?.base64,
+        imageMime: ready[0]?.mime,
+        images: ready.map((item) => ({
+          imageBase64: item.base64,
+          imageMime: item.mime,
+        })),
       }
       const isOwn = auth.user.id === subjectUserId
       const result = isOwn
@@ -474,15 +485,30 @@ export function MealOpenDetail({
           return { items: nextItems }
         },
       )
-      onCommitVersionGallery?.({
-        mealId: result.meal.id,
-        fromVersionId: activeVersion,
-        toVersionId: result.meal.activeVersionId || result.meal.versions.at(-1)?.id || '',
-        toIndex: Math.max(0, result.meal.versions.length - 1),
-        extraSrc: attach ? `data:${attach.mime};base64,${attach.base64}` : null,
-      })
+      const toVersionId = result.meal.activeVersionId || result.meal.versions.at(-1)?.id || ''
+      const toIndex = Math.max(0, result.meal.versions.length - 1)
+      if (ready.length === 0) {
+        onCommitVersionGallery?.({
+          mealId: result.meal.id,
+          fromVersionId: activeVersion,
+          toVersionId,
+          toIndex,
+          extraSrc: null,
+        })
+      } else {
+        for (const image of ready) {
+          onCommitVersionGallery?.({
+            mealId: result.meal.id,
+            fromVersionId: activeVersion,
+            toVersionId,
+            toIndex,
+            extraSrc: `data:${image.mime};base64,${image.base64}`,
+          })
+        }
+      }
       setNote('')
-      setAttach(null)
+      pendingAttachesRef.current = 0
+      setAttaches([])
       toast.success('Карточка обновлена')
       const reduced =
         typeof window !== 'undefined' &&
@@ -531,6 +557,40 @@ export function MealOpenDetail({
       toast.error(error instanceof Error ? error.message : 'Не удалось переключить версию')
     } finally {
       setBusy(false)
+    }
+  }
+
+  function acceptRefineFiles(files: File[]) {
+    if (!canRefine || busy || refineLimitReached || files.length === 0) return
+    const room = takeMealAttachRoom(attaches.length + pendingAttachesRef.current, files.length)
+    if (room.taken === 0) {
+      toast.message(mealAttachLimitMessage())
+      return
+    }
+    if (room.overflow) toast.message(mealAttachLimitMessage())
+    pendingAttachesRef.current += room.taken
+    for (const file of files.slice(0, room.taken)) {
+      queueMealImageFile(file, {
+        onAttached: (parsed) => {
+          pendingAttachesRef.current = Math.max(0, pendingAttachesRef.current - 1)
+          setAttaches((current) =>
+            current.some((item) => item.id === parsed.id)
+              ? current
+              : [
+                  ...current,
+                  {
+                    id: parsed.id,
+                    base64: parsed.base64,
+                    mime: parsed.mime,
+                    name: parsed.name,
+                  },
+                ],
+          )
+        },
+        onPickFailed: () => {
+          pendingAttachesRef.current = Math.max(0, pendingAttachesRef.current - 1)
+        },
+      })
     }
   }
 
@@ -714,30 +774,25 @@ export function MealOpenDetail({
           />
           {feedView || previewOnly ? null : (
           <ComposerPressSurface className={MEAL_COMPOSER_FIELD_CLASS}>
-          {attach ? (
-            <div className="relative mb-3 size-12">
-              <img
-                alt={attach.name}
-                className="size-12 rounded-[10px] object-cover"
-                src={`data:${attach.mime};base64,${attach.base64}`}
-              />
-              <button
-                aria-label="Удалить фото"
-                className={MEAL_ATTACH_REMOVE_CLASS}
-                disabled={busy}
-                onClick={() => setAttach(null)}
-                type="button"
-              >
-                <XIcon className="size-3" strokeWidth={1.75} />
-              </button>
-            </div>
-          ) : null}
+          <ComposerAttachChips
+            disabled={busy}
+            items={attaches.map((item) => ({
+              id: item.id,
+              name: item.name,
+              src: `data:${item.mime};base64,${item.base64}`,
+            }))}
+            onRemove={(id) => setAttaches((current) => current.filter((item) => item.id !== id))}
+          />
           <textarea
             aria-label="Уточнение состава"
             className="field-sizing-content max-h-40 min-h-[20px] w-full resize-none overflow-y-auto border-0 bg-transparent p-0 font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text)] outline-none placeholder:font-light placeholder:font-[300] placeholder:text-[var(--nora-input-placeholder)] no-scrollbar"
             data-meal-composer=""
             disabled={busy || !canRefine || refineLimitReached}
             onChange={(event) => setNote(event.target.value)}
+            onPaste={(event) => {
+              const files = pastedMealImageFiles(event)
+              if (files.length > 0) acceptRefineFiles(files)
+            }}
             placeholder={
               refineLimitReached
                 ? 'Лимит уточнений исчерпан'
@@ -749,13 +804,8 @@ export function MealOpenDetail({
           <div className="flex items-center gap-2 pt-4">
             <MealAttachMenu
               disabled={!canRefine || busy || refineLimitReached}
-              onAttached={(parsed) =>
-                setAttach({
-                  base64: parsed.base64,
-                  mime: parsed.mime,
-                  name: parsed.name,
-                })
-              }
+              onAttached={() => undefined}
+              onFiles={acceptRefineFiles}
             />
             <NoraSelect
               className={cn(

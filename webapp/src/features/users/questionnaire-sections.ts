@@ -3,7 +3,6 @@ import {
   ActivityIcon,
   BrainIcon,
   CakeIcon,
-  CalendarRangeIcon,
   CookingPotIcon,
   DropletsIcon,
   HeartPulseIcon,
@@ -124,19 +123,6 @@ const fieldGoal: ProfileField = {
     { value: 'Набор', label: 'Набор', description: 'Мышцы и вес' },
     { value: 'Поддержание', label: 'Поддержание', description: 'Стабильный вес' },
     { value: 'Здоровье', label: 'Здоровье', description: 'Без цели по весу' },
-  ],
-}
-
-const fieldTimeline: ProfileField = {
-  key: 'timeline',
-  label: 'Срок',
-  icon: CalendarRangeIcon,
-  control: 'choice',
-  options: [
-    { value: '1 месяц', label: '1 месяц', description: 'Быстрый старт' },
-    { value: '3 месяца', label: '3 месяца', description: 'Оптимально' },
-    { value: '6 месяцев', label: '6 месяцев', description: 'С запасом' },
-    { value: 'Год и дольше', label: 'Год+', description: 'Долгий путь' },
   ],
 }
 
@@ -330,11 +316,10 @@ export const ONBOARDING_STEPS: ReadonlyArray<OnboardingStep> = [
   {
     category: 'Фокус результата',
     heading: 'Цель',
-    summary: 'Цель и срок',
+    summary: 'Выбранная цель',
     icon: TargetIcon,
     fields: [
       { ...fieldGoal, hideLabel: false },
-      fieldTimeline,
       fieldGoalDetail,
     ],
   },

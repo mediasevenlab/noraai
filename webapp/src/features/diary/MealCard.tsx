@@ -1,11 +1,10 @@
 import * as React from 'react'
 import {
   BookmarkIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   CircleCheckIcon,
   CircleIcon,
-  CookieIcon,
-  DropletIcon,
-  FlameIcon,
   HeartIcon,
   PlusIcon,
   Share2Icon,
@@ -25,6 +24,7 @@ import {
 } from '@/components/nora/product-sheet'
 import {
   NoraAvatar,
+  NoraHoverTip,
   NoraIconButton,
 } from '@/components/nora/primitives'
 import { cn } from '@/lib/utils'
@@ -157,9 +157,9 @@ export function MealMacrosPlaque({
   rollingKeys?: Record<MealRevealMacroKey, boolean>
 }) {
   const macros = [
-    { key: 'protein', icon: FlameIcon, value: meal.protein, min: 8, max: 78, intervalMs: 58 },
-    { key: 'fat', icon: DropletIcon, value: meal.fat, min: 4, max: 42, intervalMs: 64 },
-    { key: 'carbs', icon: CookieIcon, value: meal.carbs, min: 10, max: 88, intervalMs: 72 },
+    { key: 'protein', letter: 'Б:', name: 'Белки', value: meal.protein, min: 8, max: 78, intervalMs: 58 },
+    { key: 'fat', letter: 'Ж:', name: 'Жиры', value: meal.fat, min: 4, max: 42, intervalMs: 64 },
+    { key: 'carbs', letter: 'У:', name: 'Углеводы', value: meal.carbs, min: 10, max: 88, intervalMs: 72 },
   ] as const
   const shell = cn(
     'ios-glass-glare flex h-8 min-h-8 max-h-8 items-center rounded-full py-0 text-[var(--nora-text-secondary)]',
@@ -182,13 +182,16 @@ export function MealMacrosPlaque({
           <span className="font-medium"> ккал</span>
         </span>
       </div>
-      <div className={cn(shell, 'pl-1 pr-2')}>
+      <div className={cn(shell, 'pl-2 pr-2')}>
         {macros.map((item) => (
           <div
             key={item.key}
-            className="flex items-center gap-1 px-1.5 text-[11px] leading-none text-[var(--nora-text-secondary)]"
+            aria-label={`${item.name} ${item.value}`}
+            className="flex items-center gap-1 px-1 text-[11px] leading-none text-[var(--nora-text-secondary)]"
           >
-            <item.icon aria-hidden className="size-[15px] shrink-0" strokeWidth={1.75} />
+            <span aria-hidden className="font-medium">
+              {item.letter}
+            </span>
             <RollingMacroValue
               intervalMs={item.intervalMs}
               max={item.max}
@@ -256,6 +259,11 @@ export function commitMealVersionExtras(
 const MEAL_PHOTO_FADE_MS = 280
 const MEAL_PHOTO_SWIPE_PX = 36
 
+/** Desktop pages photos with arrows. Phones keep the swipe. */
+function mealPhotoDesktopArrows() {
+  return window.matchMedia('(min-width: 768px)').matches
+}
+
 export function MealPhotoSlides({
   slides,
   sizes = 'md',
@@ -290,7 +298,7 @@ export function MealPhotoSlides({
   if (slides.length === 0) return null
 
   return (
-    <>
+    <div className="group/photos absolute inset-0">
       <div
         className="absolute inset-0 size-full touch-pan-y overflow-hidden overscroll-x-none"
         onClick={(event) => {
@@ -305,7 +313,7 @@ export function MealPhotoSlides({
           pointerRef.current = null
         }}
         onPointerDown={(event) => {
-          if (!multiple || event.button !== 0) return
+          if (!multiple || event.button !== 0 || mealPhotoDesktopArrows()) return
           draggedRef.current = false
           pointerRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY }
         }}
@@ -376,7 +384,50 @@ export function MealPhotoSlides({
           ))}
         </div>
       ) : null}
-    </>
+      {multiple && active > 0 ? (
+        <MealPhotoArrow direction="prev" onStep={() => goTo(active - 1)} />
+      ) : null}
+      {multiple && active < maxIndex ? (
+        <MealPhotoArrow direction="next" onStep={() => goTo(active + 1)} />
+      ) : null}
+    </div>
+  )
+}
+
+function MealPhotoArrow({
+  direction,
+  onStep,
+}: {
+  direction: 'prev' | 'next'
+  onStep: () => void
+}) {
+  const previous = direction === 'prev'
+  return (
+    <button
+      aria-label={previous ? 'Предыдущее фото' : 'Следующее фото'}
+      className={cn(
+        MEAL_DIALOG_OVERLAY_CHIP_CLASS,
+        'absolute top-1/2 z-[3] hidden size-7 -translate-y-1/2 md:inline-flex',
+        'pointer-events-none opacity-0 transition-opacity',
+        'md:group-hover/photos:pointer-events-auto md:group-hover/photos:opacity-100',
+        'hover:text-[var(--nora-text)]',
+        'focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:shadow-[var(--nora-shadow-focus)]',
+        previous ? 'left-2' : 'right-2',
+      )}
+      data-meal-photo-arrow={direction}
+      onClick={(event) => {
+        event.stopPropagation()
+        onStep()
+      }}
+      onPointerDown={(event) => event.stopPropagation()}
+      type="button"
+    >
+      {previous ? (
+        <ChevronLeftIcon aria-hidden className="size-4" strokeWidth={2.25} />
+      ) : (
+        <ChevronRightIcon aria-hidden className="size-4" strokeWidth={2.25} />
+      )}
+    </button>
   )
 }
 
@@ -470,18 +521,20 @@ function MealCardAddButton({
   }
 
   return (
-    <NoraIconButton
-      aria-label={label}
-      className={cn(MEAL_CARD_FOOTER_PLUS_CLASS, className)}
-      data-demo-pressed={pressed ? '' : undefined}
-      data-slot="meal-card-add"
-      disabled={disabled}
-      onClick={stopClick}
-      onPointerDown={stopPointer}
-      onPointerUp={stopPointer}
-    >
-      <PlusIcon className="size-4" />
-    </NoraIconButton>
+    <NoraHoverTip label={label}>
+      <NoraIconButton
+        aria-label={label}
+        className={cn(MEAL_CARD_FOOTER_PLUS_CLASS, className)}
+        data-demo-pressed={pressed ? '' : undefined}
+        data-slot="meal-card-add"
+        disabled={disabled}
+        onClick={stopClick}
+        onPointerDown={stopPointer}
+        onPointerUp={stopPointer}
+      >
+        <PlusIcon className="size-4" />
+      </NoraIconButton>
+    </NoraHoverTip>
   )
 }
 
@@ -505,36 +558,41 @@ function CardActions({
   onShare: () => void
 }) {
   const shareLabel = shared ? 'Скрыть из ленты' : 'Поделиться'
+  const saveLabel = saved ? 'Убрать' : 'Сохранить'
   return (
     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
       {hideFooterShare ? null : (
-        <NoraIconButton
-          aria-label={shareLabel}
-          active={shared}
-          className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
-          data-demo-pressed={sharePressed ? '' : undefined}
-          data-slot="meal-card-share"
-          disabled={!canShare}
-          onClick={onShare}
-        >
-          <Share2Icon className="size-4" />
-        </NoraIconButton>
+        <NoraHoverTip label={shareLabel}>
+          <NoraIconButton
+            aria-label={shareLabel}
+            active={shared}
+            className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
+            data-demo-pressed={sharePressed ? '' : undefined}
+            data-slot="meal-card-share"
+            disabled={!canShare}
+            onClick={onShare}
+          >
+            <Share2Icon className="size-4" />
+          </NoraIconButton>
+        </NoraHoverTip>
       )}
-      <NoraIconButton
-        aria-label={saved ? 'Убрать' : 'Сохранить'}
-        active={saved}
-        className={cn(
-          'nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent active:!bg-transparent [&_svg]:size-4',
-          saved
-            ? 'text-[var(--nora-tint)] hover:!text-[var(--nora-tint)]'
-            : 'hover:text-[var(--nora-text)]',
-        )}
-        data-demo-pressed={savePressed ? '' : undefined}
-        data-slot="meal-card-bookmark"
-        onClick={onToggleSave}
-      >
-        <BookmarkIcon className={cn('size-4', saved && 'fill-current')} />
-      </NoraIconButton>
+      <NoraHoverTip label={saveLabel}>
+        <NoraIconButton
+          aria-label={saveLabel}
+          active={saved}
+          className={cn(
+            'nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent active:!bg-transparent [&_svg]:size-4',
+            saved
+              ? 'text-[var(--nora-tint)] hover:!text-[var(--nora-tint)]'
+              : 'hover:text-[var(--nora-text)]',
+          )}
+          data-demo-pressed={savePressed ? '' : undefined}
+          data-slot="meal-card-bookmark"
+          onClick={onToggleSave}
+        >
+          <BookmarkIcon className={cn('size-4', saved && 'fill-current')} />
+        </NoraIconButton>
+      </NoraHoverTip>
     </div>
   )
 }
@@ -571,9 +629,11 @@ export function MealLikeButton({
   pressed?: boolean
   onToggle: () => void
 }) {
+  const likeLabel = liked ? 'Убрать лайк' : 'Нравится'
   return (
+    <NoraHoverTip label={likeLabel}>
     <button
-      aria-label={liked ? 'Убрать лайк' : 'Нравится'}
+      aria-label={likeLabel}
       aria-pressed={liked}
       data-demo-pressed={pressed ? '' : undefined}
       className={cn(
@@ -593,6 +653,7 @@ export function MealLikeButton({
       <HeartIcon aria-hidden className={cn('size-4', liked && 'fill-current')} strokeWidth={1.75} />
       {likeCount}
     </button>
+    </NoraHoverTip>
   )
 }
 
@@ -985,20 +1046,22 @@ export function MealCard({
                   />
                 ) : null}
                 {hideFooterShare ? null : (
-                  <NoraIconButton
-                    aria-label={meal.shared ? 'Скрыть из ленты' : 'Поделиться'}
-                    active={Boolean(meal.shared)}
-                    className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
-                    data-demo-pressed={sharePressed ? '' : undefined}
-                    data-slot="meal-card-share"
-                    disabled={!canShare}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      onShare()
-                    }}
-                  >
-                    <Share2Icon className="size-4" />
-                  </NoraIconButton>
+                  <NoraHoverTip label={meal.shared ? 'Скрыть из ленты' : 'Поделиться'}>
+                    <NoraIconButton
+                      aria-label={meal.shared ? 'Скрыть из ленты' : 'Поделиться'}
+                      active={Boolean(meal.shared)}
+                      className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
+                      data-demo-pressed={sharePressed ? '' : undefined}
+                      data-slot="meal-card-share"
+                      disabled={!canShare}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onShare()
+                      }}
+                    >
+                      <Share2Icon className="size-4" />
+                    </NoraIconButton>
+                  </NoraHoverTip>
                 )}
                 {onToggleLike ? (
                   <MealLikeButton

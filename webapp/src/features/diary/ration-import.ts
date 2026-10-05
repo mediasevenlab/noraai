@@ -252,20 +252,23 @@ export function isDiaryMealOnFutureDay(meal: { at: string }, now = new Date()) {
   return localDayKey(meal.at) > localCalendarDayKey(now)
 }
 
+/** «Выполнить» is only for the calendar day that is already underway. */
+export function isDiaryMealOnCurrentDay(meal: { at: string }, now = new Date()) {
+  return localDayKey(meal.at) === localCalendarDayKey(now)
+}
+
 export function isDiaryFeedMealVisible(
   meal: DiaryVisibilityMeal & { at: string },
   selectedPlanIds: string | null | ReadonlySet<string>,
   completedIds?: ReadonlySet<string>,
   now = new Date(),
   showWholePlan = false,
-  pinnedIds?: ReadonlySet<string>,
 ): boolean {
   const pendingPlan =
     isRationImportedMeal(meal) && isRationPlanPending(meal, completedIds)
   const dayKey = localDayKey(meal.at)
   const todayKey = localCalendarDayKey(now)
-  const pinned = Boolean(meal.id && pinnedIds?.has(meal.id))
-  if (pendingPlan && dayKey < todayKey && !pinned) return false
+  if (pendingPlan && dayKey < todayKey) return false
   if (!pendingPlan && !isDiaryMealInVisibleDay(meal, now)) return false
   if (!showWholePlan && pendingPlan && dayKey > todayKey) return false
   return isPendingPlanMealShownInDiary(meal, selectedPlanIds, completedIds, now)
