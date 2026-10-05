@@ -29,7 +29,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select'
 import { ProductFeedEmpty, SectionLoading } from '@/components/nora/product-sheet'
 import {
