@@ -23,6 +23,10 @@ export { UserMentorBanner } from './UserMentorBanner'
 export { UserReferrals } from './pages'
 export { useCurrentUserMentorQuery, useQuestionnaireQuery } from './queries'
 export { questionnaireDailyCalorieTarget } from './questionnaire-calorie-target'
+export {
+  followedDailyCalories,
+  useCaloriePreference,
+} from './calorie-preference'
 export { getUserFavorites, putUserFavorites, getUserPlanLibrary, putUserPlanLibrary } from './api'
 export {
   AccountProfile,

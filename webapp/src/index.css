@@ -801,8 +801,23 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
   [data-settings-well] [data-slot='field-label'],
   [data-settings-well] [data-slot='select-trigger'],
   [data-settings-well] button,
-  [data-settings-well] span {
+  [data-settings-well] label,
+  [data-settings-well] span:not([data-option-note]):not([data-nora-badge]):not([data-settings-meta]),
+  [data-onboarding-form] [data-slot='field-label'],
+  [data-onboarding-form] label,
+  [data-onboarding-form] span:not([data-option-note]):not([data-nora-badge]):not([data-settings-meta]) {
     font-size: 14px !important;
+  }
+
+  [data-settings-well] [data-option-note],
+  [data-onboarding-form] [data-option-note] {
+    font-size: 13px !important;
+    font-weight: 250 !important;
+  }
+
+  [data-settings-well] [data-settings-meta] {
+    font-size: 13px !important;
+    font-weight: 500 !important;
   }
 
   [data-settings-well] [data-slot='field-description'] {
@@ -833,6 +848,29 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
    * painted, 3.5rem/scale in layout. The negative margin cancels the
    * leftover layout height that transform would leave under the field.
    */
+  /*
+   * Restrictions note uses the same painted type as the login fields:
+   * computed 16px so iOS does not zoom, drawn at 14px.
+   */
+  [data-onboarding-form] textarea {
+    box-sizing: border-box !important;
+    display: block !important;
+    width: calc(100% / 0.875) !important;
+    max-width: none !important;
+    min-height: calc(3.5rem / 0.875) !important;
+    margin-top: 0 !important;
+    margin-right: calc(100% * (0.875 - 1) / 0.875) !important;
+    margin-bottom: calc(3.5rem * (0.875 - 1) / 0.875) !important;
+    padding: calc(0.5rem / 0.875) calc(0.75rem / 0.875) !important;
+    font-family: var(--nora-font) !important;
+    font-size: 16px !important;
+    font-weight: 300 !important;
+    line-height: calc(1.25rem / 0.875) !important;
+    border-radius: calc(var(--nora-radius-md, 8px) / 0.875) !important;
+    transform: scale(0.875);
+    transform-origin: top left;
+  }
+
   [data-settings-well] textarea {
     box-sizing: border-box !important;
     display: block !important;

@@ -1,5 +1,5 @@
 import { AtSignIcon, ChevronLeftIcon, ChevronRightIcon, GiftIcon, HashIcon, SearchIcon, UserRoundIcon } from '@/components/icons'
-import { useState, type FormEvent, type MouseEvent } from 'react'
+import { useEffect, useState, type FormEvent, type MouseEvent } from 'react'
 
 import { DataTableFrame } from '@/components/dashboard'
 import { SettingsEntry, SettingsFieldMark } from '@/components/settings-canvas'
@@ -50,10 +50,20 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
     : null
   const perReferralBonusLabel = formatUserReferralBonus(USER_REFERRAL_BONUS)
 
+  useEffect(() => {
+    const next = draftQuery.trim()
+    const handle = window.setTimeout(() => {
+      setQuery((current) => (current === next ? current : next))
+      setPage((current) => (query === next ? current : 1))
+    }, 200)
+    return () => window.clearTimeout(handle)
+  }, [draftQuery, query])
+
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setPage(1)
-    setQuery(draftQuery.trim())
+    const next = draftQuery.trim()
+    setPage((current) => (query === next ? current : 1))
+    setQuery(next)
   }
 
   const tableBody = (
@@ -66,15 +76,25 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
         </Alert>
       )}
       {referrals.data?.items.length === 0 && (
-        <ProductFeedEmpty
-          className={layout === 'entry' ? 'py-0' : undefined}
-          description={
-            query
-              ? 'По этой строке рефералов нет.'
-              : 'Люди, которые придут по вашей ссылке, появятся здесь.'
-          }
-          title={query ? 'Никого не нашли' : 'Рефералов пока нет'}
-        />
+        layout === 'entry' ? (
+          <ReferralSettingsEmpty
+            description={
+              query
+                ? 'По этой строке рефералов нет.'
+                : 'Люди, которые придут по вашей ссылке, появятся здесь.'
+            }
+            title={query ? 'Никого не нашли' : 'Рефералов пока нет'}
+          />
+        ) : (
+          <ProductFeedEmpty
+            description={
+              query
+                ? 'По этой строке рефералов нет.'
+                : 'Люди, которые придут по вашей ссылке, появятся здесь.'
+            }
+            title={query ? 'Никого не нашли' : 'Рефералов пока нет'}
+          />
+        )
       )}
       {referrals.data && referrals.data.items.length > 0 && (
         <Table className="w-full table-fixed text-xs">
@@ -142,7 +162,7 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
   const bonusChip =
     bonusTotal !== null ? (
       <div className="flex items-center gap-1.5">
-        <span className="text-[11px] font-medium text-[var(--nora-text-secondary)]">
+        <span className="text-[13px] font-medium text-[var(--nora-text-secondary)]" data-settings-meta="">
           Бонусы
         </span>
         <NoraBadge variant="green">
@@ -154,7 +174,7 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
   const searchField = (
     <NoraSearch
       aria-label="Поиск рефералов"
-      className="h-8 min-h-8 w-full bg-[var(--nora-panel)] lg:w-[220px]"
+      className="h-8 min-h-8 w-full bg-[var(--nora-panel)]"
       icon={<SearchIcon className="!size-4 max-[767px]:!size-[calc(1rem/0.875)]" strokeWidth={1.75} />}
       inputClassName="text-[13px] !font-light leading-5 placeholder:!font-light"
       onChange={(event) => setDraftQuery(event.target.value)}
@@ -166,7 +186,7 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
   const search = (
     <form className="flex min-w-0 flex-1 items-center gap-2 lg:flex-none" onSubmit={submitSearch}>
       {bonusChip}
-      {searchField}
+      <div className="min-w-0 lg:w-[220px]">{searchField}</div>
     </form>
   )
 
@@ -177,14 +197,15 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
         title="Каталог"
       >
         <div className="grid gap-2.5">
-          <form className="flex w-full min-w-0 items-center gap-2" onSubmit={submitSearch}>
-            {description ? (
-              <p className="shrink-0 font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
-                {description}
-              </p>
-            ) : null}
-            {bonusChip ? <div className="shrink-0">{bonusChip}</div> : null}
-            <div className="relative h-8 min-w-0 flex-1 lg:ml-auto lg:w-[220px] lg:flex-none">{searchField}</div>
+          <form className="grid w-full grid-cols-2 items-center gap-2" onSubmit={submitSearch}>
+            <div className="min-w-0">
+              {description ? (
+                <p className="font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
+                  {description}
+                </p>
+              ) : bonusChip}
+            </div>
+            <div className="relative h-8 min-w-0">{searchField}</div>
           </form>
           <div
             className={
@@ -286,6 +307,25 @@ function ReferralPageList({
         </PaginationItem>
       </PaginationContent>
     </Pagination>
+  )
+}
+
+function ReferralSettingsEmpty({
+  description,
+  title,
+}: {
+  description: string
+  title: string
+}) {
+  return (
+    <div className="rounded-[var(--nora-radius-md)] bg-[var(--settings-field-bg,var(--nora-panel))] px-3 py-2.5">
+      <p className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
+        {title}
+      </p>
+      <p className="font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-secondary)]">
+        {description}
+      </p>
+    </div>
   )
 }
 

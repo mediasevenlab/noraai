@@ -1,33 +1,52 @@
-import type { UserDto } from '@web-app-demo/contracts'
-import { MailIcon, UserRoundIcon } from '@/components/icons'
+import {
+  isDefaultUserEmail,
+  nicknameSchema,
+  type UserDto,
+} from '@web-app-demo/contracts'
+import { AtSignIcon, MailIcon, UserRoundIcon } from '@/components/icons'
 import { useId, useState, type FormEvent } from 'react'
 
+import { NoraToast } from '@/components/nora'
 import { SettingsEntry, SettingsFieldMark, SettingsReadRows, useSettingsDraft } from '@/components/settings-canvas'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { ApiRequestError } from '@/platform/api'
 import { useUpdateProfileMutation } from './queries'
 
 export function ProfilePanel({ className, user }: { className?: string, user: UserDto }) {
   const displayNameErrorId = useId()
+  const nicknameErrorId = useId()
   const [displayName, setDisplayName] = useState(user.displayName ?? '')
+  const [nickname, setNickname] = useState(user.nickname ?? '')
   const mutation = useUpdateProfileMutation()
+  const isDefaultUser = isDefaultUserEmail(user.email)
   const displayNameInvalid = displayName.trim().length === 1
+  const nicknameValue = nickname.trim().toLowerCase()
+  const nicknameValidation = nicknameValue === ''
+    ? { success: true as const, data: null }
+    : nicknameSchema.safeParse(nicknameValue)
+  const nicknameError = mutation.error instanceof ApiRequestError && mutation.error.code === 'CONFLICT'
+    ? 'Этот никнейм уже занят.'
+    : mutation.error?.message
   const mode = useSettingsDraft({
     id: 'profile-display-name',
-    disabled: displayNameInvalid,
+    disabled: displayNameInvalid || !nicknameValidation.success,
     pending: mutation.isPending,
     save: async () => {
-      if (displayName.trim().length === 1) return false
-      const normalized = displayName.trim()
-      const current = user.displayName ?? ''
-      if (normalized === current) return true
+      if (displayName.trim().length === 1 || !nicknameValidation.success) return false
+      const nextName = displayName.trim()
+      const nextNickname = nickname.trim().toLowerCase()
+      const nameChanged = nextName !== (user.displayName ?? '')
+      const nicknameChanged = nextNickname !== (user.nickname ?? '')
+      if (!nameChanged && !nicknameChanged) return true
       try {
         const response = await mutation.mutateAsync({
-          displayName: normalized === '' ? null : normalized,
+          ...(nameChanged ? { displayName: nextName === '' ? null : nextName } : {}),
+          ...(nicknameChanged ? { nickname: nicknameValidation.data } : {}),
         })
         setDisplayName(response.user.displayName ?? '')
+        setNickname(response.user.nickname ?? '')
         return true
       } catch {
         return false
@@ -35,15 +54,28 @@ export function ProfilePanel({ className, user }: { className?: string, user: Us
     },
     reset: () => {
       setDisplayName(user.displayName ?? '')
+      setNickname(user.nickname ?? '')
       mutation.reset()
     },
   })
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const normalized = displayName.trim()
-    mutation.mutate({ displayName: normalized === '' ? null : normalized }, {
-      onSuccess: (response) => setDisplayName(response.user.displayName ?? ''),
+    if (displayNameInvalid || !nicknameValidation.success) return
+    const nextName = displayName.trim()
+    const nextNickname = nickname.trim().toLowerCase()
+    mutation.mutate({
+      ...(nextName !== (user.displayName ?? '')
+        ? { displayName: nextName === '' ? null : nextName }
+        : {}),
+      ...(nextNickname !== (user.nickname ?? '')
+        ? { nickname: nicknameValidation.data }
+        : {}),
+    }, {
+      onSuccess: (response) => {
+        setDisplayName(response.user.displayName ?? '')
+        setNickname(response.user.nickname ?? '')
+      },
     })
   }
 
@@ -52,7 +84,7 @@ export function ProfilePanel({ className, user }: { className?: string, user: Us
   return (
     <SettingsEntry
       className={className}
-      description="Имя в приложении."
+      description="Имя и никнейм в приложении."
       title="Данные профиля"
     >
       {showForm ? (
@@ -112,13 +144,50 @@ export function ProfilePanel({ className, user }: { className?: string, user: Us
               Пока нельзя сменить.
             </FieldDescription>
           </Field>
+          <Field data-invalid={!nicknameValidation.success}>
+            <div className="mb-1.5 flex items-center gap-2.5">
+              <SettingsFieldMark icon={AtSignIcon} />
+              <FieldLabel
+                className="!mb-0 font-normal text-[var(--nora-text-secondary)]"
+                htmlFor="profile-nickname"
+              >
+                Ваш никнейм
+              </FieldLabel>
+            </div>
+            <Input
+              aria-describedby={!nicknameValidation.success ? nicknameErrorId : undefined}
+              aria-invalid={!nicknameValidation.success}
+              autoComplete="username"
+              className="font-normal"
+              disabled={mutation.isPending || isDefaultUser}
+              id="profile-nickname"
+              maxLength={32}
+              onChange={(event) => {
+                setNickname(event.target.value.toLowerCase())
+                mutation.reset()
+              }}
+              pattern="[a-z][a-z0-9_]{2,31}"
+              placeholder="ваш никнейм"
+              value={nickname}
+            />
+            <FieldDescription className="font-normal">
+              {isDefaultUser
+                ? 'Закреплён, изменить нельзя.'
+                : 'Для ссылок и публичного профиля. 3–32 символа: латиница, цифры и _.'}
+            </FieldDescription>
+            {!nicknameValidation.success && (
+              <FieldError id={nicknameErrorId}>
+                Введите корректный никнейм на английском языке.
+              </FieldError>
+            )}
+          </Field>
         </FieldGroup>
 
         {mode.managed ? null : (
           <div>
             <Button
               className="font-normal"
-              disabled={mutation.isPending || displayNameInvalid}
+              disabled={mutation.isPending || displayNameInvalid || !nicknameValidation.success}
               type="submit"
             >
               {mutation.isPending ? 'Сохраняем…' : 'Сохранить'}
@@ -131,20 +200,19 @@ export function ProfilePanel({ className, user }: { className?: string, user: Us
           rows={[
             { icon: UserRoundIcon, label: 'Отображаемое имя', value: displayName.trim() || user.email },
             { icon: MailIcon, label: 'Email', value: user.email },
+            { icon: AtSignIcon, label: 'Ваш никнейм', value: nickname || '—' },
           ]}
         />
       )}
       {mutation.isError && (
-        <Alert className="mt-3" variant="destructive">
-          <AlertTitle>Профиль не сохранён</AlertTitle>
-          <AlertDescription>{mutation.error.message}</AlertDescription>
-        </Alert>
+        <NoraToast className="mt-3 h-auto min-h-10 w-full justify-start py-2" variant="error">
+          {nicknameError ?? 'Профиль не сохранён'}
+        </NoraToast>
       )}
       {mutation.isSuccess && (
-        <Alert className="mt-3">
-          <AlertTitle>Профиль сохранён</AlertTitle>
-          <AlertDescription>Отображаемое имя обновлено.</AlertDescription>
-        </Alert>
+        <NoraToast className="mt-3 h-auto min-h-10 w-full justify-start py-2" variant="success">
+          Профиль сохранён
+        </NoraToast>
       )}
     </SettingsEntry>
   )

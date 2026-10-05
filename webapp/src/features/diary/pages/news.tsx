@@ -37,7 +37,12 @@ import {
 } from "@/components/nora/primitives";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAuth } from "@/features/auth";
-import { questionnaireDailyCalorieTarget, useQuestionnaireQuery } from "@/features/users";
+import {
+  followedDailyCalories,
+  questionnaireDailyCalorieTarget,
+  useCaloriePreference,
+  useQuestionnaireQuery,
+} from "@/features/users";
 import { GenerationSpendBadge } from "../GenerationSpendBadge";
 import { putUserFavorites } from "@/platform/account-favorites";
 import { snapshotFromPlanLibrary } from "@/platform/account-plan-library";
@@ -754,11 +759,14 @@ export function NewsPage({
       return next;
     });
   }, [isOwnAccount, savedScope.email, savedScope.userId, userMeals]);
+  const caloriePreference = useCaloriePreference(isOwnAccount ? subjectId : null);
   const dailyCalories =
-    calorieTarget ??
-    questionnaireDailyCalorieTarget(questionnaireQuery.data?.answers) ??
-    diaryState?.dailyCalories ??
-    2200;
+    followedDailyCalories({
+      calorieTarget,
+      goalTarget: questionnaireDailyCalorieTarget(questionnaireQuery.data?.answers),
+      preference: caloriePreference,
+      fallback: diaryState?.dailyCalories ?? 2200,
+    }) ?? 2200;
   const weekMeals = React.useMemo(
     () => mealsInMondayWeek(userMeals),
     [userMeals],

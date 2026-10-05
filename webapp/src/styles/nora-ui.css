@@ -863,6 +863,60 @@ html[data-android] .ios-glass-glare-soft {
   -webkit-backdrop-filter: none !important;
 }
 
+/* Dark plaques are the same gray as an empty ring, so the disc steps lighter. */
+.scheme-editor-dark [data-settings-well] [data-choice-plaque] [data-slot="radio-group-item"]:not([data-checked]),
+.scheme-editor-dark [data-onboarding-form] [data-choice-plaque] [data-slot="radio-group-item"]:not([data-checked]),
+[data-scheme="editor-dark"] [data-settings-well] [data-choice-plaque] [data-slot="radio-group-item"]:not([data-checked]),
+[data-scheme="editor-dark"] [data-onboarding-form] [data-choice-plaque] [data-slot="radio-group-item"]:not([data-checked]) {
+  background-color: color-mix(in srgb, white 14%, var(--settings-field-bg, #2b2b2b));
+  border-color: color-mix(in srgb, white 36%, transparent);
+}
+
+/* Light radio captions sit a step under the row titles, not as pale as placeholders. */
+.scheme-editor-light [data-settings-well] [data-option-note],
+.scheme-editor-light [data-onboarding-form] [data-option-note],
+[data-scheme="editor-light"] [data-settings-well] [data-option-note],
+[data-scheme="editor-light"] [data-onboarding-form] [data-option-note] {
+  color: color-mix(in srgb, var(--nora-text-secondary) 55%, var(--nora-text-tertiary));
+}
+
+/* Light: a faint disc, still the same ring. */
+.scheme-editor-light [data-settings-well] [data-choice-plaque] [data-slot="radio-group-item"]:not([data-checked]),
+.scheme-editor-light [data-onboarding-form] [data-choice-plaque] [data-slot="radio-group-item"]:not([data-checked]),
+[data-scheme="editor-light"] [data-settings-well] [data-choice-plaque] [data-slot="radio-group-item"]:not([data-checked]),
+[data-scheme="editor-light"] [data-onboarding-form] [data-choice-plaque] [data-slot="radio-group-item"]:not([data-checked]) {
+  background-color: color-mix(in srgb, var(--nora-text) 7%, var(--settings-field-bg, var(--nora-panel)));
+}
+
+/* Same field fill as profile settings. The wizard layout stays its own. */
+[data-onboarding-form] [data-choice-plaque]:not(:has([data-slot="radio-group-item"][data-checked])) {
+  background-color: var(--settings-field-bg, var(--nora-panel));
+  border-color: var(--settings-well-stroke, var(--nora-border));
+}
+
+[data-onboarding-form] input:not([type="radio"]):not([type="checkbox"]),
+[data-onboarding-form] textarea {
+  background-color: var(--settings-field-bg, var(--nora-panel));
+  color: var(--nora-input-text, var(--nora-text));
+  box-shadow: inset 0 0 0 1px var(--settings-well-stroke, var(--nora-border));
+}
+
+/* Same hairline as the bottom-bar capsules: one light edge inside the frame, no drop shadow. */
+[data-choice-plaque] {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 70%, transparent);
+}
+
+.scheme-editor-dark [data-choice-plaque],
+[data-scheme="editor-dark"] [data-choice-plaque] {
+  box-shadow: inset 0 0.5px 0 color-mix(in srgb, white 14%, transparent);
+}
+
+/* Off track must read on the well. Input fill matches the substrate in both schemes. */
+[data-settings-well] [data-slot="switch"][data-unchecked] {
+  background-color: color-mix(in srgb, var(--nora-text) 20%, var(--settings-substrate));
+  border-color: color-mix(in srgb, var(--nora-text) 12%, transparent);
+}
+
 /* Hairline inside a settings well, with a light edge under it for a little depth. */
 [data-settings-well] {
   --nora-divider: var(--settings-divider, var(--nora-divider));
@@ -871,8 +925,49 @@ html[data-android] .ios-glass-glare-soft {
 [data-settings-well] .border-t:not(.border-t-0),
 [data-settings-well] [data-slot="table-row"],
 [data-catalog-frame] [data-slot="table-row"],
-[data-catalog-frame] [data-catalog-band="bottom"] {
+[data-catalog-frame] [data-catalog-band="bottom"],
+[data-questionnaire-preview] .border-t:not(.border-t-0) {
   box-shadow: inset 0 1px 0 var(--settings-divider-glint, transparent);
+}
+
+/* Preview cards use the same groove as a settings well, including the header rule.
+   Light cards are white, so the well's gray-substrate line is too strong there. */
+[data-questionnaire-preview] {
+  --nora-divider: var(--settings-divider, var(--nora-divider));
+  position: relative;
+}
+
+.scheme-editor-light [data-questionnaire-preview],
+[data-scheme="editor-light"] [data-questionnaire-preview] {
+  --nora-divider: #eeeeee;
+  --settings-divider-glint: #ffffff;
+}
+
+[data-questionnaire-preview] .border-b {
+  box-shadow: inset 0 -1px 0 var(--settings-divider-glint, transparent);
+}
+
+[data-questionnaire-preview]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--settings-well-stroke, var(--settings-divider)) 62%, transparent) 0%,
+    color-mix(in srgb, var(--settings-well-stroke, var(--settings-divider)) 22%, transparent) 28%,
+    transparent 58%
+  );
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
 }
 
 /* Wells: a hairline that catches light on top and fades out below. */
@@ -969,8 +1064,11 @@ html[data-android] .ios-glass-glare-soft {
 
 .scheme-editor-dark .profile-masthead-tab[data-active],
 [data-scheme="editor-dark"] .profile-masthead-tab[data-active] {
-  background: #333333;
-  color: #fff;
+  background: #f2f2f2;
+  color: #111111;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 1px 2px rgba(0, 0, 0, 0.28);
 }
 
 .profile-avatar {
@@ -1012,7 +1110,7 @@ html[data-android] .ios-glass-glare-soft {
   }
 }
 
-/* Mobile profile sheet: a solid rim along the top curve, with a light catch. */
+/* Mobile profile sheet: the light catch follows the top radius, then fades. */
 @media (max-width: 1023px) {
   [data-profile-sheet]::before {
     content: "";
@@ -1022,7 +1120,7 @@ html[data-android] .ios-glass-glare-soft {
     padding: 1px;
     background: linear-gradient(
       to bottom,
-      color-mix(in srgb, black 4%, transparent) 0 22px,
+      color-mix(in srgb, black 8%, transparent) 0,
       transparent 22px
     );
     pointer-events: none;
@@ -1036,21 +1134,17 @@ html[data-android] .ios-glass-glare-soft {
     mask-composite: exclude;
   }
 
-  [data-profile-sheet]::after {
-    content: "";
-    position: absolute;
-    top: 1px;
-    left: 18px;
-    right: 18px;
-    height: 1px;
+  .scheme-editor-dark [data-profile-sheet]::before,
+  [data-scheme="editor-dark"] [data-profile-sheet]::before {
     background: linear-gradient(
-      to right,
-      transparent,
-      var(--settings-well-glint, white) 18%,
-      var(--settings-well-glint, white) 82%,
-      transparent
+      to bottom,
+      color-mix(in srgb, white 16%, transparent) 0,
+      transparent 22px
     );
-    pointer-events: none;
+  }
+
+  [data-profile-sheet]::after {
+    content: none;
   }
 }
 

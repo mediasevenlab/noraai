@@ -1,5 +1,6 @@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { cn } from '@/lib/utils'
+import { choicePlaqueClass } from './ChoicePlaquesField'
 
 export const SEX_OPTIONS = [
   { value: 'Женский', label: 'Женский', description: 'Для женщин' },
@@ -31,16 +32,8 @@ export function SexChoiceField({
         const id = `${idPrefix}-${option.value}`
         return (
           <label
-            className={cn(
-              'flex cursor-pointer items-start gap-2 rounded-[var(--nora-radius-md)] px-3 py-2',
-              entry
-                ? 'bg-[var(--settings-field-bg,var(--nora-panel))]'
-                : 'bg-[var(--questionnaire-fill,var(--settings-substrate))] shadow-[inset_0_0_0_1px_var(--questionnaire-fill-stroke,var(--nora-border))]',
-              'font-[family-name:var(--nora-font)] font-medium text-[var(--nora-text)]',
-              'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
-              'has-focus-visible:shadow-[inset_0_0_0_1px_var(--nora-tint)]',
-              'has-data-checked:bg-[var(--nora-tint-dimmed)] has-data-checked:text-[var(--nora-tint)] has-data-checked:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)] has-data-checked:[&_[data-option-note]]:text-[var(--nora-tint)]',
-            )}
+            className={cn(choicePlaqueClass(value === option.value, entry), 'font-medium')}
+            data-choice-plaque=""
             htmlFor={id}
             key={option.value}
           >
@@ -54,7 +47,7 @@ export function SexChoiceField({
             </span>
             <span className="min-w-0 grid gap-px text-left">
               <span className="text-[13px] leading-5">{option.label}</span>
-              <span className="min-w-0 truncate text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]" data-option-note="">
+              <span className="min-w-0 truncate text-[12px] font-light leading-5 text-[var(--nora-text-secondary)]" data-option-note="">
                 {option.description}
               </span>
             </span>

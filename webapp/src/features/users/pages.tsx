@@ -7,13 +7,13 @@ import { userGeneralSearch } from '@/features/navigation'
 import { NoraPageHeader, PageContainer } from '@/components/PageLayout'
 import { SettingsCanvas } from '@/components/settings-canvas'
 import { AccountProfileCard } from './AccountProfileCard'
-import { ClientProfileCard, useClientProfileEditor } from './ClientProfileCard'
+import { ClientProfileCard, QuestionnaireEditorProvider, useQuestionnaireEditor } from './ClientProfileCard'
 import { MentorConnectionPanel } from './MentorConnectionPanel'
-import { NicknamePanel } from './NicknamePanel'
 import { ProfileMobileMasthead, type ProfileMobileTab } from './ProfileMobileMasthead'
 import { ProfilePanel } from './ProfilePanel'
 import { QuestionnaireOnboarding } from './QuestionnaireOnboarding'
 import { GenerationTokenUsagePanel } from './GenerationTokenUsagePanel'
+import { MaintenanceCaloriesPanel } from './MaintenanceCaloriesPanel'
 import { TelegramUsernamePanel } from './TelegramUsernamePanel'
 import { ReferralLinkPanel } from './ReferralLinkPanel'
 import { ReferralsDirectory } from './ReferralsDirectory'
@@ -24,34 +24,30 @@ export function UserHome() {
 }
 
 function ProfileQuestionnaire({ className, user }: { className?: string, user: UserDto }) {
-  const profile = useClientProfileEditor()
-
-  if (profile.isLoading) {
-    return (
-      <li className="font-[family-name:var(--nora-font)] text-[13px] font-light text-[var(--nora-text-tertiary)] lg:ml-auto lg:w-lg">
-        Загрузка анкеты…
-      </li>
-    )
-  }
-
-  if (profile.isError) {
-    return (
-      <li className="font-[family-name:var(--nora-font)] text-[13px] text-[var(--nora-error)] lg:ml-auto lg:w-lg">
-        Не удалось загрузить анкету.
-      </li>
-    )
-  }
+  const profile = useQuestionnaireEditor()
 
   return (
     <>
-      <ClientProfileCard
-        editing={profile.editing}
-        layout="entry"
-        onChange={profile.onChange}
-        sectionClassName={className}
-        user={user}
-        values={profile.values}
-      />
+      <MaintenanceCaloriesPanel className={className} userId={user.id} />
+      {profile.isLoading ? (
+        <li className="font-[family-name:var(--nora-font)] text-[13px] font-light text-[var(--nora-text-tertiary)] lg:ml-auto lg:w-lg">
+          Загрузка анкеты…
+        </li>
+      ) : profile.isError ? (
+        <li className="font-[family-name:var(--nora-font)] text-[13px] text-[var(--nora-error)] lg:ml-auto lg:w-lg">
+          Не удалось загрузить анкету.
+        </li>
+      ) : (
+        <ClientProfileCard
+          editing={profile.editing}
+          layout="entry"
+          omitTitles={['Цель']}
+          onChange={profile.onChange}
+          sectionClassName={className}
+          user={user}
+          values={profile.values}
+        />
+      )}
       {profile.saveError ? (
         <li className="pt-4 font-[family-name:var(--nora-font)] text-[13px] text-[var(--nora-error)] lg:ml-auto lg:w-lg">
           Не удалось сохранить анкету. Попробуйте ещё раз.
@@ -69,7 +65,7 @@ export function UserProfile({ user }: { user: UserDto }) {
   return (
     <SettingsCanvas
       ctaLabel="Профиль"
-      description="Имя и никнейм, затем анкета: пол, цель, активность и ограничения."
+      description="Имя и никнейм, затем анкета с калорийностью."
       divided={false}
       editable
       eyebrow="Аккаунт"
@@ -84,9 +80,10 @@ export function UserProfile({ user }: { user: UserDto }) {
       panelsId="profile-panels"
       title="Профиль"
     >
+      <QuestionnaireEditorProvider>
       <ProfilePanel className={accountClass} user={user} />
-      <NicknamePanel className={accountClass} user={user} />
       <ProfileQuestionnaire className={questionnaireClass} user={user} />
+      </QuestionnaireEditorProvider>
     </SettingsCanvas>
   )
 }

@@ -1,23 +1,17 @@
 import type { QuestionnaireAnswers } from '@web-app-demo/contracts'
 import {
   ActivityIcon,
-  BrainIcon,
   CakeIcon,
-  CookingPotIcon,
-  DropletsIcon,
-  HeartPulseIcon,
-  HistoryIcon,
-  MessageSquareTextIcon,
-  MoonStarIcon,
   RulerIcon,
-  SaladIcon,
   ScaleIcon,
   ShieldAlertIcon,
   TargetIcon,
   UserRoundIcon,
-  UtensilsIcon,
+  ZapIcon,
   type LucideIcon,
 } from '@/components/icons'
+
+import { goalUsesPace } from './questionnaire-calorie-target'
 
 export type FieldKey = keyof QuestionnaireAnswers
 export type FieldLayout = 'inline' | 'extended'
@@ -112,7 +106,7 @@ export function measureStoredValue(value: string, unit?: string) {
   return trimmed.endsWith(suffix) ? trimmed : `${trimmed}${suffix}`
 }
 
-const fieldGoal: ProfileField = {
+export const fieldGoal: ProfileField = {
   key: 'goal',
   label: 'Цель',
   icon: TargetIcon,
@@ -126,13 +120,35 @@ const fieldGoal: ProfileField = {
   ],
 }
 
-const fieldGoalDetail: ProfileField = {
-  key: 'goalDetail',
-  label: 'Комментарий',
-  icon: MessageSquareTextIcon,
+export function canonicalGoal(value: string) {
+  const key = value.trim().toLowerCase()
+  if (key.startsWith('похуд')) return 'Похудение'
+  if (key.startsWith('набор')) return 'Набор'
+  if (key.startsWith('поддерж')) return 'Поддержание'
+  if (key.startsWith('здоров')) return 'Здоровье'
+  return value
+}
+
+export const fieldGoalPace: ProfileField = {
+  key: 'goalPace',
+  label: 'Темп',
+  icon: ZapIcon,
+  control: 'choice',
+  options: [
+    { value: 'Медленно', label: 'Медленно', description: 'Небольшой сдвиг' },
+    { value: 'Умеренно', label: 'Умеренно', description: 'Обычный темп' },
+    { value: 'Быстро', label: 'Быстро', description: 'Заметный сдвиг' },
+    { value: 'Экстремально', label: 'Экстремально', description: 'Максимальный сдвиг' },
+  ],
+}
+
+const fieldRestrictions: ProfileField = {
+  key: 'restrictions',
+  label: 'Что нельзя',
+  icon: ShieldAlertIcon,
   layout: 'extended',
   optional: true,
-  placeholder: 'Можно уточнить цель или написать свой вариант',
+  placeholder: 'Например, лактоза, орехи или свинина',
 }
 
 const fieldActivity: ProfileField = {
@@ -142,168 +158,26 @@ const fieldActivity: ProfileField = {
   control: 'choice',
   hideLabel: true,
   options: [
-    { value: 'Сидячий', label: 'Сидячий', description: 'Мало движения' },
-    { value: 'Лёгкая', label: 'Лёгкая', description: '1–2 тренировки / нед.' },
-    { value: 'Умеренная', label: 'Умеренная', description: '3–4 тренировки / нед.' },
-    { value: 'Высокая', label: 'Высокая', description: '5–6 тренировок / нед.' },
-    { value: 'Спортсмен', label: 'Спортсмен', description: 'Ежедневные нагрузки' },
+    { value: 'Сидячий', label: 'Сидячий', description: 'Почти без движения' },
+    { value: 'Лёгкая', label: 'Лёгкая', description: 'Прогулки или 1–2 тренировки' },
+    { value: 'Умеренная', label: 'Умеренная', description: 'Движение днём или 3–4 тренировки' },
+    { value: 'Высокая', label: 'Высокая', description: 'Физическая работа или 5–6 тренировок' },
+    { value: 'Спортсмен', label: 'Спортсмен', description: 'Нагрузка почти каждый день' },
   ],
 }
 
-const fieldMeals: ProfileField = {
-  key: 'meals',
-  label: 'Приёмы пищи',
-  icon: UtensilsIcon,
-  control: 'choice',
-  options: [
-    { value: '2 раза', label: '2 раза', description: 'Редко, плотно' },
-    { value: '3 раза', label: '3 раза', description: 'Классика' },
-    { value: '4–5 раз', label: '4–5 раз', description: 'Чаще и меньше' },
-    { value: 'Без режима', label: 'Без режима', description: 'Как получится' },
-  ],
-}
-
-const fieldWater: ProfileField = {
-  key: 'water',
-  label: 'Вода',
-  icon: DropletsIcon,
-  control: 'choice',
-  options: [
-    { value: 'До 1 л', label: 'До 1 л', description: 'Мало воды' },
-    { value: '1–1.5 л', label: '1–1.5 л', description: 'Средне' },
-    { value: '1.5–2.5 л', label: '1.5–2.5 л', description: 'Хорошо' },
-    { value: 'Больше 2.5 л', label: '2.5+ л', description: 'Много' },
-  ],
-}
-
-const fieldActivityDetail: ProfileField = {
-  key: 'activityDetail',
-  label: 'Комментарий',
-  icon: MessageSquareTextIcon,
-  layout: 'extended',
-  optional: true,
-  placeholder: 'Можно уточнить активность, еду или воду',
-}
-
-const fieldSleep: ProfileField = {
-  key: 'sleep',
-  label: 'Сон',
-  icon: MoonStarIcon,
-  control: 'choice',
-  options: [
-    { value: 'До 6 ч', label: 'До 6 ч', description: 'Недосып' },
-    { value: '6–7 ч', label: '6–7 ч', description: 'Короткий сон' },
-    { value: '7–8 ч', label: '7–8 ч', description: 'Норма' },
-    { value: '8+ ч', label: '8+ ч', description: 'Длинный сон' },
-  ],
-}
-
-const fieldCooking: ProfileField = {
-  key: 'cooking',
-  label: 'Готовка',
-  icon: CookingPotIcon,
-  control: 'choice',
-  options: [
-    { value: 'Дома', label: 'Дома', description: 'Чаще сам/сама' },
-    { value: 'Смешанно', label: 'Смешанно', description: 'Дом и снаружи' },
-    { value: 'Чаще вне дома', label: 'Вне дома', description: 'Кафе / доставка' },
-    { value: 'Готовят другие', label: 'Готовят другие', description: 'Не сам/сама' },
-  ],
-}
-
-const fieldDietType: ProfileField = {
-  key: 'dietType',
-  label: 'Тип питания',
-  icon: SaladIcon,
-  control: 'choice',
-  hideLabel: true,
-  options: [
-    { value: 'Обычное', label: 'Обычное', description: 'Без строгих рамок' },
-    { value: 'Вегетарианство', label: 'Вегетарианство', description: 'Без мяса и рыбы' },
-    { value: 'Веганство', label: 'Веганство', description: 'Только растения' },
-    { value: 'Пескетарианство', label: 'Песке', description: 'Рыба, без мяса' },
-  ],
-}
-
-const fieldRoutineDetail: ProfileField = {
-  key: 'routineDetail',
-  label: 'Комментарий',
-  icon: MessageSquareTextIcon,
-  layout: 'extended',
-  optional: true,
-  placeholder: 'Что ещё важно по режиму',
-}
-
-const fieldRestrictions: ProfileField = {
-  key: 'restrictions',
-  label: 'Ограничения',
-  icon: ShieldAlertIcon,
-  control: 'multi-choice',
-  hideLabel: true,
-  exclusiveValue: 'Нет ограничений',
-  options: [
-    { value: 'Нет ограничений', label: 'Нет', description: 'Без исключений' },
-    { value: 'Лактоза', label: 'Лактоза', description: 'Молоко и молочка' },
-    { value: 'Глютен', label: 'Глютен', description: 'Пшеница и рожь' },
-    { value: 'Орехи', label: 'Орехи', description: 'В т.ч. арахис' },
-    { value: 'Морепродукты', label: 'Морепродукты', description: 'Рыба, креветки' },
-    { value: 'Яйца', label: 'Яйца', description: 'Куриные и другие' },
-    { value: 'Соя', label: 'Соя', description: 'Тофу, соусы' },
-    { value: 'Острое', label: 'Острое', description: 'Жгучие специи' },
-  ],
-}
-
-const fieldHealth: ProfileField = {
-  key: 'health',
-  label: 'Здоровье',
-  icon: HeartPulseIcon,
-  control: 'choice',
-  options: [
-    { value: 'Без особенностей', label: 'Без особенностей', description: 'Ничего критичного' },
-    { value: 'ЖКТ', label: 'ЖКТ', description: 'Пищеварение' },
-    { value: 'Гормоны / щитовидка', label: 'Гормоны', description: 'Эндокринный фон' },
-    { value: 'Давление / сердце', label: 'Сердце', description: 'ССС и давление' },
-  ],
-}
-
-const fieldStressEating: ProfileField = {
-  key: 'stressEating',
-  label: 'Стресс и еда',
-  icon: BrainIcon,
-  control: 'choice',
-  options: [
-    { value: 'Редко', label: 'Редко', description: 'Почти не влияет' },
-    { value: 'Иногда', label: 'Иногда', description: 'Бывает заедание' },
-    { value: 'Часто', label: 'Часто', description: 'Сильно связано' },
-    { value: 'Скорее пропускаю еду', label: 'Пропускаю', description: 'Ем меньше' },
-  ],
-}
-
-const fieldDietExperience: ProfileField = {
-  key: 'dietExperience',
-  label: 'Опыт диет',
-  icon: HistoryIcon,
-  control: 'choice',
-  hideLabel: true,
-  options: [
-    { value: 'Нет опыта', label: 'Нет опыта', description: 'Первый раз' },
-    { value: 'Пробовал(а) коротко', label: 'Коротко', description: 'Короткие попытки' },
-    { value: 'Есть опыт', label: 'Есть опыт', description: 'Несколько подходов' },
-    { value: 'Много лет', label: 'Много лет', description: 'Долгая история' },
-  ],
-}
-
-const fieldNotes: ProfileField = {
-  key: 'notes',
-  label: 'Комментарий',
-  icon: MessageSquareTextIcon,
-  layout: 'extended',
-  optional: true,
-  placeholder: 'Если есть другие ограничения — напишите здесь',
+/** Pace is collected only when it changes the calorie deficit or surplus. */
+export function fieldsForAnswers<T extends { key: FieldKey }>(
+  fields: ReadonlyArray<T>,
+  answers: Pick<QuestionnaireAnswers, 'goal'>,
+) {
+  return fields.filter((field) => field.key !== 'goalPace' || goalUsesPace(answers.goal))
 }
 
 /**
  * Wizard steps — each step has a matching live-preview card and profile card.
+ * Body, activity, goal, and pace move the calorie numbers.
+ * Restrictions are kept for the mentor and do not enter the formula.
  */
 export const ONBOARDING_STEPS: ReadonlyArray<OnboardingStep> = [
   {
@@ -314,59 +188,28 @@ export const ONBOARDING_STEPS: ReadonlyArray<OnboardingStep> = [
     fields: [fieldSex, fieldAge, fieldHeight, fieldWeight],
   },
   {
+    category: 'Образ жизни',
+    heading: 'Активность',
+    summary: 'Насколько подвижный обычный день',
+    icon: ActivityIcon,
+    fields: [{ ...fieldActivity, hideLabel: false }],
+  },
+  {
     category: 'Фокус результата',
     heading: 'Цель',
-    summary: 'Выбранная цель',
+    summary: 'Цель и темп сдвигают калории',
     icon: TargetIcon,
     fields: [
       { ...fieldGoal, hideLabel: false },
-      fieldGoalDetail,
+      { ...fieldGoalPace, hideLabel: false },
     ],
   },
   {
-    category: 'Образ жизни',
-    heading: 'Активность',
-    summary: 'Движение, еда и вода',
-    icon: ActivityIcon,
-    fields: [
-      { ...fieldActivity, hideLabel: false },
-      fieldMeals,
-      fieldWater,
-      fieldActivityDetail,
-    ],
-  },
-  {
-    category: 'Образ жизни',
-    heading: 'Быт',
-    summary: 'Сон, готовка и тип питания',
-    icon: MoonStarIcon,
-    fields: [
-      fieldSleep,
-      fieldCooking,
-      { ...fieldDietType, hideLabel: false },
-      fieldRoutineDetail,
-    ],
-  },
-  {
-    category: 'Безопасность рациона',
+    category: 'Для наставника',
     heading: 'Ограничения',
-    summary: 'Аллергии и исключения',
+    summary: 'Аллергии и продукты, которые нельзя',
     icon: ShieldAlertIcon,
-    fields: [
-      { ...fieldRestrictions, hideLabel: false },
-      fieldNotes,
-    ],
-  },
-  {
-    category: 'Безопасность рациона',
-    heading: 'Контекст',
-    summary: 'Здоровье, стресс и опыт',
-    icon: HeartPulseIcon,
-    fields: [
-      fieldHealth,
-      fieldStressEating,
-      { ...fieldDietExperience, hideLabel: false },
-    ],
+    fields: [fieldRestrictions],
   },
 ]
 

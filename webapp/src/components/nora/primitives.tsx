@@ -656,6 +656,7 @@ export function NoraBadge({
 }) {
   return (
     <span
+      data-nora-badge=""
       className={cn(
         "ios-glass-glare inline-flex h-5 items-center gap-1 rounded-full px-2",
         "font-[family-name:var(--nora-font)] text-[11px] font-medium tracking-normal",

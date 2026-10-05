@@ -115,7 +115,7 @@ function SettingsCanvasView({
             className={cn(
               'group/sections flex flex-col',
               divided && 'divide-y divide-border/70',
-              (lead || phoneSheet) && 'max-lg:relative max-lg:min-h-0 max-lg:flex-1 max-lg:-mx-3 max-lg:overflow-hidden max-lg:rounded-t-[22px] max-lg:bg-background max-lg:px-3 max-lg:pt-5 max-lg:pb-[calc(5rem+env(safe-area-inset-bottom))] max-lg:shadow-[0_-4px_14px_rgba(0,0,0,0.035)] sm:max-lg:-mx-6 sm:max-lg:px-6 md:max-lg:-mx-10 md:max-lg:px-10',
+              (lead || phoneSheet) && 'max-lg:relative max-lg:min-h-0 max-lg:flex-1 max-lg:-mx-3 max-lg:overflow-hidden max-lg:rounded-t-[22px] max-lg:bg-background max-lg:px-4 max-lg:pt-5 max-lg:pb-[calc(5rem+env(safe-area-inset-bottom))] max-lg:shadow-[0_-4px_14px_rgba(0,0,0,0.035)] sm:max-lg:-mx-6 md:max-lg:-mx-10',
               lead && 'max-lg:-mt-6',
             )}
             data-plain={divided ? undefined : ''}
@@ -233,7 +233,7 @@ export function SettingsFieldMark({
   return (
     <Icon
       aria-hidden
-      className="size-4 shrink-0 text-[var(--nora-text-secondary)]"
+      className="size-4 shrink-0 text-[color-mix(in_srgb,var(--nora-text-secondary)_45%,var(--nora-text-tertiary))]"
       strokeWidth={1.75}
     />
   )

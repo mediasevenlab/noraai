@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import {
+  fieldsForAnswers,
   ONBOARDING_STEPS,
   measureInputValue,
   measureLabel,
@@ -28,7 +29,7 @@ function isFilled(value: string) {
 }
 
 const previewValueClass =
-  'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 break-words text-[var(--questionnaire-preview-value,var(--nora-text-tertiary))]'
+  'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 break-words text-[color-mix(in_srgb,white_10%,color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary))))] dark:text-[var(--nora-text-secondary)]'
 
 function PreviewFieldRow({
   field,
@@ -55,7 +56,7 @@ function PreviewFieldRow({
           : 'grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4',
       )}
     >
-      <span className="min-w-0 truncate font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--questionnaire-preview-label,var(--nora-text-secondary))]">
+      <span className="min-w-0 truncate font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
         {field.unit ? measureLabel(field) : field.label}
       </span>
       <div className={cn('flex min-w-0 items-center', !extended && 'justify-end')}>
@@ -80,20 +81,23 @@ function PreviewStepCard({
   stepIndex: number
   values: Record<FieldKey, string>
 }) {
-  const rows = step.fields.filter(
+  const rows = fieldsForAnswers(step.fields, values).filter(
     (field) => !field.optional || isFilled(values[field.key]),
   )
   const Icon = step.icon
   const iconTone = PREVIEW_ICON_TONES[stepIndex % PREVIEW_ICON_TONES.length]!
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-[var(--nora-radius-lg)] bg-[var(--questionnaire-card,var(--dash-card-bg,var(--nora-panel)))] shadow-[inset_0_0_0_1px_var(--dash-card-ring,var(--nora-border))]">
-      <div className="flex items-start justify-between gap-3 border-b border-[var(--nora-divider)] p-3.5">
+    <article
+      className="flex flex-col overflow-hidden rounded-[16px] bg-[var(--questionnaire-card,var(--dash-card-bg,var(--nora-panel)))] px-3.5 shadow-[inset_0_0_0_1px_var(--dash-card-ring,var(--nora-border))]"
+      data-questionnaire-preview=""
+    >
+      <div className="flex items-start justify-between gap-3 border-b border-[var(--nora-divider)] py-3.5">
         <div className="min-w-0">
-          <h2 className="truncate font-heading text-[16px] leading-tight font-bold tracking-[-0.02em] text-[var(--nora-text)]">
+          <h2 className="truncate font-heading text-[18px] leading-tight font-bold tracking-[-0.02em] text-[var(--nora-text)]">
             {step.heading}
           </h2>
-          <p className="mt-1 text-[13px] font-light leading-5 text-[var(--nora-text-tertiary)]">
+          <p className="mt-1 text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)]">
             {step.summary}
           </p>
         </div>
@@ -107,8 +111,12 @@ function PreviewStepCard({
           <Icon className="size-3.5" strokeWidth={2} />
         </span>
       </div>
-      <div className="grid content-start p-3.5 pb-5">
-        {rows.map((field, index) => (
+      <div className="grid content-start py-3.5">
+        {rows.length === 0 ? (
+          <p className="font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)]">
+            Пока ничего не указано.
+          </p>
+        ) : rows.map((field, index) => (
           <PreviewFieldRow
             field={field}
             isFirst={index === 0}

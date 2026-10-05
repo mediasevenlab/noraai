@@ -6,7 +6,12 @@ import { toast } from '@/components/ui/toast'
 
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useAuth } from '@/features/auth'
-import { questionnaireDailyCalorieTarget, useQuestionnaireQuery } from '@/features/users'
+import {
+  followedDailyCalories,
+  questionnaireDailyCalorieTarget,
+  useCaloriePreference,
+  useQuestionnaireQuery,
+} from '@/features/users'
 import {
   apiMealIdForCatalogPreview,
   CALORIE_BALANCE_CHIP_CLASS,
@@ -189,10 +194,13 @@ export function CurrentPlanMeals({
     ],
     [boardDays, mealsQuery.data?.items],
   )
+  const caloriePreference = useCaloriePreference(subjectId)
   const dailyCalories =
-    questionnaireDailyCalorieTarget(questionnaireQuery.data?.answers) ??
-    (subjectId ? readDiaryState(subjectId)?.dailyCalories : undefined) ??
-    2200
+    followedDailyCalories({
+      goalTarget: questionnaireDailyCalorieTarget(questionnaireQuery.data?.answers),
+      preference: caloriePreference,
+      fallback: (subjectId ? readDiaryState(subjectId)?.dailyCalories : undefined) ?? 2200,
+    }) ?? 2200
   const [selectedDayKey, setSelectedDayKey] = React.useState(
     () => defaultPlanDayKey(filledPlanBoardDays(days)) ?? defaultPlanDayKey(days),
   )

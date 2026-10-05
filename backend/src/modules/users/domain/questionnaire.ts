@@ -39,6 +39,7 @@ export function uniqueQuestionnaireAnswers(publicId: number): QuestionnaireAnswe
     height: `${height} см`,
     weight: `${weight} кг`,
     goal,
+    goalPace: 'Умеренно',
     goalDetail:
       publicId % 3 === 0
         ? `Хочу стабильный прогресс по цели «${goal.toLowerCase()}» без срывов.`

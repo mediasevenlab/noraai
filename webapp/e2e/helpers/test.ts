@@ -49,10 +49,6 @@ async function choosePlaque(page: Page, name: string | RegExp) {
   await page.getByRole('radio', { name }).click()
 }
 
-async function chooseCheckboxPlaque(page: Page, name: string | RegExp) {
-  await page.getByRole('checkbox', { name }).click()
-}
-
 async function fillLabeledInput(page: Page, label: string, value: string) {
   await page.getByLabel(new RegExp(`^${label}`)).fill(value)
 }
@@ -74,32 +70,16 @@ export async function completeUserQuestionnaire(page: Page) {
   await fillLabeledInput(page, 'Вес', '85 кг')
   await goNext(page)
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Цель' })).toBeVisible()
-  await choosePlaque(page, /Похудение/)
-  await page.getByLabel(/^Комментарий/).fill('Хочу стабильный прогресс.')
-  await goNext(page)
-
   await expect(page.getByRole('heading', { level: 1, name: 'Активность' })).toBeVisible()
   await choosePlaque(page, /Умеренная/)
-  await choosePlaque(page, /3 раза/)
-  await choosePlaque(page, /1\.5–2\.5 л/)
   await goNext(page)
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Быт' })).toBeVisible()
-  await choosePlaque(page, /7–8 ч/)
-  await choosePlaque(page, /Смешанно/)
-  await choosePlaque(page, /Обычное/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Цель' })).toBeVisible()
+  await choosePlaque(page, /Похудение/)
+  await choosePlaque(page, /Умеренно/)
   await goNext(page)
 
   await expect(page.getByRole('heading', { level: 1, name: 'Ограничения' })).toBeVisible()
-  await chooseCheckboxPlaque(page, /^Нет/)
-  await page.getByLabel(/^Комментарий/).fill('Без особых ограничений.')
-  await goNext(page)
-
-  await expect(page.getByRole('heading', { level: 1, name: 'Контекст' })).toBeVisible()
-  await choosePlaque(page, /Без особенностей/)
-  await choosePlaque(page, /Иногда/)
-  await choosePlaque(page, /Есть опыт/)
   await page.getByRole('button', { name: 'Завершить' }).click()
 
   await expect(page).toHaveURL(/\/app\/general/)

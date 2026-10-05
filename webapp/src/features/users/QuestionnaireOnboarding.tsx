@@ -12,7 +12,13 @@ import { userGeneralSearch } from '@/features/navigation'
 import { cn } from '@/lib/utils'
 import { QuestionnaireFieldControl } from './QuestionnaireFieldControl'
 import { QuestionnaireLivePreview } from './QuestionnaireLivePreview'
-import { ONBOARDING_STEPS, measureLabel, type FieldKey } from './questionnaire-sections'
+import {
+  fieldsForAnswers,
+  ONBOARDING_STEPS,
+  measureLabel,
+  type FieldKey,
+} from './questionnaire-sections'
+import { goalUsesPace } from './questionnaire-calorie-target'
 import { usePutQuestionnaireMutation } from './queries'
 
 export function QuestionnaireOnboarding() {
@@ -25,15 +31,20 @@ export function QuestionnaireOnboarding() {
 
   const step = ONBOARDING_STEPS[stepIndex]!
   const isLast = stepIndex === ONBOARDING_STEPS.length - 1
+  const stepFields = fieldsForAnswers(step.fields, answers)
 
   const incompleteRequiredKeys = new Set(
-    step.fields
+    stepFields
       .filter((field) => !field.optional && answers[field.key].trim().length === 0)
       .map((field) => field.key),
   )
 
   const update = (key: FieldKey, value: string) => {
-    setAnswers((current) => ({ ...current, [key]: value }))
+    setAnswers((current) => {
+      const next = { ...current, [key]: value }
+      if (key === 'goal' && !goalUsesPace(value)) next.goalPace = 'Умеренно'
+      return next
+    })
     setFormError(null)
   }
 
@@ -87,17 +98,17 @@ export function QuestionnaireOnboarding() {
                 </NoraBadge>
               </div>
               <div className="grid gap-1.5">
-                <h1 className="font-heading text-[28px] leading-[1.15] font-bold tracking-[-0.03em] text-[var(--nora-text)]">
+                <h1 className="font-heading text-[24px] leading-tight font-bold tracking-[-0.02em] text-[var(--nora-text)]">
                   {step.heading}
                 </h1>
-                <p className="text-[13px] font-light leading-relaxed text-[var(--nora-text-tertiary)]">
+                <p className="text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)]">
                   {step.summary}
                 </p>
               </div>
             </header>
 
-            <div className="mt-6 grid grid-cols-2 gap-x-3 gap-y-5">
-              {step.fields.map((field) => {
+            <div className="mt-8 grid grid-cols-2 gap-x-3 gap-y-5 lg:mt-6" data-onboarding-form="">
+              {stepFields.map((field) => {
                 const fieldInvalid =
                   showFieldErrors && incompleteRequiredKeys.has(field.key)
                 return (
@@ -130,14 +141,14 @@ export function QuestionnaireOnboarding() {
               })}
 
               {formError ? (
-                <p className="col-span-2 text-[12px] text-[var(--nora-error)]">{formError}</p>
+                <p className="col-span-2 text-[13px] leading-5 text-[var(--nora-error)]">{formError}</p>
               ) : null}
             </div>
 
             <div className="mt-8 flex justify-end gap-2">
               <NoraButton
                 aria-label="Назад"
-                className="size-9 rounded-full bg-[var(--questionnaire-back,var(--nora-panel))] p-0 text-[var(--nora-text)] shadow-none hover:bg-[color-mix(in_srgb,var(--nora-text)_6%,var(--questionnaire-back,var(--nora-panel)))] hover:text-[var(--nora-text)] disabled:bg-[var(--nora-surface)] disabled:text-[var(--nora-text-dimmed)] [&_svg]:size-4"
+                className="size-10 rounded-full bg-[var(--settings-field-bg,var(--nora-panel))] p-0 text-[var(--nora-text)] shadow-[inset_0_0_0_1px_var(--settings-well-stroke,var(--nora-border))] hover:bg-[color-mix(in_srgb,var(--nora-text)_6%,var(--settings-field-bg,var(--nora-panel)))] hover:text-[var(--nora-text)] disabled:bg-[var(--nora-surface)] disabled:text-[var(--nora-text-dimmed)] [&_svg]:size-4"
                 disabled={stepIndex === 0 || saveMutation.isPending}
                 onClick={goBack}
                 variant="ghost"
@@ -147,7 +158,7 @@ export function QuestionnaireOnboarding() {
               {isLast ? (
                 <NoraButton
                   aria-label={saveMutation.isPending ? 'Сохраняем…' : 'Завершить'}
-                  className="size-9 rounded-full p-0 [&_svg]:size-4"
+                  className="size-10 rounded-full p-0 [&_svg]:size-4"
                   disabled={saveMutation.isPending}
                   onClick={() => {
                     void finish()
@@ -159,7 +170,7 @@ export function QuestionnaireOnboarding() {
               ) : (
                 <NoraButton
                   aria-label="Далее"
-                  className="size-9 rounded-full p-0 [&_svg]:size-4"
+                  className="size-10 rounded-full p-0 [&_svg]:size-4"
                   onClick={goNext}
                   variant="primary"
                 >
@@ -169,15 +180,10 @@ export function QuestionnaireOnboarding() {
             </div>
 
             <p
-              className="mt-6 flex gap-1.5 text-[11px] leading-relaxed text-[var(--nora-text-tertiary)]"
+              className="mt-8 text-[12px] font-normal leading-5 text-[var(--nora-text-tertiary)] lg:mt-6"
               role="status"
             >
-              <span className="shrink-0">*</span>
-              <span>
-                Чтобы получить доступ к функциям приложения, пройдите первичную анкету.
-                <br />
-                После завершения ответы можно будет изменить в разделе «Профиль».
-              </span>
+              * Чтобы получить доступ к функциям приложения, пройдите первичную анкету. После завершения ответы можно будет изменить в разделе «Профиль».
             </p>
           </div>
         </div>

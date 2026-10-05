@@ -4,12 +4,15 @@ import {
   type UserDto,
 } from '@web-app-demo/contracts'
 import { CheckIcon, PencilIcon, XIcon, type LucideIcon } from '@/components/icons'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, createContext, useContext, type ReactNode } from 'react'
 import { SettingsEntry, SettingsFieldMark, useSettingsDraft, useSettingsMode } from '@/components/settings-canvas'
 import { cn } from '@/lib/utils'
-import { QuestionnaireFieldControl } from './QuestionnaireFieldControl'
+import { QuestionnaireEditStack, QuestionnaireFieldBlock } from './QuestionnaireFieldControl'
+import { goalUsesPace } from './questionnaire-calorie-target'
 import {
+  fieldsForAnswers,
   PROFILE_SECTIONS,
+  canonicalGoal,
   measureInputValue,
   measureLabel,
   type FieldKey,
@@ -27,6 +30,14 @@ const CARD_ICON_TONES = [
   'bg-[var(--nora-badge-neutral-bg)] text-[var(--nora-badge-neutral-text)]',
 ] as const
 
+function presentAnswers(answers: Record<FieldKey, string>): Record<FieldKey, string> {
+  return {
+    ...answers,
+    goal: canonicalGoal(answers.goal),
+    goalPace: answers.goalPace || 'Умеренно',
+  }
+}
+
 function isFilled(value: string) {
   return value.trim().length > 0
 }
@@ -36,7 +47,7 @@ function visibleFields(
   fields: ReadonlyArray<ProfileField>,
   editing: boolean,
 ) {
-  return fields.filter(
+  return fieldsForAnswers(fields, values).filter(
     (field) => editing || !field.optional || isFilled(values[field.key]),
   )
 }
@@ -50,88 +61,28 @@ function ViewFieldRow({
   value: string
   isFirst: boolean
 }) {
+  const extended = field.layout === 'extended'
   return (
     <div
       className={cn(
-        'grid min-w-0 grid-cols-2 items-center gap-3 border-t border-[var(--nora-divider)] py-2.5',
+        'min-w-0 gap-3 border-t border-[var(--nora-divider)] py-2.5',
+        extended ? 'grid' : 'grid grid-cols-2 items-center',
         isFirst && 'border-t-0 pt-0',
       )}
     >
       <span className="min-w-0 truncate text-[12px] leading-5 text-[var(--nora-text-tertiary)]">
         {field.label}
       </span>
-      <div className="flex h-5 min-w-0 items-center justify-end">
-        <span className="min-w-0 truncate text-right text-[12px] leading-5 font-normal text-[var(--nora-text-secondary)]">
+      <div className={cn('flex min-w-0 items-center', !extended && 'h-5 justify-end')}>
+        <span
+          className={cn(
+            'min-w-0 text-[12px] leading-5 font-normal text-[var(--nora-text-secondary)]',
+            extended ? 'whitespace-pre-wrap break-words' : 'truncate text-right',
+          )}
+        >
           {value || '—'}
         </span>
       </div>
-    </div>
-  )
-}
-
-function EditFieldBlock({
-  field,
-  invalid,
-  value,
-  onChange,
-  variant = 'card',
-}: {
-  field: ProfileField
-  invalid?: boolean
-  value: string
-  onChange: (key: FieldKey, value: string) => void
-  variant?: 'card' | 'entry'
-}) {
-  const entry = variant === 'entry'
-  const inline =
-    entry && field.layout !== 'extended' && field.control == null
-  const labelText = (
-    <span
-      className={
-        entry
-          ? 'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
-          : 'text-[12px] text-[var(--nora-text-secondary)]'
-      }
-    >
-      {entry && field.unit ? measureLabel(field) : field.label}
-      {field.optional ? (
-        <span className="font-normal text-[12px] text-[var(--nora-text-tertiary)]">
-          {' '}
-          · необязательно
-        </span>
-      ) : null}
-    </span>
-  )
-  const label = entry ? (
-    <span className="flex min-w-0 items-center gap-2.5">
-      <SettingsFieldMark icon={field.icon} />
-      {labelText}
-    </span>
-  ) : labelText
-  const control = (
-    <QuestionnaireFieldControl
-      field={field}
-      idPrefix="profile"
-      invalid={invalid}
-      onChange={onChange}
-      value={value}
-      variant={variant}
-    />
-  )
-
-  if (inline) {
-    return (
-      <div className="grid grid-cols-2 items-center gap-2">
-        {label}
-        {control}
-      </div>
-    )
-  }
-
-  return (
-    <div className={cn(entry ? 'grid gap-2' : 'grid gap-1.5', !entry && !field.halfWidth && 'col-span-2')}>
-      {label}
-      {control}
     </div>
   )
 }
@@ -172,6 +123,7 @@ function ProfileSectionCard({
   onChange: (key: FieldKey, value: string) => void
 }) {
   const rows = visibleFields(values, section.fields, editing)
+  if (!editing && rows.length === 0) return null
 
   return (
     <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-[var(--nora-radius-lg)] bg-[var(--dash-card-bg,var(--nora-panel))] shadow-[inset_0_0_0_1px_var(--dash-card-ring,var(--nora-border))]">
@@ -189,12 +141,14 @@ function ProfileSectionCard({
       {editing ? (
         <div className="grid min-w-0 flex-1 grid-cols-2 content-start gap-x-3 gap-y-4 p-3.5">
           {rows.map((field) => (
-            <EditFieldBlock
+            <QuestionnaireFieldBlock
               field={field}
+              idPrefix="profile"
               invalid={!field.optional && !isFilled(values[field.key])}
               key={field.key}
               onChange={onChange}
               value={values[field.key]}
+              variant="card"
             />
           ))}
         </div>
@@ -228,6 +182,7 @@ function ProfileSectionEntry({
   values: Record<FieldKey, string>
 }) {
   const rows = visibleFields(values, section.fields, editing)
+  if (!editing && rows.length === 0) return null
 
   return (
     <SettingsEntry
@@ -236,43 +191,52 @@ function ProfileSectionEntry({
       title={section.title}
     >
       {editing ? (
-        <div>
-          {rows.map((field, index) => (
-            <div
-              className={cn(
-                'border-t border-[var(--nora-divider)] py-3.5',
-                index === 0 && 'border-t-0 pt-0',
-                index === rows.length - 1 && 'pb-0',
-              )}
-              key={field.key}
-            >
-              <EditFieldBlock
-                field={field}
-                invalid={!field.optional && !isFilled(values[field.key])}
-                onChange={onChange}
-                value={values[field.key]}
-                variant="entry"
-              />
-            </div>
-          ))}
-        </div>
-      ) : rows.length === 0 ? (
-        <p className="font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 text-[var(--nora-text-tertiary)]">
-          Пока ничего не указано.
-        </p>
+        <QuestionnaireEditStack
+          fields={rows}
+          idPrefix="profile"
+          invalidKeys={new Set(
+            rows
+              .filter((field) => !field.optional && !isFilled(values[field.key]))
+              .map((field) => field.key),
+          )}
+          onChange={onChange}
+          values={values}
+        />
       ) : (
         <div>
           {rows.map((field, index) => {
             const extended = field.layout === 'extended'
+            const shown = measureInputValue(values[field.key], field.unit) || '—'
+            if (extended) {
+              return (
+                <div
+                  className={cn(
+                    'grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2.5 border-t border-[var(--nora-divider)] py-3.5',
+                    index === 0 && 'border-t-0 pt-0',
+                    index === rows.length - 1 && 'pb-0',
+                  )}
+                  key={field.key}
+                >
+                  <span className="flex h-5 items-center">
+                    <SettingsFieldMark icon={field.icon} />
+                  </span>
+                  <div className="grid min-w-0 gap-1">
+                    <span className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
+                      {field.unit ? measureLabel(field) : field.label}
+                    </span>
+                    <span className="min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 break-words whitespace-pre-wrap text-[color-mix(in_srgb,white_10%,color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary))))] dark:text-[var(--nora-text-secondary)]">
+                      {shown}
+                    </span>
+                  </div>
+                </div>
+              )
+            }
             return (
               <div
                 className={cn(
-                  'min-w-0 border-t border-[var(--nora-divider)] py-3.5',
+                  'grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 border-t border-[var(--nora-divider)] py-3.5',
                   index === 0 && 'border-t-0 pt-0',
                   index === rows.length - 1 && 'pb-0',
-                  extended
-                    ? 'grid gap-2'
-                    : 'grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4',
                 )}
                 key={field.key}
               >
@@ -280,13 +244,8 @@ function ProfileSectionEntry({
                   <SettingsFieldMark icon={field.icon} />
                   {field.unit ? measureLabel(field) : field.label}
                 </span>
-                <span
-                  className={cn(
-                    'min-w-0 font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 break-words text-[color-mix(in_srgb,white_10%,color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary))))] dark:text-[var(--nora-text-secondary)]',
-                    extended ? 'whitespace-pre-wrap' : 'text-right',
-                  )}
-                >
-                  {measureInputValue(values[field.key], field.unit) || '—'}
+                <span className="min-w-0 text-right font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 break-words text-[color-mix(in_srgb,white_10%,color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary))))] dark:text-[var(--nora-text-secondary)]">
+                  {shown}
                 </span>
               </div>
             )
@@ -339,10 +298,10 @@ export function useClientProfileEditor() {
   const saveMutation = usePutQuestionnaireMutation()
   const serverAnswers = questionnaire.data?.answers
   const [values, setValues] = useState<Record<FieldKey, string>>(
-    () => serverAnswers ?? emptyQuestionnaireAnswers(),
+    () => presentAnswers(serverAnswers ?? emptyQuestionnaireAnswers()),
   )
   const [draft, setDraft] = useState<Record<FieldKey, string>>(
-    () => serverAnswers ?? emptyQuestionnaireAnswers(),
+    () => presentAnswers(serverAnswers ?? emptyQuestionnaireAnswers()),
   )
   const [localEditing, setLocalEditing] = useState(false)
   const editing = mode.managed ? mode.editing : localEditing
@@ -357,8 +316,8 @@ export function useClientProfileEditor() {
 
   useEffect(() => {
     if (!serverAnswers || editing) return
-    setValues(serverAnswers)
-    setDraft(serverAnswers)
+    setValues(presentAnswers(serverAnswers))
+    setDraft(presentAnswers(serverAnswers))
   }, [editing, serverAnswers])
 
   const startEdit = () => {
@@ -374,11 +333,12 @@ export function useClientProfileEditor() {
   const saveEdit = async () => {
     try {
       const response = await saveMutation.mutateAsync({
-        answers: draft as QuestionnaireAnswers,
+        answers: presentAnswers(draft) as QuestionnaireAnswers,
       })
       if (response.answers) {
-        setValues(response.answers)
-        setDraft(response.answers)
+        const next = presentAnswers(response.answers)
+        setValues(next)
+        setDraft(next)
       }
       if (!mode.managed) setLocalEditing(false)
       return true
@@ -399,7 +359,11 @@ export function useClientProfileEditor() {
   })
 
   const updateDraft = (key: FieldKey, value: string) => {
-    setDraft((current) => ({ ...current, [key]: value }))
+    setDraft((current) => {
+      const next = { ...current, [key]: value }
+      if (key === 'goal' && !goalUsesPace(value)) next.goalPace = 'Умеренно'
+      return next
+    })
   }
 
   const actions = editing ? (
@@ -443,8 +407,27 @@ export function useClientProfileEditor() {
         ? saveMutation.error.message
         : 'Не удалось сохранить анкету.')
       : null,
-    values: editing ? draft : values,
+    values: presentAnswers(editing ? draft : values),
   }
+}
+
+const QuestionnaireEditorContext = createContext<ReturnType<typeof useClientProfileEditor> | null>(null)
+
+export function QuestionnaireEditorProvider({ children }: { children: ReactNode }) {
+  const editor = useClientProfileEditor()
+  return (
+    <QuestionnaireEditorContext.Provider value={editor}>
+      {children}
+    </QuestionnaireEditorContext.Provider>
+  )
+}
+
+export function useQuestionnaireEditor() {
+  const editor = useContext(QuestionnaireEditorContext)
+  if (!editor) {
+    throw new Error('Questionnaire editor is missing')
+  }
+  return editor
 }
 
 /** One profile card per onboarding step — equal height within each row. */
@@ -452,6 +435,7 @@ export function ClientProfileCard({
   columns = 2,
   editing,
   layout = 'card',
+  omitTitles = [],
   onChange,
   sectionClassName,
   values,
@@ -461,16 +445,20 @@ export function ClientProfileCard({
   columns?: 2 | 3
   editing: boolean
   layout?: 'card' | 'entry'
+  /** Headings already edited in another block on the same page. */
+  omitTitles?: ReadonlyArray<string>
   onChange: (key: FieldKey, value: string) => void
   sectionClassName?: string
   values: Record<FieldKey, string>
 }) {
+  const sections = PROFILE_SECTIONS.filter((section) => !omitTitles.includes(section.title))
+
   if (layout === 'entry') {
     return (
       <>
-        {PROFILE_SECTIONS.map((section, sectionIndex) => (
+        {sections.map((section) => (
           <ProfileSectionEntry
-            className={cn(sectionClassName, sectionIndex === 0 && 'max-lg:!pt-0')}
+            className={sectionClassName}
             editing={editing}
             key={section.title}
             onChange={onChange}
@@ -489,7 +477,7 @@ export function ClientProfileCard({
         columns === 3 ? 'md:grid-cols-2 xl:grid-cols-3' : 'lg:grid-cols-2',
       )}
     >
-      {PROFILE_SECTIONS.map((section, sectionIndex) => (
+      {sections.map((section, sectionIndex) => (
         <ProfileSectionCard
           editing={editing}
           key={section.title}

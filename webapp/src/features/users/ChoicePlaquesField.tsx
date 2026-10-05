@@ -8,17 +8,17 @@ import type { ChoiceOption } from './questionnaire-sections'
 const DETAIL_SEP = ' — '
 const MULTI_SEPARATOR = ', '
 
-function plaqueClassName(checked: boolean, entry: boolean) {
+export function choicePlaqueClass(checked: boolean, entry: boolean) {
   return cn(
-    'flex cursor-pointer items-start gap-2 rounded-[var(--nora-radius-md)] px-3 py-2',
-    entry
-      ? 'bg-[var(--settings-field-bg,var(--nora-panel))]'
-      : 'bg-[var(--questionnaire-fill,var(--settings-substrate))] shadow-[inset_0_0_0_1px_var(--questionnaire-fill-stroke,var(--nora-border))]',
+    'flex cursor-pointer items-start gap-2 rounded-[var(--nora-radius-md)] border px-3 py-2',
     'font-[family-name:var(--nora-font)] text-[var(--nora-text)]',
-    'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
-    'has-focus-visible:shadow-[inset_0_0_0_1px_var(--nora-tint)]',
+    'outline-none transition-[box-shadow,background-color,border-color] duration-[var(--nora-duration,0.15s)]',
+    entry
+      ? 'border-[var(--settings-well-stroke,var(--nora-border))] bg-[var(--settings-field-bg,var(--nora-panel))]'
+      : 'border-[var(--questionnaire-fill-stroke,var(--nora-border))] bg-[var(--questionnaire-fill,var(--settings-substrate))]',
+    'has-focus-visible:border-[var(--nora-tint)]',
     checked
-      && 'bg-[var(--nora-tint-dimmed)] text-[var(--nora-tint)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)] [&_[data-option-note]]:text-[var(--nora-tint)]',
+      && 'border-[color-mix(in_srgb,var(--nora-tint)_32%,transparent)] bg-[var(--nora-tint-dimmed)] text-[var(--nora-text)]',
   )
 }
 
@@ -52,7 +52,7 @@ function OptionCopy({
       <span className="text-[13px] font-medium leading-5">{label}</span>
       {description ? (
         <span
-          className="min-w-0 truncate text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]"
+          className="min-w-0 truncate text-[12px] font-light leading-5 text-[var(--nora-text-secondary)]"
           data-option-note=""
         >
           {description}
@@ -138,7 +138,8 @@ export function ChoicePlaquesField({
           const checked = selectedOption === option.value
           return (
             <label
-              className={plaqueClassName(checked, entry)}
+              className={choicePlaqueClass(checked, entry)}
+              data-choice-plaque=""
               htmlFor={id}
               key={option.value}
               onClick={(event) => {
@@ -226,7 +227,7 @@ export function MultiChoicePlaquesField({
         return (
           <button
             aria-checked={checked}
-            className={cn(plaqueClassName(checked, entry), 'h-auto min-h-0 text-left')}
+            className={cn(choicePlaqueClass(checked, entry), 'h-auto min-h-0 text-left')}
             data-choice-plaque=""
             key={option.value}
             onClick={() => toggle(option.value)}
