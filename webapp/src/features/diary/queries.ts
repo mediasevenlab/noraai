@@ -60,7 +60,7 @@ export function useMealsQuery(subjectUserId: string | undefined) {
           }),
         },
       )
-      return items === listed.items ? listed : { items }
+      return items === listed.items ? listed : { ...listed, items }
     },
   })
 }

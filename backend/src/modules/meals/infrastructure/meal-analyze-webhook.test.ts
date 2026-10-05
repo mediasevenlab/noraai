@@ -44,6 +44,30 @@ describe('analyzeMealWithWebhook', () => {
     expect(result.meal.title).toBe('Овсянка')
   })
 
+  test('keeps token usage captured while n8n calls Gemini, even if n8n drops it', async () => {
+    const { generationRequestKey, rememberGenerationUsage } = await import('../application/generation-usage-bridge')
+    const input = { imageBase64: 'photo-bytes', imageMime: 'image/jpeg' as const, note: 'фасоль' }
+    rememberGenerationUsage(generationRequestKey(input), {
+      'gemini-2.5-flash': { inputTokens: 800, audioInputTokens: 0, outputTokens: 120 },
+    })
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify(card), { status: 200 })) as unknown as typeof fetch
+
+    const result = await analyzeMealWithWebhook(
+      'http://127.0.0.1:5679/webhook/meal-app-analyze',
+      async () => {
+        throw new Error('should not call gemini')
+      },
+      input,
+    )
+
+    expect(result.usage?.['gemini-2.5-flash']).toEqual({
+      inputTokens: 800,
+      audioInputTokens: 0,
+      outputTokens: 120,
+    })
+  })
+
   test('falls back to Gemini when n8n is down', async () => {
     console.warn = () => undefined
     globalThis.fetch = (async () => {

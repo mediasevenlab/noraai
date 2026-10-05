@@ -85,7 +85,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const res = items[0].json;\nif (res.ok && res.meal) {\n  return [{ json: { ok: true, meal: res.meal, model: res.model, via: 'n8n->host-meal-gemini' } }];\n}\nreturn [{ json: { ok: false, error: res.error || JSON.stringify(res).slice(0,400) } }];"
+        "jsCode": "const res = items[0].json;\nif (res.ok && res.meal) {\n  return [{ json: { ok: true, meal: res.meal, model: res.model, usage: res.usage, via: 'n8n->host-meal-gemini' } }];\n}\nreturn [{ json: { ok: false, error: res.error || JSON.stringify(res).slice(0,400) } }];"
       },
       "id": "meal-assemble",
       "name": "Собрать ответ",

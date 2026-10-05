@@ -35,6 +35,7 @@ export function mealDtoToEntry(meal: MealDto): MealEntry {
     likeCount: meal.likeCount,
     liked: meal.liked,
     unread: meal.unread,
+    generationSpend: meal.generationSpend,
   }
 }
 

@@ -57,6 +57,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
     : createLocalMealImageStore(uploadDir, sharpMealImageProcessor)
   const imageUrlBuilder = createMealImageUrlBuilder(options.env.JWT_SECRET)
   const service = new MealsService({
+    generationModel: options.env.GEMINI_MEAL_MODEL ?? options.env.GEMINI_MODEL,
     analyzer: {
       analyze: (input) => extractMealWithGemini(options.env, input),
       refine: (input) => refineMealWithGemini(options.env, input),
@@ -132,3 +133,14 @@ export {
   type MealVersionsBackfillResult,
 } from './infrastructure/meal-versions-backfill'
 export { mapGeminiCardToMealFields } from './domain/mapping'
+export {
+  addGenerationUsage,
+  cachedUsdRub,
+  ensureUsdRub,
+  generationSpend,
+  generationSpendFromAccount,
+  parseGenerationAccount,
+  parseGenerationLedger,
+  sumSettledGenerationSpend,
+} from './domain/generation-spend'
+export { settleLegacyGenerationLedgers } from './infrastructure/meals-repository'

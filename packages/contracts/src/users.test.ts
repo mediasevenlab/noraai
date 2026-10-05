@@ -239,6 +239,8 @@ describe('user and admin contracts', () => {
       page: 2,
       pageSize: 100,
     })
+    expect(adminUsersQuerySchema.parse({ role: 'mentor' }).role).toBe('mentor')
+    expect(() => adminUsersQuerySchema.parse({ role: 'owner' })).toThrow()
     expect(() => adminUsersQuerySchema.parse({ page: '0' })).toThrow()
     expect(adminUsersQuerySchema.parse({ page: '100' }).page).toBe(100)
     expect(() => adminUsersQuerySchema.parse({ page: '101' })).toThrow()

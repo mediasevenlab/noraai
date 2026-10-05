@@ -251,7 +251,7 @@ export function PlanPage({
       mealsQueryKeys.forSubject(auth.user.id),
       (previous) => {
         const kept = previous?.items ?? []
-        return { items: [...createdMeals.map((item) => item.meal), ...kept] }
+        return { ...previous, items: [...createdMeals.map((item) => item.meal), ...kept] }
       },
     )
     await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.forSubject(auth.user.id) })
@@ -291,7 +291,7 @@ export function PlanPage({
         mealsQueryKeys.forSubject(auth.user.id),
         (previous) => {
           const kept = previous?.items ?? []
-          return { items: [...createdMeals.map((item) => item.meal), ...kept] }
+          return { ...previous, items: [...createdMeals.map((item) => item.meal), ...kept] }
         },
       )
       await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.forSubject(auth.user.id) })
@@ -879,7 +879,7 @@ export function CurrentPlanPage({
         mealsQueryKeys.forSubject(auth.user.id),
         (previous) => {
           const kept = previous?.items ?? []
-          return { items: [...createdMeals.map((item) => item.meal), ...kept] }
+          return { ...previous, items: [...createdMeals.map((item) => item.meal), ...kept] }
         },
       )
       await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.forSubject(auth.user.id) })
@@ -927,7 +927,7 @@ export function CurrentPlanPage({
         mealsQueryKeys.forSubject(auth.user.id),
         (previous) => {
           const kept = previous?.items ?? []
-          return { items: [...createdMeals.map((item) => item.meal), ...kept] }
+          return { ...previous, items: [...createdMeals.map((item) => item.meal), ...kept] }
         },
       )
       await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.forSubject(auth.user.id) })
@@ -1059,7 +1059,7 @@ export function CurrentPlanPage({
           mealsQueryKeys.forSubject(auth.user.id),
           (previous) => {
             const kept = previous?.items ?? []
-            return { items: [...createdMeals.map((item) => item.meal), ...kept] }
+            return { ...previous, items: [...createdMeals.map((item) => item.meal), ...kept] }
           },
         )
         await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.forSubject(auth.user.id) })

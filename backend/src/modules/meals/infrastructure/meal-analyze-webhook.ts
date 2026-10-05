@@ -1,7 +1,9 @@
 import type { MealsGeminiRequest, MealsGeminiResponse } from '@web-app-demo/contracts'
 
 import { isHollowMealAnalysis } from '../domain/mapping'
+import { generationLedgerTokens, parseGenerationLedger } from '../domain/generation-spend'
 import { markN8nFallback, reportN8nFallback } from './n8n-fallback'
+import { generationRequestKey, takeGenerationUsage } from '../application/generation-usage-bridge'
 
 type AnalyzeDirect = (input: MealsGeminiRequest) => Promise<MealsGeminiResponse>
 
@@ -23,7 +25,14 @@ export async function analyzeMealWithWebhook(
         try {
           const json = JSON.parse(text) as MealsGeminiResponse & { ok?: boolean; meal?: unknown }
           if (json.ok === true && json.meal && !isHollowMealAnalysis(json.meal)) {
-            return json as MealsGeminiResponse
+            const usage = parseGenerationLedger(json.usage)
+            const recovered = generationLedgerTokens(usage) > 0
+              ? usage
+              : takeGenerationUsage(generationRequestKey(input))
+            return {
+              ...json,
+              ...(generationLedgerTokens(recovered) > 0 ? { usage: recovered } : {}),
+            } as MealsGeminiResponse
           }
           reportN8nFallback(
             'analyze',
@@ -40,6 +49,7 @@ export async function analyzeMealWithWebhook(
     } catch (cause) {
       reportN8nFallback('analyze', 'request failed', cause)
     }
+    takeGenerationUsage(generationRequestKey(input))
     return markN8nFallback(await analyzeDirect(input))
   }
   return analyzeDirect(input)

@@ -11,8 +11,10 @@ import type {
   MealsTranscribeRequest,
   MealsTranscribeResponse,
   MealSource,
+  GenerationUsageLedger,
 } from '@web-app-demo/contracts'
 
+import type { GenerationAccount, SettledMoney } from '../domain/generation-spend'
 import type { MealImageSize } from '../domain/meal-image-variants'
 import type { MentorMealNotifyPayload } from '../domain/mentor-meal-notify'
 import type { MealVersionRecord } from '../domain/meal-versions'
@@ -42,6 +44,9 @@ export type MealRecord = {
   imageMime: string | null
   sharedAt: Date | null
   createdAt: Date
+  generationUsage?: GenerationUsageLedger
+  /** Money already billed for this meal. Later price or rate changes do not rewrite it. */
+  generationSettled?: SettledMoney | null
 }
 
 export type MealContentUpdate = {
@@ -166,6 +171,19 @@ export type MealsRepository = {
     liked: boolean,
   ): Promise<{ likeCount: number; liked: boolean }>
   deleteMeal(mealId: string): Promise<void>
+  readGenerationLedger?(userId: string): Promise<GenerationAccount>
+  /** Clears the user ledger and every meal total. Used by the settings test reset. */
+  resetGenerationSpend?(userId: string): Promise<void>
+  addGenerationUsage?(input: {
+    userId: string
+    mealId?: string
+    mealUsage: GenerationUsageLedger
+    ledgerUsage: GenerationUsageLedger
+    /** When set, this money is added instead of pricing `mealUsage` again. */
+    mealSettled?: SettledMoney | null
+    /** When set, this money is added instead of pricing `ledgerUsage` again. */
+    ledgerSettled?: SettledMoney | null
+  }): Promise<void>
 }
 
 export type MealImageStore = {

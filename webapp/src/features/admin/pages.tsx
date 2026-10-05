@@ -24,7 +24,6 @@ export function AdminUsers({ currentUser }: { currentUser: UserDto }) {
     <PageContainer>
       <NoraPageHeader
         description="Находите аккаунты и управляйте доступом без раскрытия учётных данных."
-        showBrand
         title="Пользователи"
         titleSize="display"
       />

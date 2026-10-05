@@ -223,6 +223,27 @@ export const mealVersionSchema = z
   })
   .strict()
 export const mealExtraImageUrlsSchema = z.array(z.string().min(1)).max(10)
+export const generationUsageBucketSchema = z
+  .object({
+    inputTokens: z.number().int().nonnegative(),
+    audioInputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative(),
+  })
+  .strict()
+export const generationUsageSchema = z.record(
+  z.string().min(1).max(120),
+  generationUsageBucketSchema,
+)
+export const generationSpendSchema = z
+  .object({
+    tokens: z.number().int().nonnegative(),
+    /** USD captured when these tokens were billed. Later price changes do not rewrite it. */
+    dollars: z.number().nonnegative().nullable(),
+    rubles: z.number().nonnegative().nullable(),
+  })
+  .strict()
+export type GenerationUsageLedger = z.infer<typeof generationUsageSchema>
+export type GenerationSpend = z.infer<typeof generationSpendSchema>
 export const mealSchema = z
   .object({
     id: z.string().uuid(),
@@ -252,11 +273,15 @@ export const mealSchema = z
     liked: z.boolean().default(false),
     /** Mentor diary only: this card has not been viewed by the current mentor. */
     unread: z.boolean().optional(),
+    /** Money billed for this meal, frozen when each call was made. Absent when nothing was recorded. */
+    generationSpend: generationSpendSchema.optional(),
   })
   .strict()
 export const listMealsResponseSchema = z
   .object({
     items: z.array(mealSchema),
+    /** Lifetime spend frozen as each call was billed. Stays after a meal card is deleted. */
+    generationSpend: generationSpendSchema.optional(),
   })
   .strict()
 export const createMealFromBotRequestSchema = z
@@ -344,6 +369,8 @@ export const selectMealVersionRequestSchema = z
 export const mealMutationResponseSchema = z
   .object({
     meal: mealSchema,
+    /** Updated lifetime diary spend after this change, when the call recorded tokens. */
+    generationSpend: generationSpendSchema.optional(),
   })
   .strict()
 
@@ -352,6 +379,25 @@ export const deleteMealResponseSchema = z
     ok: z.literal(true),
   })
   .strict()
+
+export const resetGenerationSpendResponseSchema = deleteMealResponseSchema
+
+export const generationPricingResponseSchema = z
+  .object({
+    usdRub: z.number().positive().nullable(),
+    model: z.string().min(1).max(120),
+    usdPerMillion: z
+      .object({
+        text: z.number().positive(),
+        image: z.number().positive(),
+        link: z.number().positive(),
+        audio: z.number().positive(),
+        output: z.number().positive(),
+      })
+      .strict(),
+  })
+  .strict()
+export type GenerationPricing = z.infer<typeof generationPricingResponseSchema>
 
 export const shareMealRequestSchema = z
   .object({
@@ -457,6 +503,7 @@ export const mealsGeminiResponseSchema = z
     model: z.string(),
     meal: mealsGeminiCardSchema,
     fallbackFrom: n8nFallbackFromSchema.optional(),
+    usage: generationUsageSchema.optional(),
   })
   .strict()
 export type MealSlot = z.infer<typeof mealSlotSchema>
@@ -495,6 +542,7 @@ export const mealsTranscribeResponseSchema = z
     text: z.string(),
     model: z.string(),
     fallbackFrom: n8nFallbackFromSchema.optional(),
+    usage: generationUsageSchema.optional(),
   })
   .strict()
 export const mealComposerActionSchema = z.enum([

@@ -10,6 +10,7 @@ import {
   userRoleSchema,
   userSchema,
 } from './auth'
+import { generationSpendSchema } from './meals'
 
 export const DEFAULT_USER_NICKNAMES = {
   'admin@nora.com': 'admin',
@@ -448,6 +449,10 @@ export const adminUsersQuerySchema = z
       (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
       z.string().trim().max(100).optional(),
     ),
+    role: z.preprocess(
+      (value) => (value === '' || value == null ? undefined : value),
+      userRoleSchema.optional(),
+    ),
     page: positiveIntegerQuerySchema(1, ADMIN_USERS_MAX_PAGE),
     pageSize: positiveIntegerQuerySchema(20, 100),
   })
@@ -468,6 +473,7 @@ export const adminUserSummarySchema = z
     nickname: nicknameSchema.nullable(),
     role: userRoleSchema,
     createdAt: z.string().datetime(),
+    generationSpend: generationSpendSchema.optional(),
   })
   .strict()
 
@@ -478,6 +484,8 @@ export const adminUsersResponseSchema = z
     pageSize: z.number().int().positive().max(100),
     total: z.number().int().nonnegative(),
     hasNext: z.boolean(),
+    /** Sum of every user's settled generation spend, including other pages. */
+    generationSpend: generationSpendSchema.optional(),
   })
   .strict()
 

@@ -2,6 +2,7 @@ import type { MealsGeminiRequest, MealsGeminiResponse } from '@web-app-demo/cont
 import { normalizeMicronutrients } from '@web-app-demo/contracts'
 import type { AppEnv } from '../../../env'
 import { MealsFailure } from '../domain/errors'
+import { generationLedgerTokens, usageLedgerFromGemini } from '../domain/generation-spend'
 import { mapGeminiComposition } from '../domain/mapping'
 
 export const MEAL_ASSUMPTION_RULES = [
@@ -388,10 +389,18 @@ export async function transcribeAudioWithGemini(
   if (!response.ok) {
     throw new MealsFailure('upstream', `Gemini ${response.status}: ${text.slice(0, 400)}`)
   }
+  let metadata: unknown
+  try {
+    metadata = (JSON.parse(text) as { usageMetadata?: unknown }).usageMetadata
+  } catch {
+    metadata = undefined
+  }
+  const usage = usageLedgerFromGemini(model, metadata, { audio: true })
   return {
     ok: true,
     model,
     text: parseGeminiCandidateText(text),
+    ...(generationLedgerTokens(usage) > 0 ? { usage } : {}),
   }
 }
 
@@ -421,7 +430,10 @@ async function generateMealCard(
   if (!response.ok) {
     throw new MealsFailure('upstream', `Gemini ${response.status}: ${text.slice(0, 400)}`)
   }
-  let payload: { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+  let payload: {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+    usageMetadata?: unknown
+  }
   try {
     payload = JSON.parse(text) as typeof payload
   } catch {
@@ -464,7 +476,23 @@ async function generateMealCard(
       assumptions: Array.isArray(meal.assumptions) ? meal.assumptions.map(String) : [],
       micronutrients: normalizeMicronutrients(meal.micronutrients),
     },
+    ...geminiUsageField(model, payload.usageMetadata, parts),
   }
+}
+
+function geminiUsageField(
+  model: string,
+  metadata: unknown,
+  parts: Array<Record<string, unknown>>,
+) {
+  const audio = parts.some((part) => {
+    const inline = part.inline_data
+    if (!inline || typeof inline !== 'object') return false
+    const mime = (inline as { mime_type?: unknown }).mime_type
+    return typeof mime === 'string' && mime.startsWith('audio/')
+  })
+  const usage = usageLedgerFromGemini(model, metadata, { audio })
+  return generationLedgerTokens(usage) > 0 ? { usage } : {}
 }
 
 function normalizeImageMime(mime: string | undefined) {

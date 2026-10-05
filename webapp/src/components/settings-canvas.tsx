@@ -39,12 +39,12 @@ const settingsControlsClass = cn(
   '[&_[data-slot=input]]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=input]]:!px-3 [&_[data-slot=input]]:!text-[16px] [&_[data-slot=input]]:!font-normal [&_[data-slot=input]]:!leading-5',
   '[&_[data-slot=input]:disabled]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=input]:disabled]:!opacity-100 [&_[data-slot=input]:disabled]:!text-[var(--nora-text-secondary)]',
   'lg:[&_[data-slot=input]]:!h-8 lg:[&_[data-slot=input]]:!min-h-8 lg:[&_[data-slot=input]]:!text-[13px]',
-  '[&_[data-slot=select-trigger]]:!h-10 [&_[data-slot=select-trigger]]:!min-h-10 [&_[data-slot=select-trigger]]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=select-trigger]]:!px-3 [&_[data-slot=select-trigger]]:!text-[13px] [&_[data-slot=select-trigger]]:!font-normal',
-  'lg:[&_[data-slot=select-trigger]]:!h-8 lg:[&_[data-slot=select-trigger]]:!min-h-8',
+  '[&_[data-slot=select-trigger]:not([data-generation-control])]:!h-10 [&_[data-slot=select-trigger]:not([data-generation-control])]:!min-h-10 [&_[data-slot=select-trigger]:not([data-generation-control])]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=select-trigger]:not([data-generation-control])]:!px-3 [&_[data-slot=select-trigger]:not([data-generation-control])]:!text-[13px] [&_[data-slot=select-trigger]:not([data-generation-control])]:!font-normal',
+  'lg:[&_[data-slot=select-trigger]:not([data-generation-control])]:!h-8 lg:[&_[data-slot=select-trigger]:not([data-generation-control])]:!min-h-8',
   '[&_[data-settings-field]]:!h-8 [&_[data-settings-field]]:!min-h-8 [&_[data-settings-field]]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-settings-field]]:!text-[13px]',
-  '[&_button:not([data-choice-plaque]):not([data-settings-field])]:!h-10 [&_button:not([data-choice-plaque]):not([data-settings-field])]:!min-h-10 [&_button:not([data-choice-plaque]):not([data-settings-field])]:!px-3 [&_button:not([data-choice-plaque]):not([data-settings-field])]:!text-[13px] [&_button:not([data-choice-plaque]):not([data-settings-field])]:!font-normal',
-  'lg:[&_button:not([data-choice-plaque]):not([data-settings-field])]:!h-8 lg:[&_button:not([data-choice-plaque]):not([data-settings-field])]:!min-h-8',
-  '[&_button:not([data-choice-plaque])_span]:!text-[13px] [&_button:not([data-choice-plaque])_span]:!font-normal',
+  '[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-slot=switch]):not([data-generation-control])]:!h-10 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-slot=switch]):not([data-generation-control])]:!min-h-10 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-slot=switch]):not([data-generation-control])]:!px-3 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-slot=switch]):not([data-generation-control])]:!text-[13px] [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-slot=switch]):not([data-generation-control])]:!font-normal',
+  'lg:[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-slot=switch]):not([data-generation-control])]:!h-8 lg:[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-slot=switch]):not([data-generation-control])]:!min-h-8',
+  '[&_button:not([data-choice-plaque]):not([data-slot=switch]):not([data-generation-control])_span]:!text-[13px] [&_button:not([data-choice-plaque]):not([data-slot=switch]):not([data-generation-control])_span]:!font-normal',
 )
 
 /** Раскладка страницы настроек в том же виде, что «Разработка». */
@@ -195,12 +195,14 @@ export function SettingsEntry({
   children,
   className,
   description,
+  descriptionClassName,
   marker,
   title,
 }: {
   children: ReactNode
   className?: string
-  description: string
+  description: ReactNode
+  descriptionClassName?: string
   marker?: ReactNode
   title: string
 }) {
@@ -212,7 +214,7 @@ export function SettingsEntry({
         </h2>
         {marker}
       </div>
-      <p className={cn('mt-1 max-w-[54ch]', settingsBodyClass, 'text-[var(--nora-text-tertiary)]')}>{description}</p>
+      <p className={cn('mt-1 max-w-[54ch]', settingsBodyClass, 'text-[var(--nora-text-tertiary)]', descriptionClassName)}>{description}</p>
       <div className={settingsControlsClass} data-settings-well="">
         {children}
       </div>

@@ -3,7 +3,9 @@ import {
   currentUserMentorResponseSchema,
   mentorUserMutationResponseSchema,
   putQuestionnaireRequestSchema,
+  generationPricingResponseSchema,
   questionnaireResponseSchema,
+  resetGenerationSpendResponseSchema,
   telegramLinkRequestSchema,
   telegramLinkResponseSchema,
   updateProfileRequestSchema,
@@ -97,5 +99,17 @@ export function startTelegramLink(
       method: 'POST',
       body: telegramLinkRequestSchema.parse(input),
     },
+  )
+}
+
+export function getGenerationPricing(transport: AuthenticatedTransport) {
+  return transport.request('/api/users/me/generation-pricing', generationPricingResponseSchema)
+}
+
+export function resetMyGenerationSpend(transport: AuthenticatedTransport) {
+  return transport.request(
+    '/api/users/me/generation-spend/reset',
+    resetGenerationSpendResponseSchema,
+    { method: 'POST' },
   )
 }

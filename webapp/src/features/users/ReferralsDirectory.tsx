@@ -67,6 +67,7 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
       )}
       {referrals.data?.items.length === 0 && (
         <ProductFeedEmpty
+          className={layout === 'entry' ? 'py-0' : undefined}
           description={
             query
               ? 'По этой строке рефералов нет.'
@@ -185,7 +186,13 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
             {bonusChip ? <div className="shrink-0">{bonusChip}</div> : null}
             <div className="relative h-8 min-w-0 flex-1 lg:ml-auto lg:w-[220px] lg:flex-none">{searchField}</div>
           </form>
-          <div className="overflow-hidden rounded-[12px] bg-[var(--nora-panel)]">
+          <div
+            className={
+              referrals.data?.items.length
+                ? 'overflow-hidden rounded-[12px] bg-[var(--nora-panel)]'
+                : undefined
+            }
+          >
             {tableBody}
           </div>
           {totalPages > 1 ? (

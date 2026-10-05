@@ -25,6 +25,7 @@ export function getAdminUsers(
     pageSize: String(query.pageSize),
   })
   if (query.q) search.set('q', query.q)
+  if (query.role) search.set('role', query.role)
   return transport.request(`/api/admin/users?${search}`, adminUsersResponseSchema)
 }
 

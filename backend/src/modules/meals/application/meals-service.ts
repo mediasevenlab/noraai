@@ -8,6 +8,7 @@ import {
   type MealsGeminiRequest,
   type MentorNotifyDelivery,
   type RefineMealRequest,
+  type GenerationUsageLedger,
 } from '@web-app-demo/contracts'
 
 import { randomUUID } from 'node:crypto'
@@ -35,6 +36,25 @@ import {
   REFINE_ATTACH_PHOTO_INSTRUCTION,
 } from '../domain/meal-composition'
 import { mapGeminiCardToMealFields } from '../domain/mapping'
+import {
+  activeGenerationModel,
+  addGenerationUsage,
+  addSettledMoney,
+  applyGenerationCharge,
+  cachedUsdRub,
+  configureGenerationModel,
+  ensureModelPrices,
+  ensureUsdRub,
+  generationAccountToJson,
+  generationLedgerTokens,
+  generationModelPrices,
+  generationSpendFromAccount,
+  generationUsageToRecord,
+  parseGenerationLedger,
+  quoteGenerationLedger,
+  type GenerationAccount,
+  type SettledMoney,
+} from '../domain/generation-spend'
 import { mealImageCardKey, parseMealImageSize } from '../domain/meal-image-variants'
 import {
   appendMealVersion,
@@ -65,6 +85,7 @@ export type MealsServiceDependencies = {
   mentorMealNotifier?: MentorMealNotifier
   backgroundTasks?: MentorNotifyTaskDeferrer
   onNotifyError?: (error: unknown) => void
+  generationModel?: string
 }
 
 type MealCreateInput = Omit<CreateMealFromBotRequest, 'telegramUpdateId'> & {
@@ -86,7 +107,11 @@ function refineImages(input: RefineMealRequest) {
 }
 
 export class MealsService {
-  constructor(private readonly dependencies: MealsServiceDependencies) {}
+  private readonly pendingVoice = new Map<string, GenerationAccount>()
+
+  constructor(private readonly dependencies: MealsServiceDependencies) {
+    if (dependencies.generationModel) configureGenerationModel(dependencies.generationModel)
+  }
   async analyzeMeal(input: MealsGeminiRequest) {
     return this.dependencies.analyzer.analyze(input)
   }
@@ -191,9 +216,32 @@ export class MealsService {
     }
   }
 
+  async rememberVoiceUsage(userId: string, usage: unknown) {
+    const ledger = parseGenerationLedger(usage)
+    if (generationLedgerTokens(ledger) === 0) return
+    await this.prepareQuote()
+    const quote = quoteGenerationLedger(ledger, cachedUsdRub())
+    const current = this.pendingVoice.get(userId) ?? { ledger: {}, settled: null }
+    this.pendingVoice.set(userId, {
+      ledger: addGenerationUsage(current.ledger, ledger),
+      settled: addSettledMoney(current.settled, quote),
+    })
+    await this.persistGenerationUsage(userId, undefined, {
+      meal: {},
+      ledger,
+      ledgerSettled: quote,
+    })
+  }
+
   async listCurrentUserMeals(userId: string) {
-    const items = await this.dependencies.repository.listMealsForUser(userId)
-    return { items: items.map((meal) => this.toDto(this.hydrateVersions(meal))) }
+    const [items, ledger] = await Promise.all([
+      this.dependencies.repository.listMealsForUser(userId),
+      this.readGenerationLedger(userId),
+      ensureUsdRub(),
+    ])
+    return this.withDiarySpend(ledger, {
+      items: items.map((meal) => this.toDto(this.hydrateVersions(meal))),
+    })
   }
 
   async listMentorUserMeals(mentorUserId: string, menteeUserId: string) {
@@ -204,8 +252,12 @@ export class MealsService {
     const viewedMealIds = new Set(
       await this.dependencies.repository.listMentorViewedMealIds(mentorUserId),
     )
-    const items = await this.dependencies.repository.listMealsForUser(menteeUserId)
-    return {
+    const [items, ledger] = await Promise.all([
+      this.dependencies.repository.listMealsForUser(menteeUserId),
+      this.readGenerationLedger(menteeUserId),
+      ensureUsdRub(),
+    ])
+    return this.withDiarySpend(ledger, {
       items: items.map((meal) => {
         const hydrated = this.hydrateVersions(meal)
         return this.toDto(hydrated, {
@@ -220,7 +272,7 @@ export class MealsService {
           ),
         })
       }),
-    }
+    })
   }
 
   async listMentorUnreadMeals(mentorUserId: string) {
@@ -606,9 +658,10 @@ export class MealsService {
     }>
     card: Parameters<typeof mapGeminiCardToMealFields>[0]
     source?: CreateMealFromBotRequest['source']
+    usage?: GenerationUsageLedger
   }) {
     const fields = mapGeminiCardToMealFields(input.card)
-    return this.createMeal({
+    const created = await this.createMeal({
       userId: input.userId,
       actorUserId: input.userId,
       title: fields.title,
@@ -631,6 +684,43 @@ export class MealsService {
       imageMime: input.imageMime,
       extraImages: input.extraImages,
     })
+    if (!created.created) return created
+    const pending = (input.source ?? 'telegram') === 'manual'
+      ? this.takePendingVoice(input.userId)
+      : { ledger: {}, settled: null }
+    const recorded = generationUsageToRecord({
+      call: parseGenerationLedger(input.usage),
+      pendingAlreadyLedgered: pending.ledger,
+    })
+    await this.prepareQuote()
+    const rate = cachedUsdRub()
+    const callQuote = quoteGenerationLedger(recorded.ledger, rate)
+    const mealSettled = callQuote ? addSettledMoney(pending.settled, callQuote) : null
+    try {
+      await this.persistGenerationUsage(input.userId, created.meal.id, {
+        ...recorded,
+        mealSettled,
+        ledgerSettled: callQuote,
+      })
+    } catch (error) {
+      if (generationLedgerTokens(pending.ledger) > 0) {
+        const current = this.pendingVoice.get(input.userId) ?? { ledger: {}, settled: null }
+        this.pendingVoice.set(input.userId, {
+          ledger: addGenerationUsage(current.ledger, pending.ledger),
+          settled: addSettledMoney(current.settled, pending.settled),
+        })
+      }
+      throw error
+    }
+    if (generationLedgerTokens(recorded.meal) === 0) return created
+    const mealAccount = applyGenerationCharge({}, recorded.meal, rate, mealSettled)
+    return {
+      ...created,
+      meal: {
+        ...created.meal,
+        generationSpend: generationSpendFromAccount(mealAccount),
+      },
+    }
   }
 
   private async findIdempotentMeal(input: {
@@ -763,7 +853,35 @@ export class MealsService {
       activeVersionId: withHistory.activeVersionId!,
       expectedActiveVersionId: ensured.activeVersionId,
     })
-    return { meal: this.toDto(saved) }
+    const recorded = generationUsageToRecord({
+      call: parseGenerationLedger(result.usage),
+    })
+    await this.prepareQuote()
+    const rate = cachedUsdRub()
+    const callQuote = quoteGenerationLedger(recorded.ledger, rate)
+    await this.persistGenerationUsage(meal.userId, mealId, {
+      ...recorded,
+      mealSettled: callQuote,
+      ledgerSettled: callQuote,
+    })
+    const generation = applyGenerationCharge(
+      generationAccountToJson({
+        ledger: saved.generationUsage ?? {},
+        settled: saved.generationSettled ?? null,
+      }),
+      recorded.meal,
+      rate,
+      callQuote,
+    )
+    const account = await this.readGenerationLedger(meal.userId)
+    return {
+      meal: this.toDto({
+        ...saved,
+        generationUsage: generation.ledger,
+        generationSettled: generation.settled,
+      }),
+      ...this.diarySpendFields(account),
+    }
   }
 
   async selectMealVersion(
@@ -795,6 +913,7 @@ export class MealsService {
       activeVersionId: selected.activeVersionId!,
       expectedActiveVersionId: ensured.activeVersionId,
     })
+    await ensureUsdRub()
     return { meal: this.toDto(saved) }
   }
 
@@ -816,6 +935,20 @@ export class MealsService {
         await this.dependencies.imageStore.deleteImage(imageKey)
       }
     }
+    return { ok: true as const }
+  }
+
+  async generationPricing() {
+    await this.prepareQuote()
+    return { usdRub: cachedUsdRub(), ...generationModelPrices(activeGenerationModel()) }
+  }
+
+  async resetGenerationSpend(userId: string) {
+    this.pendingVoice.delete(userId)
+    if (!this.dependencies.repository.resetGenerationSpend) {
+      throw new MealsFailure('conflict', 'Generation spend reset is unavailable')
+    }
+    await this.dependencies.repository.resetGenerationSpend(userId)
     return { ok: true as const }
   }
 
@@ -1115,6 +1248,72 @@ export class MealsService {
       liked: extras?.liked ?? false,
       ...(extras?.authorName ? { authorName: extras.authorName } : {}),
       ...(typeof extras?.unread === 'boolean' ? { unread: extras.unread } : {}),
+      ...this.mealSpendFields(meal),
     }
+  }
+
+  private mealSpendFields(meal: {
+    generationUsage?: GenerationUsageLedger
+    generationSettled?: SettledMoney | null
+  }) {
+    const spend = generationSpendFromAccount({
+      ledger: parseGenerationLedger(meal.generationUsage),
+      settled: meal.generationSettled ?? null,
+    })
+    return spend.tokens > 0 ? { generationSpend: spend } : {}
+  }
+
+  private diarySpendFields(account: GenerationAccount) {
+    const spend = generationSpendFromAccount(account)
+    return spend.tokens > 0 ? { generationSpend: spend } : {}
+  }
+
+  private withDiarySpend<T extends object>(account: GenerationAccount, body: T) {
+    return { ...body, ...this.diarySpendFields(account) }
+  }
+
+  private readGenerationLedger(userId: string) {
+    return (
+      this.dependencies.repository.readGenerationLedger?.(userId)
+      ?? Promise.resolve({ ledger: {}, settled: null })
+    )
+  }
+
+  private takePendingVoice(userId: string): GenerationAccount {
+    const pending = this.pendingVoice.get(userId) ?? { ledger: {}, settled: null }
+    this.pendingVoice.delete(userId)
+    return pending
+  }
+
+  private prepareQuote() {
+    return Promise.all([ensureUsdRub(), ensureModelPrices(activeGenerationModel())])
+  }
+
+  private async persistGenerationUsage(
+    userId: string,
+    mealId: string | undefined,
+    recorded: {
+      meal: GenerationUsageLedger
+      ledger: GenerationUsageLedger
+      mealSettled?: SettledMoney | null
+      ledgerSettled?: SettledMoney | null
+    },
+  ) {
+    if (!this.dependencies.repository.addGenerationUsage) return
+    if (
+      generationLedgerTokens(recorded.meal) === 0
+      && generationLedgerTokens(recorded.ledger) === 0
+    ) {
+      return
+    }
+    await this.prepareQuote()
+    await this.dependencies.repository.addGenerationUsage({
+      userId,
+      mealId,
+      mealUsage: recorded.meal,
+      ledgerUsage: recorded.ledger,
+      mealSettled: recorded.mealSettled,
+      ledgerSettled: recorded.ledgerSettled,
+    })
   }
 }

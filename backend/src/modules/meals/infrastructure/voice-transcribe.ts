@@ -1,6 +1,8 @@
 import type { MealsTranscribeRequest, MealsTranscribeResponse } from '@web-app-demo/contracts'
 
 import type { AppEnv } from '../../../env'
+import { generationLedgerTokens, parseGenerationLedger } from '../domain/generation-spend'
+import { generationRequestKey, takeGenerationUsage } from '../application/generation-usage-bridge'
 import { markN8nFallback, reportN8nFallback } from './n8n-fallback'
 
 type TranscribeDirect = (input: MealsTranscribeRequest) => Promise<MealsTranscribeResponse>
@@ -27,7 +29,16 @@ export async function transcribeMealVoice(
         try {
           const json = JSON.parse(text) as MealsTranscribeResponse & { ok?: boolean; text?: string }
           if (json.ok === true && typeof json.text === 'string' && json.model) {
-            return { ok: true, text: json.text, model: json.model }
+            const usage = parseGenerationLedger(json.usage)
+            const recovered = generationLedgerTokens(usage) > 0
+              ? usage
+              : takeGenerationUsage(generationRequestKey({ audioBase64: input.audioBase64 }))
+            return {
+              ok: true as const,
+              text: json.text,
+              model: json.model,
+              ...(generationLedgerTokens(recovered) > 0 ? { usage: recovered } : {}),
+            }
           }
           reportN8nFallback('transcribe', 'invalid payload')
         } catch (cause) {
@@ -39,6 +50,7 @@ export async function transcribeMealVoice(
     } catch (cause) {
       reportN8nFallback('transcribe', 'request failed', cause)
     }
+    takeGenerationUsage(generationRequestKey({ audioBase64: input.audioBase64 }))
     return markN8nFallback(await transcribeDirect(input))
   }
   return transcribeDirect(input)

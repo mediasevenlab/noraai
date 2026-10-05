@@ -13,6 +13,7 @@ import { NicknamePanel } from './NicknamePanel'
 import { ProfileMobileMasthead, type ProfileMobileTab } from './ProfileMobileMasthead'
 import { ProfilePanel } from './ProfilePanel'
 import { QuestionnaireOnboarding } from './QuestionnaireOnboarding'
+import { GenerationTokenUsagePanel } from './GenerationTokenUsagePanel'
 import { TelegramUsernamePanel } from './TelegramUsernamePanel'
 import { ReferralLinkPanel } from './ReferralLinkPanel'
 import { ReferralsDirectory } from './ReferralsDirectory'
@@ -136,6 +137,7 @@ export function UserSettings({
     >
       <TelegramUsernamePanel user={user} />
       <MentorConnectionPanel />
+      <GenerationTokenUsagePanel />
     </SettingsCanvas>
   )
 }

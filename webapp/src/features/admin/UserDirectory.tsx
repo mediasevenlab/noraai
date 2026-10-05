@@ -1,13 +1,21 @@
-import { MoreHorizontalIcon, SearchIcon } from '@/components/icons'
 import {
   userRoleSchema,
   type AdminUserSummary,
   type UserDto,
   type UserRole,
 } from '@web-app-demo/contracts'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
+
+import { ChevronLeftIcon, ChevronRightIcon, SearchIcon, Trash2Icon } from '@/components/icons'
+import { formatGenerationMoney, formatGenerationSpend } from '@/features/diary'
+import { GenerationCurrencySelect, useGenerationCurrency } from '@/features/users'
 
 import { DataTableFrame } from '@/components/dashboard'
+import { cn } from '@/lib/utils'
+import {
+  productToolbarSelectContentClass,
+  productToolbarSelectItemClass,
+} from '@/components/nora/product-sheet'
 import { NoraIconButton, NoraSearch } from '@/components/nora/primitives'
 import {
   Alert,
@@ -16,12 +24,6 @@ import {
   AlertTitle,
 } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   Select,
   SelectContent,
@@ -52,21 +54,41 @@ import {
 import { DeleteUserDialog } from './DeleteUserDialog'
 import { RoleChangeDialog } from './RoleChangeDialog'
 
+const directoryHeadClass =
+  '!h-10 px-3.5 !text-[12px] !font-normal text-[var(--nora-text-tertiary)]'
+const directoryCellClass =
+  'h-auto px-3.5 py-2.5 !text-[13px] !font-normal leading-5'
+
 type PendingRoleChange = {
   role: UserRole
   user: AdminUserSummary
 }
 
 export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
+  const currency = useGenerationCurrency()
   const [draftQuery, setDraftQuery] = useState('')
   const [query, setQuery] = useState('')
+  const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all')
   const [page, setPage] = useState(1)
   const [pendingDelete, setPendingDelete] = useState<AdminUserSummary | null>(null)
   const [pendingRole, setPendingRole] = useState<PendingRoleChange | null>(null)
+  useEffect(() => {
+    const next = draftQuery.trim()
+    const handle = window.setTimeout(() => {
+      setQuery((current) => {
+        if (current === next) return current
+        return next
+      })
+      setPage((current) => (query === next ? current : 1))
+    }, 200)
+    return () => window.clearTimeout(handle)
+  }, [draftQuery, query])
+
   const usersQuery = useAdminUsersQuery({
     q: query || undefined,
+    role: roleFilter === 'all' ? undefined : roleFilter,
     page,
-    pageSize: 20,
+    pageSize: 19,
   })
   const deleteMutation = useDeleteAdminUserMutation()
   const roleMutation = useUpdateAdminUserRoleMutation()
@@ -79,12 +101,6 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
   const pagination = usersQuery.data
     ? adminUsersPagination(usersQuery.data)
     : null
-
-  const submitSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setPage(1)
-    setQuery(draftQuery.trim())
-  }
 
   const confirmRoleChange = () => {
     if (!pendingRole) return
@@ -109,9 +125,12 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
     )
   }
 
+  const totalSpend = usersQuery.data?.generationSpend
+  const totalSpendMoney =
+    totalSpend && totalSpend.tokens > 0 ? formatGenerationMoney(totalSpend, currency) : null
   const shownCount = usersQuery.data?.items.length
   const description = usersQuery.data
-    ? `${shownCount} показано`
+    ? `${shownCount} показано из ${usersQuery.data.total}`
     : viewState === 'error'
       ? 'Недоступно'
       : 'Загрузка…'
@@ -148,6 +167,13 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
         )}
 
         <DataTableFrame
+          controls={
+            <DirectoryPager
+              onPage={setPage}
+              page={usersQuery.data?.page ?? page}
+              totalPages={pagination?.totalPages ?? 1}
+            />
+          }
           description={description}
           nextDisabled={!pagination?.canGoNext}
           onNext={() => setPage((current) => current + 1)}
@@ -156,19 +182,25 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
           summary={summary}
           title="Каталог пользователей"
           toolbar={
-            <form className="flex items-center gap-2" onSubmit={submitSearch}>
+            <div className="flex items-center gap-2">
+              <GenerationCurrencySelect className="!h-8 !min-h-8 !bg-[var(--nora-panel)]" />
               <NoraSearch
                 aria-label="Поиск пользователей"
-                className="w-[220px]"
+                className="h-8 min-h-8 w-[240px] !rounded-full !bg-[var(--nora-panel)]"
                 icon={<SearchIcon />}
+                inputClassName="!text-[13px] !font-normal leading-5"
                 onChange={(event) => setDraftQuery(event.target.value)}
-                placeholder="Поиск пользователей…"
+                placeholder="Имя, ник или почта…"
                 value={draftQuery}
               />
-              <Button type="submit" variant="outline">
-                Найти
-              </Button>
-            </form>
+              <DirectoryRoleFilter
+                onChange={(next) => {
+                  setRoleFilter(next)
+                  setPage(1)
+                }}
+                value={roleFilter}
+              />
+            </div>
           }
         >
           {viewState === 'loading' && <DirectoryLoading />}
@@ -180,25 +212,25 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
           )}
           {viewState === 'empty' && <DirectoryEmpty hasQuery={query.length > 0} />}
           {viewState === 'ready' && usersQuery.data && (
-            <Table className="min-w-[720px] text-xs">
+            <Table className="table-fixed !text-[13px]">
+              <colgroup>
+                <col span={6} />
+                <col className="w-12" />
+              </colgroup>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="px-3.5 text-xs font-medium text-[var(--nora-text)]">
-                    Пользователь
+                  <TableHead className={directoryHeadClass}>Пользователь</TableHead>
+                  <TableHead className={directoryHeadClass}>Никнейм</TableHead>
+                  <TableHead className={directoryHeadClass}>ID</TableHead>
+                  <TableHead className={directoryHeadClass}>Роль</TableHead>
+                  <TableHead className={directoryHeadClass}>Создан</TableHead>
+                  <TableHead className={directoryHeadClass}>
+                    Расход
+                    {totalSpendMoney ? (
+                      <span className="font-[250]"> ({totalSpendMoney})</span>
+                    ) : null}
                   </TableHead>
-                  <TableHead className="text-xs font-medium text-[var(--nora-text)]">
-                    Никнейм
-                  </TableHead>
-                  <TableHead className="text-xs font-medium text-[var(--nora-text)]">
-                    ID
-                  </TableHead>
-                  <TableHead className="text-xs font-medium text-[var(--nora-text)]">
-                    Роль
-                  </TableHead>
-                  <TableHead className="text-xs font-medium text-[var(--nora-text)]">
-                    Создан
-                  </TableHead>
-                  <TableHead className="w-10 px-2" />
+                  <TableHead className="w-12 px-2" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -206,27 +238,24 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
                   const canDelete = canDeleteAdminUser(currentUser.id, user)
                   const busy = deleteMutation.isPending
                   return (
-                    <TableRow
-                      className="even:bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:bg-[var(--nora-row-hover)]"
-                      key={user.id}
-                    >
-                      <TableCell className="h-auto px-3.5 py-2.5 whitespace-normal">
-                        <div className="grid min-w-0 gap-1">
-                          <span className="truncate text-xs font-medium text-[var(--nora-text)]">
+                    <TableRow key={user.id}>
+                      <TableCell className={cn(directoryCellClass, 'whitespace-normal')}>
+                        <div className="grid min-w-0 gap-0.5">
+                          <span className="truncate font-[550] leading-5">
                             {user.displayName ?? user.email}
                           </span>
-                          <span className="truncate text-[11px] text-[var(--nora-text-tertiary)]">
+                          <span className="truncate text-[12px] font-[250] leading-5 text-[var(--nora-text-tertiary)]">
                             {user.email}
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="h-auto py-2.5 text-xs font-medium text-[var(--nora-text-secondary)]">
+                      <TableCell className={cn(directoryCellClass, 'truncate text-[var(--nora-text-secondary)]')}>
                         {user.nickname ?? '—'}
                       </TableCell>
-                      <TableCell className="h-auto py-2.5 text-xs font-medium text-[var(--nora-text-secondary)]">
+                      <TableCell className={cn(directoryCellClass, 'text-[var(--nora-text-secondary)]')}>
                         {user.publicId}
                       </TableCell>
-                      <TableCell className="h-auto py-2.5">
+                      <TableCell className={directoryCellClass}>
                         <Select
                           disabled={roleMutation.isPending || deleteMutation.isPending}
                           onValueChange={(value) => {
@@ -240,52 +269,49 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
                         >
                           <SelectTrigger
                             aria-label={`Роль для ${user.email}`}
-                            className="h-[var(--nora-control-h,30px)] w-[132px] text-xs"
-                            size="sm"
+                            className="!h-8 !min-h-8 w-fit !gap-1.5 !rounded-full !px-3 font-[family-name:var(--nora-font)] !text-[13px] !font-normal"
                           >
-                            <SelectValue />
+                            <span className="truncate text-left">{user.role}</span>
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className={productToolbarSelectContentClass}>
                             <SelectItem
+                              className={productToolbarSelectItemClass}
                               disabled={user.id === currentUser.id && user.role === 'admin'}
                               value="user"
                             >
-                              Пользователь
+                              user
                             </SelectItem>
-                            <SelectItem value="mentor">Наставник</SelectItem>
-                            <SelectItem value="admin">Администратор</SelectItem>
+                            <SelectItem className={productToolbarSelectItemClass} value="mentor">
+                              mentor
+                            </SelectItem>
+                            <SelectItem className={productToolbarSelectItemClass} value="admin">
+                              admin
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell className="h-auto py-2.5 text-xs font-medium text-[var(--nora-text-secondary)]">
-                        {new Date(user.createdAt).toLocaleDateString()}
+                      <TableCell className={cn(directoryCellClass, 'text-[var(--nora-text-secondary)]')}>
+                        {new Date(user.createdAt).toLocaleDateString('ru-RU')}
                       </TableCell>
-                      <TableCell className="h-auto px-2 py-2.5">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <NoraIconButton
-                                aria-label={`Действия для ${user.email}`}
-                                disabled={busy}
-                              />
-                            }
-                          >
-                            <MoreHorizontalIcon />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem
-                              disabled={!canDelete}
-                              onClick={() => {
-                                if (!canDelete) return
-                                deleteMutation.reset()
-                                setPendingDelete(user)
-                              }}
-                              variant="destructive"
-                            >
-                              Удалить
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <TableCell className={cn(directoryCellClass, 'tabular-nums')}>
+                        {user.generationSpend && user.generationSpend.tokens > 0
+                          ? formatGenerationSpend(user.generationSpend, currency)
+                          : '—'}
+                      </TableCell>
+                      <TableCell className="px-2 py-2.5">
+                        <NoraIconButton
+                          aria-label={`Удалить ${user.email}`}
+                          className="!size-8 !rounded-full !bg-[var(--nora-input-bg)] hover:!bg-[var(--nora-error)] hover:!text-white"
+                          data-catalog-delete=""
+                          disabled={busy || !canDelete}
+                          onClick={() => {
+                            if (!canDelete) return
+                            deleteMutation.reset()
+                            setPendingDelete(user)
+                          }}
+                        >
+                          <Trash2Icon />
+                        </NoraIconButton>
                       </TableCell>
                     </TableRow>
                   )
@@ -319,6 +345,122 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
       />
     </>
   )
+}
+
+const roleFilterLabel: Record<UserRole | 'all', string> = {
+  all: 'Все',
+  user: 'user',
+  mentor: 'mentor',
+  admin: 'admin',
+}
+
+function DirectoryRoleFilter({
+  onChange,
+  value,
+}: {
+  onChange: (value: UserRole | 'all') => void
+  value: UserRole | 'all'
+}) {
+  return (
+    <Select
+      onValueChange={(next) => {
+        if (next === 'all' || next === 'user' || next === 'mentor' || next === 'admin') {
+          onChange(next)
+        }
+      }}
+      value={value}
+    >
+      <SelectTrigger
+        aria-label="Тип пользователей"
+        className="!h-8 !min-h-8 w-fit !rounded-full !bg-[var(--nora-panel)] !px-3 font-[family-name:var(--nora-font)] !text-[13px] !font-normal"
+        type="button"
+      >
+        <span className="truncate text-left">{roleFilterLabel[value]}</span>
+      </SelectTrigger>
+      <SelectContent className={productToolbarSelectContentClass}>
+        {(Object.keys(roleFilterLabel) as Array<UserRole | 'all'>).map((role) => (
+          <SelectItem className={productToolbarSelectItemClass} key={role} value={role}>
+            {roleFilterLabel[role]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+function DirectoryPager({
+  onPage,
+  page,
+  totalPages,
+}: {
+  onPage: (page: number) => void
+  page: number
+  totalPages: number
+}) {
+  const pageClass = (active: boolean) =>
+    cn(
+      'inline-flex h-8 min-h-8 min-w-8 items-center justify-center rounded-full px-2.5 font-[family-name:var(--nora-font)] text-[13px] font-normal',
+      active
+        ? 'bg-[var(--nora-text)] text-[var(--nora-panel)]'
+        : 'bg-[var(--nora-panel)] text-[var(--nora-text)] hover:bg-[var(--nora-button-bg-hover)]',
+    )
+
+  return (
+    <nav aria-label="Страницы пользователей" className="flex flex-wrap items-center justify-end gap-1">
+      <button
+        aria-label="Предыдущая страница"
+        className={cn(pageClass(false), 'disabled:pointer-events-none disabled:opacity-40')}
+        disabled={page <= 1}
+        onClick={() => onPage(page - 1)}
+        type="button"
+      >
+        <ChevronLeftIcon className="size-3.5" />
+      </button>
+      {directoryPageItems(page, totalPages).map((item, index) =>
+        item === 'gap' ? (
+          <span
+            className="inline-flex h-8 min-w-8 items-center justify-center text-[13px] text-[var(--nora-text-tertiary)]"
+            key={`gap-${index}`}
+          >
+            …
+          </span>
+        ) : (
+          <button
+            aria-current={item === page ? 'page' : undefined}
+            className={pageClass(item === page)}
+            key={item}
+            onClick={() => onPage(item)}
+            type="button"
+          >
+            {item}
+          </button>
+        ),
+      )}
+      <button
+        aria-label="Следующая страница"
+        className={cn(pageClass(false), 'disabled:pointer-events-none disabled:opacity-40')}
+        disabled={page >= totalPages}
+        onClick={() => onPage(page + 1)}
+        type="button"
+      >
+        <ChevronRightIcon className="size-3.5" />
+      </button>
+    </nav>
+  )
+}
+
+function directoryPageItems(page: number, totalPages: number) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  }
+  const items: Array<number | 'gap'> = [1]
+  const start = Math.max(2, page - 1)
+  const end = Math.min(totalPages - 1, page + 1)
+  if (start > 2) items.push('gap')
+  for (let current = start; current <= end; current += 1) items.push(current)
+  if (end < totalPages - 1) items.push('gap')
+  items.push(totalPages)
+  return items
 }
 
 function DirectoryLoading() {

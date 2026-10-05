@@ -242,16 +242,14 @@ test('admin data surfaces recover from errors and expose safe directory states',
   await expect(page.getByText(/Страница 1 из \d+ · \d+ пользователей/)).toBeVisible()
 
   await page.getByLabel('Поиск пользователей').fill(e2eAdminEmail)
-  await page.getByRole('button', { name: 'Найти' }).click()
   await page.getByLabel(`Роль для ${e2eAdminEmail}`).click()
-  await expect(page.getByRole('option', { name: 'Пользователь' })).toBeDisabled()
-  await expect(page.getByRole('option', { name: 'Наставник' })).toBeVisible()
+  await expect(page.getByRole('option', { name: 'user', exact: true })).toBeDisabled()
+  await expect(page.getByRole('option', { name: 'mentor', exact: true })).toBeVisible()
   await page.keyboard.press('Escape')
 
   await page.getByLabel('Поиск пользователей').fill(`missing-${Date.now()}@example.com`)
-  await page.getByRole('button', { name: 'Найти' }).click()
-  await expect(page.getByText('Пользователи не найдены', { exact: true })).toBeVisible()
-  await expect(page.getByText('Попробуйте другое имя или email.')).toBeVisible()
+  await expect(page.getByText('Никого не нашли', { exact: true })).toBeVisible()
+  await expect(page.getByText('Попробуйте другое имя или почту.')).toBeVisible()
 })
 
 test('workspace account menu keeps a failed logout visible and retryable', async ({ page }) => {
@@ -304,7 +302,6 @@ test('role mutation failures are announced inside the confirmation dialog', asyn
   await adminPage.goto('/admin/users')
   await expect(adminPage.getByLabel('Поиск пользователей')).toBeVisible()
   await adminPage.getByLabel('Поиск пользователей').fill(userEmail)
-  await adminPage.getByRole('button', { name: 'Найти' }).click()
   await adminPage.route('**/api/admin/users/*/role', async (route) => {
     await route.fulfill({
       status: 409,
@@ -319,7 +316,7 @@ test('role mutation failures are announced inside the confirmation dialog', asyn
   })
 
   await adminPage.getByLabel(`Роль для ${userEmail}`).click()
-  await adminPage.getByRole('option', { name: 'Администратор' }).click()
+  await adminPage.getByRole('option', { name: 'admin', exact: true }).click()
   const dialog = adminPage.getByRole('alertdialog')
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: 'Изменить роль' }).click()
@@ -349,11 +346,10 @@ test('promoting a user revokes the old session and opens the admin workspace aft
   await adminPage.goto('/admin/users')
 
   await adminPage.getByLabel('Поиск пользователей').fill(userEmail)
-  await adminPage.getByRole('button', { name: 'Найти' }).click()
   const roleSelect = adminPage.getByLabel(`Роль для ${userEmail}`)
   await expect(roleSelect).toBeVisible()
   await roleSelect.click()
-  await adminPage.getByRole('option', { name: 'Администратор' }).click()
+  await adminPage.getByRole('option', { name: 'admin', exact: true }).click()
   await expect(adminPage.getByRole('alertdialog')).toContainText(userEmail)
   await adminPage.getByRole('button', { name: 'Изменить роль' }).click()
   await expect(adminPage.getByText('Роль изменена')).toBeVisible()
@@ -390,21 +386,16 @@ test('administrator deletes another user but cannot delete the current account',
   await adminPage.goto('/admin/users')
 
   await adminPage.getByLabel('Поиск пользователей').fill(e2eAdminEmail)
-  await adminPage.getByRole('button', { name: 'Найти' }).click()
-  await adminPage.getByLabel(`Действия для ${e2eAdminEmail}`).click()
-  await expect(adminPage.getByRole('menuitem', { name: 'Удалить' })).toBeDisabled()
-  await adminPage.keyboard.press('Escape')
+  await expect(adminPage.getByRole('button', { name: `Удалить ${e2eAdminEmail}` })).toBeDisabled()
 
   await adminPage.getByLabel('Поиск пользователей').fill(userEmail)
-  await adminPage.getByRole('button', { name: 'Найти' }).click()
-  await adminPage.getByLabel(`Действия для ${userEmail}`).click()
-  await adminPage.getByRole('menuitem', { name: 'Удалить' }).click()
+  await adminPage.getByRole('button', { name: `Удалить ${userEmail}` }).click()
   const dialog = adminPage.getByRole('alertdialog')
   await expect(dialog).toContainText(userEmail)
   await adminPage.getByRole('button', { name: 'Удалить навсегда' }).click()
 
   await expect(adminPage.getByText('Пользователь удалён')).toBeVisible()
-  await expect(adminPage.getByLabel(`Действия для ${userEmail}`)).toHaveCount(0)
+  await expect(adminPage.getByRole('button', { name: `Удалить ${userEmail}` })).toHaveCount(0)
   await page.reload()
   await expect(page.getByRole('button', { name: 'Войти' })).toBeVisible()
 

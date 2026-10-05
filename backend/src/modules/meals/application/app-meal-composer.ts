@@ -129,6 +129,7 @@ export class AppMealComposer {
         })),
         card: analyzed.meal,
         source: 'manual',
+        usage: analyzed.usage,
       })
       entry.meal = persisted.meal
       entry.created = persisted.created

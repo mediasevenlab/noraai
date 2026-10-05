@@ -1,7 +1,7 @@
 /**
  * Shared meal catalog for the user diary feed.
  */
-import type { MealMicronutrient, MealPortionItem } from '@web-app-demo/contracts'
+import type { GenerationSpend, MealMicronutrient, MealPortionItem } from '@web-app-demo/contracts'
 import {
   formatMicronutrientAmount,
   mealMicronutrientDefs,
@@ -63,6 +63,8 @@ export type MealEntry = {
   liked?: boolean
   /** Mentor diary: this card has not been viewed yet. */
   unread?: boolean
+  /** Sum of every AI call for this meal. Independent of the selected version. */
+  generationSpend?: GenerationSpend
 }
 
 /** Catalog blobs mix product commas with notes like `в тесто` and `для подачи`. */

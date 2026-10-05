@@ -41,6 +41,7 @@ model User {
   planLibrary         UserPlanLibrary?
   mentorPlans         MentorPlan[]
   telegramLinkChallenges TelegramLinkChallenge[]
+  generationUsage  Json          @default("{}") @map("generation_usage")
 
   @@index([role], map: "users_role_idx")
   @@index([referredByUserId], map: "users_referred_by_user_id_idx")
@@ -78,6 +79,7 @@ model Meal {
   imageKey         String?    @map("image_key")
   imageMime        String?    @map("image_mime")
   sharedAt         DateTime?  @map("shared_at")
+  generationUsage  Json       @default("{}") @map("generation_usage")
   createdAt        DateTime   @default(now()) @map("created_at")
   updatedAt        DateTime   @updatedAt @map("updated_at")
   user             User       @relation(fields: [userId], references: [id], onDelete: Cascade, map: "meals_user_id_fkey")

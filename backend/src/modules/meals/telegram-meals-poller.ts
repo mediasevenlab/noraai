@@ -710,6 +710,7 @@ async function finalizeMeal(chatId: number, context: PollerContext, fromTimeout:
         imageMime: image.mime,
       })),
       card: analyzed.meal,
+      usage: analyzed.usage,
     })
 
     const meal = persisted.meal

@@ -5,6 +5,8 @@ import {
   createUserMealRequestSchema,
   createUserMealResponseSchema,
   deleteMealResponseSchema,
+  generationPricingResponseSchema,
+  resetGenerationSpendResponseSchema,
   listMealsResponseSchema,
   mealMutationResponseSchema,
   mealsGeminiRequestSchema,
@@ -34,6 +36,7 @@ import type { MealsService } from '../application/meals-service'
 import type { AppMealComposer } from '../application/app-meal-composer'
 import { executeMeals } from './errors'
 import { createRequireServiceToken } from './service-token'
+import { generationRequestKey, rememberGenerationUsage } from '../application/generation-usage-bridge'
 const errorContent = {
   'application/json': {
     schema: z.object({
@@ -346,6 +349,32 @@ const deleteMyMealRoute = createRoute({
     404: { content: errorContent, description: 'Meal not found' },
   },
 })
+const generationPricingRoute = createRoute({
+  method: 'get',
+  path: '/me/generation-pricing',
+  tags: ['Meals'],
+  security: [{ BearerAuth: [] }],
+  responses: {
+    200: {
+      content: { 'application/json': { schema: generationPricingResponseSchema } },
+      description: 'Current dollar rate and model token prices',
+    },
+    401: { content: errorContent, description: 'Authentication required' },
+  },
+})
+const resetMyGenerationSpendRoute = createRoute({
+  method: 'post',
+  path: '/me/generation-spend/reset',
+  tags: ['Meals'],
+  security: [{ BearerAuth: [] }],
+  responses: {
+    200: {
+      content: { 'application/json': { schema: resetGenerationSpendResponseSchema } },
+      description: 'Current user generation spend cleared',
+    },
+    401: { content: errorContent, description: 'Authentication required' },
+  },
+})
 const listSharedMealsRoute = createRoute({
   method: 'get',
   path: '/shared',
@@ -559,11 +588,15 @@ export function createMealsRoutes({
   const internalRoutes = new OpenAPIHono({ defaultHook: validationErrorHook })
   internalRoutes.use('*', requireServiceToken)
   internalRoutes.openapi(mealsGeminiRoute, async (c) => {
-    const result = await executeMeals(() => service.analyzeMeal(c.req.valid('json')))
+    const input = c.req.valid('json')
+    const result = await executeMeals(() => service.analyzeMeal(input))
+    rememberGenerationUsage(generationRequestKey(input), result.usage)
     return c.json(result, 200)
   })
   internalRoutes.openapi(mealsTranscribeRoute, async (c) => {
-    const result = await executeMeals(() => service.transcribeAudio(c.req.valid('json')))
+    const input = c.req.valid('json')
+    const result = await executeMeals(() => service.transcribeAudio(input))
+    rememberGenerationUsage(generationRequestKey({ audioBase64: input.audioBase64 }), result.usage)
     return c.json(result, 200)
   })
   internalRoutes.openapi(telegramLookupRoute, async (c) => {
@@ -590,6 +623,7 @@ export function createMealsRoutes({
   })
   userMealsRoutes.openapi(transcribeMyVoiceRoute, async (c) => {
     const result = await executeMeals(() => transcribeUserVoice(c.req.valid('json')))
+    await service.rememberVoiceUsage(c.var.user.id, result.usage)
     return c.json(result, 200)
   })
   userMealsRoutes.openapi(composerSnapshotRoute, async (c) => {
@@ -643,6 +677,14 @@ export function createMealsRoutes({
     const result = await executeMeals(() =>
       service.deleteMeal(c.var.user, c.req.valid('param').mealId),
     )
+    return c.json(result, 200)
+  })
+  userMealsRoutes.openapi(generationPricingRoute, async (c) => {
+    const result = await executeMeals(() => service.generationPricing())
+    return c.json(result, 200)
+  })
+  userMealsRoutes.openapi(resetMyGenerationSpendRoute, async (c) => {
+    const result = await executeMeals(() => service.resetGenerationSpend(c.var.user.id))
     return c.json(result, 200)
   })
   const mentorMealsRoutes = new OpenAPIHono<AuthHttpEnv>({ defaultHook: validationErrorHook })

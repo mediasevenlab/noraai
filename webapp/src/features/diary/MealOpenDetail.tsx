@@ -482,7 +482,11 @@ export function MealOpenDetail({
           const nextItems = items.some((item) => item.id === result.meal.id)
             ? items.map((item) => (item.id === result.meal.id ? result.meal : item))
             : [result.meal, ...items]
-          return { items: nextItems }
+          return {
+            ...previous,
+            items: nextItems,
+            ...(result.generationSpend ? { generationSpend: result.generationSpend } : {}),
+          }
         },
       )
       const toVersionId = result.meal.activeVersionId || result.meal.versions.at(-1)?.id || ''
@@ -550,7 +554,7 @@ export function MealOpenDetail({
                   : item,
               )
             : [result.meal, ...items]
-          return { items: nextItems }
+          return { ...previous, items: nextItems }
         },
       )
     } catch (error) {

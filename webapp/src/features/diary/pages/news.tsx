@@ -38,6 +38,7 @@ import {
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAuth } from "@/features/auth";
 import { questionnaireDailyCalorieTarget, useQuestionnaireQuery } from "@/features/users";
+import { GenerationSpendBadge } from "../GenerationSpendBadge";
 import { putUserFavorites } from "@/platform/account-favorites";
 import { snapshotFromPlanLibrary } from "@/platform/account-plan-library";
 import {
@@ -1442,6 +1443,7 @@ export function NewsPage({
             <h1 className={noraPageTitleClass}>
               {heading?.title ?? "Мой дневник"}
             </h1>
+            <GenerationSpendBadge spend={mealsQuery.data?.generationSpend} />
           </div>
           <p className={cn("mt-1.5", noraPageDescriptionClass)}>
             {heading?.description ?? "Записи о питании, привычках и прогрессе."}

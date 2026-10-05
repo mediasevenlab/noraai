@@ -73,7 +73,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const res = items[0].json;\nif (res.ok === true && typeof res.text === 'string') {\n  return [{ json: { ok: true, text: res.text, model: res.model || 'gemini', via: 'n8n->host-meal-transcribe' } }];\n}\nreturn [{ json: { ok: false, error: res.error || JSON.stringify(res).slice(0,400) } }];"
+        "jsCode": "const res = items[0].json;\nif (res.ok === true && typeof res.text === 'string') {\n  return [{ json: { ok: true, text: res.text, model: res.model || 'gemini', usage: res.usage, via: 'n8n->host-meal-transcribe' } }];\n}\nreturn [{ json: { ok: false, error: res.error || JSON.stringify(res).slice(0,400) } }];"
       },
       "id": "voice-assemble",
       "name": "Собрать ответ",

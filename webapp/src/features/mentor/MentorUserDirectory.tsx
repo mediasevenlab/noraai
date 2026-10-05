@@ -91,7 +91,7 @@ export function MentorUserDirectory() {
               ) : null}
               <NoraSearch
                 aria-label="Поиск подключённых пользователей"
-                className="w-[220px]"
+                className="w-[220px] !bg-[var(--nora-panel)]"
                 icon={<SearchIcon />}
                 onChange={(event) => setDraftQuery(event.target.value)}
                 placeholder="Поиск пользователей…"

@@ -35,6 +35,12 @@ import type {
 } from '../application/ports'
 import { UsersFailure } from '../domain/errors'
 import { uuidMealIds } from '../domain/favorite-meal-ids'
+import {
+  generationSpendFromAccount,
+  parseGenerationAccount,
+  settleLegacyGenerationLedgers,
+  sumSettledGenerationSpend,
+} from '../../meals'
 
 const userSummarySelect = {
   id: true,
@@ -46,6 +52,7 @@ const userSummarySelect = {
   telegramPhone: true,
   role: true,
   createdAt: true,
+  generationUsage: true,
 } as const
 
 type UsersRepository =
@@ -451,18 +458,22 @@ export function createPrismaUsersRepository(db: DbClient): UsersRepository {
       return { totalUsers, totalAdmins, newUsersLast7Days }
     },
 
-    async listUsers({ page, pageSize, q }: AdminUsersQuery) {
-      const where = q
-        ? {
-            OR: [
-              { email: { contains: q, mode: 'insensitive' as const } },
-              { displayName: { contains: q, mode: 'insensitive' as const } },
-              { nickname: { contains: q, mode: 'insensitive' as const } },
-              ...(isPublicId(q) ? [{ publicId: Number(q) }] : []),
-            ],
-          }
-        : {}
-      const [total, users] = await db.$transaction([
+    async listUsers({ page, pageSize, q, role }: AdminUsersQuery) {
+      await settleLegacyGenerationLedgers(db)
+      const where = {
+        ...(role ? { role } : {}),
+        ...(q
+          ? {
+              OR: [
+                { email: { contains: q, mode: 'insensitive' as const } },
+                { displayName: { contains: q, mode: 'insensitive' as const } },
+                { nickname: { contains: q, mode: 'insensitive' as const } },
+                ...(isPublicId(q) ? [{ publicId: Number(q) }] : []),
+              ],
+            }
+          : {}),
+      }
+      const [total, users, usageRows] = await db.$transaction([
         db.user.count({ where }),
         db.user.findMany({
           where,
@@ -471,13 +482,16 @@ export function createPrismaUsersRepository(db: DbClient): UsersRepository {
           take: pageSize,
           select: userSummarySelect,
         }),
+        db.user.findMany({ select: { generationUsage: true } }),
       ])
+      const totalSpend = sumSettledGenerationSpend(usageRows.map((row) => row.generationUsage))
       return {
         items: users.map(toAdminUserSummary),
         page,
         pageSize,
         total,
         hasNext: page < ADMIN_USERS_MAX_PAGE && page * pageSize < total,
+        ...(totalSpend.tokens > 0 ? { generationSpend: totalSpend } : {}),
       }
     },
 
@@ -749,7 +763,9 @@ function toAdminUserSummary(user: {
   nickname: string | null
   role: UserRole
   createdAt: Date
+  generationUsage?: unknown
 }): AdminUserSummary {
+  const spend = generationSpendFromAccount(parseGenerationAccount(user.generationUsage))
   return {
     id: user.id,
     publicId: user.publicId,
@@ -757,6 +773,7 @@ function toAdminUserSummary(user: {
     displayName: user.displayName,
     nickname: user.nickname,
     role: user.role,
+    ...(spend.tokens > 0 ? { generationSpend: spend } : {}),
     createdAt: user.createdAt.toISOString(),
   }
 }

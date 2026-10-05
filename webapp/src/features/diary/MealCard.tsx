@@ -42,6 +42,7 @@ import {
 } from './ration-import'
 import { mealCarouselImages } from './merge-meals'
 import type { DiaryCardLayout } from './diary-card-layout'
+import { GenerationSpendBadge } from './GenerationSpendBadge'
 import { mealCompositionLines, type MealEntry } from './meals-catalog'
 import {
   MEAL_DIALOG_HERO_FRAME_CLASS,
@@ -494,6 +495,10 @@ export function Cover({
         onActivate={onActivate}
         sizes={sizes}
         slides={slides}
+      />
+      <GenerationSpendBadge
+        corner={sizes === 'lg' ? 'top-left' : 'bottom-left'}
+        spend={meal.generationSpend}
       />
     </div>
   )

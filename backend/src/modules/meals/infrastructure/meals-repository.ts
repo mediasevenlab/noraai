@@ -12,6 +12,17 @@ import type { DbClient } from '../../../db'
 import { Prisma } from '../../../generated/prisma/client'
 import type { MealRecord, MealsRepository } from '../application/ports'
 import { MealsFailure } from '../domain/errors'
+import {
+  activeGenerationModel,
+  applyGenerationCharge,
+  ensureModelPrices,
+  ensureUsdRub,
+  generationAccountToJson,
+  generationLedgerTokens,
+  parseGenerationAccount,
+  quoteGenerationLedger,
+  cachedUsdRub,
+} from '../domain/generation-spend'
 import type { MealVersionRecord } from '../domain/meal-versions'
 import { extraImageKeysOf } from '../domain/meal-versions'
 
@@ -62,7 +73,9 @@ function toMealRecord(row: {
   imageMime: string | null
   sharedAt: Date | null
   createdAt: Date
+  generationUsage: Prisma.JsonValue
 }): MealRecord {
+  const generation = parseGenerationAccount(row.generationUsage)
   return {
     id: row.id,
     userId: row.userId,
@@ -88,6 +101,8 @@ function toMealRecord(row: {
     imageMime: row.imageMime,
     sharedAt: row.sharedAt,
     createdAt: row.createdAt,
+    generationUsage: generation.ledger,
+    generationSettled: generation.settled,
   }
 }
 
@@ -115,6 +130,7 @@ const mealSelect = {
   imageKey: true,
   imageMime: true,
   sharedAt: true,
+  generationUsage: true,
   createdAt: true,
 } as const
 
@@ -193,6 +209,7 @@ export function createPrismaMealsRepository(db: DbClient): MealsRepository {
       return row ? toMealRecord(row) : null
     },
     async findMealById(mealId) {
+      await settleLegacyGenerationLedgers(db)
       const row = await db.meal.findUnique({
         where: { id: mealId },
         select: mealSelect,
@@ -200,6 +217,7 @@ export function createPrismaMealsRepository(db: DbClient): MealsRepository {
       return row ? toMealRecord(row) : null
     },
     async listMealsForUser(userId) {
+      await settleLegacyGenerationLedgers(db)
       const rows = await db.meal.findMany({
         where: { userId },
         orderBy: { recordedAt: 'desc' },
@@ -208,6 +226,7 @@ export function createPrismaMealsRepository(db: DbClient): MealsRepository {
       return rows.map(toMealRecord)
     },
     async listSharedMeals(limit, viewerUserId) {
+      await settleLegacyGenerationLedgers(db)
       const rows = await db.meal.findMany({
         where: { sharedAt: { not: null } },
         orderBy: { sharedAt: 'desc' },
@@ -462,6 +481,64 @@ export function createPrismaMealsRepository(db: DbClient): MealsRepository {
       return { likeCount, liked }
     },
 
+    async readGenerationLedger(userId) {
+      await settleLegacyGenerationLedgers(db)
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { generationUsage: true },
+      })
+      return parseGenerationAccount(user?.generationUsage)
+    },
+
+    async addGenerationUsage(input) {
+      const mealTokens = generationLedgerTokens(input.mealUsage)
+      const ledgerTokens = generationLedgerTokens(input.ledgerUsage)
+      if (mealTokens === 0 && ledgerTokens === 0) return
+      await Promise.all([ensureUsdRub(), ensureModelPrices(activeGenerationModel())])
+      const usdRub = cachedUsdRub()
+      await db.$transaction(async (tx) => {
+        if (ledgerTokens > 0) {
+          const user = await tx.user.findUnique({
+            where: { id: input.userId },
+            select: { generationUsage: true },
+          })
+          if (user) {
+            const next = applyGenerationCharge(
+              user.generationUsage,
+              input.ledgerUsage,
+              usdRub,
+              input.ledgerSettled,
+            )
+            await tx.user.update({
+              where: { id: input.userId },
+              data: {
+                generationUsage: generationAccountToJson(next) as Prisma.InputJsonValue,
+              },
+            })
+          }
+        }
+        if (input.mealId && mealTokens > 0) {
+          const meal = await tx.meal.findFirst({
+            where: { id: input.mealId, userId: input.userId },
+            select: { generationUsage: true },
+          })
+          if (!meal) return
+          const next = applyGenerationCharge(
+            meal.generationUsage,
+            input.mealUsage,
+            usdRub,
+            input.mealSettled,
+          )
+          await tx.meal.update({
+            where: { id: input.mealId },
+            data: {
+              generationUsage: generationAccountToJson(next) as Prisma.InputJsonValue,
+            },
+          })
+        }
+      })
+    },
+
     async deleteMeal(mealId) {
       try {
         await db.meal.delete({ where: { id: mealId } })
@@ -475,5 +552,85 @@ export function createPrismaMealsRepository(db: DbClient): MealsRepository {
         throw error
       }
     },
+
+    async resetGenerationSpend(userId) {
+      await db.$transaction([
+        db.user.updateMany({
+          where: { id: userId },
+          data: { generationUsage: {} },
+        }),
+        db.meal.updateMany({
+          where: { userId },
+          data: { generationUsage: {} },
+        }),
+      ])
+    },
   }
+}
+
+let legacySettleDone = false
+let legacySettleTask: Promise<void> | null = null
+
+export function resetLegacyGenerationSettleForTests() {
+  legacySettleDone = false
+  legacySettleTask = null
+}
+
+/** Writes a settled total onto ledgers that only stored tokens, then leaves them alone. */
+export async function settleLegacyGenerationLedgers(db: DbClient): Promise<void> {
+  if (legacySettleDone) return
+  if (!legacySettleTask) {
+    legacySettleTask = runLegacySettle(db).finally(() => {
+      if (!legacySettleDone) legacySettleTask = null
+    })
+  }
+  await legacySettleTask
+}
+
+async function runLegacySettle(db: DbClient) {
+  await Promise.all([ensureUsdRub(), ensureModelPrices(activeGenerationModel())])
+  const rate = cachedUsdRub()
+  if (rate == null || rate <= 0) return
+  const [users, meals] = await Promise.all([
+    db.user.findMany({ select: { id: true, generationUsage: true } }),
+    db.meal.findMany({ select: { id: true, generationUsage: true } }),
+  ])
+  for (const row of users) {
+    await freezeLegacyRow(db, 'user', row.id, row.generationUsage, rate)
+  }
+  for (const row of meals) {
+    await freezeLegacyRow(db, 'meal', row.id, row.generationUsage, rate)
+  }
+  legacySettleDone = true
+}
+
+async function freezeLegacyRow(
+  db: DbClient,
+  table: 'user' | 'meal',
+  id: string,
+  usage: Prisma.JsonValue,
+  rate: number,
+) {
+  const seen = parseGenerationAccount(usage)
+  if (seen.settled || generationLedgerTokens(seen.ledger) === 0) return
+  const quote = quoteGenerationLedger(seen.ledger, rate)
+  if (!quote || quote.rubles == null) return
+  const tableSql = Prisma.raw(table === 'user' ? 'users' : 'meals')
+  await db.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<Array<{ generation_usage: Prisma.JsonValue }>>`
+      SELECT generation_usage FROM ${tableSql} WHERE id = CAST(${id} AS uuid) FOR UPDATE
+    `
+    const account = parseGenerationAccount(locked[0]?.generation_usage)
+    if (account.settled || generationLedgerTokens(account.ledger) === 0) return
+    const nextQuote = quoteGenerationLedger(account.ledger, rate)
+    if (!nextQuote || nextQuote.rubles == null) return
+    const data = {
+      generationUsage: generationAccountToJson({
+        ledger: account.ledger,
+        settled: nextQuote,
+      }) as Prisma.InputJsonValue,
+    }
+    if (table === 'user') await tx.user.update({ where: { id }, data })
+    else await tx.meal.update({ where: { id }, data })
+  })
 }
