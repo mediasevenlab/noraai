@@ -23,7 +23,7 @@ test('role navigation exposes only the current workspace', () => {
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Рефералы', to: '/app/referrals' },
     { label: 'Настройки', to: '/app/settings' },
-    { label: 'Платежи', to: '/app/payments', disabled: true },
+    { label: 'Платежи', to: '/app/payments' },
   ])
   expect(navigationItemsForRole('admin')).toEqual([
     { label: 'Профиль', to: '/admin/profile' },
@@ -36,7 +36,7 @@ test('role navigation exposes only the current workspace', () => {
     { label: 'Профиль', to: '/mentor/profile' },
     { label: 'Пользователи', to: '/mentor/users' },
     { label: 'Настройки', to: '/mentor/settings' },
-    { label: 'Платежи', to: '/mentor/payments', disabled: true },
+    { label: 'Платежи', to: '/mentor/payments' },
   ])
   expect(homePathForRole('user')).toBe('/app/general')
   expect(homePathForRole('admin')).toBe('/admin/users')
@@ -69,7 +69,7 @@ test('role navigation separates primary and account-menu destinations', () => {
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Рефералы', to: '/app/referrals' },
     { label: 'Настройки', to: '/app/settings' },
-    { label: 'Платежи', to: '/app/payments', disabled: true },
+    { label: 'Платежи', to: '/app/payments' },
   ])
   expect(primaryNavigationItemsForRole('admin')).toEqual([])
   expect(secondaryNavigationItemsForRole('admin')).toEqual([
@@ -81,7 +81,7 @@ test('role navigation separates primary and account-menu destinations', () => {
     { label: 'Профиль', to: '/mentor/profile' },
     { label: 'Пользователи', to: '/mentor/users' },
     { label: 'Настройки', to: '/mentor/settings' },
-    { label: 'Платежи', to: '/mentor/payments', disabled: true },
+    { label: 'Платежи', to: '/mentor/payments' },
   ])
   expect(primaryNavigationItemsForRole('mentor')).toEqual([])
 })
@@ -111,7 +111,7 @@ test('cross-role destinations resolve to the current role home', () => {
   expect(resolveRoleDestination('user', '/app/general')).toBe('/app/general')
   expect(resolveRoleDestination('user', '/app/plan/current')).toBe('/app/general')
   expect(resolveRoleDestination('user', '/app/saved')).toBe('/app/general')
-  expect(resolveRoleDestination('user', '/app/payments')).toBe('/app/general')
+  expect(resolveRoleDestination('user', '/app/payments')).toBe('/app/payments')
   expect(resolveRoleDestination('user', '/admin/users')).toBe('/app/general')
   expect(resolveRoleDestination('admin', '/admin/settings')).toBe('/admin/settings')
   expect(resolveRoleDestination('admin', '/admin/profile')).toBe('/admin/profile')
@@ -121,7 +121,7 @@ test('cross-role destinations resolve to the current role home', () => {
   expect(resolveRoleDestination('mentor', '/mentor/meal-plan')).toBe('/mentor/plans')
   expect(resolveRoleDestination('mentor', '/mentor/mentor-rations')).toBe('/mentor/plans')
   expect(resolveRoleDestination('mentor', '/mentor')).toBe('/mentor/plans')
-  expect(resolveRoleDestination('mentor', '/mentor/payments')).toBe('/mentor/plans')
+  expect(resolveRoleDestination('mentor', '/mentor/payments')).toBe('/mentor/payments')
   expect(resolveRoleDestination('mentor', '/admin/users')).toBe('/mentor/plans')
 })
 
@@ -141,14 +141,14 @@ test('return paths accept only known internal destinations for the current role'
   )
   expect(safeReturnPath('user', '/app/saved')).toBe('/app/general')
   expect(safeReturnPath('user', '/app')).toBe('/app/general')
-  expect(safeReturnPath('user', '/app/payments')).toBeNull()
+  expect(safeReturnPath('user', '/app/payments')).toBe('/app/payments')
   expect(safeReturnPath('admin', '/admin/users?page=2')).toBe('/admin/users?page=2')
   expect(safeReturnPath('admin', '/admin/profile')).toBe('/admin/profile')
   expect(safeReturnPath('mentor', '/mentor/users')).toBe('/mentor/users')
   expect(safeReturnPath('mentor', '/mentor/profile')).toBe('/mentor/profile')
   expect(safeReturnPath('mentor', '/mentor/meal-plan')).toBe('/mentor/plans')
   expect(safeReturnPath('mentor', '/mentor/mentor-rations')).toBe('/mentor/plans')
-  expect(safeReturnPath('mentor', '/mentor/payments')).toBeNull()
+  expect(safeReturnPath('mentor', '/mentor/payments')).toBe('/mentor/payments')
   expect(safeReturnPath('user', '/admin')).toBeNull()
   expect(safeReturnPath('admin', 'https://attacker.example/admin')).toBeNull()
   expect(safeReturnPath('admin', '//attacker.example/admin')).toBeNull()

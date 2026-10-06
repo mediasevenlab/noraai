@@ -60,8 +60,7 @@ const navigationByRole = {
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Рефералы', to: '/app/referrals' },
     { label: 'Настройки', to: '/app/settings' },
-    // Payments UI is demo-only for now — keep visible but inactive for every user.
-    { label: 'Платежи', to: '/app/payments', disabled: true },
+    { label: 'Платежи', to: '/app/payments' },
   ],
   admin: [
     { label: 'Профиль', to: '/admin/profile' },
@@ -74,8 +73,7 @@ const navigationByRole = {
     { label: 'Профиль', to: '/mentor/profile' },
     { label: 'Пользователи', to: '/mentor/users' },
     { label: 'Настройки', to: '/mentor/settings' },
-    // Payments stay visible but inactive for mentors until billing ships.
-    { label: 'Платежи', to: '/mentor/payments', disabled: true },
+    { label: 'Платежи', to: '/mentor/payments' },
   ],
 } as const satisfies Record<UserRole, ReadonlyArray<WorkspaceNavigationItem>>
 

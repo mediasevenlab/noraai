@@ -84,6 +84,164 @@ export function validateMentorPayoutRequisites(
   return errors
 }
 
+export function passesLuhn(digits: string) {
+  if (!/^\d{16}$/.test(digits)) return false
+  let sum = 0
+  for (let index = 0; index < digits.length; index += 1) {
+    let digit = Number(digits[digits.length - 1 - index])
+    if (index % 2 === 1) {
+      digit *= 2
+      if (digit > 9) digit -= 9
+    }
+    sum += digit
+  }
+  return sum % 10 === 0
+}
+
+/** Networks YooKassa accepts on a bank card: Mir, Visa, Mastercard, UnionPay, JCB. */
+export type CardBrand = 'visa' | 'mastercard' | 'mir' | 'unionpay' | 'jcb' | 'unknown'
+
+export const CARD_BRANDS: readonly CardBrand[] = ['visa', 'mastercard', 'mir', 'unionpay', 'jcb', 'unknown']
+
+export function cardBrand(digits: string): CardBrand {
+  if (/^4/.test(digits)) return 'visa'
+  if (/^62/.test(digits)) return 'unionpay'
+  if (/^35(?:2[89]|[3-8])/.test(digits)) return 'jcb'
+  if (/^220[0-4]/.test(digits)) return 'mir'
+  if (/^5[1-5]/.test(digits)) return 'mastercard'
+  if (/^2(?:22[1-9]|2[3-9]\d|[3-6]\d{2}|7[01]\d|720)/.test(digits)) return 'mastercard'
+  return 'unknown'
+}
+
+export function cardBrandLabel(brand: CardBrand) {
+  if (brand === 'visa') return 'Visa'
+  if (brand === 'mastercard') return 'Mastercard'
+  if (brand === 'mir') return 'Мир'
+  if (brand === 'unionpay') return 'UnionPay'
+  if (brand === 'jcb') return 'JCB'
+  return 'Карта'
+}
+
+const RU_MONTHS = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+]
+
+/** Payout request opens on the last day of the month. */
+export function isMonthlyPayoutOpen(now = new Date()) {
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  return now.getDate() === lastDay
+}
+
+export function monthlyPayoutOpensLabel(now = new Date()) {
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  return `${lastDay} ${RU_MONTHS[now.getMonth()]}`
+}
+
+export function billingMonthKey(now = new Date()) {
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+/** One service tariff until YooKassa test charges are wired. */
+export const USER_SERVICE_PRICE_RUB = 1000
+
+export type SavedBillingCard = {
+  holderName: string
+  last4: string
+  expiry: string
+  brand: CardBrand
+  /** Where the receipt goes. Falls back to the account email when absent. */
+  receiptEmail?: string
+}
+
+export type BillingCardDraft = {
+  holderName: string
+  cardNumber: string
+  expiry: string
+  cvc: string
+  receiptEmail: string
+}
+
+const EXPIRY_PATTERN = /^(0[1-9]|1[0-2])\/(\d{2})$/
+
+export function isExpiryCurrent(expiry: string, now = new Date()) {
+  const match = EXPIRY_PATTERN.exec(expiry)
+  if (!match) return false
+  const month = Number(match[1])
+  const year = 2000 + Number(match[2])
+  return now < new Date(year, month, 1)
+}
+
+export function cardNumberPreview(digits: string, savedLast4 = '') {
+  const source = digits.length > 0
+    ? digits.padEnd(16, '•')
+    : savedLast4
+      ? `••••••••••••${savedLast4}`
+      : '••••••••••••••••'
+  return source.replace(/(.{4})/g, '$1 ').trim()
+}
+
+export function validateBillingCardDraft(
+  input: BillingCardDraft,
+  options: { hasSavedCard: boolean; requireCvc: boolean },
+): FieldErrors<keyof BillingCardDraft> {
+  const errors: FieldErrors<keyof BillingCardDraft> = {}
+  if (input.holderName.trim().length < 3) {
+    errors.holderName = 'Укажите имя, как на карте.'
+  }
+  const replacingNumber = input.cardNumber.length > 0
+  if (!options.hasSavedCard && !replacingNumber) {
+    errors.cardNumber = 'Номер карты должен содержать 16 цифр.'
+  } else if (replacingNumber && !/^\d{16}$/.test(input.cardNumber)) {
+    errors.cardNumber = 'Номер карты должен содержать 16 цифр.'
+  } else if (replacingNumber && !passesLuhn(input.cardNumber)) {
+    errors.cardNumber = 'Проверьте номер карты.'
+  }
+  if (!EXPIRY_PATTERN.test(input.expiry)) {
+    errors.expiry = 'Укажите срок в формате ММ/ГГ.'
+  } else if (!isExpiryCurrent(input.expiry)) {
+    errors.expiry = 'Срок действия карты истёк.'
+  }
+  if (options.requireCvc && replacingNumber && !/^\d{3,4}$/.test(input.cvc)) {
+    errors.cvc = 'CVC должен содержать 3 или 4 цифры.'
+  }
+  if (!isReceiptEmail(input.receiptEmail)) {
+    errors.receiptEmail = 'Укажите почту, на которую отправить чек.'
+  }
+  return errors
+}
+
+export function isReceiptEmail(value: string) {
+  const email = value.trim()
+  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+/** Keeps the mask YooKassa can show later. The full number and CVC are dropped. */
+export function billingCardFromDraft(
+  input: BillingCardDraft,
+  previous: SavedBillingCard | null,
+  options: { requireCvc: boolean },
+): SavedBillingCard | null {
+  if (hasFieldErrors(validateBillingCardDraft(input, {
+    hasSavedCard: previous != null,
+    requireCvc: options.requireCvc,
+  }))) {
+    return null
+  }
+  const holderName = input.holderName.trim()
+  const receiptEmail = input.receiptEmail.trim()
+  if (input.cardNumber.length === 0 && previous) {
+    return { ...previous, holderName, expiry: input.expiry, receiptEmail }
+  }
+  return {
+    holderName,
+    last4: input.cardNumber.slice(-4),
+    expiry: input.expiry,
+    brand: cardBrand(input.cardNumber),
+    receiptEmail,
+  }
+}
+
 export function validateUserServicePayment(
   input: UserServicePaymentDetails,
 ): FieldErrors<keyof UserServicePaymentDetails> {
@@ -93,9 +251,13 @@ export function validateUserServicePayment(
   }
   if (!/^\d{16}$/.test(input.cardNumber)) {
     errors.cardNumber = 'Номер карты должен содержать 16 цифр.'
+  } else if (!passesLuhn(input.cardNumber)) {
+    errors.cardNumber = 'Проверьте номер карты.'
   }
-  if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(input.expiry)) {
+  if (!EXPIRY_PATTERN.test(input.expiry)) {
     errors.expiry = 'Укажите срок в формате ММ/ГГ.'
+  } else if (!isExpiryCurrent(input.expiry)) {
+    errors.expiry = 'Срок действия карты истёк.'
   }
   if (!/^\d{3,4}$/.test(input.cvc)) {
     errors.cvc = 'CVC должен содержать 3 или 4 цифры.'

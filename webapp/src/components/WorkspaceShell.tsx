@@ -164,10 +164,6 @@ export function WorkspaceShell({
   const secondaryItems = toDashboardItems(secondaryNavigationItemsForRole(user.role))
   const mobileNavItems = [
     ...navigationItems
-      .filter((item) => {
-        if (item.to === '/app/payments' || item.to === '/mentor/payments') return false
-        return true
-      })
       .map((item) => ({
         active:
           !navigationLocked &&

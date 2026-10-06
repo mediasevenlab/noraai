@@ -36,14 +36,14 @@ const settingsControlsClass = cn(
   '[&_[data-slot=field-group]]:!mt-0',
   '[&_[data-slot=field-label]]:!mb-0.5 [&_[data-slot=field-label]]:!font-[family-name:var(--nora-font)] [&_[data-slot=field-label]]:!text-[13px] [&_[data-slot=field-label]]:!font-medium [&_[data-slot=field-label]]:!leading-5 [&_[data-slot=field-label]]:!text-[var(--nora-text)]',
   '[&_[data-slot=field-description]]:!mt-0 [&_[data-slot=field-description]]:!font-[family-name:var(--nora-font)] [&_[data-slot=field-description]]:!text-[12px] [&_[data-slot=field-description]]:!font-light [&_[data-slot=field-description]]:!leading-5 [&_[data-slot=field-description]]:!text-[var(--nora-text-tertiary)]',
-  '[&_[data-slot=input]]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=input]]:!px-3 [&_[data-slot=input]]:!text-[16px] [&_[data-slot=input]]:!font-normal [&_[data-slot=input]]:!leading-5',
-  '[&_[data-slot=input]:disabled]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=input]:disabled]:!opacity-100 [&_[data-slot=input]:disabled]:!text-[var(--nora-text-secondary)]',
-  'lg:[&_[data-slot=input]]:!h-8 lg:[&_[data-slot=input]]:!min-h-8 lg:[&_[data-slot=input]]:!text-[13px]',
+  '[&_[data-slot=input]:not([data-ios-keep])]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=input]:not([data-ios-keep])]:!px-3 [&_[data-slot=input]:not([data-ios-keep])]:!text-[16px] [&_[data-slot=input]:not([data-ios-keep])]:!font-normal [&_[data-slot=input]:not([data-ios-keep])]:!leading-5',
+  '[&_[data-slot=input]:not([data-ios-keep]):disabled]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=input]:not([data-ios-keep]):disabled]:!opacity-100 [&_[data-slot=input]:not([data-ios-keep]):disabled]:!text-[var(--nora-text-secondary)]',
+  'lg:[&_[data-slot=input]:not([data-ios-keep])]:!h-8 lg:[&_[data-slot=input]:not([data-ios-keep])]:!min-h-8 lg:[&_[data-slot=input]:not([data-ios-keep])]:!text-[13px]',
   '[&_[data-slot=select-trigger]:not([data-generation-control])]:!h-10 [&_[data-slot=select-trigger]:not([data-generation-control])]:!min-h-10 [&_[data-slot=select-trigger]:not([data-generation-control])]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=select-trigger]:not([data-generation-control])]:!px-3 [&_[data-slot=select-trigger]:not([data-generation-control])]:!text-[13px] [&_[data-slot=select-trigger]:not([data-generation-control])]:!font-normal',
   'lg:[&_[data-slot=select-trigger]:not([data-generation-control])]:!h-8 lg:[&_[data-slot=select-trigger]:not([data-generation-control])]:!min-h-8',
   '[&_[data-settings-field]]:!h-8 [&_[data-settings-field]]:!min-h-8 [&_[data-settings-field]]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-settings-field]]:!text-[13px]',
-  '[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-slot=switch]):not([data-generation-control])]:!h-10 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-slot=switch]):not([data-generation-control])]:!min-h-10 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-slot=switch]):not([data-generation-control])]:!px-3 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-slot=switch]):not([data-generation-control])]:!text-[13px] [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-slot=switch]):not([data-generation-control])]:!font-normal',
-  'lg:[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-slot=switch]):not([data-generation-control])]:!h-8 lg:[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-slot=switch]):not([data-generation-control])]:!min-h-8',
+  '[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-generation-control])]:!h-10 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-generation-control])]:!min-h-10 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-generation-control])]:!px-3 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-generation-control])]:!text-[13px] [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-generation-control])]:!font-normal',
+  'lg:[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-generation-control])]:!h-8 lg:[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-generation-control])]:!min-h-8',
   '[&_button:not([data-choice-plaque]):not([data-slot=switch]):not([data-generation-control])_span]:!text-[13px] [&_button:not([data-choice-plaque]):not([data-slot=switch]):not([data-generation-control])_span]:!font-normal',
 )
 
@@ -54,9 +54,11 @@ function SettingsCanvasView({
   className,
   ctaLabel = 'Настройки',
   description,
+  descriptionClassName,
   eyebrow,
   meta,
   divided = true,
+  aside,
   lead,
   panelsId = 'settings-panels',
   phoneSheet,
@@ -64,10 +66,13 @@ function SettingsCanvasView({
   title,
 }: {
   actions?: ReactNode
+  /** Extra block in the left column, under the description. */
+  aside?: ReactNode
   children: ReactNode
   className?: string
   ctaLabel?: string
   description: string
+  descriptionClassName?: string
   divided?: boolean
   eyebrow: string
   lead?: ReactNode
@@ -94,7 +99,8 @@ function SettingsCanvasView({
           {meta ? <div className={cn('mt-2', settingsCaptionClass)}>{meta}</div> : null}
         </div>
 
-        <p className={cn(settingsBodyClass, 'max-w-[32ch] leading-relaxed')}>{description}</p>
+        <p className={cn(settingsBodyClass, 'max-w-[36ch] leading-relaxed', descriptionClassName)}>{description}</p>
+        {aside ? <div className="mt-6 grid gap-4">{aside}</div> : null}
 
         {actions || showJumpLink ? (
           <div className="flex flex-wrap items-center gap-1.5">

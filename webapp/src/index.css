@@ -930,6 +930,11 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
     padding-right: calc(2.5rem / var(--ios-type-scale)) !important;
   }
 
+  /* Brand marks sit inside the scaled face, so the padding is in pre-scale pixels. */
+  [data-auth-field][data-brand-strip] [data-slot='input'] {
+    padding-right: calc(8.5rem / var(--ios-type-scale)) !important;
+  }
+
   [data-auth-field] label {
     left: calc(0.75rem / var(--ios-type-scale)) !important;
     font-size: 16px !important;

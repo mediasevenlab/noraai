@@ -43,6 +43,7 @@ import {
   MentorProfile,
   MentorSettings,
   MentorUsers,
+  useMentorUsersQuery,
 } from '@/features/mentor'
 import { MentorPayments, UserPayments } from '@/features/payments'
 import { CurrentPlanPage, GeneralNutritionPage, MenteeAssignedPlans, MentorPlanDetailPage, MentorPlansPage } from '@/features/plans'
@@ -365,8 +366,8 @@ export function UserReferralsPage() {
 }
 
 export function UserPaymentsPage() {
-  useWorkspaceUser('user')
-  return <UserPayments />
+  const user = useWorkspaceUser('user')
+  return <UserPayments user={user} />
 }
 
 export function AdminHomeRedirectPage() {
@@ -474,8 +475,15 @@ export function MentorSettingsPage() {
 }
 
 export function MentorPaymentsPage() {
-  useWorkspaceUser('mentor')
-  return <MentorPayments />
+  const user = useWorkspaceUser('mentor')
+  const users = useMentorUsersQuery({ page: 1, pageSize: 1 })
+  return (
+    <MentorPayments
+      connectedUsers={users.data?.total ?? null}
+      pending={users.isPending}
+      user={user}
+    />
+  )
 }
 
 export function MentorMealPlanPage() {

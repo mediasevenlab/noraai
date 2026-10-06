@@ -1,6 +1,10 @@
 import { expect, test } from 'bun:test'
 
 import {
+  billingCardFromDraft,
+  cardBrand,
+  isMonthlyPayoutOpen,
+  monthlyPayoutOpensLabel,
   formatCardNumber,
   formatPhone,
   formatPayoutAmount,
@@ -114,10 +118,42 @@ test('user referral payout requisites skip bank name', () => {
   })
 })
 
-test('payments pages do not render demo card charge UI', async () => {
+test('payments pages prepare a tariff and a payout card without charging', async () => {
   const pages = await Bun.file(new URL('../src/features/payments/pages.tsx', import.meta.url)).text()
-  expect(pages).toContain('Оплата пока недоступна')
+  expect(pages).toContain('USER_SERVICE_PRICE_RUB')
+  expect(pages).toContain('история списаний')
+  expect(pages).toContain('MENTOR_CONNECTION_BONUS')
+  expect(pages).toContain('BillingCardPanel')
   expect(pages).not.toContain('UserBillingPanel')
-  expect(pages).not.toContain('UserSubscriptionPanel')
-  expect(pages).not.toContain('Демонстрационная подписка')
+  expect(pages).not.toContain('Оплата пока недоступна')
+})
+
+test('card brand follows the networks YooKassa accepts', () => {
+  expect(cardBrand('4')).toBe('visa')
+  expect(cardBrand('2204')).toBe('mir')
+  expect(cardBrand('5213')).toBe('mastercard')
+  expect(cardBrand('62')).toBe('unionpay')
+  expect(cardBrand('3528')).toBe('jcb')
+  expect(isMonthlyPayoutOpen(new Date('2026-10-31T12:00:00'))).toBe(true)
+  expect(isMonthlyPayoutOpen(new Date('2026-10-06T12:00:00'))).toBe(false)
+  expect(monthlyPayoutOpensLabel(new Date('2026-10-06T12:00:00'))).toBe('31 октября')
+})
+
+test('a saved billing card keeps only the mask', () => {
+  const saved = billingCardFromDraft({
+    holderName: 'Ivan Ivanov',
+    cardNumber: '4111111111111111',
+    expiry: '12/28',
+    cvc: '123',
+    receiptEmail: 'ivan@example.com',
+  }, null, { requireCvc: true })
+  expect(saved).toEqual({
+    holderName: 'Ivan Ivanov',
+    last4: '1111',
+    expiry: '12/28',
+    brand: 'visa',
+    receiptEmail: 'ivan@example.com',
+  })
+  expect(JSON.stringify(saved)).not.toContain('4111111111111111')
+  expect(JSON.stringify(saved)).not.toContain('123')
 })
