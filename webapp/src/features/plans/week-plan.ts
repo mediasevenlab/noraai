@@ -437,6 +437,32 @@ export function buildWeekPlan(input: {
   }
 }
 
+function rationHasLaterDays(meals: readonly RationEntry['meals'][number][]) {
+  return meals.some((meal) => (meal.dayIndex ?? 0) > 0)
+}
+
+function rationForPlanDay(ration: RationEntry, dayIndex: number): RationEntry | null {
+  const meals = ration.meals.filter((meal) => (meal.dayIndex ?? 0) === dayIndex)
+  if (meals.length === 0) return null
+  const totals = meals.reduce(
+    (sum, meal) => ({
+      kcal: sum.kcal + meal.kcal,
+      protein: sum.protein + meal.protein,
+      fat: sum.fat + meal.fat,
+      carbs: sum.carbs + meal.carbs,
+    }),
+    { kcal: 0, protein: 0, fat: 0, carbs: 0 },
+  )
+  return {
+    ...ration,
+    meals,
+    days: 1,
+    mealsPerDay: meals.length,
+    image: meals.find((meal) => meal.image)?.image || ration.image,
+    ...totals,
+  }
+}
+
 export function buildWeekPlanFromRation(input: {
   planId: string
   title: string
@@ -447,8 +473,18 @@ export function buildWeekPlanFromRation(input: {
 }): WeekPlan {
   const now = input.now ?? new Date()
   const weekDays = rationPlanWeekDays(now)
+  const grouped = rationHasLaterDays(input.ration.meals)
+  const lastIndex = grouped
+    ? Math.max(...input.ration.meals.map((meal) => meal.dayIndex ?? 0))
+    : 0
   const slots: WeekPlanDay[] = weekDays.map((day, index) => {
-    const ration = index === 0 ? input.ration : null
+    const ration = grouped
+      ? index <= lastIndex
+        ? rationForPlanDay(input.ration, index)
+        : null
+      : index === 0
+        ? input.ration
+        : null
     const meals = ration ? previewMealsFromRation(ration, day.date, input.planId) : []
     return {
       dayKey: day.dayKey,
@@ -464,11 +500,15 @@ export function buildWeekPlanFromRation(input: {
     }
   })
   const days = slots.filter((day) => day.filled)
+  const kcal =
+    grouped && days.length > 0
+      ? Math.round(days.reduce((sum, day) => sum + day.kcal, 0) / days.length)
+      : input.ration.kcal
   return {
     id: input.planId,
     title: input.title,
     description: input.ration.description.trim(),
-    kcal: input.ration.kcal,
+    kcal,
     mealsCount: slots.reduce((sum, day) => sum + day.mealsCount, 0),
     goal: input.goal ?? input.ration.goal,
     coverImage:

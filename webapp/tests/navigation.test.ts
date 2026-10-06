@@ -31,8 +31,8 @@ test('role navigation exposes only the current workspace', () => {
     { label: 'Настройки', to: '/admin/settings' },
   ])
   expect(navigationItemsForRole('mentor')).toEqual([
-    { label: 'Главная', to: '/mentor' },
-    { label: 'Планы', to: '/mentor/plans' },
+    { label: 'Рационы', to: '/mentor/plans' },
+    { label: 'Лента', to: '/mentor/feed' },
     { label: 'Профиль', to: '/mentor/profile' },
     { label: 'Пользователи', to: '/mentor/users' },
     { label: 'Настройки', to: '/mentor/settings' },
@@ -40,7 +40,7 @@ test('role navigation exposes only the current workspace', () => {
   ])
   expect(homePathForRole('user')).toBe('/app/general')
   expect(homePathForRole('admin')).toBe('/admin/users')
-  expect(homePathForRole('mentor')).toBe('/mentor')
+  expect(homePathForRole('mentor')).toBe('/mentor/plans')
 })
 
 test('legacy diary and plan URLs fold into Общее', () => {
@@ -83,9 +83,7 @@ test('role navigation separates primary and account-menu destinations', () => {
     { label: 'Настройки', to: '/mentor/settings' },
     { label: 'Платежи', to: '/mentor/payments', disabled: true },
   ])
-  expect(primaryNavigationItemsForRole('mentor')).toEqual([
-    { label: 'Главная', to: '/mentor' },
-  ])
+  expect(primaryNavigationItemsForRole('mentor')).toEqual([])
 })
 
 test('post-auth landing resumes only the current role safe return path', () => {
@@ -94,7 +92,8 @@ test('post-auth landing resumes only the current role safe return path', () => {
   expect(postAuthPath('user', '/app/settings', false)).toBe('/app/onboarding')
   expect(postAuthPath('user', undefined, false)).toBe('/app/onboarding')
   expect(postAuthPath('mentor', '/mentor/users')).toBe('/mentor/users')
-  expect(postAuthPath('mentor')).toBe('/mentor')
+  expect(postAuthPath('mentor')).toBe('/mentor/plans')
+  expect(postAuthPath('mentor', '/mentor')).toBe('/mentor/plans')
   expect(postAuthPath('admin', '/admin/users')).toBe('/admin/users')
   expect(postAuthPath('admin')).toBe('/admin/users')
   expect(postAuthPath('user', '/admin/users')).toBe('/app/general')
@@ -121,8 +120,9 @@ test('cross-role destinations resolve to the current role home', () => {
   expect(resolveRoleDestination('mentor', '/mentor/profile')).toBe('/mentor/profile')
   expect(resolveRoleDestination('mentor', '/mentor/meal-plan')).toBe('/mentor/plans')
   expect(resolveRoleDestination('mentor', '/mentor/mentor-rations')).toBe('/mentor/plans')
-  expect(resolveRoleDestination('mentor', '/mentor/payments')).toBe('/mentor')
-  expect(resolveRoleDestination('mentor', '/admin/users')).toBe('/mentor')
+  expect(resolveRoleDestination('mentor', '/mentor')).toBe('/mentor/plans')
+  expect(resolveRoleDestination('mentor', '/mentor/payments')).toBe('/mentor/plans')
+  expect(resolveRoleDestination('mentor', '/admin/users')).toBe('/mentor/plans')
 })
 
 test('return paths accept only known internal destinations for the current role', () => {
@@ -207,6 +207,7 @@ test('mentor plans keep one sidebar item for the list and an opened plan', () =>
   expect(isMentorPlanPath('/mentor/plans/abc-uuid')).toBe(true)
   expect(isMentorPlanPath('/mentor/mentor-rations')).toBe(false)
   expect(navigationItemMatchingPath('mentor', '/mentor/plans/abc-uuid')?.to).toBe('/mentor/plans')
+  expect(navigationItemMatchingPath('mentor', '/mentor/users/user-1')?.label).toBe('Пользователи')
   expect(safeReturnPath('mentor', '/mentor/plans/abc-uuid')).toBe('/mentor/plans/abc-uuid')
   expect(postAuthPath('mentor', '/mentor/plans/abc-uuid')).toBe('/mentor/plans/abc-uuid')
 })

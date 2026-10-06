@@ -51,6 +51,7 @@ const settingsControlsClass = cn(
 function SettingsCanvasView({
   actions,
   children,
+  className,
   ctaLabel = 'Настройки',
   description,
   eyebrow,
@@ -59,10 +60,12 @@ function SettingsCanvasView({
   lead,
   panelsId = 'settings-panels',
   phoneSheet,
+  showJumpLink = true,
   title,
 }: {
   actions?: ReactNode
   children: ReactNode
+  className?: string
   ctaLabel?: string
   description: string
   divided?: boolean
@@ -71,11 +74,14 @@ function SettingsCanvasView({
   meta?: string
   panelsId?: string
   phoneSheet?: boolean
+  /** Read-only pages omit the shortcut under the description. */
+  showJumpLink?: boolean
   title: string
 }) {
   return (
     <div className={cn(
       'mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-3 pt-3 pb-8 sm:px-6 md:px-10 md:py-12 lg:flex-row lg:gap-16 lg:px-12',
+      className,
       (lead || phoneSheet) && 'max-lg:min-h-full max-lg:flex-1 max-lg:gap-0 max-lg:pb-0',
       (lead || phoneSheet) && 'max-lg:bg-[color-mix(in_srgb,var(--nora-text)_9%,var(--background))]',
     )}>
@@ -90,21 +96,23 @@ function SettingsCanvasView({
 
         <p className={cn(settingsBodyClass, 'max-w-[32ch] leading-relaxed')}>{description}</p>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          {actions ? (
-            <div className="hidden shrink-0 items-center gap-1.5 lg:flex lg:flex-nowrap">{actions}</div>
-          ) : (
-            <a
-              className="group inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card py-1.5 pr-1.5 pl-4 text-[13px] font-medium text-foreground shadow-xs transition-colors hover:bg-muted"
-              href={`#${panelsId}`}
-            >
-              {ctaLabel}
-              <span className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
-                <ArrowUpRightIcon className="size-3.5" />
-              </span>
-            </a>
-          )}
-        </div>
+        {actions || showJumpLink ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {actions ? (
+              <div className="hidden shrink-0 items-center gap-1.5 lg:flex lg:flex-nowrap">{actions}</div>
+            ) : (
+              <a
+                className="group inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card py-1.5 pr-1.5 pl-4 text-[13px] font-medium text-foreground shadow-xs transition-colors hover:bg-muted"
+                href={`#${panelsId}`}
+              >
+                {ctaLabel}
+                <span className="flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">
+                  <ArrowUpRightIcon className="size-3.5" />
+                </span>
+              </a>
+            )}
+          </div>
+        ) : null}
       </aside>
 
       <section className={cn('min-w-0 flex-1', (lead || phoneSheet) && 'max-lg:flex max-lg:flex-col')} aria-label={title} id={panelsId}>

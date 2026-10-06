@@ -27,12 +27,24 @@ import {
   type ShareRationRequest,
   type SharedRationMutationResponse,
   type LikeMealRequest,
+  type UserFavorites,
+  userFavoritesSchema,
 } from '@web-app-demo/contracts'
 
 import type { AuthenticatedTransport } from '@/platform/api'
 
 export function listMyMeals(transport: AuthenticatedTransport): Promise<ListMealsResponse> {
   return transport.request('/api/users/me/meals', listMealsResponseSchema)
+}
+
+export function listMentorUserFavorites(
+  transport: AuthenticatedTransport,
+  userId: string,
+): Promise<UserFavorites> {
+  return transport.request(
+    `/api/mentor/users/${encodeURIComponent(userId)}/favorites`,
+    userFavoritesSchema,
+  )
 }
 
 export function listMentorUserMeals(

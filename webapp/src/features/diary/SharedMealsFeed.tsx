@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { SearchIcon } from "@/components/icons";
 import { toast } from "@/components/ui/toast";
 import type { ListMealsResponse } from "@web-app-demo/contracts";
@@ -21,7 +21,7 @@ import { notifyHybridFavoriteAdded } from "@/platform/hybrid-notifications";
 import { readPlanLibrarySnapshot, withAuthoredPlan } from "@/platform/plan-library-local";
 import { mergeFavoriteIds } from "@/platform/saved-ids";
 
-import { createMyMeal, deleteMyMeal, likeSharedMeal } from "./api";
+import { createMyMeal, deleteMyMeal, likeSharedMeal, shareMyMeal } from "./api";
 import {
   apiMealIdForCatalogPreview,
   catalogFavoriteCreateDraft,
@@ -44,6 +44,10 @@ import {
 } from "./feed-filters";
 import type { FeedPlanWeekDay } from "./feed-import";
 import { feedGridClass, type FeedCardLayout } from "./feed-card-layout";
+import {
+  appendFeedMealToMentorPlan,
+  mentorWeekdayIndex,
+} from "./feed-ration-clone";
 import { mealImageFromUrl } from "./meal-image-pick";
 import { preferredMealPhotoSrc } from "./meal-cover";
 import type { MealEntry } from "./meals-catalog";
@@ -117,7 +121,18 @@ export function SharedMealsFeed({
   const mealDialogDismissLocked = useMealDialogDismissLocked();
   const queryClient = useQueryClient();
   const mealsQuery = useSharedMealsQuery();
-  const subjectId = auth.user?.role === "user" ? auth.user.id : undefined;
+  const keepsOwnMeals =
+    auth.user?.role === "user" || auth.user?.role === "mentor";
+  const isMentor = auth.user?.role === "mentor";
+  const subjectId = keepsOwnMeals ? auth.user?.id : undefined;
+  const mentorPlansQuery = useQuery({
+    queryKey: ["session", "mentor", "plans"] as const,
+    enabled: Boolean(isMentor && auth.user),
+    queryFn: async () => {
+      const api = await import("@/features/mentor/api");
+      return api.listMentorPlans(auth.transport);
+    },
+  });
   const diaryQuery = useMealsQuery(subjectId);
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [planMeal, setPlanMeal] = React.useState<MealEntry | null>(null);
@@ -180,6 +195,24 @@ export function SharedMealsFeed({
 
   function toggleLike(meal: MealEntry) {
     likeMutation.mutate({ mealId: meal.id, liked: !meal.liked });
+  }
+
+  async function toggleShare(meal: MealEntry) {
+    if (!auth.user || meal.userId !== auth.user.id) return;
+    const nextShared = !meal.shared;
+    try {
+      await shareMyMeal(auth.transport, meal.id, { shared: nextShared });
+      await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.shared() });
+      toast.success(
+        nextShared ? "Приём опубликован в ленте" : "Приём скрыт из ленты",
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Не удалось изменить публикацию",
+      );
+    }
   }
 
   React.useEffect(() => {
@@ -246,7 +279,7 @@ export function SharedMealsFeed({
 
   async function toggleSave(meal: MealEntry) {
     if (!subjectId || !auth.user) {
-      toast("Сохранить приём можно из аккаунта пользователя");
+      toast("Сохранить приём можно из своего аккаунта");
       return;
     }
     const copyId = apiMealIdForCatalogPreview(meal.id, diaryMeals);
@@ -298,19 +331,98 @@ export function SharedMealsFeed({
     ...readAssignedPlans(savedScope),
   ]);
   const weekPlanFallbackId = currentWeekPlanStampId();
-  const canAddToPlan = auth.user?.role === "user";
+  const mentorPlanOptions = (mentorPlansQuery.data?.items ?? []).map((plan) => ({
+    id: plan.id,
+    title: plan.title,
+    ...(plan.image ? { image: plan.image } : {}),
+  }));
+  const visiblePlanOptions = isMentor ? mentorPlanOptions : planOptions;
+  const canAddToPlan = auth.user?.role === "user" || isMentor;
 
   function openPlanPicker(meal: MealEntry) {
     if (!canAddToPlan) {
-      toast("Добавить приём в план можно из аккаунта пользователя");
+      toast("Добавить приём в план можно из своего аккаунта");
+      return;
+    }
+    if (isMentor && mentorPlanOptions.length === 0) {
+      toast("Сначала создайте рацион");
       return;
     }
     if (addingDayKey) return;
     setPickerPlanId(
-      diaryDefaultPlanId(planOptions, planLibrary.selectedPlanIds[0] ?? null),
+      isMentor
+        ? (mentorPlanOptions[0]?.id ?? "")
+        : diaryDefaultPlanId(planOptions, planLibrary.selectedPlanIds[0] ?? null),
     );
     setOpenId(null);
     setPlanMeal(meal);
+  }
+
+  async function addMealToMentorPlan(
+    meal: MealEntry,
+    day: FeedPlanWeekDay,
+    planId: string,
+  ) {
+    const plan = mentorPlansQuery.data?.items.find((item) => item.id === planId);
+    if (!plan || !auth.user) {
+      toast.error("Рацион не найден");
+      return;
+    }
+    const photo = preferredMealPhotoSrc(meal);
+    const next = appendFeedMealToMentorPlan(
+      {
+        title: plan.title,
+        description: plan.description,
+        goal: plan.goal,
+        image: plan.image,
+        meals: plan.meals.map((item) => ({
+          slot: item.slot,
+          title: item.title,
+          ingredients: item.ingredients,
+          steps: item.steps,
+          image: item.image,
+          kcal: item.kcal,
+          protein: item.protein,
+          fat: item.fat,
+          carbs: item.carbs,
+          ...(item.dayIndex != null ? { dayIndex: item.dayIndex } : {}),
+        })),
+      },
+      {
+        carbs: meal.carbs,
+        fat: meal.fat,
+        image: photo ?? "",
+        ingredients: meal.ingredients,
+        kcal: meal.kcal,
+        meal: meal.meal,
+        protein: meal.protein,
+        title: meal.title,
+      },
+      mentorWeekdayIndex(day.date),
+    );
+    if (!next.ok) {
+      toast(
+        next.reason === "duplicate"
+          ? "Этот приём уже стоит в выбранный день"
+          : "В рационе уже 80 приёмов",
+      );
+      return;
+    }
+    setAddingDayKey(day.dayKey);
+    try {
+      const api = await import("@/features/mentor/api");
+      await api.updateMentorPlan(auth.transport, planId, next.body);
+      await queryClient.invalidateQueries({
+        queryKey: ["session", "mentor", "plans"],
+      });
+      toast.success(`Добавлено в ${day.label.toLowerCase()}`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Не удалось добавить приём в рацион",
+      );
+    } finally {
+      setAddingDayKey(null);
+    }
   }
 
   async function addMealToPlan(
@@ -319,6 +431,10 @@ export function SharedMealsFeed({
     planId: string,
   ) {
     if (!canAddToPlan || !auth.user || addingDayKey) return;
+    if (isMentor) {
+      await addMealToMentorPlan(meal, day, planId);
+      return;
+    }
     const sourceId = diaryPlanSourceId(meal);
     if (
       diaryMealOnPlanDay(
@@ -450,7 +566,10 @@ export function SharedMealsFeed({
             meal={meal}
             onDelete={() => undefined}
             onOpen={() => setOpenId(meal.id)}
-            onShare={() => undefined}
+            allowShare={meal.userId === auth.user?.id}
+            onShare={() => {
+              void toggleShare(meal);
+            }}
             onToggleLike={() => toggleLike(meal)}
             onToggleSave={() => {
               void toggleSave(meal);
@@ -459,6 +578,7 @@ export function SharedMealsFeed({
             addingToPlan={Boolean(addingDayKey) && planMeal?.id === meal.id}
             readOnly
             saved={feedMealSaved(meal)}
+            showSave={!isMentor}
             showPlanState={false}
             variant="feed"
           />
@@ -513,10 +633,13 @@ export function SharedMealsFeed({
       </Dialog>
       <DiaryPlanDayPicker
         addingDayKey={addingDayKey}
-        fallbackPlanId={weekPlanFallbackId}
+        fallbackPlanId={isMentor ? mentorPlanOptions[0]?.id : weekPlanFallbackId}
         meal={planMeal}
-        meals={diaryMeals}
-        onCreatePlan={async ({ title, coverImage, description, dayCount }) => {
+        meals={isMentor ? [] : diaryMeals}
+        onCreatePlan={
+          isMentor
+            ? undefined
+            : async ({ title, coverImage, description, dayCount }) => {
           const created = diaryCreatePlanFromMeals({
             coverImage,
             description,
@@ -542,7 +665,7 @@ export function SharedMealsFeed({
         }}
         open={!!planMeal}
         planId={pickerPlanId}
-        plans={planOptions}
+        plans={visiblePlanOptions}
       />
     </>
   );

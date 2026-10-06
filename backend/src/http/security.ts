@@ -34,6 +34,11 @@ export function isMealWritePath(pathname: string): boolean {
   return /\/meals(?:\/|$)/.test(pathname)
 }
 
+/** Mentor plan create and update embed meal photos, same size as a meal write. */
+export function isMentorPlanBodyPath(pathname: string): boolean {
+  return /\/mentor\/plans(?:\/|$)/.test(pathname)
+}
+
 export function isFavoritesPath(pathname: string): boolean {
   return /\/favorites(?:\/|$)/.test(pathname)
 }
@@ -66,7 +71,10 @@ export function createAuthSecurity(options: AuthSecurityOptions): MiddlewareHand
 
   return [
     async (c, next) => {
-      if (options.mealBodyLimitBytes != null && isMealWritePath(c.req.path)) {
+      if (
+        options.mealBodyLimitBytes != null &&
+        (isMealWritePath(c.req.path) || isMentorPlanBodyPath(c.req.path))
+      ) {
         return mealBodyLimit(c, next)
       }
       return accountBodyLimit(c, next)

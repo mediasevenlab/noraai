@@ -547,6 +547,7 @@ function CardActions({
   saved,
   shared,
   canShare = true,
+  canSave = true,
   hideFooterShare = false,
   savePressed = false,
   sharePressed = false,
@@ -555,6 +556,7 @@ function CardActions({
 }: {
   saved: boolean
   shared: boolean
+  canSave?: boolean
   canShare?: boolean
   hideFooterShare?: boolean
   savePressed?: boolean
@@ -581,23 +583,25 @@ function CardActions({
           </NoraIconButton>
         </NoraHoverTip>
       )}
-      <NoraHoverTip label={saveLabel}>
-        <NoraIconButton
-          aria-label={saveLabel}
-          active={saved}
-          className={cn(
-            'nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent active:!bg-transparent [&_svg]:size-4',
-            saved
-              ? 'text-[var(--nora-tint)] hover:!text-[var(--nora-tint)]'
-              : 'hover:text-[var(--nora-text)]',
-          )}
-          data-demo-pressed={savePressed ? '' : undefined}
-          data-slot="meal-card-bookmark"
-          onClick={onToggleSave}
-        >
-          <BookmarkIcon className={cn('size-4', saved && 'fill-current')} />
-        </NoraIconButton>
-      </NoraHoverTip>
+      {canSave ? (
+        <NoraHoverTip label={saveLabel}>
+          <NoraIconButton
+            aria-label={saveLabel}
+            active={saved}
+            className={cn(
+              'nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent active:!bg-transparent [&_svg]:size-4',
+              saved
+                ? 'text-[var(--nora-tint)] hover:!text-[var(--nora-tint)]'
+                : 'hover:text-[var(--nora-text)]',
+            )}
+            data-demo-pressed={savePressed ? '' : undefined}
+            data-slot="meal-card-bookmark"
+            onClick={onToggleSave}
+          >
+            <BookmarkIcon className={cn('size-4', saved && 'fill-current')} />
+          </NoraIconButton>
+        </NoraHoverTip>
+      ) : null}
     </div>
   )
 }
@@ -757,7 +761,9 @@ export function MealCard({
   unread = false,
   className,
   onOpen,
+  allowShare = false,
   hideFooterShare = false,
+  showSave = true,
   savePressed = false,
   sharePressed = false,
   likePressed = false,
@@ -802,6 +808,10 @@ export function MealCard({
   /** Fade the author byline in (login demo share handoff). */
   revealAuthor?: boolean
   onOpen: () => void
+  /** Share stays available on the viewer's own feed card. */
+  allowShare?: boolean
+  /** Mentor has no favorites, so the bookmark stays off that account. */
+  showSave?: boolean
   onToggleSave: () => void
   onShare: () => void
   onToggleLike?: () => void
@@ -823,7 +833,8 @@ export function MealCard({
   const logged = showPlanState && mealCanShareToFeed(meal)
   const origin = mealCardOrigin(meal)
   const list = layout === 'list'
-  const canShare = (mealCanShareToFeed(meal) || Boolean(meal.shared)) && !readOnly
+  const canShare =
+    (mealCanShareToFeed(meal) || Boolean(meal.shared)) && (!readOnly || allowShare)
   const titlePress = usePressWithoutScroll(onOpen)
   const [unreadMarkMounted, setUnreadMarkMounted] = React.useState(unread)
   React.useEffect(() => {
@@ -1050,7 +1061,7 @@ export function MealCard({
                     onAdd={onAddToPlan ?? onAddToDiary}
                   />
                 ) : null}
-                {hideFooterShare ? null : (
+                {hideFooterShare || !canShare ? null : (
                   <NoraHoverTip label={meal.shared ? 'Скрыть из ленты' : 'Поделиться'}>
                     <NoraIconButton
                       aria-label={meal.shared ? 'Скрыть из ленты' : 'Поделиться'}
@@ -1058,7 +1069,6 @@ export function MealCard({
                       className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
                       data-demo-pressed={sharePressed ? '' : undefined}
                       data-slot="meal-card-share"
-                      disabled={!canShare}
                       onClick={(event) => {
                         event.stopPropagation()
                         onShare()
@@ -1068,6 +1078,27 @@ export function MealCard({
                     </NoraIconButton>
                   </NoraHoverTip>
                 )}
+                {showSave ? (
+                <NoraHoverTip label={saved ? 'Убрать' : 'Сохранить'}>
+                  <NoraIconButton
+                    aria-label={saved ? 'Убрать' : 'Сохранить'}
+                    active={saved}
+                    className={cn(
+                      'nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent active:!bg-transparent [&_svg]:size-4',
+                      saved
+                        ? 'text-[var(--nora-tint)] hover:!text-[var(--nora-tint)]'
+                        : 'hover:text-[var(--nora-text)]',
+                    )}
+                    data-slot="meal-card-bookmark"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onToggleSave()
+                    }}
+                  >
+                    <BookmarkIcon className={cn('size-4', saved && 'fill-current')} />
+                  </NoraIconButton>
+                </NoraHoverTip>
+                ) : null}
                 {onToggleLike ? (
                   <MealLikeButton
                     liked={Boolean(meal.liked)}
@@ -1083,7 +1114,7 @@ export function MealCard({
               {footerStart}
               <MealCardAddButton
                 className={cn(list && 'max-md:hidden')}
-                disabled={readOnly || !onAddToPlan || addingToPlan}
+                disabled={!onAddToPlan || addingToPlan}
                 label={list ? 'В рацион' : 'В план'}
                 onAdd={onAddToPlan}
                 pressed={addPressed}
@@ -1095,13 +1126,14 @@ export function MealCard({
                 {list ? (
                   <MealCardAddButton
                     className="md:hidden"
-                    disabled={readOnly || !onAddToPlan || addingToPlan}
+                    disabled={!onAddToPlan || addingToPlan}
                     label="В рацион"
                     onAdd={onAddToPlan}
                     pressed={addPressed}
                   />
                 ) : null}
                 <CardActions
+                  canSave={showSave && !readOnly}
                   canShare={canShare}
                   hideFooterShare={hideFooterShare}
                   savePressed={savePressed}

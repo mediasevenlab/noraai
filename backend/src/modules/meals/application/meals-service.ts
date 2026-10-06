@@ -24,6 +24,7 @@ import {
   applyMealPlanDoneMark,
   countUnreadMealsByMentee,
   isMentorUnreadMeal,
+  isPlannedMealPending,
   mentorUnreadEventAt,
 } from '../domain/mentor-unread'
 import {
@@ -252,15 +253,12 @@ export class MealsService {
     const viewedMealIds = new Set(
       await this.dependencies.repository.listMentorViewedMealIds(mentorUserId),
     )
-    const [items, ledger] = await Promise.all([
-      this.dependencies.repository.listMealsForUser(menteeUserId),
-      this.readGenerationLedger(menteeUserId),
-      ensureUsdRub(),
-    ])
-    return this.withDiarySpend(ledger, {
+    const items = await this.dependencies.repository.listMealsForUser(menteeUserId)
+    return {
       items: items.map((meal) => {
         const hydrated = this.hydrateVersions(meal)
         return this.toDto(hydrated, {
+          omitSpend: true,
           unread: isMentorUnreadMeal(
             {
               id: meal.id,
@@ -272,7 +270,7 @@ export class MealsService {
           ),
         })
       }),
-    })
+    }
   }
 
   async listMentorUnreadMeals(mentorUserId: string) {
@@ -759,8 +757,12 @@ export class MealsService {
   ) {
     const meal = await this.requireEditableMeal(actor, mealId, ownerUserId)
     const ensured = await this.ensurePersistedVersions(meal)
-    if (!canRefineMeal(this.toVersioned(ensured))) {
-      throw new MealsFailure('bad_request', 'Достигнут лимит уточнений (5)')
+    const actorRole = ownerUserId ? 'mentor' : 'user'
+    if (actorRole === 'mentor' && isPlannedMealPending(ensured.assumptions)) {
+      throw new MealsFailure('bad_request', 'Невыполненный приём править нельзя')
+    }
+    if (!canRefineMeal(this.toVersioned(ensured), actorRole)) {
+      throw new MealsFailure('bad_request', 'Достигнут лимит уточнений (2)')
     }
     const images = refineImages(input)
     const message =
@@ -835,6 +837,7 @@ export class MealsService {
     const withHistory = appendMealVersion(
       { ...refinedBase, extraImageKeys },
       input.message.trim() || (images.length > 0 ? 'фото' : 'уточнение'),
+      actorRole,
     )
     const saved = await this.dependencies.repository.updateMealContent(mealId, {
       title: withHistory.title,
@@ -874,13 +877,17 @@ export class MealsService {
       callQuote,
     )
     const account = await this.readGenerationLedger(meal.userId)
+    const hideSpend = actorRole === 'mentor'
     return {
-      meal: this.toDto({
-        ...saved,
-        generationUsage: generation.ledger,
-        generationSettled: generation.settled,
-      }),
-      ...this.diarySpendFields(account),
+      meal: this.toDto(
+        {
+          ...saved,
+          generationUsage: generation.ledger,
+          generationSettled: generation.settled,
+        },
+        hideSpend ? { omitSpend: true } : undefined,
+      ),
+      ...(hideSpend ? {} : this.diarySpendFields(account)),
     }
   }
 
@@ -892,6 +899,9 @@ export class MealsService {
   ) {
     const meal = await this.requireEditableMeal(actor, mealId, ownerUserId)
     const ensured = await this.ensurePersistedVersions(meal)
+    if (ownerUserId && isPlannedMealPending(ensured.assumptions)) {
+      throw new MealsFailure('bad_request', 'Невыполненный приём править нельзя')
+    }
     const selected = selectMealVersion(this.toVersioned(ensured), versionId)
     if (!selected) {
       throw new MealsFailure('not_found', 'Meal version not found')
@@ -1203,13 +1213,20 @@ export class MealsService {
       createdAt: version.createdAt,
       label: version.label,
       note: version.note,
+      ...(version.authorRole ? { authorRole: version.authorRole } : {}),
       snapshot: version.snapshot,
     }))
   }
 
   private toDto(
     meal: MealRecord,
-    extras?: { authorName?: string; likeCount?: number; liked?: boolean; unread?: boolean },
+    extras?: {
+      authorName?: string
+      likeCount?: number
+      liked?: boolean
+      omitSpend?: boolean
+      unread?: boolean
+    },
   ): MealDto {
     const ensured = ensureMealVersions(this.toVersioned(meal))
     const extraImageKeys = this.extraImageKeysForClient({
@@ -1248,7 +1265,7 @@ export class MealsService {
       liked: extras?.liked ?? false,
       ...(extras?.authorName ? { authorName: extras.authorName } : {}),
       ...(typeof extras?.unread === 'boolean' ? { unread: extras.unread } : {}),
-      ...this.mealSpendFields(meal),
+      ...(extras?.omitSpend ? {} : this.mealSpendFields(meal)),
     }
   }
 

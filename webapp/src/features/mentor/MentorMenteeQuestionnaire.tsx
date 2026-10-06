@@ -1,111 +1,63 @@
-import {
-  emptyQuestionnaireAnswers,
-  type QuestionnaireAnswers,
-  type UserDto,
-} from '@web-app-demo/contracts'
-import { useEffect, useState } from 'react'
+import type { QuestionnaireAnswers, UserDto } from '@web-app-demo/contracts'
 
+import { AtSignIcon, FlameIcon, MailIcon, TargetIcon, UserRoundIcon, ZapIcon } from '@/components/icons'
 import { NoraButton } from '@/components/nora/primitives'
-import { ClientProfileCard } from '@/features/users'
-
+import { ProductFeedEmpty, SectionLoading } from '@/components/nora/product-sheet'
+import { SettingsCanvas, SettingsEntry, SettingsReadRows } from '@/components/settings-canvas'
 import {
-  useMentorUserQuestionnaireQuery,
-  usePutMentorUserQuestionnaireMutation,
-} from './queries'
+  ClientProfileCard,
+  goalUsesPace,
+  profileCalorieValue,
+  questionnaireDailyCalorieTarget,
+  questionnaireMaintenanceCalories,
+  useCaloriePreference,
+} from '@/features/users'
 
-type FieldKey = keyof QuestionnaireAnswers
+import { useMentorUserQuestionnaireQuery } from './queries'
 
-export function useMentorMenteeQuestionnaireEditor(
-  userId: string,
-  enabled = true,
-) {
-  const questionnaire = useMentorUserQuestionnaireQuery(userId, enabled)
-  const saveMutation = usePutMentorUserQuestionnaireMutation(userId)
-  const serverAnswers = questionnaire.data?.answers
-  const [values, setValues] = useState<Record<FieldKey, string>>(
-    () => serverAnswers ?? emptyQuestionnaireAnswers(),
-  )
-  const [draft, setDraft] = useState<Record<FieldKey, string>>(
-    () => serverAnswers ?? emptyQuestionnaireAnswers(),
-  )
-  const [editing, setEditing] = useState(false)
+function MenteeCalorieEntry({
+  userId,
+  values,
+}: {
+  userId: string
+  values: QuestionnaireAnswers
+}) {
+  const saved = useCaloriePreference(userId)
+  const maintenance = questionnaireMaintenanceCalories(values)
+  const goalTarget = questionnaireDailyCalorieTarget(values)
+  const shown = profileCalorieValue({
+    maintenance,
+    goalTarget,
+    preference: saved,
+  })
+  const paceApplies = goalUsesPace(values.goal)
 
-  useEffect(() => {
-    if (!serverAnswers || editing) return
-    setValues(serverAnswers)
-    setDraft(serverAnswers)
-  }, [editing, serverAnswers])
-
-  const startEdit = () => {
-    setDraft(values)
-    setEditing(true)
-  }
-
-  const cancelEdit = () => {
-    setDraft(values)
-    setEditing(false)
-  }
-
-  const saveEdit = async () => {
-    try {
-      const response = await saveMutation.mutateAsync({
-        answers: draft as QuestionnaireAnswers,
-      })
-      if (response.answers) {
-        setValues(response.answers)
-        setDraft(response.answers)
-      }
-      setEditing(false)
-    } catch {
-      // Keep the editor open; saveError is shown from the mutation.
-    }
-  }
-
-  const updateDraft = (key: FieldKey, value: string) => {
-    setDraft((current) => ({ ...current, [key]: value }))
-  }
-
-  const actions = editing ? (
-    <>
-      <NoraButton
-        className="h-[var(--nora-control-h)]"
-        disabled={saveMutation.isPending}
-        onClick={cancelEdit}
-        variant="ghost"
-      >
-        Отмена
-      </NoraButton>
-      <NoraButton
-        className="h-[var(--nora-control-h)]"
-        disabled={saveMutation.isPending}
-        onClick={() => {
-          void saveEdit()
-        }}
-        variant="primary"
-      >
-        {saveMutation.isPending ? 'Сохраняем…' : 'Сохранить'}
-      </NoraButton>
-    </>
-  ) : (
-    <NoraButton
-      className="h-[var(--nora-control-h)]"
-      disabled={questionnaire.isLoading || questionnaire.isError}
-      onClick={startEdit}
-      variant="default"
+  return (
+    <SettingsEntry
+      description="Слева текущая норма, справа цель."
+      title="Калорийность"
     >
-      Редактировать
-    </NoraButton>
+      {shown ? (
+        <SettingsReadRows
+          rows={[
+            { icon: FlameIcon, label: 'Текущая / Цель', value: shown },
+            ...(saved.useRecommendation
+              ? [
+                  { icon: TargetIcon, label: 'Цель', value: values.goal || '—' },
+                  ...(paceApplies
+                    ? [{ icon: ZapIcon, label: 'Темп', value: values.goalPace || 'Умеренно' }]
+                    : []),
+                ]
+              : []),
+          ]}
+        />
+      ) : (
+        <p className="font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 text-[var(--nora-text-tertiary)]">
+          Укажите в анкете пол, возраст, рост, вес и активность — тогда здесь появится число.
+        </p>
+      )}
+    </SettingsEntry>
   )
-
-  return {
-    actions,
-    editing,
-    isError: questionnaire.isError,
-    isLoading: questionnaire.isLoading,
-    onChange: updateDraft,
-    saveError: saveMutation.isError,
-    values: editing ? draft : values,
-  }
 }
 
 const placeholderUser = (userId: string): UserDto => ({
@@ -121,51 +73,81 @@ const placeholderUser = (userId: string): UserDto => ({
   createdAt: new Date(0).toISOString(),
 })
 
-export function MentorMenteeQuestionnaireCards({
+export function MentorMenteeQuestionnaire({
+  displayName,
+  email,
+  nickname,
   userId,
-  editing,
-  onChange,
-  values,
-  isError,
-  isLoading,
-  saveError = false,
 }: {
+  displayName?: string | null
+  email?: string | null
+  nickname?: string | null
   userId: string
-  editing: boolean
-  onChange: (key: FieldKey, value: string) => void
-  values: Record<FieldKey, string>
-  isError: boolean
-  isLoading: boolean
-  saveError?: boolean
 }) {
-  if (isLoading) {
-    return (
-      <p className="text-[12px] text-[var(--nora-text-tertiary)]">Загрузка анкеты…</p>
-    )
-  }
-
-  if (isError) {
-    return (
-      <p className="text-[12px] text-[var(--nora-error)]">
-        Не удалось загрузить анкету пользователя.
-      </p>
-    )
-  }
+  const questionnaire = useMentorUserQuestionnaireQuery(userId)
+  const answers = questionnaire.data?.answers
 
   return (
-    <div className="grid gap-3">
-      <ClientProfileCard
-        columns={3}
-        editing={editing}
-        onChange={onChange}
-        user={placeholderUser(userId)}
-        values={values}
-      />
-      {saveError ? (
-        <p className="text-[12px] text-[var(--nora-error)]">
-          Не удалось сохранить анкету. Попробуйте ещё раз.
-        </p>
-      ) : null}
+    <div className="-mx-3 sm:-mx-6 md:-mx-10 lg:-mx-12">
+      <SettingsCanvas
+        className="md:pt-2 md:pb-8"
+        description="Имя и никнейм, затем анкета с калорийностью."
+        divided={false}
+        eyebrow="Аккаунт"
+        meta={email ?? undefined}
+        panelsId="mentee-questionnaire"
+        showJumpLink={false}
+        title="Профиль"
+      >
+        <SettingsEntry
+          description="Имя и никнейм в приложении."
+          title="Данные профиля"
+        >
+          <SettingsReadRows
+            rows={[
+              { icon: UserRoundIcon, label: 'Отображаемое имя', value: displayName?.trim() || email || '—' },
+              { icon: MailIcon, label: 'Email', value: email || '—' },
+              { icon: AtSignIcon, label: 'Ваш никнейм', value: nickname || '—' },
+            ]}
+          />
+        </SettingsEntry>
+        {questionnaire.isLoading ? (
+          <li className="list-none lg:ml-auto lg:w-lg">
+            <SectionLoading label="Загрузка анкеты" />
+          </li>
+        ) : questionnaire.isError ? (
+          <li className="list-none lg:ml-auto lg:w-lg">
+            <ProductFeedEmpty
+              action={
+                <NoraButton onClick={() => void questionnaire.refetch()} variant="tinted">
+                  Повторить
+                </NoraButton>
+              }
+              description="Проверьте соединение и попробуйте ещё раз."
+              title="Не удалось загрузить анкету"
+            />
+          </li>
+        ) : !answers ? (
+          <li className="list-none lg:ml-auto lg:w-lg">
+            <ProductFeedEmpty
+              description="Пользователь ещё не заполнил анкету."
+              title="Анкета пока пустая"
+            />
+          </li>
+        ) : (
+          <>
+            <MenteeCalorieEntry userId={userId} values={answers} />
+            <ClientProfileCard
+              editing={false}
+              layout="entry"
+              omitTitles={['Цель']}
+              onChange={() => {}}
+              user={placeholderUser(userId)}
+              values={answers}
+            />
+          </>
+        )}
+      </SettingsCanvas>
     </div>
   )
 }

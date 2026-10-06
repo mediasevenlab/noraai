@@ -33,6 +33,7 @@ export {
   rationPlanAssumption,
   setRationImportedMealTitles,
   mealsForWeekPlan,
+  mealRemovedWithRation,
   mealBelongsToWeekPlan,
   weekPlanAssumption,
 } from './ration-import'
@@ -64,7 +65,15 @@ export { mergeDemoAndApiMeals, mealDtoToEntry } from './merge-meals'
 export { useMealsQuery, useSharedMealsQuery, useSharedRationsQuery, useUserFavoritesQuery, usePlanLibraryQuery, mealsQueryKeys, favoritesQueryKeys, planLibraryQueryKeys } from './queries'
 export { formatGenerationMoney, formatGenerationSpend } from './generation-spend-format'
 export { createMyMeal, deleteMyMeal, setMyMealPlanDone, shareMyMeal, shareMyRation, listSharedRations, likeSharedRation } from './api'
-export { authoredCloneOfSharedRation, canAddSharedRationToMine } from './feed-ration-clone'
+export {
+  authoredCloneOfSharedRation,
+  canAddSharedRationToMine,
+  appendFeedMealToMentorPlan,
+  matchingMentorPlanByTitle,
+  MENTOR_FEED_PLAN_CAP,
+  mentorPlanRequestFromSharedRation,
+  mentorWeekdayIndex,
+} from './feed-ration-clone'
 export { useSyncedPlanLibrary } from './use-plan-library'
 
 export { NewsPage as DiaryNewsPage } from './pages/news'

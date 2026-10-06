@@ -650,7 +650,7 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(source).toContain('onDelete')
   expect(source).toContain('sm:group-hover:opacity-100')
   expect(page).toContain('selectedPlanIds.has(plan.id)')
-  expect(page).toContain('isAuthoredPlanId(plan.id) ? () => deletePlan(plan.id)')
+  expect(page).toContain('onDelete={() => setDeletePlanTarget({ id: plan.id, title: plan.title })}')
   expect(page).toContain('withoutAuthoredPlan(')
   expect(page).toContain('RationEditorDialog')
   expect(page).toContain('mode="plan"')
@@ -827,6 +827,31 @@ test('a ration-backed plan exposes meal cards on day 1', () => {
     ration.meals.map((meal) => meal.title),
   )
   expect(plan.days[0]?.meals.every((meal) => meal.fromApi !== true)).toBe(true)
+})
+
+test('a mentor plan with day indexes keeps each day', () => {
+  const ration = {
+    ...SAMPLE_RATIONS[0]!,
+    kcal: 700,
+    meals: [
+      { ...SAMPLE_RATIONS[0]!.meals[0]!, title: 'Овсянка', kcal: 300, dayIndex: 0 },
+      { ...SAMPLE_RATIONS[0]!.meals[0]!, title: 'Омлет', kcal: 400, dayIndex: 1 },
+    ],
+  }
+  const plan = buildWeekPlanFromRation({
+    planId: 'plan-mentor-days',
+    ration,
+    title: 'Два дня',
+  })
+  expect(plan.days).toHaveLength(2)
+  expect(plan.days.map((day) => day.short)).toEqual(['День 1', 'День 2'])
+  expect(plan.days.map((day) => day.meals.map((meal) => meal.title))).toEqual([
+    ['Овсянка'],
+    ['Омлет'],
+  ])
+  expect(plan.days.map((day) => day.kcal)).toEqual([300, 400])
+  expect(plan.kcal).toBe(350)
+  expect(plan.mealsCount).toBe(2)
 })
 
 test('plan day kcal follows the diary calorie balance tones', () => {
@@ -1066,9 +1091,13 @@ test('mentee assigned plans drill into meal cards by day', () => {
     'utf8',
   )
   expect(mentee).toContain('usePlanAssignmentQuery')
+  expect(mentee).not.toContain('useMentorUserPlanLibraryQuery')
+  expect(mentee).not.toContain('label="Мои"')
+  expect(mentee).toContain('label="От наставника"')
+  expect(mentee).not.toContain('label="Наставник"')
   expect(mentee).toContain('<CurrentPlanMeals')
   expect(mentee).toContain('readOnly')
-  expect(mentee).toContain('К планам')
+  expect(mentee).toContain('onDetailBack')
 })
 
 test('plan shopping drops catalog garnish notes from grocery rows', () => {

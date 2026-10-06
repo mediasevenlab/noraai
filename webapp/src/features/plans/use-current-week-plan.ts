@@ -82,7 +82,7 @@ export function useCurrentWeekPlan() {
     detachedIds,
     detachPlanMeal,
     applyWeekOutline,
-    isPending: mealsQuery.isPending,
+    isPending: mealsQuery.isLoading,
     isError: mealsQuery.isError,
   }
 }

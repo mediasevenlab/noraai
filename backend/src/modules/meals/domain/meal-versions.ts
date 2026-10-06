@@ -13,8 +13,10 @@ export type MealVersionRecord = MealVersion & {
   extraImageKeys?: string[]
 }
 
-/** Original + up to 5 refinements. */
-export const MAX_MEAL_VERSIONS = 6
+/** Each person may correct one card twice. The original version is not a correction. */
+export const MEAL_CORRECTIONS_PER_ACTOR = 2
+
+export type MealCorrectionActor = 'user' | 'mentor'
 
 export function mealVersionLabel(ordinal: number) {
   return `vers. ${ordinal}.0`
@@ -149,6 +151,7 @@ export function ensureMealVersions<T extends MealWithVersions>(meal: T): T {
 export function appendMealVersion<T extends MealWithVersions>(
   meal: T,
   message: string,
+  authorRole: MealCorrectionActor = 'user',
 ): T {
   const versions = Array.isArray(meal.versions) ? meal.versions : []
   const id = randomUUID()
@@ -163,12 +166,23 @@ export function appendMealVersion<T extends MealWithVersions>(
         createdAt: new Date().toISOString(),
         label: mealVersionLabel(versions.length + 1),
         note: String(message || '').trim().slice(0, 120) || undefined,
+        authorRole,
         extraImageKeys,
         snapshot: mealSnapshot(meal),
       },
     ],
     activeVersionId: id,
   }
+}
+
+/** Refinements after the original card. Older cards without an author count as the user's. */
+export function mealCorrectionCount(
+  versions: readonly { authorRole?: MealCorrectionActor }[],
+  actor: MealCorrectionActor,
+) {
+  return versions
+    .slice(1)
+    .filter((version) => (version.authorRole ?? 'user') === actor).length
 }
 
 export function applyMealSnapshot<T extends MealWithVersions>(
@@ -207,9 +221,9 @@ export function selectMealVersion<T extends MealWithVersions>(
   }
 }
 
-export function canRefineMeal(meal: MealWithVersions): boolean {
+export function canRefineMeal(meal: MealWithVersions, actor: MealCorrectionActor = 'user'): boolean {
   const versions = ensureMealVersions(meal).versions
-  return versions.length < MAX_MEAL_VERSIONS
+  return mealCorrectionCount(versions, actor) < MEAL_CORRECTIONS_PER_ACTOR
 }
 
 function normalizeAssumptionKey(value: string) {

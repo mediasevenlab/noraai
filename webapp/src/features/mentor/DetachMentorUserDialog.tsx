@@ -34,16 +34,16 @@ export function DetachMentorUserDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Отключить пользователя?</AlertDialogTitle>
+          <AlertDialogTitle>Удалить пользователя?</AlertDialogTitle>
           <AlertDialogDescription>
             {user
-              ? `${user.email} исчезнет из вашего списка. Аккаунт пользователя не будет удалён.`
+              ? `${user.displayName ?? user.email} будет удалён из вашего списка. Это действие нельзя отменить. Аккаунт пользователя останется.`
               : ''}
           </AlertDialogDescription>
         </AlertDialogHeader>
         {error && (
           <Alert variant="destructive">
-            <AlertTitle>Не удалось отключить пользователя</AlertTitle>
+            <AlertTitle>Не удалось удалить пользователя</AlertTitle>
             <AlertDescription>{error.message}</AlertDescription>
           </Alert>
         )}
@@ -54,7 +54,7 @@ export function DetachMentorUserDialog({
             onClick={onConfirm}
             variant="destructive"
           >
-            {isPending ? 'Отключаем…' : 'Отключить'}
+            {isPending ? 'Удаляем…' : 'Удалить'}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

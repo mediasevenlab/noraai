@@ -8,7 +8,7 @@ import {
   useSearch,
 } from '@tanstack/react-router'
 import type { RegistrationRole, UserDto, UserRole } from '@web-app-demo/contracts'
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 import {
   NotFoundSection,
@@ -39,8 +39,8 @@ import { SharedMealsFeedPage, authDemoPlayFrom, authDemoSetPaused } from '@/feat
 import { homePathForRole, postAuthPath, userFeedSearch, userGeneralSearch } from '@/features/navigation'
 import { useDismissAppBootSplash } from '@/platform/app-boot-splash'
 import {
-  MentorHome,
   MentorMenteeDiary,
+  MentorProfile,
   MentorSettings,
   MentorUsers,
 } from '@/features/mentor'
@@ -208,6 +208,41 @@ export function UserFeedPage() {
               void navigate({
                 search: userGeneralSearch('plan', planId),
                 to: '/app/general',
+              })
+            }}
+            sharedRationId={rationId}
+            showMobileBackDock
+          />
+        </div>
+      ) : null}
+    </>
+  )
+}
+
+export function MentorFeedPage() {
+  useWorkspaceUser('mentor')
+  const navigate = useNavigate()
+  const search = useLocation({ select: (location) => location.search })
+  const rationId = typeof search.rationId === 'string' ? search.rationId : undefined
+  return (
+    <>
+      <div className={rationId ? 'hidden' : undefined} hidden={Boolean(rationId)}>
+        <SharedMealsFeedPage
+          onOpenRation={(id) => {
+            void navigate({ search: userFeedSearch(id), to: '/mentor/feed' })
+          }}
+        />
+      </div>
+      {rationId ? (
+        <div className="max-md:pb-24">
+          <CurrentPlanPage
+            onBack={() => {
+              void navigate({ search: userFeedSearch(), to: '/mentor/feed' })
+            }}
+            onOpenPlan={(planId) => {
+              void navigate({
+                params: { planId },
+                to: '/mentor/plans/$planId',
               })
             }}
             sharedRationId={rationId}
@@ -389,24 +424,48 @@ export function AdminStepsPage() {
 }
 
 export function MentorHomePage() {
-  const user = useWorkspaceUser('mentor')
-  return <MentorHome user={user} />
+  useWorkspaceUser('mentor')
+  return <Navigate replace to="/mentor/plans" />
 }
 
 export function MentorProfilePage() {
   const user = useWorkspaceUser('mentor')
-  return <AccountProfile user={user} />
+  return <MentorProfile user={user} />
 }
 
 export function MentorUsersPage() {
-  useWorkspaceUser('mentor')
-  return <MentorUsers />
+  const user = useWorkspaceUser('mentor')
+  return <MentorUsers user={user} />
 }
 
 export function MentorMenteePage() {
   useWorkspaceUser('mentor')
   const { userId } = useParams({ from: '/mentorWorkspace/mentor/users/$userId' })
-  return <MentorMenteeDiary planView={<MenteeAssignedPlans userId={userId} />} userId={userId} />
+  const { view: viewSearch } = useSearch({ from: '/mentorWorkspace/mentor/users/$userId' })
+  const view =
+    viewSearch === 'questionnaire' || viewSearch === 'rations' ? viewSearch : 'diary'
+  const navigate = useNavigate()
+  const [rationBack, setRationBack] = useState<(() => void) | null>(null)
+  const rememberRationBack = useCallback((back: (() => void) | null) => {
+    setRationBack(() => back)
+  }, [])
+  const onViewChange = useCallback((next: 'diary' | 'questionnaire' | 'rations') => {
+    void navigate({
+      to: '/mentor/users/$userId',
+      params: { userId },
+      search: { view: next },
+      replace: true,
+    })
+  }, [navigate, userId])
+  return (
+    <MentorMenteeDiary
+      onViewChange={onViewChange}
+      planView={<MenteeAssignedPlans onDetailBack={rememberRationBack} userId={userId} />}
+      rationBack={rationBack}
+      userId={userId}
+      view={view}
+    />
+  )
 }
 
 export function MentorSettingsPage() {

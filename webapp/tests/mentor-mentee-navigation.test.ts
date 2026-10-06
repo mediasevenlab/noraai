@@ -49,6 +49,9 @@ test('mentor sidebar search does not hide overview or app sections', () => {
   expect(appNav).not.toContain('useFilteredBySidebarSearch')
   expect(appNav).toContain('to="/mentor/plans"')
   expect(appNav).toContain('aria-label="Планы"')
+  expect(appNav).toContain('<SidebarGroupLabel>Планы</SidebarGroupLabel>')
+  expect(appNav).toContain('tooltip="Рационы"')
+  expect(appNav).not.toContain('tooltip="Планы"')
   expect(appNav).not.toContain('Приложение')
   expect(appNav).not.toContain('Дневные рационы')
 })
@@ -89,18 +92,44 @@ test('mentee workspace menu includes diary, questionnaire and plan', () => {
     new URL('../src/features/mentor/pages.tsx', import.meta.url),
     'utf8',
   )
-  expect(pages).toContain("{ value: 'diary', label: 'Дневник' }")
-  expect(pages).toContain("{ value: 'questionnaire', label: 'Анкета' }")
-  expect(pages).not.toContain("{ value: 'rations', label: 'Рационы' }")
-  expect(pages).toContain("{ value: 'plan', label: 'План' }")
-  expect(pages).toContain("next === 'plan'")
-  expect(pages).toContain("view === 'plan'")
+  expect(pages).toContain("label: 'Дневник'")
+  expect(pages).toContain("label: 'Анкета'")
+  expect(pages).toContain("label: 'Рационы'")
+  expect(pages).toContain('FileTextIcon')
+  expect(pages).not.toContain('ClipboardListIcon')
+  expect(pages).not.toContain('inline-grid')
+  const questionnaire = readFileSync(
+    new URL('../src/features/mentor/MentorMenteeQuestionnaire.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(questionnaire).toContain('layout="entry"')
+  expect(questionnaire).toContain('title="Калорийность"')
+  expect(questionnaire).toContain('Имя и никнейм, затем анкета с калорийностью.')
+  expect(questionnaire).toContain('<SettingsCanvas')
+  expect(questionnaire).toContain('showJumpLink={false}')
+  expect(questionnaire).toContain('title="Данные профиля"')
+  expect(questionnaire).not.toContain('lg:!ml-0')
+  expect(questionnaire).not.toContain('columns={3}')
+  expect(questionnaire).not.toContain('Изменить')
+  expect(pages).not.toContain('hideHeading')
+  expect(pages).not.toContain('questionnaire.actions')
+  expect(pages).toContain("value: 'rations'")
+  expect(pages).toContain("next === 'rations'")
+  expect(pages).toContain("view === 'rations'")
   expect(pages).toContain('planView')
   const workspace = readFileSync(
     new URL('../src/pages.tsx', import.meta.url),
     'utf8',
   )
   expect(workspace).toContain('<MenteeAssignedPlans')
+  const menteePlans = readFileSync(
+    new URL('../src/features/plans/MenteeAssignedPlans.tsx', import.meta.url),
+    'utf8',
+  )
+  expect(menteePlans).not.toContain('label="Мои"')
+  expect(menteePlans).not.toContain('useMentorUserPlanLibraryQuery')
+  expect(menteePlans).toContain('label="От наставника"')
+  expect(menteePlans).not.toContain('label="Наставник"')
 })
 
 test('mentor diary marks visible mentee meal cards as viewed', () => {

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ListIcon, PlusIcon, SearchIcon } from '@/components/icons'
 import { toast } from '@/components/ui/toast'
 import type { ListSharedRationsResponse, SharedRation } from '@web-app-demo/contracts'
@@ -30,6 +30,9 @@ import { type DiaryPeriodFilter } from './DiaryPeriodPicker'
 import {
   canAddSharedRationToMine,
   createAuthoredPlanFromSharedRation,
+  matchingMentorPlanByTitle,
+  MENTOR_FEED_PLAN_CAP,
+  mentorPlanRequestFromSharedRation,
   sharedRationAddLabel,
   sharedRationMealCreateDrafts,
 } from './feed-ration-clone'
@@ -128,6 +131,7 @@ function SharedRationCard({
   canAdd,
   adding,
   layout = 'grid',
+  showAdd = true,
   onOpen,
   onAdd,
   onToggleLike,
@@ -137,6 +141,7 @@ function SharedRationCard({
   canAdd: boolean
   adding: boolean
   layout?: FeedCardLayout
+  showAdd?: boolean
   onOpen: () => void
   onAdd: () => void
   onToggleLike: () => void
@@ -226,6 +231,7 @@ function SharedRationCard({
             data-slot="meal-card-footer"
             onClick={(event) => event.stopPropagation()}
           >
+            {showAdd ? (
             <NoraHoverTip label={addLabel}>
               <NoraIconButton
                 aria-label={addLabel}
@@ -239,9 +245,10 @@ function SharedRationCard({
                 <PlusIcon className="size-4" />
               </NoraIconButton>
             </NoraHoverTip>
+            ) : null}
             {list ? <FeedListAuthorLabel name={ration.authorName ?? 'Пользователь'} /> : null}
             <div className="ml-auto flex shrink-0 items-center gap-1">
-              {list ? (
+              {list && showAdd ? (
                 <NoraHoverTip label={addLabel}>
                   <NoraIconButton
                     aria-label={addLabel}
@@ -289,9 +296,19 @@ export function SharedRationsFeed({
   const auth = useAuth()
   const queryClient = useQueryClient()
   const rationsQuery = useSharedRationsQuery()
+  const isMentor = auth.user?.role === 'mentor'
   const canUseLibrary = auth.user?.role === 'user'
   const planLibraryQuery = usePlanLibraryQuery(canUseLibrary)
   const { snapshot, persist } = useSyncedPlanLibrary(canUseLibrary)
+  const mentorPlansQuery = useQuery({
+    queryKey: ['session', 'mentor', 'plans'] as const,
+    enabled: Boolean(isMentor && auth.user),
+    queryFn: async () => {
+      const api = await import('@/features/mentor/api')
+      return api.listMentorPlans(auth.transport)
+    },
+  })
+  const mentorPlans = mentorPlansQuery.data?.items ?? []
   const [addingId, setAddingId] = React.useState<string | null>(null)
   const rations = rationsQuery.data?.items ?? []
   const authored = planLibraryQuery.data
@@ -334,7 +351,62 @@ export function SharedRationsFeed({
     likeMutation.mutate({ rationId: ration.id, liked: !ration.liked })
   }
 
+  function rationCanAdd(ration: SharedRation) {
+    if (isMentor) {
+      return (
+        !ration.own
+        && matchingMentorPlanByTitle(ration.title, mentorPlans) == null
+        && mentorPlans.length < MENTOR_FEED_PLAN_CAP
+      )
+    }
+    return canUseLibrary && canAddSharedRationToMine(ration, authored)
+  }
+
+  function rationAddLabel(ration: SharedRation) {
+    if (!isMentor) return sharedRationAddLabel(ration, authored)
+    if (ration.own) return 'Это ваш рацион'
+    if (matchingMentorPlanByTitle(ration.title, mentorPlans)) return 'Уже в ваших рационах'
+    if (mentorPlans.length >= MENTOR_FEED_PLAN_CAP) return 'Уже 20 рационов'
+    return 'В мои'
+  }
+
+  async function addRationToMentor(ration: SharedRation) {
+    if (!auth.user) return
+    if (ration.own) {
+      toast('Это ваш рацион')
+      return
+    }
+    if (matchingMentorPlanByTitle(ration.title, mentorPlans)) {
+      toast('Уже в ваших рационах')
+      return
+    }
+    if (mentorPlans.length >= MENTOR_FEED_PLAN_CAP) {
+      toast.error('Уже 20 рационов')
+      return
+    }
+    const body = mentorPlanRequestFromSharedRation(ration)
+    if (!body) {
+      toast.error('Не удалось добавить рацион')
+      return
+    }
+    setAddingId(ration.id)
+    try {
+      const api = await import('@/features/mentor/api')
+      await api.createMentorPlan(auth.transport, body)
+      await queryClient.invalidateQueries({ queryKey: ['session', 'mentor', 'plans'] })
+      toast.success('Рацион добавлен в ваши рационы')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Не удалось добавить рацион')
+    } finally {
+      setAddingId(null)
+    }
+  }
+
   async function addRationToMine(ration: SharedRation) {
+    if (isMentor) {
+      await addRationToMentor(ration)
+      return
+    }
     if (!canUseLibrary || !auth.user) {
       toast('Добавить рацион в «Мои» можно из аккаунта пользователя')
       return
@@ -433,10 +505,11 @@ export function SharedRationsFeed({
     <section className={feedGridClass(layout)}>
       {visible.map((ration) => (
         <SharedRationCard
-          addLabel={sharedRationAddLabel(ration, authored)}
+          addLabel={rationAddLabel(ration)}
           adding={addingId === ration.id}
-          canAdd={canUseLibrary && canAddSharedRationToMine(ration, authored)}
+          canAdd={rationCanAdd(ration)}
           key={ration.id}
+          showAdd={!isMentor}
           layout={layout}
           onAdd={() => {
             void addRationToMine(ration)

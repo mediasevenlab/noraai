@@ -1,4 +1,4 @@
-import { CalendarRangeIcon } from '@/components/icons'
+import { CalendarRangeIcon, ImagesIcon } from '@/components/icons'
 import { Link, useRouterState } from '@tanstack/react-router'
 
 import {
@@ -8,10 +8,11 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
   useSidebar,
 } from '@/components/ui/sidebar'
 
-import { isMentorPlanPath } from '@/features/navigation'
+import { isMentorFeedPath, isMentorPlanPath, userFeedSearch } from '@/features/navigation'
 
 export function MentorMealPlanNavigation() {
   const pathname = useRouterState({ select: (state) => state.location.pathname })
@@ -19,6 +20,7 @@ export function MentorMealPlanNavigation() {
   const active = isMentorPlanPath(pathname)
 
   return (
+    <>
     <nav aria-label="Планы">
       <SidebarGroup>
         <SidebarGroupLabel>Планы</SidebarGroupLabel>
@@ -33,11 +35,11 @@ export function MentorMealPlanNavigation() {
                     to="/mentor/plans"
                   />
                 )}
-                tooltip="Планы"
+                tooltip="Рационы"
               >
                 <CalendarRangeIcon />
                 <span className="truncate group-data-[collapsible=icon]:hidden">
-                  Планы
+                  Рационы
                 </span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -45,5 +47,34 @@ export function MentorMealPlanNavigation() {
         </SidebarGroupContent>
       </SidebarGroup>
     </nav>
+    <SidebarSeparator />
+    <nav aria-label="Социальная сеть">
+      <SidebarGroup>
+        <SidebarGroupLabel>Социальная сеть</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={isMentorFeedPath(pathname)}
+                render={(
+                  <Link
+                    onClick={() => setOpenMobile(false)}
+                    search={userFeedSearch()}
+                    to="/mentor/feed"
+                  />
+                )}
+                tooltip="Лента"
+              >
+                <ImagesIcon />
+                <span className="truncate group-data-[collapsible=icon]:hidden">
+                  Лента
+                </span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    </nav>
+    </>
   )
 }

@@ -25,6 +25,8 @@ export type RationMeal = {
   protein: number
   fat: number
   carbs: number
+  /** Set when a mentor plan stores several days in one meal list. */
+  dayIndex?: number
 }
 
 export type RationEntry = {

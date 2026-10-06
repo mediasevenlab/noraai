@@ -222,6 +222,10 @@ export type MentorPlansStore = {
   deleteMentorPlan(mentorId: string, planId: string): Promise<void>
 }
 
+export type RationCleanup = {
+  forgetRation(planId: string, userId?: string): Promise<void>
+}
+
 export type SharedRationsStore = {
   findByAuthorAndSource(
     authorId: string,

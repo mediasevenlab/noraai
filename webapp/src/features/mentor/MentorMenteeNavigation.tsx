@@ -118,6 +118,7 @@ export function MentorMenteeNavigation() {
                 <Link
                   onClick={() => setOpenMobile(false)}
                   params={{ userId: user.id }}
+                  search={{ view: 'diary' }}
                   to="/mentor/users/$userId"
                 />
               )}
@@ -182,7 +183,7 @@ export function MentorMenteeNavigation() {
   return (
     <nav aria-label="Пользователи наставника">
       <Collapsible
-        className="group/collapsible"
+        className="group/collapsible data-[closed]:-mt-1"
         open={searching || open}
         onOpenChange={(next) => {
           if (!searching) setOpen(next)

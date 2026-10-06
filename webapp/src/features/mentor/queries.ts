@@ -13,6 +13,7 @@ import {
   deleteMentorPlan,
   detachMentorUser,
   getCurrentUserPlans,
+  getMentorUserPlanLibrary,
   getMentorUserPlans,
   getMentorUserQuestionnaire,
   getMentorUsers,
@@ -30,6 +31,8 @@ export const mentorQueryKeys = {
   unreadMeals: () => [...mentorQueryKeys.all, 'unread-meals'] as const,
   questionnaire: (userId: string) =>
     [...mentorQueryKeys.all, 'questionnaire', userId] as const,
+  planLibrary: (userId: string) =>
+    [...mentorQueryKeys.all, 'plan-library', userId] as const,
   plans: () => [...mentorQueryKeys.all, 'plans'] as const,
 }
 
@@ -131,6 +134,15 @@ export function useDetachMentorUserMutation() {
   })
 }
 
+export function useMentorUserPlanLibraryQuery(userId: string, enabled = true) {
+  const auth = useAuth()
+  return useQuery({
+    enabled: enabled && Boolean(userId),
+    queryKey: mentorQueryKeys.planLibrary(userId),
+    queryFn: () => getMentorUserPlanLibrary(auth.transport, userId),
+  })
+}
+
 export function useMentorUserQuestionnaireQuery(userId: string, enabled = true) {
   const auth = useAuth()
   return useQuery({
@@ -188,8 +200,12 @@ export function useDeleteMentorPlanMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (planId: string) => deleteMentorPlan(auth.transport, planId),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: mentorQueryKeys.plans() }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: mentorQueryKeys.plans() })
+      await queryClient.invalidateQueries({ queryKey: ['session', 'plans'] })
+      await queryClient.invalidateQueries({ queryKey: ['session', 'meals'] })
+      await queryClient.invalidateQueries({ queryKey: ['session', 'plan-library'] })
+    },
   })
 }
 

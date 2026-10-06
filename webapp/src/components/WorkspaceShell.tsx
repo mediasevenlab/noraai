@@ -80,6 +80,7 @@ const iconsByPath = {
   '/admin/settings': SettingsIcon,
   '/mentor': HomeIcon,
   '/mentor/plans': CalendarRangeIcon,
+  '/mentor/feed': ImagesIcon,
   '/mentor/profile': UserIcon,
   '/mentor/users': UsersIcon,
   '/mentor/settings': SettingsIcon,
@@ -224,7 +225,6 @@ export function WorkspaceShell({
             : user.role === 'mentor'
               ? (
                   <>
-                    <SidebarSeparator />
                     <MentorMenteeNavigation />
                     <SidebarSeparator />
                     <MentorMealPlanNavigation />

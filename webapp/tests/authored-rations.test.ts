@@ -29,6 +29,7 @@ import {
   joinDraftLines,
   moveDraftLine,
   previewRationFromDraft,
+  rationPlanDayDrafts,
   rationToDraft,
   readAssignedAuthoredRations,
   removeDraftLine,
@@ -301,6 +302,18 @@ describe('mentor authored rations', () => {
       ok: false,
       error: 'Добавьте хотя бы один приём с названием',
     })
+  })
+
+  test('splits a mentor plan into one draft per day', () => {
+    const days = rationPlanDayDrafts({
+      ...sample,
+      meals: [
+        { ...sample.meals[0]!, title: 'Овсянка', dayIndex: 0 },
+        { ...sample.meals[0]!, title: 'Омлет', dayIndex: 1 },
+      ],
+    })
+    expect(days).toHaveLength(2)
+    expect(days.map((day) => day.map((meal) => meal.title))).toEqual([['Овсянка'], ['Омлет']])
   })
 
   test('round-trips a saved card and drops broken storage rows', () => {

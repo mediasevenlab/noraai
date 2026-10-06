@@ -15,7 +15,7 @@ import {
   writePlanLibrarySnapshot,
 } from '@/platform/plan-library-local'
 
-import { deleteMyMeal, listMentorUserMeals, listMyMeals, listSharedMeals, listSharedRations } from './api'
+import { deleteMyMeal, listMentorUserFavorites, listMentorUserMeals, listMyMeals, listSharedMeals, listSharedRations } from './api'
 import { readCompletedRationMealIds } from './ration-done'
 import { purgeExpiredPendingRationMeals } from './ration-plan-expiry'
 
@@ -82,6 +82,17 @@ export function useSharedRationsQuery() {
     queryKey: mealsQueryKeys.sharedRations(),
     enabled: Boolean(auth.user),
     queryFn: async () => listSharedRations(auth.transport),
+  })
+}
+
+export function useMentorSubjectFavoritesQuery(subjectUserId: string | undefined) {
+  const auth = useAuth()
+  return useQuery({
+    queryKey: ['mentor', 'subject-favorites', subjectUserId ?? 'none'] as const,
+    enabled: Boolean(auth.user && subjectUserId),
+    staleTime: 30_000,
+    retry: false,
+    queryFn: () => listMentorUserFavorites(auth.transport, subjectUserId!),
   })
 }
 

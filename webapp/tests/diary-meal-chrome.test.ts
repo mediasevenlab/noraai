@@ -914,7 +914,7 @@ test('diary card footer keeps bookmark and share without an overflow menu', () =
   expect(card).not.toContain('formatMealStamp(meal.at)')
   expect(card).not.toContain('formatWeekdayMealStamp(meal.at)')
   expect(card).toContain('ml-auto flex shrink-0 items-center gap-1')
-  expect(card).toContain('disabled={readOnly || !onAddToPlan || addingToPlan}')
+  expect(card).toContain('disabled={!onAddToPlan || addingToPlan}')
   expect(card).not.toContain('readOnly || !onAddToPlan ? null')
   expect(card).toContain("label={list ? 'В рацион' : 'В план'}")
   expect(card.indexOf('MealCardAddButton')).toBeLessThan(card.indexOf('<CardActions'))

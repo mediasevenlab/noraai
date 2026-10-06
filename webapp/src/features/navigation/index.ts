@@ -1,5 +1,6 @@
 export {
   homePathForRole,
+  isMentorFeedPath,
   isMentorPlanPath,
   isUserPlanPath,
   userGeneralSearch,

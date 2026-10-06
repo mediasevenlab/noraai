@@ -1,6 +1,8 @@
 import {
   connectCurrentUserToMentorRequestSchema,
   currentUserMentorResponseSchema,
+  deleteMentorPlanResponseSchema,
+  forgetRationParamsSchema,
   mentorUserMutationResponseSchema,
   putQuestionnaireRequestSchema,
   generationPricingResponseSchema,
@@ -104,6 +106,15 @@ export function startTelegramLink(
 
 export function getGenerationPricing(transport: AuthenticatedTransport) {
   return transport.request('/api/users/me/generation-pricing', generationPricingResponseSchema)
+}
+
+export function forgetMyRation(transport: AuthenticatedTransport, planId: string) {
+  const params = forgetRationParamsSchema.parse({ planId })
+  return transport.request(
+    `/api/users/me/plans/${encodeURIComponent(params.planId)}`,
+    deleteMentorPlanResponseSchema,
+    { method: 'DELETE' },
+  )
 }
 
 export function resetMyGenerationSpend(transport: AuthenticatedTransport) {

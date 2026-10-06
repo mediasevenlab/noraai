@@ -215,6 +215,32 @@ export function isRationPlanDone(
   return isPlannedDiaryMeal(meal) && !isRationPlanPending(meal, completedIds)
 }
 
+/**
+ * Pending unmodified copies leave the diary with the ration.
+ * Completed meals and meals the user has edited stay.
+ */
+export function mealRemovedWithRation(
+  meal: {
+    assumptions?: readonly string[]
+    versions?: readonly unknown[]
+    extraImages?: readonly string[]
+  },
+  planId: string,
+): boolean {
+  const assumptions = meal.assumptions ?? []
+  const belongs =
+    assumptions.includes(weekPlanAssumption(planId))
+    || assumptions.includes(rationPlanAssumption(planId))
+  if (!belongs) return false
+  if (assumptions.includes(RATION_DIARY_DONE_MARK)) return false
+  if (mealHasAuthorPhoto(meal)) return false
+  if ((meal.versions?.length ?? 0) > 1) return false
+  return (
+    assumptions.includes(RATION_DIARY_SOURCE_MARK)
+    || assumptions.some((item) => item.startsWith(RATION_PLAN_ID_PREFIX))
+  )
+}
+
 type DiaryVisibilityMeal = Pick<MealEntry, 'id' | 'fromApi'> & {
   title?: string
   assumptions?: readonly string[]

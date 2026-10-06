@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 import { Hono } from 'hono'
 
-import { createAuthSecurity, isAuthWriteBudgetExemptPath, isFavoritesPath, isMealWritePath, isPlanLibraryPath, mealWriteRateLimitMax } from './security'
+import { createAuthSecurity, isAuthWriteBudgetExemptPath, isFavoritesPath, isMealWritePath, isMentorPlanBodyPath, isPlanLibraryPath, mealWriteRateLimitMax } from './security'
 
 test('meal write paths are distinct from account mutations', () => {
   expect(isMealWritePath('/api/users/me')).toBe(false)
@@ -11,6 +11,9 @@ test('meal write paths are distinct from account mutations', () => {
   expect(isMealWritePath('/api/users/me/meals/transcribe')).toBe(true)
   expect(isMealWritePath('/api/mentor/users/0196f6f8-6600-7000-8000-000000000001/meals')).toBe(true)
   expect(isMealWritePath('/api/users/me/favorites')).toBe(false)
+  expect(isMentorPlanBodyPath('/api/mentor/plans')).toBe(true)
+  expect(isMentorPlanBodyPath('/api/mentor/plans/0196f6f8-6600-7000-8000-000000000001')).toBe(true)
+  expect(isMentorPlanBodyPath('/api/mentor/users')).toBe(false)
   expect(isFavoritesPath('/api/users/me/favorites')).toBe(true)
   expect(isFavoritesPath('/api/users/me')).toBe(false)
   expect(isPlanLibraryPath('/api/users/me/plan-library')).toBe(true)
@@ -67,6 +70,31 @@ test('meal writes do not consume the account auth write budget', async () => {
   expect(limited.status).toBe(429)
   expect(await limited.json()).toMatchObject({
     error: { message: 'Too many authentication requests' },
+  })
+})
+
+test('mentor plan writes accept a meal-sized photo that account routes reject', async () => {
+  const app = new Hono()
+  for (const middleware of createAuthSecurity({
+    bodyLimitBytes: 32,
+    mealBodyLimitBytes: 200,
+    rateLimitMax: 10,
+    rateLimitWindowSeconds: 60,
+    trustProxy: false,
+  })) {
+    app.use('/api/mentor/*', middleware)
+  }
+  app.post('/api/mentor/plans', (c) => c.json({ ok: true }))
+  app.put('/api/mentor/plans/:planId', (c) => c.json({ ok: true }))
+  app.post('/api/mentor/settings', (c) => c.json({ ok: true }))
+
+  const photo = 'x'.repeat(80)
+  expect((await app.request('/api/mentor/plans', { method: 'POST', body: photo })).status).toBe(200)
+  expect((await app.request('/api/mentor/plans/plan-1', { method: 'PUT', body: photo })).status).toBe(200)
+  const limited = await app.request('/api/mentor/settings', { method: 'POST', body: photo })
+  expect(limited.status).toBe(413)
+  expect(await limited.json()).toMatchObject({
+    error: { code: 'PAYLOAD_TOO_LARGE' },
   })
 })
 

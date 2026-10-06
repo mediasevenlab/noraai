@@ -50,10 +50,10 @@ export function planMealDeletePrompt(
 }
 
 export function planCardDeletePrompt(title: string): CardDeletePrompt {
-  const name = cardName(title, 'этот план')
+  const name = cardName(title, 'этот рацион')
   return {
-    title: 'Удалить план?',
-    description: `План «${name}» будет удалён. Вернуть его не получится.`,
+    title: 'Удалить рацион?',
+    description: `Рацион «${name}» исчезнет из списков. Невыполненные приёмы из него пропадут из дневника. Выполненные и изменённые останутся.`,
     confirmLabel: 'Удалить',
   }
 }

@@ -8,6 +8,7 @@ import {
   connectCurrentUserToMentorRequestSchema,
   currentUserMentorResponseSchema,
   deleteMentorPlanResponseSchema,
+  forgetRationParamsSchema,
   mentorPlanMutationResponseSchema,
   mentorPlanParamsSchema,
   mentorPlansResponseSchema,
@@ -585,6 +586,21 @@ const updateMentorPlanRoute = createRoute({
   },
 })
 
+const forgetCurrentUserRationRoute = createRoute({
+  method: 'delete',
+  path: '/me/plans/{planId}',
+  security: bearerSecurity,
+  request: { params: forgetRationParamsSchema },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: deleteMentorPlanResponseSchema } },
+      description: 'Removed the ration from the current user',
+    },
+    400: { content: errorContent, description: 'Invalid plan id' },
+    401: { content: errorContent, description: 'Authentication required' },
+  },
+})
+
 const deleteMentorPlanRoute = createRoute({
   method: 'delete',
   path: '/plans/{planId}',
@@ -599,6 +615,40 @@ const deleteMentorPlanRoute = createRoute({
     401: { content: errorContent, description: 'Authentication required' },
     403: { content: errorContent, description: 'Mentor access required' },
     404: { content: errorContent, description: 'Plan not found' },
+  },
+})
+
+const getMentorUserFavoritesRoute = createRoute({
+  method: 'get',
+  path: '/users/{userId}/favorites',
+  security: bearerSecurity,
+  request: { params: adminUserParamsSchema },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: userFavoritesSchema } },
+      description: 'Saved meals of a connected mentee',
+    },
+    400: { content: errorContent, description: 'Invalid user id' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Mentor access required' },
+    404: { content: errorContent, description: 'Connected user not found' },
+  },
+})
+
+const getMentorUserPlanLibraryRoute = createRoute({
+  method: 'get',
+  path: '/users/{userId}/plan-library',
+  security: bearerSecurity,
+  request: { params: adminUserParamsSchema },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: userPlanLibrarySchema } },
+      description: 'Plan library of a connected mentee',
+    },
+    400: { content: errorContent, description: 'Invalid user id' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Mentor access required' },
+    404: { content: errorContent, description: 'Connected user not found' },
   },
 })
 
@@ -741,6 +791,14 @@ export function createUsersRoutes({
       200,
     )
   })
+  userRoutes.openapi(forgetCurrentUserRationRoute, async (c) =>
+    c.json(
+      await executeUsers(() =>
+        service.forgetCurrentUserRation(c.var.user, c.req.valid('param').planId),
+      ),
+      200,
+    ),
+  )
   userRoutes.openapi(shareMyRationRoute, async (c) => {
     return c.json(
       await executeUsers(() =>
@@ -846,6 +904,22 @@ export function createUsersRoutes({
     c.json(
       await executeUsers(() =>
         service.deleteMentorPlan(c.var.user, c.req.valid('param').planId),
+      ),
+      200,
+    ),
+  )
+  mentorRoutes.openapi(getMentorUserFavoritesRoute, async (c) =>
+    c.json(
+      await executeUsers(() =>
+        service.getMentorUserFavorites(c.var.user, c.req.valid('param').userId),
+      ),
+      200,
+    ),
+  )
+  mentorRoutes.openapi(getMentorUserPlanLibraryRoute, async (c) =>
+    c.json(
+      await executeUsers(() =>
+        service.getMentorUserPlanLibrary(c.var.user, c.req.valid('param').userId),
       ),
       200,
     ),

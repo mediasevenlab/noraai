@@ -32,6 +32,7 @@ export function createUsersModule(options: CreateUsersModuleOptions) {
     currentUserMentorReader: repository,
     mealMediaCleanup: options.mealMediaCleanup,
     mentorPlansStore: repository,
+    rationCleanup: repository,
     mentorUsersManager: repository,
     profileWriter: repository,
     questionnaireStore: repository,

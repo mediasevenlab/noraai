@@ -29,6 +29,7 @@ export type MealVersionEntry = {
   createdAt: string
   label: string
   note?: string
+  authorRole?: 'user' | 'mentor'
 }
 
 export type MealEntry = {
@@ -55,6 +56,8 @@ export type MealEntry = {
   activeVersionId?: string
   /** True for persisted server meals (UUID), false for demo catalog. */
   fromApi?: boolean
+  /** Owner of a persisted meal. Feed share is limited to this account. */
+  userId?: string
   /** Owner published this meal to the rations feed. */
   shared?: boolean
   /** Present on public feed cards. */

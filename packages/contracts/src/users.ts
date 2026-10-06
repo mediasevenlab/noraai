@@ -184,6 +184,10 @@ export const questionnaireResponseSchema = z
 export const rationGoalSchema = z.enum(['Похудение', 'Набор', 'Поддержание', 'Здоровье'])
 export const rationMealSlotSchema = z.enum(['Завтрак', 'Обед', 'Ужин', 'Перекус'])
 
+/** A mentor plan can hold a full week of meals, same ceiling as a shared ration. */
+export const MENTOR_RATION_MEAL_LIMIT = 80
+export const AUTHORED_PLAN_DAY_COUNT_MAX = 7
+
 export const mentorRationMealSchema = z
   .object({
     slot: rationMealSlotSchema,
@@ -195,6 +199,7 @@ export const mentorRationMealSchema = z
     protein: z.number().int().nonnegative().max(5_000),
     fat: z.number().int().nonnegative().max(5_000),
     carbs: z.number().int().nonnegative().max(5_000),
+    dayIndex: z.number().int().min(0).max(AUTHORED_PLAN_DAY_COUNT_MAX - 1).optional(),
   })
   .strict()
 
@@ -208,12 +213,12 @@ export const mentorRationSchema = z
     source: z.string().trim().min(1).max(80),
     image: z.string().max(1_500_000),
     days: z.number().int().positive().max(30),
-    mealsPerDay: z.number().int().positive().max(20),
+    mealsPerDay: z.number().int().positive().max(MENTOR_RATION_MEAL_LIMIT),
     kcal: z.number().int().nonnegative(),
     protein: z.number().int().nonnegative(),
     fat: z.number().int().nonnegative(),
     carbs: z.number().int().nonnegative(),
-    meals: z.array(mentorRationMealSchema).min(1).max(20),
+    meals: z.array(mentorRationMealSchema).min(1).max(MENTOR_RATION_MEAL_LIMIT),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
   })
@@ -224,7 +229,8 @@ export const upsertMentorRationRequestSchema = z
     title: z.string().trim().min(1).max(120),
     description: z.string().trim().max(2000).default(''),
     goal: rationGoalSchema,
-    meals: z.array(mentorRationMealSchema).min(1).max(20),
+    image: z.string().max(1_500_000).optional(),
+    meals: z.array(mentorRationMealSchema).min(1).max(MENTOR_RATION_MEAL_LIMIT),
   })
   .strict()
 
@@ -243,6 +249,11 @@ export const mentorPlanMutationResponseSchema = z
 export const deleteMentorPlanResponseSchema = z
   .object({
     ok: z.literal(true),
+  })
+  .strict()
+export const forgetRationParamsSchema = z
+  .object({
+    planId: z.string().trim().regex(/^[A-Za-z0-9:_-]{1,80}$/),
   })
   .strict()
 export const mentorPlanParamsSchema = z
@@ -311,8 +322,6 @@ const catalogPlanIdSchema = z
   .max(80)
 
 const planStartDayKeySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
-
-export const AUTHORED_PLAN_DAY_COUNT_MAX = 7
 
 export const authoredUserPlanSchema = z
   .object({

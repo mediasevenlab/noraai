@@ -417,6 +417,19 @@ export function finalizePlanDaysDraft(
   return { ok: true, days: entries }
 }
 
+/** One draft day per stored dayIndex. Meals without a later day stay on day 1. */
+export function rationPlanDayDrafts(ration: RationEntry): RationMealDraft[][] {
+  const grouped = ration.meals.some((meal) => (meal.dayIndex ?? 0) > 0)
+  if (!grouped) return [rationToDraft(ration).meals]
+  const last = Math.max(...ration.meals.map((meal) => meal.dayIndex ?? 0))
+  const days: RationMealDraft[][] = []
+  for (let dayIndex = 0; dayIndex <= last; dayIndex += 1) {
+    const meals = ration.meals.filter((meal) => (meal.dayIndex ?? 0) === dayIndex)
+    days.push(rationToDraft({ ...ration, meals }).meals)
+  }
+  return days
+}
+
 export function rationToDraft(ration: RationEntry): RationDraft {
   return {
     id: ration.id,
@@ -692,6 +705,38 @@ export function rationToUpsertRequest(
     description: ration.description,
     goal: ration.goal,
     meals: ration.meals,
+  }
+}
+
+/** One mentor plan request from the day plaques the user editor already saves. */
+export function mentorPlanUpsertFromDays(
+  days: readonly RationEntry[],
+): UpsertMentorRationRequest | null {
+  const first = days[0]
+  if (!first) return null
+  const meals = days.flatMap((day, dayIndex) =>
+    day.meals
+      .filter((meal) => meal.title.trim())
+      .map((meal) => ({
+        slot: meal.slot,
+        title: meal.title.trim(),
+        ingredients: meal.ingredients,
+        steps: meal.steps,
+        image: meal.image,
+        kcal: meal.kcal,
+        protein: meal.protein,
+        fat: meal.fat,
+        carbs: meal.carbs,
+        dayIndex,
+      })),
+  )
+  if (meals.length === 0) return null
+  return {
+    title: first.title,
+    description: first.description,
+    goal: first.goal,
+    image: first.image || undefined,
+    meals,
   }
 }
 

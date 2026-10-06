@@ -20,6 +20,7 @@ export type MentorRoutePath =
   | '/mentor/settings'
   | '/mentor/payments'
   | '/mentor/plans'
+  | '/mentor/feed'
 export type WorkspaceRoutePath = UserRoutePath | AdminRoutePath | MentorRoutePath
 
 export type WorkspaceNavigationItem = {
@@ -46,6 +47,7 @@ const CONTENT_AREA_PATHS = new Set<WorkspaceRoutePath>([
   '/app/feed',
   '/app/general',
   '/mentor/plans',
+  '/mentor/feed',
 ])
 
 /** Home destinations that still belong in the account menu, not the top primary group. */
@@ -67,8 +69,8 @@ const navigationByRole = {
     { label: 'Настройки', to: '/admin/settings' },
   ],
   mentor: [
-    { label: 'Главная', to: '/mentor' },
-    { label: 'Планы', to: '/mentor/plans' },
+    { label: 'Рационы', to: '/mentor/plans' },
+    { label: 'Лента', to: '/mentor/feed' },
     { label: 'Профиль', to: '/mentor/profile' },
     { label: 'Пользователи', to: '/mentor/users' },
     { label: 'Настройки', to: '/mentor/settings' },
@@ -106,7 +108,7 @@ export function secondaryNavigationItemsForRole(role: UserRole) {
 
 export function homePathForRole(role: UserRole): WorkspaceRoutePath {
   if (role === 'admin') return '/admin/users'
-  if (role === 'mentor') return '/mentor'
+  if (role === 'mentor') return '/mentor/plans'
   return '/app/general'
 }
 
@@ -146,6 +148,10 @@ export function isMentorPlanPath(pathname: string) {
   return pathname === '/mentor/plans' || pathname.startsWith('/mentor/plans/')
 }
 
+export function isMentorFeedPath(pathname: string) {
+  return pathname === '/mentor/feed'
+}
+
 export function navigationItemMatchingPath(role: UserRole, pathname: string) {
   const items = navigationItemsForRole(role)
   const exact = items.find((item) => item.to === pathname)
@@ -167,6 +173,9 @@ export function navigationItemMatchingPath(role: UserRole, pathname: string) {
   if (role === 'mentor' && isMentorPlanPath(pathname)) {
     return items.find((item) => item.to === '/mentor/plans')
   }
+  if (role === 'mentor' && (pathname === '/mentor/users' || pathname.startsWith('/mentor/users/'))) {
+    return items.find((item) => item.to === '/mentor/users')
+  }
   return undefined
 }
 
@@ -182,7 +191,7 @@ export function resolveRoleDestination(
   role: UserRole,
   pathname: string,
 ): WorkspaceRoutePath {
-  if (role === 'mentor' && isRetiredMentorRationsPath(pathname)) {
+  if (role === 'mentor' && (pathname === '/mentor' || isRetiredMentorRationsPath(pathname))) {
     return '/mentor/plans'
   }
   if (role === 'user' && isRetiredUserRationsPath(pathname)) {
@@ -230,7 +239,7 @@ export function safeReturnPath(role: UserRole, value: string | undefined): strin
     return homePathForRole('user')
   }
 
-  if (role === 'mentor' && isRetiredMentorRationsPath(url.pathname)) {
+  if (role === 'mentor' && (url.pathname === '/mentor' || isRetiredMentorRationsPath(url.pathname))) {
     return '/mentor/plans'
   }
 

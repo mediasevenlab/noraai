@@ -37,6 +37,7 @@ import type {
   MealMediaCleanup,
   MentorPlansStore,
   MentorUsersManager,
+  RationCleanup,
   PlanAssignmentsStore,
   ProfileWriter,
   QuestionnaireStore,
@@ -66,6 +67,7 @@ type UsersServiceDependencies = {
   userPlanLibraryStore?: UserPlanLibraryStore
   sharedRationsStore?: SharedRationsStore
   mentorPlansStore?: MentorPlansStore
+  rationCleanup?: RationCleanup
   telegramLinks?: TelegramLinkStore
   botUsername?: string
   notifyBotUsername?: string
@@ -179,6 +181,21 @@ export class UsersService {
   async getMentorUserPlans(principal: AuthenticatedPrincipal, menteeUserId: string) {
     await this.dependencies.mentorUsersManager.requireAssignedMentee(principal.id, menteeUserId)
     return this.readPlanAssignment(menteeUserId)
+  }
+
+  async getMentorUserPlanLibrary(principal: AuthenticatedPrincipal, menteeUserId: string) {
+    await this.dependencies.mentorUsersManager.requireAssignedMentee(principal.id, menteeUserId)
+    const saved = await this.dependencies.userPlanLibraryStore?.getPlanLibrary(menteeUserId)
+    return this.toPlanLibraryDto(saved)
+  }
+
+  async getMentorUserFavorites(principal: AuthenticatedPrincipal, menteeUserId: string) {
+    await this.dependencies.mentorUsersManager.requireAssignedMentee(principal.id, menteeUserId)
+    const saved = await this.dependencies.userFavoritesStore?.getFavorites(menteeUserId)
+    return {
+      mealIds: publishedFavoriteMealIds(saved?.mealIds ?? []),
+      updatedAt: saved?.updatedAt.toISOString() ?? null,
+    }
   }
 
   async getCurrentUserFavorites(principal: AuthenticatedPrincipal) {
@@ -332,6 +349,13 @@ export class UsersService {
 
   async deleteMentorPlan(principal: AuthenticatedPrincipal, planId: string) {
     await this.requireMentorPlansStore().deleteMentorPlan(principal.id, planId)
+    return { ok: true as const }
+  }
+
+  async forgetCurrentUserRation(principal: AuthenticatedPrincipal, planId: string) {
+    const cleanup = this.dependencies.rationCleanup
+    if (!cleanup) throw new UsersFailure('not_found', 'Plans are unavailable')
+    await cleanup.forgetRation(planId, principal.id)
     return { ok: true as const }
   }
 

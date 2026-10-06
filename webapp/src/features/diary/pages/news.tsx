@@ -54,6 +54,7 @@ import { readPlanLibrarySnapshot, withAuthoredPlan } from "@/platform/plan-libra
 import { readPlanMealLayout } from "@/platform/plan-meal-layout";
 import { mergeFavoriteIds, type SavedAccountScope } from "@/platform/saved-ids";
 import { cn } from "@/lib/utils";
+import { dateFromDayKey } from "@/platform/plan-slots";
 
 import {
   createMyMeal,
@@ -147,6 +148,7 @@ import { mealDtoToEntry } from "../merge-meals";
 import {
   mealsQueryKeys,
   useMealsQuery,
+  useMentorSubjectFavoritesQuery,
   usePlanLibraryQuery,
   useUserFavoritesQuery,
   favoritesQueryKeys,
@@ -476,6 +478,8 @@ function FeedDayStats({
 export function NewsPage({
   subjectUserId,
   subjectEmail,
+  subjectPlan,
+  subjectPlanPending = false,
   periodStartIso,
   readOnly = false,
   heading,
@@ -491,6 +495,13 @@ export function NewsPage({
   subjectUserId?: string;
   /** Used for rare per-user calendar start overrides (mentor may pass mentee email). */
   subjectEmail?: string;
+  /** Connected user's selected plan, so a mentor sees the same diary. */
+  subjectPlan?: {
+    selectedPlanIds: readonly string[];
+    planStarts: Readonly<Record<string, string>>;
+  };
+  /** Mentor plan library is still loading. */
+  subjectPlanPending?: boolean;
   /** Registration/start day for the period picker label (mentor may pass mentee createdAt). */
   periodStartIso?: string;
   readOnly?: boolean;
@@ -528,16 +539,19 @@ export function NewsPage({
   const isOwnAccount = Boolean(user && subjectId && user.id === subjectId);
   const mealsQuery = useMealsQuery(subjectId);
   const favoritesQuery = useUserFavoritesQuery(isOwnAccount);
+  const subjectFavoritesQuery = useMentorSubjectFavoritesQuery(
+    readOnly && !isOwnAccount ? subjectId : undefined,
+  );
   const planLibraryQuery = usePlanLibraryQuery(isOwnAccount);
   const { persist: persistPlanLibrary, snapshot: ownPlanLibrary } =
     useSyncedPlanLibrary(isOwnAccount);
   const planLibrary = planLibraryQuery.data
     ? snapshotFromPlanLibrary(planLibraryQuery.data)
     : readPlanLibrarySnapshot(savedScope);
-  const selectedPlanIds = React.useMemo(
-    () => new Set(planLibrary.selectedPlanIds),
-    [planLibrary.selectedPlanIds],
-  );
+  const selectedPlanIds = React.useMemo(() => {
+    if (subjectPlan) return new Set(subjectPlan.selectedPlanIds);
+    return new Set(planLibrary.selectedPlanIds);
+  }, [planLibrary.selectedPlanIds, subjectPlan]);
   const selectedPlanId = planLibrary.selectedPlanIds[0] ?? null;
   const questionnaireQuery = useQuestionnaireQuery(isOwnAccount);
   const [tab, setTab] = React.useState<FeedTab>("Все");
@@ -646,7 +660,7 @@ export function NewsPage({
         (user && user.id === subjectId ? user.email : undefined),
     };
     setDiaryState(ensureDiaryState(subjectId));
-    setSaved(readSavedMealIds(scope));
+    if (!readOnly) setSaved(readSavedMealIds(scope));
     setCompletedIds(readCompletedRationMealIds(scope));
     setDiaryAtById(readDiaryPlanAtById(scope));
     setSkippedIds(readSkippedPlanMealIds(scope));
@@ -664,7 +678,12 @@ export function NewsPage({
     setShowWholePlan(false);
     setMealGalleries({});
     setViewedMealIds(new Set());
-  }, [subjectEmail, subjectId, user]);
+  }, [readOnly, subjectEmail, subjectId, user]);
+
+  React.useEffect(() => {
+    if (!readOnly) return;
+    setSaved(new Set(subjectFavoritesQuery.data?.mealIds ?? []));
+  }, [readOnly, subjectFavoritesQuery.data, subjectId]);
 
   const selectedPlanKey = [...selectedPlanIds].sort().join("|");
   React.useEffect(() => {
@@ -677,9 +696,11 @@ export function NewsPage({
     );
   }, [savedScope.email, selectedPlanKey, subjectId]);
 
-  React.useEffect(() => {
-    if (selectedPlanIds.size === 0) setShowWholePlan(false);
-  }, [selectedPlanIds.size]);
+  const userMeals = React.useMemo(
+    () => (mealsQuery.data?.items ?? []).map(mealDtoToEntry),
+    [mealsQuery.data?.items],
+  );
+  const seesSubjectDiary = (isOwnAccount && !readOnly) || Boolean(subjectPlan);
 
   React.useEffect(() => {
     if (!isOwnAccount || !subjectId || !user || !favoritesQuery.data) return;
@@ -730,10 +751,10 @@ export function NewsPage({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [query, searchOpen]);
 
-  const userMeals = React.useMemo(
-    () => (mealsQuery.data?.items ?? []).map(mealDtoToEntry),
-    [mealsQuery.data?.items],
-  );
+  React.useEffect(() => {
+    if (selectedPlanIds.size === 0) setShowWholePlan(false);
+  }, [selectedPlanIds.size]);
+
   React.useEffect(() => {
     if (!isOwnAccount) return;
     setCompletedIds((current) => {
@@ -849,11 +870,15 @@ export function NewsPage({
           (item) => diaryPlanIdForMeal(item, selectedPlanIds, now) === planId,
         )
       : [];
+    const remoteStart = planId ? subjectPlan?.planStarts[planId] : undefined;
+    const planStart = remoteStart
+      ? dateFromDayKey(remoteStart)
+      : diaryPlanStartForMeal(meal, savedScope, selectedPlanIds, now);
     return planOccurrenceDiaryAtWithLayout(meal, {
       frozenAt: diaryAtById[meal.id],
       completedIds,
       now,
-      planStart: diaryPlanStartForMeal(meal, savedScope, selectedPlanIds, now),
+      planStart,
       layout: planId ? readPlanMealLayout(savedScope, planId) : null,
       planMeals,
     });
@@ -1248,7 +1273,7 @@ export function NewsPage({
       query,
       completedIds,
     });
-    if (isOwnAccount && !readOnly) {
+    if (seesSubjectDiary) {
       const selectedIds = selectedPlanIds;
       list = list
         .filter((meal) => !skippedIds.has(meal.id))
@@ -1285,8 +1310,8 @@ export function NewsPage({
     completedIds,
     diaryAtById,
     skippedIds,
-    isOwnAccount,
-    readOnly,
+    seesSubjectDiary,
+    subjectPlan,
     savedScope.userId,
     savedScope.email,
     selectedPlanKey,
@@ -1313,9 +1338,7 @@ export function NewsPage({
   );
   const feedFiltersActive =
     tab !== "Все" || Boolean(query.trim()) || periodFilter != null;
-  const showPlanChip = Boolean(
-    isOwnAccount && !readOnly && selectedPlanIds.size > 0,
-  );
+  const showPlanChip = Boolean(seesSubjectDiary && selectedPlanIds.size > 0);
   const visibleMealKey = filtered.map((meal) => meal.id).join("|");
 
   React.useEffect(() => {
@@ -1470,7 +1493,7 @@ export function NewsPage({
                 ) : null}
                 {toolbarDisabled ? null : (
                   <div className="diary-toolbar-press flex min-w-0 flex-1 items-center gap-2">
-                    {isOwnAccount && !readOnly && selectedPlanIds.size > 0 ? (
+                    {seesSubjectDiary && selectedPlanIds.size > 0 ? (
                       <button
                         aria-pressed={tab !== "Избранное" && showWholePlan}
                         className={cn(
@@ -1492,6 +1515,7 @@ export function NewsPage({
                         План
                       </button>
                     ) : null}
+                    {readOnly ? null : (
                     <button
                       aria-pressed={tab === "Избранное"}
                       className={cn(
@@ -1512,6 +1536,7 @@ export function NewsPage({
                       />
                       Избранное
                     </button>
+                    )}
                     {SHOW_DIARY_WEEK_ACTIVITY ? (
                       <div
                         className={cn(diaryToolbarPillClass, "size-9 justify-center p-0")}
@@ -1630,6 +1655,28 @@ export function NewsPage({
                     ) : null}
                   </div>
                 )}
+                {toolbarDisabled ? (
+                  <div
+                    aria-disabled="true"
+                    className={cn(diaryToolbarPillClass, "ml-auto px-1 text-[var(--nora-text-tertiary)]")}
+                    data-diary-search=""
+                  >
+                    <DiaryPeriodPicker
+                      disabled
+                      onFilterChange={() => undefined}
+                      periodStart={periodStart}
+                      subjectKey={subjectId}
+                    />
+                    <span aria-hidden className={diaryToolbarPairDividerClass} />
+                    <ProductToolbarSearch
+                      disabled
+                      expanded={false}
+                      onExpandedChange={() => undefined}
+                      onValueChange={() => undefined}
+                      value=""
+                    />
+                  </div>
+                ) : null}
                 {toolbarEnd ? (
                   <div className="ml-auto flex shrink-0 items-center gap-2">
                     {toolbarEnd}
@@ -1656,7 +1703,7 @@ export function NewsPage({
                 origin="diary"
                 title="Не удалось загрузить дневник"
               />
-            ) : mealsQuery.isPending ? (
+            ) : mealsQuery.isPending || subjectPlanPending ? (
               <SectionLoading label="Загрузка дневника" />
             ) : filtered.length === 0 && !feedFiltersActive ? (
               <ProductFeedEmpty

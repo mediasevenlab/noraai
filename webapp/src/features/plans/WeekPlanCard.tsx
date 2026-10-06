@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { BookmarkIcon, CircleCheckIcon, EllipsisIcon, ListIcon, Share2Icon, ShoppingBagIcon, Trash2Icon } from '@/components/icons'
+import { BookmarkIcon, CircleCheckIcon, CopyIcon, EllipsisIcon, ListIcon, Share2Icon, ShoppingBagIcon, Trash2Icon } from '@/components/icons'
 
 import { NoraButton, NoraHoverTip, NoraIconButton } from '@/components/nora/primitives'
 import {
@@ -129,6 +129,8 @@ export function WeekPlanCard({
   onShare,
   onToggleSave,
   onDelete,
+  onCopy,
+  copying = false,
   canShare = true,
 }: {
   actionLabel?: string
@@ -146,6 +148,8 @@ export function WeekPlanCard({
   onShare?: () => void
   onToggleSave?: () => void
   onDelete?: () => void
+  onCopy?: () => void
+  copying?: boolean
   canShare?: boolean
 }) {
   const [shoppingOpen, setShoppingOpen] = React.useState(false)
@@ -237,25 +241,53 @@ export function WeekPlanCard({
               </p>
             </div>
           </div>
-          {onDelete ? (
-            <button
-              type="button"
-              aria-label="Удалить"
-              onClick={(event) => {
-                event.stopPropagation()
-                onDelete()
-              }}
+          {onCopy || onDelete ? (
+            <div
               className={cn(
-                productSheetOverlayChipClass,
-                'nora-press-grow absolute top-4 right-4 z-[2] hidden size-7 sm:inline-flex',
+                'absolute top-4 right-4 z-[3] hidden items-center gap-2 sm:flex',
                 'sm:opacity-0 sm:pointer-events-none',
                 'sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto',
-                'hover:bg-[var(--nora-error)] hover:text-white',
-                'focus-visible:opacity-100 focus-visible:pointer-events-auto focus-visible:shadow-[var(--nora-shadow-focus)]',
+                'focus-within:opacity-100 focus-within:pointer-events-auto',
               )}
             >
-              <Trash2Icon className="size-4" />
-            </button>
+              {onCopy ? (
+                <button
+                  type="button"
+                  aria-label="Скопировать"
+                  disabled={copying}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onCopy()
+                  }}
+                  className={cn(
+                    productSheetOverlayChipClass,
+                    'nora-press-grow size-7',
+                    'focus-visible:shadow-[var(--nora-shadow-focus)]',
+                    'disabled:pointer-events-none disabled:opacity-60',
+                  )}
+                >
+                  <CopyIcon className="size-4" />
+                </button>
+              ) : null}
+              {onDelete ? (
+                <button
+                  type="button"
+                  aria-label="Удалить"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onDelete()
+                  }}
+                  className={cn(
+                    productSheetOverlayChipClass,
+                    'nora-press-grow hidden size-7 sm:inline-flex',
+                    'hover:bg-[var(--nora-error)] hover:text-white',
+                    'focus-visible:shadow-[var(--nora-shadow-focus)]',
+                  )}
+                >
+                  <Trash2Icon className="size-4" />
+                </button>
+              ) : null}
+            </div>
           ) : null}
         </div>
         <div
@@ -385,6 +417,18 @@ export function WeekPlanCard({
                     <Share2Icon className="size-4" />
                     Поделиться
                   </DropdownMenuItem>
+                  {onCopy ? (
+                    <DropdownMenuItem
+                      className="whitespace-nowrap"
+                      disabled={copying}
+                      onClick={() => {
+                        onCopy()
+                      }}
+                    >
+                      <CopyIcon className="size-4" />
+                      Скопировать
+                    </DropdownMenuItem>
+                  ) : null}
                   {onDelete ? (
                     <DropdownMenuItem
                       className="whitespace-nowrap"

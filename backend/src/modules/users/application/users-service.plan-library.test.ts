@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test'
 
 import type { AuthenticatedPrincipal } from '../../auth'
+import { UsersFailure } from '../domain/errors'
 import { UsersService } from './users-service'
 
 const principal: AuthenticatedPrincipal = {
@@ -109,4 +110,96 @@ test('plan library starts empty and persists authored plans with selection', asy
     authoredPlans: [authored],
     selectedPlanIds: [authored.id],
   })
+})
+
+test('mentor reads the plan library of a connected user', async () => {
+  const authored = {
+    id: 'plan_11111111-1111-4111-8111-111111111111',
+    title: 'Офис',
+    description: 'День в офисе',
+    coverImage: '/catalog/office.jpg',
+    createdAt: '2026-09-01T00:00:00.000Z',
+    goal: 'Похудение' as const,
+    sourceCatalogId: 'catalog_office',
+    dayCount: 4,
+  }
+  const mentor: AuthenticatedPrincipal = {
+    ...principal,
+    id: 'mentor-1',
+    role: 'mentor',
+  }
+  const service = new UsersService({
+    ...unused,
+    clock: { now: () => new Date('2026-09-07T12:00:00.000Z') },
+    mentorUsersManager: {
+      requireAssignedMentee: async (_mentorId: string, userId: string) => {
+        if (userId !== principal.id) {
+          throw new UsersFailure('not_found', 'Connected user not found')
+        }
+      },
+    } as never,
+    userPlanLibraryStore: {
+      getPlanLibrary: async (userId) =>
+        userId === principal.id
+          ? {
+              authoredPlans: [authored],
+              savedPlanIds: [],
+              selectedPlanIds: [authored.id],
+              planStarts: [{ planId: authored.id, dayKey: '2026-09-01' }],
+              updatedAt: new Date('2026-09-07T12:00:00.000Z'),
+            }
+          : null,
+      putPlanLibrary: async () => {
+        throw new Error('not used')
+      },
+    },
+  })
+
+  await expect(service.getMentorUserPlanLibrary(mentor, principal.id)).resolves.toMatchObject({
+    selectedPlanIds: [authored.id],
+    planStarts: [{ planId: authored.id, dayKey: '2026-09-01' }],
+  })
+  await expect(service.getMentorUserPlanLibrary(mentor, 'other-user')).rejects.toBeInstanceOf(
+    UsersFailure,
+  )
+})
+
+test('mentor reads favorites of a connected user and cannot see someone else', async () => {
+  const mentor: AuthenticatedPrincipal = {
+    ...principal,
+    id: 'mentor-1',
+    role: 'mentor',
+  }
+  const service = new UsersService({
+    ...unused,
+    clock: { now: () => new Date('2026-09-07T12:00:00.000Z') },
+    mentorUsersManager: {
+      requireAssignedMentee: async (_mentorId: string, userId: string) => {
+        if (userId !== principal.id) {
+          throw new UsersFailure('not_found', 'Connected user not found')
+        }
+      },
+    } as never,
+    userFavoritesStore: {
+      getFavorites: async (userId) =>
+        userId === principal.id
+          ? {
+              mealIds: ['11111111-1111-4111-8111-111111111111'],
+              updatedAt: new Date('2026-09-07T12:00:00.000Z'),
+            }
+          : null,
+      putFavorites: async () => {
+        throw new Error('not used')
+      },
+      filterOwnedMealIds: async (_userId, mealIds) => mealIds,
+    },
+  })
+
+  await expect(service.getMentorUserFavorites(mentor, principal.id)).resolves.toEqual({
+    mealIds: ['11111111-1111-4111-8111-111111111111'],
+    updatedAt: '2026-09-07T12:00:00.000Z',
+  })
+  await expect(service.getMentorUserFavorites(mentor, 'other-user')).rejects.toBeInstanceOf(
+    UsersFailure,
+  )
 })

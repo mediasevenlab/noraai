@@ -50,7 +50,8 @@ import {
 } from './meal-card-reveal'
 import { mealRefiningSteps } from './meal-forming-steps'
 import { MealAttachMenu, queueMealImageFile } from './meal-attach-menu'
-import { isPlannedDiaryMeal, isRationPlanDone } from './ration-import'
+import { mealCorrectionLimitReached } from './meal-corrections'
+import { isPlannedDiaryMeal, isRationPlanDone, isRationPlanPending } from './ration-import'
 import {
   mealAttachLimitMessage,
   mealImageFromUrl,
@@ -336,7 +337,13 @@ export function MealOpenDetail({
   const shownTitle = reveal === 'waiting' || reveal === 'settle' ? frozenTitle : meal.title
   const [detailTabUncontrolled, setDetailTabUncontrolled] = React.useState<MealDetailTab>('Состав')
   const detailTab = tabProp ?? detailTabUncontrolled
-  const canRefine = !readOnly && !previewOnly && !mealCardRevealLocksTabs(reveal)
+  const mentorView = readOnly && auth.user?.role === 'mentor'
+  const pendingPlan = isRationPlanPending(meal, completedIds)
+  const canRefine =
+    !previewOnly
+    && !mealCardRevealLocksTabs(reveal)
+    && (mentorView ? !pendingPlan : !readOnly)
+  const showComposer = !feedView && !previewOnly && !(mentorView && pendingPlan)
   const isPersisted = Boolean(meal.fromApi || isApiMealId(meal.id))
   const versionItems =
     meal.versions && meal.versions.length > 0
@@ -346,7 +353,10 @@ export function MealOpenDetail({
     meal.activeVersionId && versionItems.some((item) => item.value === meal.activeVersionId)
       ? meal.activeVersionId
       : versionItems[0]!.value
-  const refineLimitReached = Boolean(meal.versions && meal.versions.length >= 6)
+  const refineLimitReached = mealCorrectionLimitReached(
+    meal.versions,
+    mentorView ? 'mentor' : 'user',
+  )
   const sendTone = mealComposerSendTone({
     sending: sending || busy,
     hasDraft:
@@ -448,7 +458,7 @@ export function MealOpenDetail({
     }
     if (!canRefine) return
     if (refineLimitReached) {
-      toast.message('Достигнут лимит уточнений (5)')
+      toast.message('Достигнут лимит уточнений (2)')
       return
     }
     if (!subjectUserId || !auth.user) return
@@ -776,7 +786,7 @@ export function MealOpenDetail({
             locked={mealCardRevealLocksTabs(reveal)}
             pressedTab={demoPressedTab}
           />
-          {feedView || previewOnly ? null : (
+          {showComposer ? (
           <ComposerPressSurface className={MEAL_COMPOSER_FIELD_CLASS}>
           <ComposerAttachChips
             disabled={busy}
@@ -819,7 +829,7 @@ export function MealOpenDetail({
               contentClassName={COMPACT_SELECT_CONTENT_CLASS}
               itemClassName={COMPACT_SELECT_ITEM_CLASS}
               itemIndicator="end"
-              disabled={!canRefine || sending || versionItems.length < 2}
+              disabled={sending || !showComposer || versionItems.length < 2}
               hideChevron
               items={versionItems}
               leadingIcon={<HistoryIcon strokeWidth={1.75} />}
@@ -845,7 +855,7 @@ export function MealOpenDetail({
             />
           </div>
           </ComposerPressSurface>
-          )}
+          ) : null}
       </div>
       </Tabs>
     </div>

@@ -1,29 +1,37 @@
 import type { UserDto } from '@web-app-demo/contracts'
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
-  NoraPageHeader,
-  PageContainer,
   noraPageDescriptionClass,
   noraPageTitleClass,
 } from '@/components/PageLayout'
-import { SettingsCanvas } from '@/components/settings-canvas'
+import { SettingsCanvas, SettingsEntry, SettingsReadRows } from '@/components/settings-canvas'
+import { ArrowLeftIcon, BookOpenIcon, CalendarDaysIcon, FileTextIcon, HashIcon, UserRoundIcon } from '@/components/icons'
 import { NoraSelect } from '@/components/nora/primitives'
 import { productFeedPageClass, productToolbarSelectContentClass, productToolbarSelectItemClass } from '@/components/nora/product-sheet'
 import { DiaryNewsPage } from '@/features/diary'
 import {
   NicknamePanel,
+  ProfilePanel,
   questionnaireDailyCalorieTarget,
   ReferralLinkPanel,
   TelegramUsernamePanel,
 } from '@/features/users'
-import {
-  MentorMenteeQuestionnaireCards,
-  useMentorMenteeQuestionnaireEditor,
-} from './MentorMenteeQuestionnaire'
+import { MentorMenteeQuestionnaire } from './MentorMenteeQuestionnaire'
 import { MentorUserDirectory } from './MentorUserDirectory'
-import { useMarkMentorMealsViewedMutation, useMentorUserQuestionnaireQuery, useMentorUsersQuery } from './queries'
+import {
+  useMarkMentorMealsViewedMutation,
+  useMentorUserPlanLibraryQuery,
+  useMentorUserQuestionnaireQuery,
+  useMentorUsersQuery,
+} from './queries'
 
-type MenteeView = 'diary' | 'questionnaire' | 'plan'
+type MenteeView = 'diary' | 'questionnaire' | 'rations'
+
+const MENTEE_VIEWS = [
+  { value: 'diary', label: 'Дневник', icon: BookOpenIcon },
+  { value: 'questionnaire', label: 'Анкета', icon: FileTextIcon },
+  { value: 'rations', label: 'Рационы', icon: CalendarDaysIcon },
+] as const
 
 function MenteeViewSelect({
   value,
@@ -33,25 +41,23 @@ function MenteeViewSelect({
   onChange: (value: MenteeView) => void
 }) {
   return (
-    <div className="w-[7.25rem] shrink-0">
-      <NoraSelect
-        className="w-full !rounded-full !border-0 !bg-transparent !shadow-none text-[13px] font-normal text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]"
-        contentClassName={productToolbarSelectContentClass}
-        itemClassName={productToolbarSelectItemClass}
-        itemIndicator="end"
-        items={[
-          { value: 'diary', label: 'Дневник' },
-          { value: 'questionnaire', label: 'Анкета' },
-          { value: 'plan', label: 'План' },
-        ]}
-        onValueChange={(next) => {
-          if (next === 'diary' || next === 'questionnaire' || next === 'plan') {
-            onChange(next)
-          }
-        }}
-        value={value}
-      />
-    </div>
+    <NoraSelect
+      className="!h-9 !max-h-9 !min-h-9 !w-max shrink-0 !gap-1.5 !rounded-full !border-0 !bg-transparent !px-1.5 !py-0 !shadow-none text-[13px] !font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-[popup-open]:text-[var(--nora-text)] *:data-[slot=select-value]:!flex-none [&>svg]:!size-3.5 [&>svg]:!text-current [&>svg]:!opacity-100"
+      contentClassName={productToolbarSelectContentClass}
+      itemClassName={productToolbarSelectItemClass}
+      itemIndicator="end"
+      items={MENTEE_VIEWS.map((item) => ({
+        value: item.value,
+        label: item.label,
+        icon: <item.icon aria-hidden className="size-3.5" strokeWidth={1.75} />,
+      }))}
+      onValueChange={(next) => {
+        if (next === 'diary' || next === 'questionnaire' || next === 'rations') {
+          onChange(next)
+        }
+      }}
+      value={value}
+    />
   )
 }
 
@@ -64,26 +70,60 @@ export function MentorHome({ user }: { user: UserDto }) {
   )
 }
 
-export function MentorUsers() {
+export function MentorUsers({ user }: { user: UserDto }) {
   return (
-    <PageContainer>
-      <NoraPageHeader
-        description="Добавляйте обычных пользователей по никнейму или ID."
-        title="Пользователи"
-      />
+    <SettingsCanvas
+      description="Подключённые пользователи и бонус за каждого."
+      eyebrow="Наставник"
+      meta={user.email}
+      showJumpLink={false}
+      title="Пользователи"
+    >
       <MentorUserDirectory />
-    </PageContainer>
+    </SettingsCanvas>
+  )
+}
+
+export function MentorProfile({ user }: { user: UserDto }) {
+  return (
+    <SettingsCanvas
+      ctaLabel="Профиль"
+      description="Имя и никнейм в приложении."
+      editable
+      eyebrow="Аккаунт"
+      meta={user.email}
+      title="Профиль"
+    >
+      <ProfilePanel user={user} />
+      <SettingsEntry description="Роль и номер в приложении." title="Аккаунт">
+        <SettingsReadRows
+          rows={[
+            { icon: UserRoundIcon, label: 'Роль', value: 'Наставник' },
+            { icon: HashIcon, label: 'ID', value: String(user.publicId) },
+          ]}
+        />
+      </SettingsEntry>
+    </SettingsCanvas>
   )
 }
 
 export function MentorMenteeDiary({
   userId,
   planView,
+  rationBack,
+  view: viewProp,
+  onViewChange,
 }: {
   userId: string
   planView?: ReactNode
+  /** Returns from an opened mentee ration. Shown as the toolbar back pill. */
+  rationBack?: (() => void) | null
+  view?: MenteeView
+  onViewChange?: (view: MenteeView) => void
 }) {
-  const [view, setView] = useState<MenteeView>('diary')
+  const [localView, setLocalView] = useState<MenteeView>('diary')
+  const view = viewProp ?? localView
+  const setView = onViewChange ?? setLocalView
   const users = useMentorUsersQuery({
     page: 1,
     pageSize: 100,
@@ -97,41 +137,41 @@ export function MentorMenteeDiary({
     [markViewed.mutate, userId],
   )
   const title = mentee?.displayName ?? mentee?.nickname ?? mentee?.email ?? 'Пользователь'
-  const questionnaire = useMentorMenteeQuestionnaireEditor(
-    userId,
-    view === 'questionnaire',
-  )
   const menteeQuestionnaire = useMentorUserQuestionnaireQuery(userId)
+  const planLibrary = useMentorUserPlanLibraryQuery(userId)
+  const subjectPlan = useMemo(() => {
+    if (planLibrary.data) {
+      return {
+        selectedPlanIds: planLibrary.data.selectedPlanIds,
+        planStarts: Object.fromEntries(
+          planLibrary.data.planStarts.map((item) => [item.planId, item.dayKey]),
+        ),
+      }
+    }
+    if (planLibrary.isError) return { selectedPlanIds: [], planStarts: {} }
+    return undefined
+  }, [planLibrary.data, planLibrary.isError])
   const calorieTarget =
     questionnaireDailyCalorieTarget(menteeQuestionnaire.data?.answers) ?? undefined
 
   const viewDescription =
     view === 'questionnaire'
       ? 'Анкета подключённого пользователя.'
-      : view === 'plan'
-        ? 'Планы, отправленные этому пользователю.'
+      : view === 'rations'
+        ? 'Рационы подключённого пользователя.'
         : 'Дневник подключённого пользователя.'
 
   return (
     <DiaryNewsPage
       body={
         view === 'questionnaire' ? (
-          <div className="grid gap-4">
-            <MentorMenteeQuestionnaireCards
-              editing={questionnaire.editing}
-              isError={questionnaire.isError}
-              isLoading={questionnaire.isLoading}
-              onChange={questionnaire.onChange}
-              saveError={questionnaire.saveError}
-              userId={userId}
-              values={questionnaire.values}
-            />
-            <p className="text-[11px] leading-relaxed text-[var(--nora-text-tertiary)]">
-              Анкету могут редактировать пользователь и наставник. Пустые
-              опциональные ответы скрыты до режима редактирования.
-            </p>
-          </div>
-        ) : view === 'plan' ? (
+          <MentorMenteeQuestionnaire
+            displayName={mentee?.displayName}
+            email={mentee?.email}
+            nickname={mentee?.nickname}
+            userId={userId}
+          />
+        ) : view === 'rations' ? (
           planView
         ) : undefined
       }
@@ -143,11 +183,22 @@ export function MentorMenteeDiary({
       readOnly
       calorieTarget={calorieTarget}
       subjectEmail={mentee?.email}
+      subjectPlan={subjectPlan}
+      subjectPlanPending={planLibrary.isPending}
       subjectUserId={userId}
       toolbarDisabled={view !== 'diary'}
       onMealsViewed={view === 'diary' && mentee ? onMealsViewed : undefined}
-      toolbarEnd={
-        view === 'questionnaire' ? questionnaire.actions : undefined
+      toolbarStart={
+        view === 'rations' && rationBack ? (
+          <button
+            aria-label="Назад"
+            className="ios-float-pill nora-press-grow flex size-9 shrink-0 items-center justify-center p-0 text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] [&>svg]:size-4"
+            onClick={rationBack}
+            type="button"
+          >
+            <ArrowLeftIcon aria-hidden />
+          </button>
+        ) : undefined
       }
       toolbarExtra={<MenteeViewSelect onChange={setView} value={view} />}
     />

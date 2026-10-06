@@ -48,7 +48,7 @@ export {
   authMentorCreateSavedAtMs,
 } from './auth-mentor-ration-demo'
 export { rationMealImages, rationShoppingItems } from './rations-catalog'
-export type { RationEntry, RationGoal } from './rations-catalog'
+export type { RationEntry, RationGoal, RationMeal } from './rations-catalog'
 export { RationDialog } from './RationDialog'
 export { RationEditorDialog } from './MentorRationEditor'
 export {
@@ -56,7 +56,9 @@ export {
   emptyRationDraft,
   isAuthoredRationId,
   mergeAssignedRations,
+  mentorPlanUpsertFromDays,
   mentorRationToEntry,
+  rationPlanDayDrafts,
   rationToDraft,
   rationToUpsertRequest,
   titledDraftMeals,
@@ -73,6 +75,7 @@ export {
   useDeleteMentorPlanMutation,
   useMentorPlansQuery,
   useMentorUnreadMealsQuery,
+  useMentorUserPlanLibraryQuery,
   useMentorUsersQuery,
   usePlanAssignmentQuery,
   useUpdateMentorPlanMutation,
@@ -101,6 +104,7 @@ export {
   MentorHome,
   MentorMenteeDiary,
   MentorMenteePlaceholder,
+  MentorProfile,
   MentorSettings,
   MentorUsers,
 } from './pages'

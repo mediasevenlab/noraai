@@ -9,7 +9,15 @@ import {
 import { SendIcon } from '@/components/icons'
 import { useId, useState, type FormEvent } from 'react'
 
-import { NoraToast } from '@/components/nora'
+import { NoraButton, NoraToast } from '@/components/nora'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { SettingsEntry, SettingsFieldMark, SettingsReadRows, useSettingsMode } from '@/components/settings-canvas'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
@@ -67,6 +75,7 @@ export function TelegramUsernamePanel({
   const errorId = useId()
   const [contact, setContact] = useState('')
   const [challenge, setChallenge] = useState<TelegramLinkResponse | null>(null)
+  const [confirmUnlink, setConfirmUnlink] = useState(false)
   const linkMutation = useStartTelegramLinkMutation()
   const unlinkMutation = useUpdateProfileMutation()
   const bound = Boolean(user.telegramUsername || user.telegramPhone)
@@ -96,6 +105,7 @@ export function TelegramUsernamePanel({
       },
       {
         onSuccess: () => {
+          setConfirmUnlink(false)
           setChallenge(null)
           setContact('')
         },
@@ -151,15 +161,50 @@ export function TelegramUsernamePanel({
           )}
           <div>
             <Button
-              className="font-normal"
+              className="w-fit font-medium text-[var(--nora-text)] shadow-[inset_0_0_0_1px_var(--settings-well-stroke,var(--nora-border))]"
+              data-settings-field=""
               disabled={unlinkMutation.isPending}
-              onClick={unlink}
+              onClick={() => setConfirmUnlink(true)}
               type="button"
               variant="outline"
             >
-              {unlinkMutation.isPending ? 'Отвязываем…' : 'Отвязать Telegram'}
+              Отвязать Telegram
             </Button>
           </div>
+          <AlertDialog
+            onOpenChange={(open) => {
+              if (unlinkMutation.isPending) return
+              setConfirmUnlink(open)
+            }}
+            open={confirmUnlink}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Отвязать Telegram?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Контакт {displayTelegramContact(user)} отвяжется от аккаунта. Уведомления на него прекратятся. Привязать Telegram можно снова.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <NoraButton
+                  disabled={unlinkMutation.isPending}
+                  onClick={() => setConfirmUnlink(false)}
+                  type="button"
+                  variant="ghost"
+                >
+                  Отмена
+                </NoraButton>
+                <NoraButton
+                  disabled={unlinkMutation.isPending}
+                  onClick={unlink}
+                  type="button"
+                  variant="destructive"
+                >
+                  {unlinkMutation.isPending ? 'Отвязываем…' : 'Отвязать'}
+                </NoraButton>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       ) : (
         <form className="grid gap-3.5" noValidate onSubmit={startLink}>

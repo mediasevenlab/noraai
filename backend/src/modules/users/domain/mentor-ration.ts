@@ -1,4 +1,5 @@
 import {
+  MENTOR_RATION_MEAL_LIMIT,
   mentorRationMealSchema,
   mentorRationSchema,
   type MentorRation,
@@ -29,6 +30,7 @@ function storedMeals(value: unknown) {
       protein: record.protein,
       fat: record.fat,
       carbs: record.carbs,
+      ...(typeof record.dayIndex === 'number' ? { dayIndex: record.dayIndex } : {}),
     }
   })
 }
@@ -51,7 +53,11 @@ export function toMentorRationDto(row: {
   createdAt: Date
   updatedAt: Date
 }): MentorRation {
-  const meals = mentorRationMealSchema.array().min(1).max(20).parse(storedMeals(row.meals))
+  const meals = mentorRationMealSchema
+    .array()
+    .min(1)
+    .max(MENTOR_RATION_MEAL_LIMIT)
+    .parse(storedMeals(row.meals))
   return mentorRationSchema.parse({
     id: row.id,
     mentorId: row.mentorId,
@@ -107,10 +113,26 @@ export function mentorRationWriteFields(input: UpsertMentorRationRequest) {
   }
 }
 
+function planDayCount(meals: UpsertMentorRationRequest['meals']) {
+  return meals.reduce((span, meal) => Math.max(span, (meal.dayIndex ?? 0) + 1), 1)
+}
+
+function busiestDayMealCount(meals: UpsertMentorRationRequest['meals']) {
+  const counts = new Map<number, number>()
+  for (const meal of meals) {
+    const index = meal.dayIndex ?? 0
+    counts.set(index, (counts.get(index) ?? 0) + 1)
+  }
+  return Math.max(1, ...counts.values())
+}
+
 export function mentorPlanWriteFields(input: UpsertMentorRationRequest) {
+  const fields = mentorRationWriteFields(input)
   return {
-    ...mentorRationWriteFields(input),
-    days: 7,
+    ...fields,
+    image: input.image || fields.image,
+    days: planDayCount(input.meals),
+    mealsPerDay: busiestDayMealCount(input.meals),
     source: 'План наставника',
   }
 }

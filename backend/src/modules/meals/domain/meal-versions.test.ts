@@ -4,7 +4,7 @@ import {
   appendMealVersion,
   canRefineMeal,
   ensureMealVersions,
-  MAX_MEAL_VERSIONS,
+  mealCorrectionCount,
   sanitizeAssumptions,
   selectMealVersion,
   type MealWithVersions,
@@ -83,14 +83,31 @@ describe('meal versions', () => {
     expect(selected?.activeVersionId).toBe(original.versions[0]?.id)
   })
 
-  test('canRefineMeal caps at original + 5 edits', () => {
+  test('user and mentor each get two corrections on the same card', () => {
     let meal = ensureMealVersions(baseMeal())
-    for (let index = 0; index < MAX_MEAL_VERSIONS - 1; index += 1) {
-      expect(canRefineMeal(meal)).toBe(true)
-      meal = appendMealVersion({ ...meal, kcal: meal.kcal + 1 }, `edit ${index + 1}`)
-    }
-    expect(meal.versions).toHaveLength(MAX_MEAL_VERSIONS)
-    expect(canRefineMeal(meal)).toBe(false)
+    expect(canRefineMeal(meal, 'user')).toBe(true)
+    expect(canRefineMeal(meal, 'mentor')).toBe(true)
+    meal = appendMealVersion(meal, 'user 1', 'user')
+    meal = appendMealVersion(meal, 'user 2', 'user')
+    expect(canRefineMeal(meal, 'user')).toBe(false)
+    expect(canRefineMeal(meal, 'mentor')).toBe(true)
+    meal = appendMealVersion(meal, 'mentor 1', 'mentor')
+    meal = appendMealVersion(meal, 'mentor 2', 'mentor')
+    expect(mealCorrectionCount(meal.versions, 'user')).toBe(2)
+    expect(mealCorrectionCount(meal.versions, 'mentor')).toBe(2)
+    expect(canRefineMeal(meal, 'mentor')).toBe(false)
+    expect(meal.versions).toHaveLength(5)
+  })
+
+  test('older refinements without an author count toward the user', () => {
+    const meal = ensureMealVersions(baseMeal())
+    meal.versions.push({
+      ...meal.versions[0]!,
+      id: 'legacy',
+      label: 'vers. 2.0',
+    })
+    expect(mealCorrectionCount(meal.versions, 'user')).toBe(1)
+    expect(mealCorrectionCount(meal.versions, 'mentor')).toBe(0)
   })
 
   test('sanitizeAssumptions drops chat clarifications from assumptions', () => {

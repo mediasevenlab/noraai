@@ -1,6 +1,7 @@
 import type { GenerationSpend } from '@web-app-demo/contracts'
 
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/features/auth'
 import { useGenerationCurrency, useGenerationTokenUsageVisible } from '@/features/users'
 
 import { formatGenerationSpend, generationSpendVisible } from './generation-spend-format'
@@ -14,8 +15,10 @@ export function GenerationSpendBadge({
   corner?: 'inline' | 'top-left' | 'bottom-left'
   className?: string
 }) {
+  const auth = useAuth()
   const enabled = useGenerationTokenUsageVisible()
   const currency = useGenerationCurrency()
+  if (auth.user?.role === 'mentor') return null
   if (!generationSpendVisible(enabled, spend)) return null
   const label = formatGenerationSpend(spend, currency)
   return (

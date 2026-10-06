@@ -291,6 +291,12 @@ const mentorUsersRoute = createRoute({
 const mentorMenteeRoute = createRoute({
   getParentRoute: () => mentorWorkspaceRoute,
   path: '/mentor/users/$userId',
+  validateSearch: (search: Record<string, unknown>) => ({
+    view:
+      search.view === 'questionnaire' || search.view === 'rations'
+        ? search.view
+        : ('diary' as const),
+  }),
   component: lazyRouteComponent(() => import('./pages'), 'MentorMenteePage'),
 })
 
@@ -322,6 +328,18 @@ const mentorPlansRoute = createRoute({
   getParentRoute: () => mentorWorkspaceRoute,
   path: '/mentor/plans',
   component: lazyRouteComponent(() => import('./pages'), 'MentorPlansWorkspacePage'),
+})
+
+const mentorFeedRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor/feed',
+  validateSearch: (search: Record<string, unknown>) => ({
+    rationId:
+      typeof search.rationId === 'string' && search.rationId.trim()
+        ? search.rationId.trim()
+        : undefined,
+  }),
+  component: lazyRouteComponent(() => import('./pages'), 'MentorFeedPage'),
 })
 
 const mentorPlanDetailRoute = createRoute({
@@ -381,6 +399,7 @@ const routeTree = rootRoute.addChildren([
     mentorAssignedRationsRoute,
     mentorPlansRoute,
     mentorPlanDetailRoute,
+    mentorFeedRoute,
   ]),
 ])
 

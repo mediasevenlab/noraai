@@ -342,6 +342,7 @@ export function MobileNavFab({
                         <Link
                           to="/mentor/users/$userId"
                           params={{ userId: mentee.id }}
+                          search={{ view: 'diary' }}
                           onClick={() => setOpen(false)}
                           className={cn(
                             'nora-press-grow flex h-14 items-center gap-3 rounded-[14px] px-3 outline-none',

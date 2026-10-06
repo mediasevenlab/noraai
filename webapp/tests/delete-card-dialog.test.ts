@@ -23,8 +23,9 @@ test('a meal card asks before it is deleted or only removed from the diary', () 
 
 test('a plan card and a plan meal ask before they disappear', () => {
   expect(planCardDeletePrompt('Неделя 1')).toEqual({
-    title: 'Удалить план?',
-    description: 'План «Неделя 1» будет удалён. Вернуть его не получится.',
+    title: 'Удалить рацион?',
+    description:
+      'Рацион «Неделя 1» исчезнет из списков. Невыполненные приёмы из него пропадут из дневника. Выполненные и изменённые останутся.',
     confirmLabel: 'Удалить',
   })
   expect(planMealDeletePrompt({ title: 'Суп' }, true).title).toBe('Убрать из плана?')
@@ -46,6 +47,6 @@ test('card trash opens the confirm dialog instead of deleting immediately', () =
   expect(planMeals).toContain('void deleteMeal(meal)')
   expect(planMeals).toContain('<DeleteCardDialog')
   expect(plans).toContain('setDeletePlanTarget({ id: plan.id, title: plan.title })')
-  expect(plans).toContain('deletePlan(deletePlanTarget.id)')
+  expect(plans).toContain('void deletePlan(planId)')
   expect(plans).toContain('<DeleteCardDialog')
 })

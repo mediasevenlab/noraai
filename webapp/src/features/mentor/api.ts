@@ -14,6 +14,7 @@ import {
   questionnaireResponseSchema,
   planAssignmentSchema,
   upsertMentorPlanRequestSchema,
+  userPlanLibrarySchema,
   type MentorUsersQuery,
   type PutPlanAssignmentRequest,
   type PutQuestionnaireRequest,
@@ -138,6 +139,16 @@ export function deleteMentorPlan(
 
 export function getCurrentUserPlans(transport: AuthenticatedTransport) {
   return transport.request('/api/users/me/plans', planAssignmentSchema)
+}
+
+export function getMentorUserPlanLibrary(
+  transport: AuthenticatedTransport,
+  userId: string,
+) {
+  return transport.request(
+    `/api/mentor/users/${encodeURIComponent(userId)}/plan-library`,
+    userPlanLibrarySchema,
+  )
 }
 
 export function getMentorUserPlans(

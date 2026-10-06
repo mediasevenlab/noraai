@@ -289,6 +289,7 @@ type NoraSelectProps = {
     value: string
     label: string
     menuLabel?: string
+    icon?: React.ReactNode
     className?: string
     separatorAfter?: boolean
   }[]
@@ -317,8 +318,9 @@ export function NoraSelect({
   itemIndicator = "end",
   modal = false,
 }: NoraSelectProps) {
-  const selectedLabel =
-    value == null ? undefined : items.find((item) => item.value === value)?.label
+  const selectedItem =
+    value == null ? undefined : items.find((item) => item.value === value)
+  const selectedLabel = selectedItem?.label
 
   return (
     <Select
@@ -343,9 +345,9 @@ export function NoraSelect({
         hideIcon={hideChevron}
         iconVariant={chevron}
       >
-        {leadingIcon ? (
-          <span className="inline-flex shrink-0 items-center text-current [&_svg]:size-[15px] [&_svg]:opacity-100">
-            {leadingIcon}
+        {leadingIcon ?? selectedItem?.icon ? (
+          <span className="inline-flex shrink-0 items-center text-current [&_svg]:size-3.5 [&_svg]:opacity-100">
+            {leadingIcon ?? selectedItem?.icon}
           </span>
         ) : null}
         <SelectValue placeholder={placeholder}>
@@ -368,6 +370,9 @@ export function NoraSelect({
               indicator={itemIndicator}
               className={cn(selectFont, "h-[var(--nora-control-h)]", itemClassName, item.className)}
             >
+              {item.icon ? (
+                <span className="inline-flex shrink-0 items-center [&_svg]:size-3.5">{item.icon}</span>
+              ) : null}
               {item.menuLabel ?? item.label}
             </SelectItem>
             {item.separatorAfter ? <SelectSeparator /> : null}

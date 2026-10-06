@@ -326,6 +326,7 @@ export function DiaryPlanDayPicker({
                     ref={planScrollRef}
                     role="listbox"
                   >
+                    {onCreatePlan ? (
                     <button
                       aria-label="Создать новый план"
                       aria-selected={creatingNew}
@@ -364,6 +365,7 @@ export function DiaryPlanDayPicker({
                         Новый план
                       </span>
                     </button>
+                    ) : null}
                     {plans.map((plan) => {
                       const selectedPlan = plan.id === planId && !creatingNew;
                       const cover =

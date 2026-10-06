@@ -16,6 +16,16 @@ import {
   userAuthorityTransitionTransactionOptions,
 } from '../../../db'
 import { Prisma } from '../../../generated/prisma/client'
+import {
+  WEEK_PLAN_ID_PREFIX,
+  RATION_PLAN_ID_PREFIX,
+  authoredPlansWithoutRation,
+  isDeletableRationId,
+  jsonWithoutPlanIds,
+  mealRemovedWithRation,
+  planStartsWithoutRation,
+  rationIdsRemovedWith,
+} from '../domain/ration-delete'
 import type {
   AdminDashboardReader,
   AdminUsersReader,
@@ -25,6 +35,7 @@ import type {
   QuestionnaireStore,
   MentorPlansStore,
   PlanAssignmentsStore,
+  RationCleanup,
   UserFavoritesStore,
   UserPlanLibraryStore,
   UserMentorConnector,
@@ -71,6 +82,7 @@ type UsersRepository =
   & UserPlanLibraryStore
   & MentorPlansStore
   & SharedRationsStore
+  & RationCleanup
 
 export function createPrismaUsersRepository(db: DbClient): UsersRepository {
   return {
@@ -239,7 +251,14 @@ export function createPrismaUsersRepository(db: DbClient): UsersRepository {
       if (!existing) {
         throw new UsersFailure('not_found', 'Plan not found')
       }
+      await forgetRationRecords(db, planId)
       await db.mentorPlan.delete({ where: { id: planId } })
+    },
+    async forgetRation(planId, userId) {
+      if (!isDeletableRationId(planId)) {
+        throw new UsersFailure('invalid', 'Invalid plan id')
+      }
+      await forgetRationRecords(db, planId, userId)
     },
     async findByAuthorAndSource(authorId, sourcePlanId) {
       const row = await db.sharedRation.findUnique({
@@ -882,4 +901,119 @@ function toSharedRationRecord(
     updatedAt: row.updatedAt,
     ...extras,
   }
+}
+
+async function forgetRationRecords(db: DbClient, planId: string, userId?: string) {
+  const libraries = await db.userPlanLibrary.findMany({
+    where: userId ? { userId } : undefined,
+    select: {
+      userId: true,
+      authoredPlans: true,
+      savedPlanIds: true,
+      selectedPlanIds: true,
+      planStarts: true,
+    },
+  })
+  const removed = new Set<string>([planId])
+  for (const row of libraries) {
+    for (const id of rationIdsRemovedWith(planId, row.authoredPlans)) removed.add(id)
+  }
+
+  const meals = await db.meal.findMany({
+    where: {
+      ...(userId ? { userId } : {}),
+      OR: [...removed].flatMap((id) => [
+        { assumptions: { string_contains: `${WEEK_PLAN_ID_PREFIX}${id}` } },
+        { assumptions: { string_contains: `${RATION_PLAN_ID_PREFIX}${id}` } },
+      ]),
+    },
+    select: { id: true, userId: true, assumptions: true, versions: true },
+  })
+  const dropIds: string[] = []
+  const owners = new Set<string>()
+  for (const meal of meals) {
+    const versions = Array.isArray(meal.versions) ? meal.versions : []
+    if (
+      !mealRemovedWithRation({
+        assumptions: stringIds(meal.assumptions),
+        hasAuthorPhoto: versionsHaveExtraImages(versions),
+        planIds: removed,
+        versionCount: versions.length,
+      })
+    ) {
+      continue
+    }
+    dropIds.push(meal.id)
+    owners.add(meal.userId)
+  }
+  if (dropIds.length > 0) {
+    await db.meal.deleteMany({ where: { id: { in: dropIds } } })
+    const saved = await db.userSavedItems.findMany({
+      where: { userId: { in: [...owners] } },
+      select: { userId: true, mealIds: true },
+    })
+    const dropped = new Set(dropIds)
+    for (const row of saved) {
+      const current = stringIds(row.mealIds)
+      const mealIds = current.filter((id) => !dropped.has(id))
+      if (mealIds.length === current.length) continue
+      await db.userSavedItems.update({
+        where: { userId: row.userId },
+        data: { mealIds },
+      })
+    }
+  }
+
+  for (const row of libraries) {
+    const authoredPlans = authoredPlansWithoutRation(row.authoredPlans, removed)
+    const savedPlanIds = jsonWithoutPlanIds(row.savedPlanIds, removed)
+    const selectedPlanIds = jsonWithoutPlanIds(row.selectedPlanIds, removed)
+    const planStarts = planStartsWithoutRation(row.planStarts, removed)
+    if (
+      JSON.stringify(authoredPlans) === JSON.stringify(row.authoredPlans)
+      && JSON.stringify(savedPlanIds) === JSON.stringify(row.savedPlanIds)
+      && JSON.stringify(selectedPlanIds) === JSON.stringify(row.selectedPlanIds)
+      && JSON.stringify(planStarts) === JSON.stringify(row.planStarts)
+    ) {
+      continue
+    }
+    await db.userPlanLibrary.update({
+      where: { userId: row.userId },
+      data: {
+        authoredPlans: authoredPlans as Prisma.InputJsonValue,
+        savedPlanIds: savedPlanIds as Prisma.InputJsonValue,
+        selectedPlanIds: selectedPlanIds as Prisma.InputJsonValue,
+        planStarts: planStarts as Prisma.InputJsonValue,
+      },
+    })
+  }
+
+  const assignments = await db.planAssignment.findMany({
+    where: userId ? { userId } : undefined,
+    select: { userId: true, planIds: true },
+  })
+  for (const row of assignments) {
+    const planIds = stringIds(row.planIds)
+    const next = planIds.filter((id) => !removed.has(id))
+    if (next.length === planIds.length) continue
+    await db.planAssignment.update({
+      where: { userId: row.userId },
+      data: { planIds: next },
+    })
+  }
+
+  await db.sharedRation.deleteMany({
+    where: {
+      sourcePlanId: { in: [...removed] },
+      ...(userId ? { authorId: userId } : {}),
+    },
+  })
+}
+
+function versionsHaveExtraImages(versions: readonly unknown[]) {
+  return versions.some((version) => {
+    if (!version || typeof version !== 'object') return false
+    const keys = (version as { extraImageKeys?: unknown }).extraImageKeys
+    return Array.isArray(keys) && keys.some((key) => typeof key === 'string' && key.trim().length > 0)
+  })
 }

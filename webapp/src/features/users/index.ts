@@ -22,9 +22,14 @@ export { UserAppNavigation } from './UserAppNavigation'
 export { UserMentorBanner } from './UserMentorBanner'
 export { UserReferrals } from './pages'
 export { useCurrentUserMentorQuery, useQuestionnaireQuery } from './queries'
-export { questionnaireDailyCalorieTarget } from './questionnaire-calorie-target'
+export {
+  goalUsesPace,
+  questionnaireDailyCalorieTarget,
+  questionnaireMaintenanceCalories,
+} from './questionnaire-calorie-target'
 export {
   followedDailyCalories,
+  profileCalorieValue,
   useCaloriePreference,
 } from './calorie-preference'
 export { getUserFavorites, putUserFavorites, getUserPlanLibrary, putUserPlanLibrary } from './api'

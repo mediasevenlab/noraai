@@ -2,9 +2,13 @@ import { expect, test } from 'bun:test'
 import type { SharedRation } from '@web-app-demo/contracts'
 
 import {
+  appendFeedMealToMentorPlan,
   authoredCloneOfSharedRation,
   canAddSharedRationToMine,
   createAuthoredPlanFromSharedRation,
+  matchingMentorPlanByTitle,
+  mentorPlanRequestFromSharedRation,
+  mentorWeekdayIndex,
   sharedRationAddLabel,
   sharedRationMealCreateDrafts,
 } from '../src/features/diary/feed-ration-clone'
@@ -69,6 +73,52 @@ test('own or already copied feed rations cannot be added to mine', () => {
   expect(sharedRationAddLabel(ration(), cloned ? [cloned] : [])).toBe('Уже в «Мои»')
   expect(canAddSharedRationToMine(ration(), [])).toBe(true)
   expect(sharedRationAddLabel(ration(), [])).toBe('В мои')
+})
+
+test('a shared ration becomes a mentor plan, and a meal lands on the chosen day', () => {
+  const body = mentorPlanRequestFromSharedRation(ration())
+  expect(body?.title).toBe('Офис')
+  expect(body?.goal).toBe('Похудение')
+  expect(body?.meals).toHaveLength(2)
+  expect(body?.meals[0]?.dayIndex).toBe(0)
+  expect(mentorPlanRequestFromSharedRation(ration({ goal: null, meals: [] }))).toBeNull()
+  expect(matchingMentorPlanByTitle('Офис', [{ title: 'Офис' }])?.title).toBe('Офис')
+  expect(mentorWeekdayIndex(new Date('2026-09-16T12:00:00'))).toBe(2)
+
+  const added = appendFeedMealToMentorPlan(
+    {
+      title: 'Свой',
+      description: '',
+      goal: 'Набор',
+      image: '',
+      meals: [
+        {
+          slot: 'Обед',
+          title: 'Курица',
+          ingredients: '',
+          steps: [],
+          image: '',
+          kcal: 1,
+          protein: 1,
+          fat: 1,
+          carbs: 1,
+          dayIndex: 0,
+        },
+      ],
+    },
+    {
+      title: 'Курица',
+      ingredients: '',
+      meal: 'Обед',
+      kcal: 1,
+      protein: 1,
+      fat: 1,
+      carbs: 1,
+    },
+    0,
+  )
+  expect(added.ok).toBe(false)
+  if (!added.ok) expect(added.reason).toBe('duplicate')
 })
 
 test('feed ration copy stamps meals onto authored plan days', () => {

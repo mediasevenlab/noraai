@@ -46,7 +46,7 @@ test('mentor sends a plan and the mentee sees it', async ({ browser, page }) => 
   await expect(page.getByText('План сохранён')).toBeVisible()
   await expect(page).toHaveURL(/\/mentor\/plans\//)
 
-  await page.getByRole('link', { name: 'Планы' }).click()
+  await page.getByRole('link', { name: 'Рационы' }).click()
   await expect(page).toHaveURL(/\/mentor\/plans$/)
   await expect(page.getByRole('heading', { name: planTitle })).toBeVisible()
   await page.getByRole('button', { name: 'Отправить' }).click()

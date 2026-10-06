@@ -12,6 +12,7 @@ import {
   isRationPlanPending,
   mealBelongsToWeekPlan,
   mealCanShareToFeed,
+  mealRemovedWithRation,
   mealShareBlockedMessage,
   MEAL_AUTHOR_PHOTO_MARK,
   mealCardOrigin,
@@ -337,5 +338,45 @@ describe('ration-imported diary meals', () => {
     expect(visibleMealAssumptions([RATION_DIARY_SOURCE_MARK, MEAL_AUTHOR_PHOTO_MARK, 'Вес по фото'])).toEqual([
       'Вес по фото',
     ])
+  })
+
+  test('deleting a ration drops only pending unmodified copies', () => {
+    const planId = 'plan_week'
+    expect(
+      mealRemovedWithRation(
+        {
+          assumptions: [RATION_DIARY_SOURCE_MARK, weekPlanAssumption(planId)],
+          versions: [{ id: 'v1' }],
+        },
+        planId,
+      ),
+    ).toBe(true)
+    expect(
+      mealRemovedWithRation(
+        {
+          assumptions: [
+            RATION_DIARY_SOURCE_MARK,
+            weekPlanAssumption(planId),
+            RATION_DIARY_DONE_MARK,
+          ],
+        },
+        planId,
+      ),
+    ).toBe(false)
+    expect(
+      mealRemovedWithRation(
+        {
+          assumptions: [RATION_DIARY_SOURCE_MARK, weekPlanAssumption(planId)],
+          versions: [{ id: 'v1' }, { id: 'v2' }],
+        },
+        planId,
+      ),
+    ).toBe(false)
+    expect(
+      mealRemovedWithRation(
+        { assumptions: [weekPlanAssumption(planId), 'Дневник:own'] },
+        planId,
+      ),
+    ).toBe(false)
   })
 })

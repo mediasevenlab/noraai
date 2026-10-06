@@ -26,15 +26,21 @@ import {
   mentorRationToEntry,
   rationPlanWeekDays,
   RationEditorDialog,
+  useCreateMentorPlanMutation,
+  useMentorPlansQuery,
   usePlanAssignmentQuery,
   type RationDraft,
   type RationEntry,
 } from '@/features/mentor'
 import {
   authoredCloneOfSharedRation,
+  matchingMentorPlanByTitle,
+  MENTOR_FEED_PLAN_CAP,
+  mentorPlanRequestFromSharedRation,
   daysCountLabel,
   mealsCountLabel,
   mealsForWeekPlan,
+  mealRemovedWithRation,
   mealsQueryKeys,
   planOccurrenceDiaryAt,
   shareMyRation,
@@ -48,6 +54,14 @@ import {
   writeAssignedPlans,
 } from '@/platform/authored-plans'
 import { notifyHybridFavoriteAdded } from '@/platform/hybrid-notifications'
+import { forgetMyRation } from '@/features/users/api'
+import {
+  hiddenRationIds,
+  hideRation,
+  rationCardNeedsLocalHide,
+  unhideRation,
+} from './hidden-rations'
+import { orderRationCopiesAfterSource, rationCopyTitle, rationDaysForCopy } from './ration-copy'
 import { readPlanStartDate, suggestedPlanStartDate } from '@/platform/plan-start'
 import { dayKeyFromDate, startOfLocalDay } from '@/platform/plan-slots'
 import { withAuthoredPlan, withoutAuthoredPlan } from '@/platform/plan-library-local'
@@ -144,6 +158,21 @@ export function PlanPage({
   const [deletePlanTarget, setDeletePlanTarget] = React.useState<{ id: string; title: string } | null>(
     null,
   )
+  const [deletingPlan, setDeletingPlan] = React.useState(false)
+  const [copyingPlanId, setCopyingPlanId] = React.useState<string | null>(null)
+  const [hiddenPlanIds, setHiddenPlanIds] = React.useState(() => hiddenRationIds(savedScope.userId))
+  const hiddenIdentity = savedScope.userId
+  const [loadedHiddenIdentity, setLoadedHiddenIdentity] = React.useState(hiddenIdentity)
+  if (loadedHiddenIdentity !== hiddenIdentity) {
+    setLoadedHiddenIdentity(hiddenIdentity)
+    setHiddenPlanIds(hiddenRationIds(hiddenIdentity))
+  }
+  React.useEffect(() => {
+    if (!hiddenPlanIds.has(weekPlan.id)) return
+    if (!meals.some((meal) => mealRemovedWithRation(meal, weekPlan.id))) return
+    unhideRation(savedScope.userId, weekPlan.id)
+    setHiddenPlanIds(hiddenRationIds(savedScope.userId))
+  }, [hiddenPlanIds, meals, savedScope.userId, weekPlan.id])
   const [creating, setCreating] = React.useState(false)
   const [dockAction, setDockAction] = React.useState<HTMLElement | null>(null)
   const savedIdentity = `${savedScope.userId}:${savedScope.email ?? ''}`
@@ -217,8 +246,15 @@ export function PlanPage({
     [],
   )
   const allCards = React.useMemo(
-    () => [weekPlan, ...authoredCards, ...assignedCards, ...catalogCards],
-    [assignedCards, authoredCards, catalogCards, weekPlan],
+    () =>
+      [weekPlan, ...authoredCards, ...assignedCards, ...catalogCards].filter((card) => {
+        if (!hiddenPlanIds.has(card.id)) return true
+        if (card.id.startsWith('week:')) {
+          return meals.some((meal) => mealRemovedWithRation(meal, card.id))
+        }
+        return false
+      }),
+    [assignedCards, authoredCards, catalogCards, hiddenPlanIds, meals, weekPlan],
   )
   const cards = React.useMemo(
     () => visiblePlanCards(allCards, query, savedIds, tab, library),
@@ -331,10 +367,82 @@ export function PlanPage({
     toast('План снят')
   }
 
-  function deletePlan(planId: string) {
-    if (!isAuthoredPlanId(planId)) return
-    persist(withoutAuthoredPlan(snapshot, planId))
-    toast.success('План удалён')
+  async function copyPlan(plan: WeekPlan) {
+    if (copyingPlanId || creating) return
+    if (!auth.user || auth.user.role !== 'user') {
+      toast.error('Войдите, чтобы скопировать рацион')
+      return
+    }
+    if (authored.length >= 20) {
+      toast.error('В «Мои» уже 20 рационов')
+      return
+    }
+    const days = rationDaysForCopy(plan)
+    if (days.length === 0) {
+      toast.error('В этом рационе пока нет приёмов')
+      return
+    }
+    const title = rationCopyTitle(
+      plan.title,
+      authored.map((item) => item.title),
+    )
+    const created = createAuthoredPlan({
+      coverImage: plan.coverImage,
+      dayCount: days.length,
+      description: plan.description,
+      goal: plan.goal,
+      title,
+    })
+    if (!created) return
+    setCopyingPlanId(plan.id)
+    try {
+      const createdMeals = await stampDaysOntoPlan(
+        days.map((day) => ({ ...day, title })),
+        created.id,
+      )
+      persist(
+        withAuthoredPlan(snapshot, {
+          ...created,
+          coverImage: firstDurablePlanCover(
+            created.coverImage,
+            createdMeals.map((item) => item.meal),
+          ),
+        }),
+      )
+      if (library === 'catalog') changeLibrary('mine')
+      toast.success('Рацион скопирован')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Не удалось скопировать рацион')
+    } finally {
+      setCopyingPlanId(null)
+    }
+  }
+
+  async function deletePlan(planId: string) {
+    const userId = savedScope.userId
+    if (rationCardNeedsLocalHide(planId)) {
+      hideRation(userId, planId)
+      setHiddenPlanIds(hiddenRationIds(userId))
+    }
+    setDeletingPlan(true)
+    try {
+      if (auth.user) await forgetMyRation(auth.transport, planId)
+      const clone = isCatalogPlanId(planId) ? authoredCloneOfCatalog(authored, planId) : null
+      const removedIds = [planId, clone?.id].filter((id): id is string => Boolean(id))
+      const next = removedIds.reduce((library, id) => withoutAuthoredPlan(library, id), snapshot)
+      if (JSON.stringify(next) !== JSON.stringify(snapshot)) persist(next)
+      await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.all })
+      await queryClient.invalidateQueries({ queryKey: ['session', 'plans'] })
+      toast.success('Рацион удалён')
+    } catch (error) {
+      if (rationCardNeedsLocalHide(planId)) {
+        unhideRation(userId, planId)
+        setHiddenPlanIds(hiddenRationIds(userId))
+      }
+      toast.error(error instanceof Error ? error.message : 'Не удалось удалить рацион')
+    } finally {
+      setDeletingPlan(false)
+    }
   }
 
   async function toggleShare(plan: WeekPlan) {
@@ -417,7 +525,13 @@ export function PlanPage({
     }
   }
 
-  const groupedCards = React.useMemo(() => partitionPlanCards(cards), [cards])
+  const groupedCards = React.useMemo(() => {
+    const groups = partitionPlanCards(cards)
+    return {
+      mine: orderRationCopiesAfterSource(groups.mine),
+      mentor: orderRationCopiesAfterSource(groups.mentor),
+    }
+  }, [cards])
 
   function renderPlanCard(plan: WeekPlan) {
     const catalog = isCatalogPlanId(plan.id)
@@ -456,11 +570,9 @@ export function PlanPage({
           void selectPlan(plan.id)
         }}
         onToggleSave={() => toggleSave(plan.id, plan.title)}
-        onDelete={
-          isAuthoredPlanId(plan.id)
-            ? () => setDeletePlanTarget({ id: plan.id, title: plan.title })
-            : undefined
-        }
+        copying={copyingPlanId === plan.id}
+        onCopy={() => void copyPlan(plan)}
+        onDelete={() => setDeletePlanTarget({ id: plan.id, title: plan.title })}
         onShare={() => void toggleShare(plan)}
         canShare={
           isAuthoredPlanId(plan.id) &&
@@ -653,10 +765,12 @@ export function PlanPage({
       <DeleteCardDialog
         confirmLabel={planCardDeletePrompt(deletePlanTarget?.title ?? '').confirmLabel}
         description={planCardDeletePrompt(deletePlanTarget?.title ?? '').description}
+        pending={deletingPlan}
         onConfirm={() => {
-          if (!deletePlanTarget) return
-          deletePlan(deletePlanTarget.id)
+          if (!deletePlanTarget || deletingPlan) return
+          const planId = deletePlanTarget.id
           setDeletePlanTarget(null)
+          void deletePlan(planId)
         }}
         onOpenChange={(open) => {
           if (!open) setDeletePlanTarget(null)
@@ -684,6 +798,8 @@ export function CurrentPlanPage({
   const auth = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const mentorPlansQuery = useMentorPlansQuery(auth.user?.role === 'mentor')
+  const createMentorPlan = useCreateMentorPlanMutation()
   const {
     plan: weekPlan,
     meals,
@@ -893,8 +1009,45 @@ export function CurrentPlanPage({
     }
   }
 
+  const mentorSaved =
+    auth.user?.role === 'mentor' && sharedRation
+      ? matchingMentorPlanByTitle(sharedRation.title, mentorPlansQuery.data?.items ?? []) ?? null
+      : null
+  const alreadyInMine = Boolean(cloned || mentorSaved)
+
+  async function addSharedRationToMentor() {
+    if (!sharedRation || !auth.user || adding) return
+    if (mentorSaved) {
+      onOpenPlan?.(mentorSaved.id)
+      return
+    }
+    if ((mentorPlansQuery.data?.items.length ?? 0) >= MENTOR_FEED_PLAN_CAP) {
+      toast.error('Уже 20 рационов')
+      return
+    }
+    const body = mentorPlanRequestFromSharedRation(sharedRation)
+    if (!body) {
+      toast.error('Не удалось добавить рацион')
+      return
+    }
+    setAdding(true)
+    try {
+      const created = await createMentorPlan.mutateAsync(body)
+      toast.success('Рацион добавлен в ваши рационы')
+      onOpenPlan?.(created.plan.id)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Не удалось добавить рацион')
+    } finally {
+      setAdding(false)
+    }
+  }
+
   async function addSharedRationToMine() {
     if (!sharedRation || sharedRation.own || adding) return
+    if (auth.user?.role === 'mentor') {
+      await addSharedRationToMentor()
+      return
+    }
     if (cloned) {
       openPlan(cloned.id)
       return
@@ -941,7 +1094,14 @@ export function CurrentPlanPage({
     }
   }
 
-  const addToMine = catalogView ? addCatalogToMine : feedPreview ? addSharedRationToMine : null
+  const addToMine =
+    auth.user?.role === 'mentor'
+      ? null
+      : catalogView
+        ? addCatalogToMine
+        : feedPreview
+          ? addSharedRationToMine
+          : null
 
   const catalogMineButton = addToMine ? (
     <button
@@ -950,7 +1110,7 @@ export function CurrentPlanPage({
       onClick={() => void addToMine()}
       type="button"
     >
-      {cloned ? 'Открыть в «Мои»' : 'Добавить'}
+      {alreadyInMine ? 'Открыть в «Мои»' : 'Добавить'}
     </button>
   ) : null
 
@@ -1170,7 +1330,7 @@ export function CurrentPlanPage({
                     onClick={() => void addToMine()}
                     type="button"
                   >
-                    {cloned ? 'Открыть в «Мои»' : 'Добавить'}
+                    {alreadyInMine ? 'Открыть в «Мои»' : 'Добавить'}
                   </button>
                 ) : null}
               </div>
@@ -1187,6 +1347,7 @@ export function CurrentPlanPage({
             onPickingChange={setMovingMeals}
             onRemoveEmptyDay={canMutateDays ? removeEmptyDay : undefined}
             planId={plan.id}
+            pickIntoMentorPlans={auth.user?.role === 'mentor' && feedPreview}
             readOnly={catalogView || feedPreview}
           />
         </>

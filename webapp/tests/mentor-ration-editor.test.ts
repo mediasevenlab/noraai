@@ -12,8 +12,8 @@ const editor = [
 test('mentor home no longer hosts a ration catalog feed', () => {
   expect(page).not.toContain('MentorAuthoredRationsFeed')
   expect(page).not.toContain('ReceivedAuthoredRationsFeed')
-  expect(page).toContain("value: 'plan', label: 'План'")
-  expect(page).not.toContain("value: 'rations'")
+  expect(page).toContain("label: 'Рационы'")
+  expect(page).toContain("value: 'rations'")
 })
 
 test('day editor covers a full written day in plan mode', () => {

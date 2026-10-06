@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { createPortal } from 'react-dom'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarIcon, ArrowLeftRightIcon, PlusIcon, Trash2Icon, UtensilsIcon, XIcon, ZapIcon } from '@/components/icons'
 import { toast } from '@/components/ui/toast'
 
@@ -26,8 +26,11 @@ import {
   diaryMealsFreshForPlanDay,
   diaryMealPhotoSrc,
   diaryMealStampOnDay,
+  appendFeedMealToMentorPlan,
   diaryPlanCopiesOnDay,
   diaryPlanSourceId,
+  mentorWeekdayIndex,
+  preferredMealPhotoSrc,
   favoriteMealIdsForSync,
   favoritesQueryKeys,
   imagesForDiaryMeal,
@@ -120,6 +123,7 @@ export function CurrentPlanMeals({
   onPickingChange,
   onRemoveEmptyDay,
   planId,
+  pickIntoMentorPlans = false,
   readOnly = false,
   canReorder,
   layoutRevision = 0,
@@ -132,6 +136,8 @@ export function CurrentPlanMeals({
   onPickingChange?: (picking: boolean) => void
   onRemoveEmptyDay?: (dayKey: string) => void
   planId?: string
+  /** Shared ration opened by a mentor: meals can be copied into the mentor's own plans. */
+  pickIntoMentorPlans?: boolean
   readOnly?: boolean
   canReorder?: boolean
   layoutRevision?: number
@@ -182,6 +188,20 @@ export function CurrentPlanMeals({
   const canCopyToPlan = Boolean(!readOnly && planId && subjectId && user?.role === 'user')
   const mealsQuery = useMealsQuery(canCopyToPlan ? subjectId : undefined)
   const [planMeal, setPlanMeal] = React.useState<MealEntry | null>(null)
+  const [mentorPickerPlanId, setMentorPickerPlanId] = React.useState('')
+  const mentorPlansQuery = useQuery({
+    queryKey: ['session', 'mentor', 'plans'] as const,
+    enabled: pickIntoMentorPlans && Boolean(user),
+    queryFn: async () => {
+      const api = await import('@/features/mentor/api')
+      return api.listMentorPlans(auth.transport)
+    },
+  })
+  const mentorPlanOptions = (mentorPlansQuery.data?.items ?? []).map((plan) => ({
+    id: plan.id,
+    title: plan.title,
+    ...(plan.image ? { image: plan.image } : {}),
+  }))
   const [addingPlanDayKey, setAddingPlanDayKey] = React.useState<string | null>(null)
   const pickerDays = React.useMemo(
     () => pickerDaysFromPlan(appliedDays, dayCount),
@@ -514,6 +534,79 @@ export function CurrentPlanMeals({
     toast.success('Приёмы перемещены', { id: 'plan-meals-moved' })
   }
 
+  function openMentorPlanPicker(meal: MealEntry) {
+    if (mentorPlansQuery.isLoading) return
+    if (mentorPlanOptions.length === 0) {
+      toast('Сначала создайте рацион')
+      return
+    }
+    setMentorPickerPlanId(mentorPlanOptions[0]!.id)
+    setOpenId(null)
+    setPlanMeal(meal)
+  }
+
+  async function addMealToMentorPlan(meal: MealEntry, day: FeedPlanWeekDay, planIdToUpdate: string) {
+    const plan = mentorPlansQuery.data?.items.find((item) => item.id === planIdToUpdate)
+    if (!plan || !user) {
+      toast.error('Рацион не найден')
+      return
+    }
+    const photo = preferredMealPhotoSrc(meal)
+    const next = appendFeedMealToMentorPlan(
+      {
+        title: plan.title,
+        description: plan.description,
+        goal: plan.goal,
+        image: plan.image,
+        meals: plan.meals.map((item) => ({
+          slot: item.slot,
+          title: item.title,
+          ingredients: item.ingredients,
+          steps: item.steps,
+          image: item.image,
+          kcal: item.kcal,
+          protein: item.protein,
+          fat: item.fat,
+          carbs: item.carbs,
+          ...(item.dayIndex != null ? { dayIndex: item.dayIndex } : {}),
+        })),
+      },
+      {
+        carbs: meal.carbs,
+        fat: meal.fat,
+        image: photo ?? '',
+        ingredients: meal.ingredients,
+        kcal: meal.kcal,
+        meal: meal.meal,
+        protein: meal.protein,
+        title: meal.title,
+      },
+      mentorWeekdayIndex(day.date),
+    )
+    if (!next.ok) {
+      toast(
+        next.reason === 'duplicate'
+          ? 'Этот приём уже стоит в выбранный день'
+          : 'В рационе уже 80 приёмов',
+      )
+      return
+    }
+    setAddingPlanDayKey(day.dayKey)
+    try {
+      const api = await import('@/features/mentor/api')
+      await api.updateMentorPlan(auth.transport, planIdToUpdate, next.body)
+      await queryClient.invalidateQueries({ queryKey: ['session', 'mentor', 'plans'] })
+      toast.success(`Добавлено в ${day.label.toLowerCase()}`)
+      setPlanMeal(null)
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Не удалось добавить приём в рацион',
+      )
+    } finally {
+      setAddingPlanDayKey(null)
+    }
+  }
+
   function mealCard(meal: MealEntry) {
     const dayKey = mealDayKey(meal.id)
     const day = dayKey ? boardDays.find((item) => item.dayKey === dayKey) : null
@@ -536,14 +629,18 @@ export function CurrentPlanMeals({
           if (!readOnly) setDeleteTarget(meal)
         }}
         onOpen={() => setOpenId(meal.id)}
+        hideFooterShare={pickIntoMentorPlans}
         onAddToPlan={
-          canCopyToPlan
-            ? () => {
-                setOpenId(null)
-                setPlanMeal(meal)
-              }
-            : undefined
+          pickIntoMentorPlans
+            ? () => openMentorPlanPicker(meal)
+            : canCopyToPlan
+              ? () => {
+                  setOpenId(null)
+                  setPlanMeal(meal)
+                }
+              : undefined
         }
+        showSave={!pickIntoMentorPlans}
         addingToPlan={addingPlanDayKey !== null && planMeal?.id === meal.id}
         onShare={() => {
           if (!readOnly) void shareMeal(meal)
@@ -804,6 +901,24 @@ export function CurrentPlanMeals({
           ) : null}
         </DialogContent>
       </Dialog>
+      {pickIntoMentorPlans ? (
+        <DiaryPlanDayPicker
+          addingDayKey={addingPlanDayKey}
+          fallbackPlanId={mentorPlanOptions[0]?.id}
+          meal={planMeal}
+          meals={[]}
+          onOpenChange={(open) => {
+            if (!open && !addingPlanDayKey) setPlanMeal(null)
+          }}
+          onPlanIdChange={setMentorPickerPlanId}
+          onSelectDay={(day, selectedPlanId) => {
+            if (planMeal) void addMealToMentorPlan(planMeal, day, selectedPlanId)
+          }}
+          open={Boolean(planMeal)}
+          planId={mentorPickerPlanId}
+          plans={mentorPlanOptions}
+        />
+      ) : null}
       {canCopyToPlan && planId ? (
         <DiaryPlanDayPicker
           addingDayKey={addingPlanDayKey}

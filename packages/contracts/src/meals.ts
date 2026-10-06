@@ -219,6 +219,8 @@ export const mealVersionSchema = z
     createdAt: z.string().datetime(),
     label: z.string().min(1).max(40),
     note: z.string().max(120).optional(),
+    /** Who added this refinement. The first version is the original card and has no author. */
+    authorRole: z.enum(['user', 'mentor']).optional(),
     snapshot: mealVersionSnapshotSchema,
   })
   .strict()
@@ -263,7 +265,7 @@ export const mealSchema = z
     clientComment: z.string().max(4000),
     assumptions: z.array(z.string().min(1).max(400)).max(40),
     micronutrients: mealMicronutrientsSchema.default([]),
-    versions: z.array(mealVersionSchema).max(6),
+    versions: z.array(mealVersionSchema).max(8),
     activeVersionId: z.string().uuid(),
     source: mealSourceSchema,
     createdAt: z.string().datetime(),
