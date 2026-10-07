@@ -125,7 +125,7 @@ export function TelegramUsernamePanel({
     <SettingsEntry
       description={
         variant === 'notify'
-          ? 'Сообщение, когда подопечный добавит приём.'
+          ? 'Когда подопечный добавит приём'
           : 'Приёмы из Telegram через бота.'
       }
       title={variant === 'notify' ? 'Telegram-уведомления' : 'Telegram'}

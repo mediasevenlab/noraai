@@ -1,4 +1,3 @@
-import { useNavigate } from '@tanstack/react-router'
 import {
   createContext,
   useCallback,
@@ -7,12 +6,9 @@ import {
   useMemo,
   useRef,
   useState,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
 import { ArrowUpRightIcon, CheckIcon, PencilIcon, XIcon, type LucideIcon } from '@/components/icons'
-
-import { userGeneralSearch } from '@/features/navigation'
 
 import { cn } from '@/lib/utils'
 
@@ -34,7 +30,7 @@ const settingsControlsClass = cn(
   'mt-4 rounded-[16px] bg-[var(--settings-substrate,var(--nora-inset))] px-3.5 py-3.5',
   '[&_form]:!gap-2.5',
   '[&_[data-slot=field-group]]:!mt-0',
-  '[&_[data-slot=field-label]]:!mb-0.5 [&_[data-slot=field-label]]:!font-[family-name:var(--nora-font)] [&_[data-slot=field-label]]:!text-[13px] [&_[data-slot=field-label]]:!font-medium [&_[data-slot=field-label]]:!leading-5 [&_[data-slot=field-label]]:!text-[var(--nora-text)]',
+  '[&_[data-slot=field-label]]:!mb-0.5 [&_[data-slot=field-label]]:!font-[family-name:var(--nora-font)] [&_[data-slot=field-label]]:text-[13px] [&_[data-slot=field-label]]:!font-medium [&_[data-slot=field-label]]:!leading-5 [&_[data-slot=field-label]]:!text-[var(--nora-text)]',
   '[&_[data-slot=field-description]]:!mt-0 [&_[data-slot=field-description]]:!font-[family-name:var(--nora-font)] [&_[data-slot=field-description]]:!text-[12px] [&_[data-slot=field-description]]:!font-light [&_[data-slot=field-description]]:!leading-5 [&_[data-slot=field-description]]:!text-[var(--nora-text-tertiary)]',
   '[&_[data-slot=input]:not([data-ios-keep])]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=input]:not([data-ios-keep])]:!px-3 [&_[data-slot=input]:not([data-ios-keep])]:!text-[16px] [&_[data-slot=input]:not([data-ios-keep])]:!font-normal [&_[data-slot=input]:not([data-ios-keep])]:!leading-5',
   '[&_[data-slot=input]:not([data-ios-keep]):disabled]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=input]:not([data-ios-keep]):disabled]:!opacity-100 [&_[data-slot=input]:not([data-ios-keep]):disabled]:!text-[var(--nora-text-secondary)]',
@@ -65,6 +61,7 @@ function SettingsCanvasView({
   panelsId = 'settings-panels',
   phoneSheet,
   showJumpLink = true,
+  showMobileTitle = false,
   title,
 }: {
   actions?: ReactNode
@@ -86,6 +83,8 @@ function SettingsCanvasView({
   phoneSheet?: boolean
   /** Read-only pages omit the shortcut under the description. */
   showJumpLink?: boolean
+  /** One page title above the phone sheet. Desktop keeps the aside heading. */
+  showMobileTitle?: boolean
   title: string
 }) {
   return (
@@ -94,7 +93,9 @@ function SettingsCanvasView({
       balanced && 'lg:gap-24',
       className,
       (lead || phoneSheet) && 'max-lg:min-h-full max-lg:flex-1 max-lg:gap-0 max-lg:pb-0',
-      (lead || phoneSheet) && 'max-lg:bg-[color-mix(in_srgb,var(--nora-text)_9%,var(--background))]',
+      !lead && !phoneSheet && 'max-lg:pt-6',
+      lead && 'max-lg:bg-[color-mix(in_srgb,var(--nora-text)_9%,var(--background))]',
+      phoneSheet && 'max-lg:!px-0 max-lg:!pt-0 max-lg:bg-background',
     )}>
       <aside className={cn(
         'hidden w-full shrink-0 flex-col gap-6 lg:sticky lg:top-6 lg:flex lg:self-start',
@@ -133,17 +134,22 @@ function SettingsCanvasView({
 
       <section className={cn('min-w-0 flex-1', balanced && 'lg:ml-auto lg:w-[calc((100%-6rem)*0.5)] lg:flex-none', (lead || phoneSheet) && 'max-lg:flex max-lg:flex-col')} aria-label={title} id={panelsId}>
         {lead ? <div className="lg:hidden">{lead}</div> : null}
-        <div className={cn((lead || phoneSheet) && 'max-lg:relative max-lg:flex max-lg:min-h-0 max-lg:flex-1 max-lg:flex-col', phoneSheet && 'max-lg:mt-5')}>
-          {phoneSheet ? <PhoneSheetHandle /> : null}
+        {phoneSheet && showMobileTitle ? (
+          <h1 className="px-[calc(1rem+0.875rem)] pt-6 font-heading text-[22px] font-bold leading-tight tracking-[-0.03em] text-foreground lg:hidden">
+            {title}
+          </h1>
+        ) : null}
+        <div className={cn((lead || phoneSheet) && 'max-lg:relative max-lg:flex max-lg:min-h-0 max-lg:flex-1 max-lg:flex-col')}>
           <ul
             className={cn(
               'group/sections flex flex-col',
               divided && 'divide-y divide-border/70',
-              (lead || phoneSheet) && 'max-lg:relative max-lg:min-h-0 max-lg:flex-1 max-lg:-mx-3 max-lg:overflow-hidden max-lg:rounded-t-[22px] max-lg:bg-background max-lg:px-4 max-lg:pt-5 max-lg:pb-[calc(5rem+env(safe-area-inset-bottom))] max-lg:shadow-[0_-4px_14px_rgba(0,0,0,0.035)] sm:max-lg:-mx-6 md:max-lg:-mx-10',
-              lead && 'max-lg:-mt-6',
+              lead && 'max-lg:relative max-lg:min-h-0 max-lg:flex-1 max-lg:-mx-3 max-lg:-mt-6 max-lg:overflow-hidden max-lg:rounded-t-[22px] max-lg:bg-background max-lg:px-4 max-lg:pt-5 max-lg:pb-[calc(5rem+env(safe-area-inset-bottom))] max-lg:shadow-[0_-4px_14px_rgba(0,0,0,0.035)] sm:max-lg:-mx-6 md:max-lg:-mx-10',
+              phoneSheet && 'max-lg:relative max-lg:min-h-0 max-lg:flex-1 max-lg:bg-background max-lg:px-4 max-lg:pb-[calc(5rem+env(safe-area-inset-bottom))]',
+              phoneSheet && (showMobileTitle ? 'max-lg:pt-5' : 'max-lg:pt-6'),
             )}
             data-plain={divided ? undefined : ''}
-            data-profile-sheet={(lead || phoneSheet) ? '' : undefined}
+            data-profile-sheet={lead ? '' : undefined}
           >
             {children}
           </ul>
@@ -152,7 +158,7 @@ function SettingsCanvasView({
       </section>
       {actions ? (
         <div
-          className="fixed z-40 flex flex-wrap-reverse items-center gap-2 lg:hidden left-4 right-[4.75rem] bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]"
+          className="mobile-dock fixed z-40 flex flex-wrap-reverse items-center gap-2 lg:hidden left-4 right-[4.75rem] bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]"
           data-settings-dock=""
         >
           {actions}
@@ -162,65 +168,15 @@ function SettingsCanvasView({
   )
 }
 
-/** Gray pill above a phone settings sheet. Pull down to leave the section. */
-function PhoneSheetHandle() {
-  const navigate = useNavigate()
-  const origin = useRef<number | null>(null)
-
-  const shellOf = (event: ReactPointerEvent<HTMLButtonElement>) => event.currentTarget.parentElement
-
-  const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    origin.current = event.clientY
-    event.currentTarget.setPointerCapture(event.pointerId)
-    const shell = shellOf(event)
-    if (shell) shell.style.transition = 'none'
-  }
-
-  const onPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (origin.current == null) return
-    const shell = shellOf(event)
-    if (!shell) return
-    const distance = Math.max(0, event.clientY - origin.current)
-    shell.style.transform = `translateY(${distance}px)`
-  }
-
-  const onPointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (origin.current == null) return
-    const distance = Math.max(0, event.clientY - origin.current)
-    origin.current = null
-    const shell = shellOf(event)
-    if (distance > 160) {
-      void navigate({ search: userGeneralSearch(), to: '/app/general' })
-      return
-    }
-    if (shell) {
-      shell.style.transition = 'transform 180ms ease'
-      shell.style.transform = ''
-    }
-  }
-
-  return (
-    <button
-      aria-label="Закрыть раздел"
-      className="nora-sheet-handle absolute top-0 left-1/2 z-[3] hidden h-8 w-44 -translate-x-1/2 -translate-y-[calc(100%+10px)] cursor-grab touch-none items-end justify-center max-lg:flex"
-      onPointerCancel={onPointerUp}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      type="button"
-    >
-      <span className="nora-sheet-pill" />
-    </button>
-  )
-}
-
 /** Один раздел настроек — как запись в списке версий. */
 export function SettingsEntry({
   after,
   children,
   className,
+  controlsClassName,
   description,
   descriptionClassName,
+  hideTitleOnMobile = true,
   marker,
   title,
 }: {
@@ -228,21 +184,24 @@ export function SettingsEntry({
   after?: ReactNode
   children: ReactNode
   className?: string
+  controlsClassName?: string
   description: ReactNode
   descriptionClassName?: string
+  /** Phone settings keep the subtitle and drop the large section title. */
+  hideTitleOnMobile?: boolean
   marker?: ReactNode
   title: string
 }) {
   return (
     <li className={cn('w-full py-6 first:pt-0 group-data-[plain]/sections:py-[15.6px] group-data-[plain]/sections:first:pt-0 lg:group-data-[plain]/sections:py-[20px] lg:group-data-[plain]/sections:first:pt-0 lg:ml-auto lg:w-lg lg:max-w-full', className)}>
-      <div className="flex items-center justify-between gap-2 lg:gap-x-4">
-        <h2 className="min-w-0 font-heading text-[18px] leading-tight font-bold tracking-[-0.02em] text-foreground lg:text-[24px]">
+      <div className={cn('flex items-center justify-between gap-2 lg:gap-x-4', hideTitleOnMobile && !marker && 'max-lg:hidden')}>
+        <h2 className={cn('min-w-0 font-heading text-[18px] leading-tight font-bold tracking-[-0.02em] text-foreground lg:text-[24px]', hideTitleOnMobile && 'max-lg:hidden')}>
           {title}
         </h2>
         {marker}
       </div>
-      <p className={cn('mt-1 max-w-[54ch]', settingsBodyClass, 'text-[var(--nora-text-tertiary)]', descriptionClassName)}>{description}</p>
-      <div className={settingsControlsClass} data-settings-well="">
+      <p className={cn('mt-1 max-w-[54ch]', settingsBodyClass, 'text-[var(--nora-text-tertiary)]', hideTitleOnMobile && 'max-lg:mt-0 max-lg:line-clamp-1 max-lg:whitespace-nowrap max-lg:px-3.5', descriptionClassName)}>{description}</p>
+      <div className={cn(settingsControlsClass, controlsClassName)} data-settings-well="">
         {children}
       </div>
       {after ? <div className="mt-3 px-3.5">{after}</div> : null}
@@ -269,15 +228,20 @@ export function SettingsFieldMark({
 
 export function SettingsReadRows({
   rows,
+  tone = 'read',
 }: {
   rows: Array<{ icon?: LucideIcon, label: string, value: string }>
+  /** Payments totals use the same 13px rows as the desktop facts list. */
+  tone?: 'facts' | 'read'
 }) {
+  const facts = tone === 'facts'
   return (
-    <div>
+    <div data-payment-facts={facts ? '' : undefined}>
       {rows.map((row, index) => (
         <div
           className={cn(
-            'grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 border-t border-[var(--nora-divider)] py-3.5',
+            'grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 border-t border-[var(--nora-divider)]',
+            facts ? 'py-3' : 'py-3.5',
             index === 0 && 'border-t-0 pt-0',
             index === rows.length - 1 && 'pb-0',
           )}
@@ -285,9 +249,23 @@ export function SettingsReadRows({
         >
           <span className="flex min-w-0 items-center gap-2.5">
             {row.icon ? <SettingsFieldMark icon={row.icon} /> : null}
-            <span className={cn(readRowClass, 'font-medium text-[var(--nora-text)]')}>{row.label}</span>
+            <span
+              className={cn(readRowClass, 'font-medium text-[var(--nora-text)]')}
+              data-settings-meta={facts ? '' : undefined}
+            >
+              {row.label}
+            </span>
           </span>
-          <span className={cn(readRowClass, 'min-w-0 break-words text-right font-light text-[color-mix(in_srgb,white_10%,color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary))))] dark:text-[var(--nora-text-secondary)]')}>
+          <span
+            className={cn(
+              readRowClass,
+              'min-w-0 break-words text-right',
+              facts
+                ? 'font-[250] text-[var(--nora-text-secondary)]'
+                : 'font-light text-[color-mix(in_srgb,white_10%,color-mix(in_srgb,black_20%,color-mix(in_srgb,black_20%,var(--nora-text-secondary))))] dark:text-[var(--nora-text-secondary)]',
+            )}
+            data-payment-value={facts ? '' : undefined}
+          >
             {row.value || '—'}
           </span>
         </div>

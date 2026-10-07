@@ -13,7 +13,7 @@ import {
 } from '@/components/icons'
 import { useLocation, useNavigate } from '@tanstack/react-router'
 import type { UserDto } from '@web-app-demo/contracts'
-import type { PropsWithChildren } from 'react'
+import { useEffect, type PropsWithChildren } from 'react'
 
 import { useDismissAppBootSplash } from '@/platform/app-boot-splash'
 
@@ -40,7 +40,7 @@ import {
   MentorMenteeNavigation,
   MentorMenteesBanner,
 } from '@/features/mentor'
-import { SubscriptionRenewalBanner } from '@/features/payments'
+import { SubscriptionMobileCapsule, SubscriptionRenewalBanner } from '@/features/payments'
 import { UserAppNavigation } from '@/features/users'
 import {
   AdminDesignSystemNavigation,
@@ -108,6 +108,51 @@ export function WorkspaceShell({
   user: UserDto
 }>) {
   useDismissAppBootSplash()
+  useEffect(() => {
+    const root = document.documentElement
+    root.dataset.appShell = ''
+    let frame = 0
+    const sync = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const viewport = window.visualViewport
+        const height = viewport?.height ?? window.innerHeight
+        const offset = viewport?.offsetTop ?? 0
+        root.style.setProperty('--app-vvh', `${Math.round(height)}px`)
+        root.style.setProperty('--app-vvt', `${Math.round(offset)}px`)
+      })
+    }
+    const release = () => {
+      sync()
+      const scroller = document.querySelector('[data-app-scroll]')
+      if (!(scroller instanceof HTMLElement)) return
+      const top = scroller.scrollTop
+      scroller.scrollTop = top + 1
+      scroller.scrollTop = top
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') release()
+    }
+    sync()
+    window.visualViewport?.addEventListener('resize', sync)
+    window.visualViewport?.addEventListener('scroll', sync)
+    window.addEventListener('resize', sync)
+    window.addEventListener('orientationchange', release)
+    window.addEventListener('pageshow', release)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      cancelAnimationFrame(frame)
+      delete root.dataset.appShell
+      root.style.removeProperty('--app-vvh')
+      root.style.removeProperty('--app-vvt')
+      window.visualViewport?.removeEventListener('resize', sync)
+      window.visualViewport?.removeEventListener('scroll', sync)
+      window.removeEventListener('resize', sync)
+      window.removeEventListener('orientationchange', release)
+      window.removeEventListener('pageshow', release)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [])
   const pathname = useLocation({ select: (location) => location.pathname })
   const catalogOpen = useLocation({
     select: (location) =>
@@ -204,7 +249,7 @@ export function WorkspaceShell({
 
   return (
     <SidebarProvider
-      className="h-svh overflow-hidden"
+      className="max-lg:fixed max-lg:inset-x-0 max-lg:top-[var(--app-vvt,0px)] !h-[var(--app-vvh,100dvh)] !max-h-[var(--app-vvh,100dvh)] !min-h-[var(--app-vvh,100dvh)] overflow-hidden"
       defaultOpen={getSidebarDefaultOpen()}
     >
       <AppSidebar
@@ -268,11 +313,13 @@ export function WorkspaceShell({
           workspaceItems={navigationLocked ? [] : secondaryItems}
         />
         <div
-          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto lg:[scrollbar-gutter:stable] max-md:[-ms-overflow-style:none] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden"
+          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto overscroll-y-contain lg:[scrollbar-gutter:stable] max-md:[-ms-overflow-style:none] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden"
+          data-app-scroll=""
           data-subscription-frozen={subscriptionFrozen ? '' : undefined}
         >
           {children}
         </div>
+        {user.role === 'user' ? <SubscriptionMobileCapsule /> : null}
         <MobileNavFab
           items={mobileNavItems}
           navigationLocked={navigationLocked}

@@ -377,7 +377,7 @@ export function AdminHomeRedirectPage() {
 
 export function AdminProfilePage() {
   const user = useWorkspaceUser('admin')
-  return <AccountProfile showBrand titleSize="display" user={user} />
+  return <AccountProfile user={user} />
 }
 
 export function AdminUsersPage() {

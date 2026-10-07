@@ -105,10 +105,10 @@ export function ReferralsDirectory({
       {referrals.data && referrals.data.items.length > 0 && (
         <Table className="w-full table-fixed">
           <colgroup>
-            <col className="w-[34%]" />
-            <col className="w-[20%]" />
-            <col className="w-[14%]" />
-            <col className="w-[32%]" />
+            <col className="w-[28%]" />
+            <col className="w-[24%]" />
+            <col className="w-[12%]" />
+            <col className="w-[36%]" />
           </colgroup>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -184,7 +184,7 @@ export function ReferralsDirectory({
     return (
       <SettingsEntry
         className="lg:w-[28.8rem]"
-        description="Кто зарегистрировался по вашей ссылке."
+        description="Кто пришёл по ссылке."
         title="Каталог"
       >
         <div className="grid gap-2.5">

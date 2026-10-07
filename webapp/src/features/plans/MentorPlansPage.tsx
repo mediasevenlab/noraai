@@ -313,11 +313,12 @@ export function MentorPlansPage() {
     <div className={`${MOBILE_DOCK_BOTTOM_CLASS} left-4 md:hidden`}>
       <button
         aria-label="Создать рацион"
-        className={MOBILE_DOCK_FAB_CLASS}
+        className={MOBILE_DOCK_PILL_CLASS}
         onClick={() => setDraft(emptyRationDraft())}
         type="button"
       >
         <UtensilsIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_ACTIVE_CLASS} strokeWidth={1.75} />
+        Создать
       </button>
     </div>
     </>

@@ -222,6 +222,18 @@ html[data-android] * {
     height: calc(100dvh - var(--modal-sheet-inset)) !important;
   }
 
+  /* Meal window fills the phone: no grabber, top radius, or gap. */
+  [data-slot='dialog-content'][data-phone-full] {
+    top: 0 !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  [data-slot='dialog-content'][data-phone-full] [data-slot='sheet-grabber'] {
+    display: none !important;
+  }
+
   [data-slot='dialog-content'][data-ending-style],
   [data-slot='alert-dialog-content'][data-ending-style],
   [data-slot='sheet-content'][data-side='bottom'][data-ending-style] {

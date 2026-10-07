@@ -43,7 +43,7 @@ test('a payout note does not repeat the amount already shown beside the form', (
     ready: true,
     now: new Date(2026, 9, 7),
   })
-  expect(ready).toBe('Выплата 1 ноября на +7 … 67.')
+  expect(ready).toBe('Выплата 1 ноября.')
   expect(mentorPayoutStatus({
     accrued: 1_000,
     kind: 'referral',

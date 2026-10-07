@@ -134,6 +134,20 @@ html[data-hybrid] {
   background: var(--nora-canvas, var(--background));
 }
 
+/*
+ * Phone browser chrome hides and shows. A shell locked to svh stays the
+ * short height, so the page rubber-bands and the bottom stays clipped
+ * until a later resize. The shell follows the visual viewport instead.
+ */
+@media (max-width: 1023px) {
+  html[data-app-shell],
+  html[data-app-shell] body {
+    height: var(--app-vvh, 100dvh);
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+}
+
 html[data-hybrid] #root {
   box-sizing: border-box;
   min-height: 100dvh;
@@ -800,14 +814,20 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
     --ios-type-scale: 0.875;
   }
 
+  /* Beat the well's 13px label utility so edit mode matches the read row. */
+  html [data-settings-well] [data-slot='field-label'] {
+    font-size: 14px !important;
+    line-height: 1.25rem !important;
+  }
+
   [data-settings-well] [data-slot='field-label'],
   [data-settings-well] [data-slot='select-trigger'],
   [data-settings-well] button,
   [data-settings-well] label,
-  [data-settings-well] span:not([data-option-note]):not([data-nora-badge]):not([data-settings-meta]),
+  [data-settings-well] span:not([data-option-note]):not([data-nora-badge]):not([data-settings-meta]):not([data-payment-value]),
   [data-onboarding-form] [data-slot='field-label'],
   [data-onboarding-form] label,
-  [data-onboarding-form] span:not([data-option-note]):not([data-nora-badge]):not([data-settings-meta]) {
+  [data-onboarding-form] span:not([data-option-note]):not([data-nora-badge]):not([data-settings-meta]):not([data-payment-value]) {
     font-size: 14px !important;
   }
 
@@ -820,6 +840,11 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
   [data-settings-well] [data-settings-meta] {
     font-size: 13px !important;
     font-weight: 500 !important;
+  }
+
+  [data-settings-well] [data-payment-value] {
+    font-size: 13px !important;
+    font-weight: 250 !important;
   }
 
   [data-settings-well] [data-slot='field-description'] {
@@ -1126,5 +1151,26 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
     display: none;
     width: 0;
     height: 0;
+  }
+}
+
+/*
+ * Saved payout fields stay flat. Editing draws a stroke so the same
+ * gray fill reads as something you can type into. Utilities-layer
+ * !important beats the well's forced panel fill.
+ */
+@layer utilities {
+  [data-settings-well] input[data-payout-field]:not(:disabled) {
+    background-color: var(--nora-panel) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nora-text) 28%, transparent) !important;
+    color: var(--nora-text) !important;
+    -webkit-text-fill-color: var(--nora-text) !important;
+    caret-color: var(--nora-text);
+  }
+
+  [data-settings-well] input[data-payout-field]:disabled {
+    background-color: color-mix(in srgb, var(--nora-text) 8%, var(--settings-substrate, var(--nora-inset))) !important;
+    box-shadow: none !important;
+    cursor: default;
   }
 }

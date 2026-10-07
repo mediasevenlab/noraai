@@ -1,11 +1,9 @@
 import type { UserDto } from '@web-app-demo/contracts'
-import { useNavigate } from '@tanstack/react-router'
 import { BadgeCheck as BadgeCheckIcon, CameraIcon, ZapIcon } from '@/components/icons'
 import { productSheetFrostFillClass } from '@/components/nora/product-sheet'
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { useSettingsDraft, useSettingsMode } from '@/components/settings-canvas'
-import { userGeneralSearch } from '@/features/navigation'
 import { cn } from '@/lib/utils'
 
 import { followedDailyCalories, formatCalorieKcal, useCaloriePreference } from './calorie-preference'
@@ -159,9 +157,6 @@ export function ProfileMobileMasthead({
   user: UserDto
 }) {
   const mode = useSettingsMode()
-  const navigate = useNavigate()
-  const mastheadRef = useRef<HTMLDivElement>(null)
-  const dragOrigin = useRef<number | null>(null)
   const avatarRef = useRef<HTMLInputElement>(null)
   const coverRef = useRef<HTMLInputElement>(null)
   const [committedAvatar, setCommittedAvatar] = useState(() => readAvatar(user.id))
@@ -214,44 +209,8 @@ export function ProfileMobileMasthead({
     }
   }
 
-  const growCover = (distance: number) => {
-    const masthead = mastheadRef.current
-    if (!masthead) return
-    masthead.style.paddingBottom = `${64 + distance}px`
-  }
-
-  const onHandleDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    dragOrigin.current = event.clientY
-    event.currentTarget.setPointerCapture(event.pointerId)
-    const masthead = mastheadRef.current
-    if (masthead) masthead.style.transition = 'none'
-  }
-
-  const onHandleMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (dragOrigin.current == null) return
-    growCover(Math.max(0, event.clientY - dragOrigin.current))
-  }
-
-  const onHandleUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (dragOrigin.current == null) return
-    const distance = Math.max(0, event.clientY - dragOrigin.current)
-    dragOrigin.current = null
-    const masthead = mastheadRef.current
-    if (distance > 160) {
-      void navigate({ search: userGeneralSearch(), to: '/app/general' })
-      return
-    }
-    if (masthead) {
-      masthead.style.transition = 'padding-bottom 180ms ease'
-      masthead.style.paddingBottom = '64px'
-    }
-  }
-
   return (
-    <div
-      className="relative -mx-3 -mt-3 flex flex-col items-center overflow-hidden px-5 pt-5 pb-16 text-center sm:-mx-6 sm:px-8 md:-mx-10 md:-mt-12 md:px-12 md:pt-14"
-      ref={mastheadRef}
-    >
+    <div className="relative -mx-3 -mt-3 flex flex-col items-center overflow-hidden px-5 pt-5 pb-16 text-center sm:-mx-6 sm:px-8 md:-mx-10 md:-mt-12 md:px-12 md:pt-14">
       {cover ? (
         <>
           <div
@@ -355,17 +314,6 @@ export function ProfileMobileMasthead({
           Анкета
         </ProfileTab>
       </div>
-      <button
-        aria-label="Закрыть раздел"
-        className="nora-sheet-handle absolute bottom-[34px] left-1/2 z-[3] flex h-8 w-44 -translate-x-1/2 cursor-grab touch-none items-end justify-center"
-        onPointerCancel={onHandleUp}
-        onPointerDown={onHandleDown}
-        onPointerMove={onHandleMove}
-        onPointerUp={onHandleUp}
-        type="button"
-      >
-        <span className="nora-sheet-pill" />
-      </button>
     </div>
   )
 }

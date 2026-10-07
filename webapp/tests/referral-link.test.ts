@@ -43,7 +43,7 @@ test('mentor invite panel uses connection copy on the same ref URL shape', () =>
   )
 
   expect(markup).toContain('Ссылка для подключения пользователей')
-  expect(markup).toContain('подключатся к вам как к наставнику')
+  expect(markup).toContain('Ссылка для подопечных')
   expect(markup).toContain('/?ref=mentor')
   expect(markup).not.toContain('Реферальная ссылка')
   expect(markup).not.toContain('Копировать')

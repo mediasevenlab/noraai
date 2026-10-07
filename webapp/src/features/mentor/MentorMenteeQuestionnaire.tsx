@@ -34,7 +34,7 @@ function MenteeCalorieEntry({
 
   return (
     <SettingsEntry
-      description="Слева текущая норма, справа цель."
+      description="Текущая норма и цель."
       title="Калорийность"
     >
       {shown ? (
@@ -92,7 +92,6 @@ export function MentorMenteeQuestionnaire({
       <SettingsCanvas
         className="md:pt-2 md:pb-8"
         description="Имя и никнейм, затем анкета с калорийностью."
-        divided={false}
         eyebrow="Аккаунт"
         meta={email ?? undefined}
         panelsId="mentee-questionnaire"
@@ -100,7 +99,7 @@ export function MentorMenteeQuestionnaire({
         title="Профиль"
       >
         <SettingsEntry
-          description="Имя и никнейм в приложении."
+          description="Имя и никнейм."
           title="Данные профиля"
         >
           <SettingsReadRows

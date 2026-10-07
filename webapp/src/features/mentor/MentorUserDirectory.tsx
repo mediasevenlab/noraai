@@ -94,7 +94,7 @@ export function MentorUserDirectory() {
 
   return (
     <SettingsEntry
-      description="Кто подключён к вам по ссылке."
+      description="Кто подключён по ссылке."
       title="Мои пользователи"
     >
       <div className="grid gap-2.5">

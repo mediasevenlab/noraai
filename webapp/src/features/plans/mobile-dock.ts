@@ -4,7 +4,7 @@ export const PLAN_MOBILE_DOCK_MOVE_ID = 'plan-mobile-dock-move'
 export const PLAN_MOBILE_DOCK_EDIT_ID = 'plan-mobile-dock-edit'
 
 export const MOBILE_DOCK_BOTTOM_CLASS =
-  'fixed z-40 md:hidden bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]'
+  'mobile-dock fixed z-40 md:hidden bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]'
 
 export const MOBILE_DOCK_FAB_CLASS =
   'ios-float-pill ios-float-pill-dock inline-flex size-12 shrink-0 cursor-pointer items-center justify-center rounded-full outline-none transition-[transform,opacity] active:scale-95 focus-visible:shadow-[var(--nora-shadow-focus)]'

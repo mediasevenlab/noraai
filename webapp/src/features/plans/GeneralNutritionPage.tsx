@@ -74,11 +74,13 @@ function GeneralMobileDock({
   inPlanDetail,
   onBack,
   onViewChange,
+  showViewSwitcher,
   view,
 }: {
   inPlanDetail: boolean
   onBack?: () => void
   onViewChange: (view: GeneralNutritionView) => void
+  showViewSwitcher: boolean
   view: GeneralNutritionView
 }) {
   return (
@@ -100,7 +102,9 @@ function GeneralMobileDock({
         <span className="flex items-center gap-2 empty:hidden" id={PLAN_MOBILE_DOCK_MOVE_ID} />
       ) : (
         <>
-          <GeneralViewSwitcher onViewChange={onViewChange} variant="fab" view={view} />
+          {showViewSwitcher ? (
+            <GeneralViewSwitcher onViewChange={onViewChange} variant="fab" view={view} />
+          ) : null}
           {view === 'diary' ? (
             <>
               <span className="flex items-center gap-2 empty:hidden" id={DIARY_MOBILE_DOCK_MOVE_ID} />
@@ -184,6 +188,7 @@ export function GeneralNutritionPage({
         inPlanDetail={inPlanDetail}
         onBack={inPlanDetail ? onClosePlan : undefined}
         onViewChange={onViewChange}
+        showViewSwitcher={library !== 'catalog'}
         view={view}
       />
     </div>

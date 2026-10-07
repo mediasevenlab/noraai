@@ -83,7 +83,7 @@ export function MaintenanceCaloriesPanel({
   return (
     <SettingsEntry
       className={cn(className, 'max-lg:!pt-0')}
-      description="Слева текущая норма, справа цель."
+      description="Текущая норма и цель."
       title="Калорийность"
     >
       {editor.isLoading ? (

@@ -17,9 +17,8 @@ import {
   readMentorPayoutProfile,
 } from '@/features/payments'
 
-import { NoraPageHeader, PageContainer } from '@/components/PageLayout'
+import { AtSignIcon, HashIcon, MailIcon, UserRoundIcon } from '@/components/icons'
 import { SettingsCanvas, SettingsEntry, SettingsReadRows } from '@/components/settings-canvas'
-import { AccountProfileCard } from './AccountProfileCard'
 import { ClientProfileCard, QuestionnaireEditorProvider, useQuestionnaireEditor } from './ClientProfileCard'
 import { MentorConnectionPanel } from './MentorConnectionPanel'
 import { ProfileMobileMasthead, type ProfileMobileTab } from './ProfileMobileMasthead'
@@ -81,7 +80,6 @@ export function UserProfile({ user }: { user: UserDto }) {
     <SettingsCanvas
       ctaLabel="Профиль"
       description="Имя и никнейм, затем анкета с калорийностью."
-      divided={false}
       editable
       eyebrow="Аккаунт"
       lead={(
@@ -108,27 +106,35 @@ export function UserOnboarding() {
 }
 
 /** Mentor/admin identity profile without the user questionnaire. */
-export function AccountProfile({
-  user,
-  showBrand = false,
-  titleSize = 'brand',
-}: {
-  user: UserDto
-  showBrand?: boolean
-  titleSize?: 'brand' | 'display'
-}) {
+export function AccountProfile({ user }: { user: UserDto }) {
+  const roleLabel = user.role === 'admin'
+    ? 'Администратор'
+    : user.role === 'mentor'
+      ? 'Наставник'
+      : 'Пользователь'
+
   return (
-    <PageContainer>
-      <NoraPageHeader
-        description="Основные данные аккаунта рабочей области."
-        showBrand={showBrand}
-        title="Профиль"
-        titleSize={titleSize}
-      />
-      <div className="max-w-xl">
-        <AccountProfileCard user={user} />
-      </div>
-    </PageContainer>
+    <SettingsCanvas
+      description="Основные данные аккаунта рабочей области."
+      eyebrow={roleLabel}
+      meta={user.email}
+      phoneSheet
+      showJumpLink={false}
+      showMobileTitle
+      title="Профиль"
+    >
+      <SettingsEntry description="Имя, почта и роль." title="Данные аккаунта">
+        <SettingsReadRows
+          rows={[
+            { icon: UserRoundIcon, label: 'Имя', value: user.displayName?.trim() || '—' },
+            { icon: MailIcon, label: 'Email', value: user.email },
+            { icon: AtSignIcon, label: 'Никнейм', value: user.nickname ?? '—' },
+            { icon: HashIcon, label: 'ID', value: String(user.publicId) },
+            { icon: UserRoundIcon, label: 'Роль', value: roleLabel },
+          ]}
+        />
+      </SettingsEntry>
+    </SettingsCanvas>
   )
 }
 
@@ -140,11 +146,11 @@ export function UserSettings({
   return (
     <SettingsCanvas
       description="Приёмы из Telegram через бота и подключение к наставнику."
-      divided={false}
       editable
       eyebrow="Аккаунт"
       meta={user.email}
       phoneSheet
+      showMobileTitle
       title="Настройки"
     >
       <TelegramUsernamePanel user={user} />
@@ -190,11 +196,11 @@ export function UserReferrals({ user }: { user: UserDto }) {
       description="Единоразовый бонус за приглашение, после первой оплаты приглашённого."
       descriptionClassName="line-clamp-none max-w-none"
       showJumpLink={false}
-      divided={false}
       eyebrow=""
       meta={user.email}
       panelsId="referrals-panels"
       phoneSheet
+      showMobileTitle
       title="Рефералы"
     >
       <ReferralLinkPanel className="lg:w-[28.8rem]" layout="entry" user={user} />
@@ -205,7 +211,12 @@ export function UserReferrals({ user }: { user: UserDto }) {
             {payoutStatus}
           </p>
         ) : null}
-        description="ФИО, ИНН и телефон счёта в СБП."
+        description={(
+          <>
+            <span className="lg:hidden">Реквизиты для выплаты</span>
+            <span className="hidden lg:inline">ФИО, ИНН и телефон счёта в СБП.</span>
+          </>
+        )}
         title="Данные для выплат"
       >
         <MentorPayoutPanel
@@ -223,14 +234,19 @@ export function UserReferrals({ user }: { user: UserDto }) {
       <ReferralsDirectory layout="entry" unpaidRub={unpaid} />
       <SettingsEntry
         className="lg:w-[28.8rem]"
-        description="Дата, накопленная сумма, удержанный налог и сумма, которая придёт."
+        description={(
+          <>
+            <span className="lg:hidden">Когда и сколько придёт</span>
+            <span className="hidden lg:inline">Дата, накопленная сумма, удержанный налог и сумма, которая придёт.</span>
+          </>
+        )}
         descriptionClassName="max-w-none"
         title="История выплат"
       >
         <PayoutHistory accrued={unpaid} ready={payoutReady} records={ledger.payouts} />
       </SettingsEntry>
-      <SettingsEntry className="lg:hidden" description="Один раз, после первой оплаты." title="Статистика">
-        <SettingsReadRows rows={payoutRows} />
+      <SettingsEntry className="lg:hidden" description="Бонус за приглашение" title="Статистика">
+        <SettingsReadRows rows={payoutRows} tone="facts" />
       </SettingsEntry>
     </SettingsCanvas>
   )

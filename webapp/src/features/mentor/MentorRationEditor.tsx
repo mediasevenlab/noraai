@@ -645,6 +645,7 @@ export function RationEditorDialog({
       <DialogContent
         className={EDITOR_FRAME_CLASS}
         data-modal-frame="meal"
+        data-phone-full=""
         data-plan-outline={outline ? '' : undefined}
         showCloseButton={false}
       >

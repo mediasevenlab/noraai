@@ -82,17 +82,17 @@ export function UserPayments({ user }: { user: UserDto }) {
       ctaLabel="Оплата"
       description="Оплата доступа к дневнику, планам и разбору приёмов. Карту вводите на странице ЮKassa, чек уходит на почту аккаунта."
       descriptionClassName={paymentsDescriptionClass}
-      divided={false}
       eyebrow="Аккаунт"
       meta={user.email}
       panelsId="payments-panels"
       phoneSheet
       showJumpLink={false}
+      showMobileTitle
       title="Платежи"
     >
       <SettingsEntry
         after={subscription.overview ? <SubscriptionStatusLine overview={subscription.overview} /> : null}
-        description="Месяц или сразу год — за год скидка 20%."
+        description="Месяц или год со скидкой."
         title="Подписка"
       >
         {subscription.overview ? (
@@ -108,7 +108,7 @@ export function UserPayments({ user }: { user: UserDto }) {
         )}
       </SettingsEntry>
       <SettingsEntry
-        description="Успешные и неуспешные списания."
+        description="Списания по подписке."
         title="История платежей"
       >
         {subscription.overview ? (
@@ -165,12 +165,12 @@ export function MentorPayments({
       description="200 ₽ за каждый оплаченный месяц подопечного. Год — 2 400 ₽ сразу. Налог удерживается при переводе."
       descriptionClassName={paymentsDescriptionClass}
       asideClassName="lg:w-[308px]"
-      divided={false}
       eyebrow=""
       meta={user.email}
       panelsId="payments-panels"
       phoneSheet
       showJumpLink={false}
+      showMobileTitle
       title="Платежи"
     >
       <SettingsEntry
@@ -180,7 +180,12 @@ export function MentorPayments({
           </p>
         ) : null}
         className="lg:w-[28.8rem]"
-        description="ФИО, ИНН и телефон счёта в СБП."
+        description={(
+          <>
+            <span className="lg:hidden">Реквизиты для выплаты</span>
+            <span className="hidden lg:inline">ФИО, ИНН и телефон счёта в СБП.</span>
+          </>
+        )}
         title="Данные для выплат"
       >
         <MentorPayoutPanel
@@ -188,16 +193,21 @@ export function MentorPayments({
           userId={user.id}
         />
       </SettingsEntry>
-      <SettingsEntry className="lg:hidden" description="Тот же бонус, что в списке пользователей." title="Выплаты">
+      <SettingsEntry className="lg:hidden" description="Бонус за подопечных" title="Выплаты">
         {pending ? (
           <SectionLoading className="min-h-16 py-4" label="Загрузка начислений" />
         ) : (
-          <SettingsReadRows rows={payoutRows} />
+          <SettingsReadRows rows={payoutRows} tone="facts" />
         )}
       </SettingsEntry>
       <SettingsEntry
         className="lg:w-[28.8rem]"
-        description="Дата, накопленная сумма, удержанный налог и сумма, которая придёт."
+        description={(
+          <>
+            <span className="lg:hidden">Когда и сколько придёт</span>
+            <span className="hidden lg:inline">Дата, накопленная сумма, удержанный налог и сумма, которая придёт.</span>
+          </>
+        )}
         descriptionClassName="max-w-none"
         title="История выплат"
       >

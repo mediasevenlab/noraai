@@ -151,7 +151,7 @@ export function MealDialogCloseButton({ className }: { className?: string }) {
     <DialogClose
       aria-label="Закрыть"
       className={cn(
-        'nora-press-grow ios-glass-glare-soft inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 p-0 leading-none outline-none',
+        'nora-press-grow ios-glass-glare-soft inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 p-0 leading-none outline-none',
         '!bg-[var(--nora-inset)] !text-[var(--nora-text-secondary)]',
         'hover:!bg-[color-mix(in_srgb,var(--nora-inset)_88%,var(--nora-text)_6%)] hover:!text-[var(--nora-text)]',
         '[&_svg]:block [&_svg]:shrink-0 [&_svg]:text-current',

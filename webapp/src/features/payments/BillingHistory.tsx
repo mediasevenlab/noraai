@@ -86,13 +86,33 @@ export function PayoutHistory({
   const visible = rows.slice(range.from - 1, range.to)
   return (
     <div className="overflow-hidden rounded-[12px] bg-[var(--nora-panel)]">
-      <Table className="w-full table-fixed">
+      <ul className="md:hidden">
+        {visible.map((row) => {
+          const tax = mentorPayoutWithholding(row.gross)
+          const net = mentorPayoutNet(row.gross)
+          return (
+            <li
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 border-b border-[var(--nora-divider)] px-3.5 py-3 last:border-b-0"
+              key={row.id}
+            >
+              <p className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
+                {row.at}
+              </p>
+              <PayoutStatusBadge status={row.status} />
+              <p className="col-span-2 font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-secondary)]">
+                {`Накоплено ${formatPayoutAmount(row.gross)} · Налог ${formatPayoutAmount(tax)} · Придёт ${formatPayoutAmount(net)}`}
+              </p>
+            </li>
+          )
+        })}
+      </ul>
+      <Table className="hidden w-full table-fixed md:table">
         <colgroup>
-          <col className="w-[22%]" />
-          <col className="w-[20%]" />
+          <col className="w-[18%]" />
+          <col className="w-[18%]" />
           <col className="w-[16%]" />
           <col className="w-[18%]" />
-          <col className="w-[24%]" />
+          <col className="w-[30%]" />
         </colgroup>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
@@ -114,9 +134,7 @@ export function PayoutHistory({
                 <TableCell className={payoutCellClass}>{formatPayoutAmount(tax)}</TableCell>
                 <TableCell className={payoutCellClass}>{formatPayoutAmount(net)}</TableCell>
                 <TableCell className={payoutStatusClass}>
-                  <NoraBadge className="!font-[250]" variant={row.status === 'paid' ? 'green' : row.status === 'waiting' ? 'yellow' : 'red'}>
-                    {row.status === 'paid' ? 'Выплачено' : row.status === 'waiting' ? 'Ждёт выплаты' : 'Ждёт данные'}
-                  </NoraBadge>
+                  <PayoutStatusBadge status={row.status} />
                 </TableCell>
               </TableRow>
             )
@@ -141,6 +159,14 @@ export function ledgerPageWindow(total: number, page: number, pageSize = CHARGE_
   return { current, from, to, totalPages }
 }
 
+function PayoutStatusBadge({ status }: { status: 'paid' | 'waiting' | 'needs-data' }) {
+  return (
+    <NoraBadge className="!font-[250]" variant={status === 'paid' ? 'green' : status === 'waiting' ? 'yellow' : 'red'}>
+      {status === 'paid' ? 'Выплачено' : status === 'waiting' ? 'Ждёт выплаты' : 'Ждёт данные'}
+    </NoraBadge>
+  )
+}
+
 const payoutHeadClass =
   '!h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)]'
 const payoutCellClass =
@@ -149,10 +175,10 @@ const payoutStatusClass = 'h-auto px-2.5 py-3 text-left whitespace-nowrap'
 
 /** Same 13px as the labels and amounts on this page. */
 const headClass =
-  '!h-auto px-3.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)]'
+  '!h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] md:px-3.5'
 const cellClass =
-  'h-auto px-3.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)]'
-const statusClass = 'h-auto px-3.5 py-3 text-left whitespace-nowrap'
+  'h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] md:px-3.5'
+const statusClass = 'h-auto px-2.5 py-3 text-left whitespace-nowrap md:px-3.5'
 
 function LedgerTable({
   available,
@@ -198,10 +224,10 @@ function LedgerTable({
       ) : null}
       <Table className="w-full table-fixed">
         <colgroup>
-          <col className="w-[28%]" />
-          <col className="w-[28%]" />
-          <col className="w-[20%]" />
-          <col className="w-[24%]" />
+          <col className="w-[24%] md:w-[28%]" />
+          <col className="w-[26%] md:w-[28%]" />
+          <col className="w-[18%] md:w-[20%]" />
+          <col className="w-[32%] md:w-[24%]" />
         </colgroup>
         <TableHeader>
           <TableRow className="hover:bg-transparent">

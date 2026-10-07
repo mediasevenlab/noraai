@@ -211,9 +211,62 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
           )}
           {viewState === 'empty' && <DirectoryEmpty hasQuery={query.length > 0} />}
           {viewState === 'ready' && usersQuery.data && (
-            <Table className="table-fixed !text-[13px]">
+            <>
+            <ul className="md:hidden">
+              {usersQuery.data.items.map((user) => {
+                const canDelete = canDeleteAdminUser(currentUser.id, user)
+                const busy = deleteMutation.isPending
+                const spend = user.generationSpend && user.generationSpend.tokens > 0
+                  ? formatGenerationSpend(user.generationSpend, currency)
+                  : '—'
+                return (
+                  <li
+                    className="border-b border-[var(--nora-divider)] px-3.5 py-3 last:border-b-0"
+                    key={user.id}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-[family-name:var(--nora-font)] text-[13px] font-[550] leading-5">
+                          {user.displayName ?? user.email}
+                        </p>
+                        <p className="truncate font-[family-name:var(--nora-font)] text-[12px] font-[250] leading-5 text-[var(--nora-text-tertiary)]">
+                          {user.email}
+                        </p>
+                      </div>
+                      <DirectoryRoleSelect
+                        busy={busy || roleMutation.isPending}
+                        currentUserId={currentUser.id}
+                        onRole={(role) => {
+                          roleMutation.reset()
+                          setPendingRole({ role, user })
+                        }}
+                        user={user}
+                      />
+                      <DirectoryDeleteButton
+                        busy={busy}
+                        canDelete={canDelete}
+                        onDelete={() => {
+                          deleteMutation.reset()
+                          setPendingDelete(user)
+                        }}
+                        user={user}
+                      />
+                    </div>
+                    <p className="mt-1 truncate font-[family-name:var(--nora-font)] text-[12px] font-[250] leading-5 text-[var(--nora-text-secondary)]">
+                      {`${user.nickname ?? '—'} · ${user.publicId} · ${new Date(user.createdAt).toLocaleDateString('ru-RU')} · ${spend}`}
+                    </p>
+                  </li>
+                )
+              })}
+            </ul>
+            <Table className="hidden table-fixed !text-[13px] md:table">
               <colgroup>
-                <col span={6} />
+                <col className="w-[22%]" />
+                <col className="w-[14%]" />
+                <col className="w-[8%]" />
+                <col className="w-[16%]" />
+                <col className="w-[14%]" />
+                <col className="w-[16%]" />
                 <col className="w-12" />
               </colgroup>
               <TableHeader>
@@ -255,39 +308,15 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
                         {user.publicId}
                       </TableCell>
                       <TableCell className={directoryCellClass}>
-                        <Select
-                          disabled={roleMutation.isPending || deleteMutation.isPending}
-                          onValueChange={(value) => {
-                            const parsedRole = userRoleSchema.safeParse(value)
-                            if (parsedRole.success && parsedRole.data !== user.role) {
-                              roleMutation.reset()
-                              setPendingRole({ role: parsedRole.data, user })
-                            }
+                        <DirectoryRoleSelect
+                          busy={roleMutation.isPending || deleteMutation.isPending}
+                          currentUserId={currentUser.id}
+                          onRole={(role) => {
+                            roleMutation.reset()
+                            setPendingRole({ role, user })
                           }}
-                          value={user.role}
-                        >
-                          <SelectTrigger
-                            aria-label={`Роль для ${user.email}`}
-                            className="!h-8 !min-h-8 w-fit !gap-1.5 !rounded-full !px-3 font-[family-name:var(--nora-font)] !text-[13px] !font-normal"
-                          >
-                            <span className="truncate text-left">{user.role}</span>
-                          </SelectTrigger>
-                          <SelectContent className={productToolbarSelectContentClass}>
-                            <SelectItem
-                              className={productToolbarSelectItemClass}
-                              disabled={user.id === currentUser.id && user.role === 'admin'}
-                              value="user"
-                            >
-                              user
-                            </SelectItem>
-                            <SelectItem className={productToolbarSelectItemClass} value="mentor">
-                              mentor
-                            </SelectItem>
-                            <SelectItem className={productToolbarSelectItemClass} value="admin">
-                              admin
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                          user={user}
+                        />
                       </TableCell>
                       <TableCell className={cn(directoryCellClass, 'text-[var(--nora-text-secondary)]')}>
                         {new Date(user.createdAt).toLocaleDateString('ru-RU')}
@@ -298,25 +327,22 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
                           : '—'}
                       </TableCell>
                       <TableCell className="px-2 py-2.5">
-                        <NoraIconButton
-                          aria-label={`Удалить ${user.email}`}
-                          className="!size-8 !rounded-full !bg-[var(--nora-input-bg)] hover:!bg-[var(--nora-error)] hover:!text-white"
-                          data-catalog-delete=""
-                          disabled={busy || !canDelete}
-                          onClick={() => {
-                            if (!canDelete) return
+                        <DirectoryDeleteButton
+                          busy={busy}
+                          canDelete={canDelete}
+                          onDelete={() => {
                             deleteMutation.reset()
                             setPendingDelete(user)
                           }}
-                        >
-                          <Trash2Icon />
-                        </NoraIconButton>
+                          user={user}
+                        />
                       </TableCell>
                     </TableRow>
                   )
                 })}
               </TableBody>
             </Table>
+            </>
           )}
         </DataTableFrame>
       </div>
@@ -343,6 +369,78 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
         pendingUser={pendingDelete}
       />
     </>
+  )
+}
+
+function DirectoryRoleSelect({
+  busy,
+  currentUserId,
+  onRole,
+  user,
+}: {
+  busy: boolean
+  currentUserId: string
+  onRole: (role: UserRole) => void
+  user: AdminUserSummary
+}) {
+  return (
+    <Select
+      disabled={busy}
+      onValueChange={(value) => {
+        const parsedRole = userRoleSchema.safeParse(value)
+        if (parsedRole.success && parsedRole.data !== user.role) onRole(parsedRole.data)
+      }}
+      value={user.role}
+    >
+      <SelectTrigger
+        aria-label={`Роль для ${user.email}`}
+        className="!h-8 !min-h-8 w-fit !gap-1.5 !rounded-full !px-3 font-[family-name:var(--nora-font)] !text-[13px] !font-normal"
+      >
+        <span className="truncate text-left">{user.role}</span>
+      </SelectTrigger>
+      <SelectContent className={productToolbarSelectContentClass}>
+        <SelectItem
+          className={productToolbarSelectItemClass}
+          disabled={user.id === currentUserId && user.role === 'admin'}
+          value="user"
+        >
+          user
+        </SelectItem>
+        <SelectItem className={productToolbarSelectItemClass} value="mentor">
+          mentor
+        </SelectItem>
+        <SelectItem className={productToolbarSelectItemClass} value="admin">
+          admin
+        </SelectItem>
+      </SelectContent>
+    </Select>
+  )
+}
+
+function DirectoryDeleteButton({
+  busy,
+  canDelete,
+  onDelete,
+  user,
+}: {
+  busy: boolean
+  canDelete: boolean
+  onDelete: () => void
+  user: AdminUserSummary
+}) {
+  return (
+    <NoraIconButton
+      aria-label={`Удалить ${user.email}`}
+      className="!size-8 !rounded-full !bg-[var(--nora-input-bg)] hover:!bg-[var(--nora-error)] hover:!text-white"
+      data-catalog-delete=""
+      disabled={busy || !canDelete}
+      onClick={() => {
+        if (!canDelete) return
+        onDelete()
+      }}
+    >
+      <Trash2Icon />
+    </NoraIconButton>
   )
 }
 

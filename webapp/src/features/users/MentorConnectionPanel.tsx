@@ -76,6 +76,7 @@ export function MentorConnectionPanel() {
   return (
     <SettingsEntry
       description="Никнейм или ID наставника."
+      hideTitleOnMobile
       title="Подключение к наставнику"
     >
       {showForm ? (

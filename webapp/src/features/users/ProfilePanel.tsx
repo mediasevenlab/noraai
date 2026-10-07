@@ -84,7 +84,7 @@ export function ProfilePanel({ className, user }: { className?: string, user: Us
   return (
     <SettingsEntry
       className={className}
-      description="Имя и никнейм в приложении."
+      description="Имя и никнейм."
       title="Данные профиля"
     >
       {showForm ? (

@@ -1865,6 +1865,7 @@ export function NewsPage({
         <DialogContent
           className={MEAL_DIALOG_FRAME_CLASS}
           data-modal-frame="meal"
+          data-phone-full=""
           showCloseButton={false}
         >
           {openMeal ? (

@@ -76,7 +76,9 @@ export function MentorUsers({ user }: { user: UserDto }) {
       description="Подключённые пользователи и бонус за каждого."
       eyebrow="Наставник"
       meta={user.email}
+      phoneSheet
       showJumpLink={false}
+      showMobileTitle
       title="Пользователи"
     >
       <MentorUserDirectory />
@@ -92,10 +94,12 @@ export function MentorProfile({ user }: { user: UserDto }) {
       editable
       eyebrow="Аккаунт"
       meta={user.email}
+      phoneSheet
+      showMobileTitle
       title="Профиль"
     >
       <ProfilePanel user={user} />
-      <SettingsEntry description="Роль и номер в приложении." title="Аккаунт">
+      <SettingsEntry description="Роль и номер." title="Аккаунт">
         <SettingsReadRows
           rows={[
             { icon: UserRoundIcon, label: 'Роль', value: 'Наставник' },
@@ -217,6 +221,8 @@ export function MentorSettings({ user }: { user: UserDto }) {
       editable
       eyebrow="Наставник"
       meta={user.email}
+      phoneSheet
+      showMobileTitle
       title="Настройки"
     >
       <NicknamePanel user={user} />

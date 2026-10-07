@@ -38,7 +38,7 @@ export function AppearancePanel() {
 
   return (
     <SettingsEntry
-      description="Как в системе, светлая или тёмная."
+      description="Система, светлая или тёмная."
       title="Внешний вид"
     >
       {showForm ? (

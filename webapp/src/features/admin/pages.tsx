@@ -22,11 +22,13 @@ export function AdminDashboard() {
 export function AdminUsers({ currentUser }: { currentUser: UserDto }) {
   return (
     <PageContainer>
-      <NoraPageHeader
-        description="Находите аккаунты и управляйте доступом без раскрытия учётных данных."
-        title="Пользователи"
-        titleSize="display"
-      />
+      <div className="max-lg:px-3.5">
+        <NoraPageHeader
+          description="Поиск аккаунтов и смена ролей."
+          title="Пользователи"
+          titleSize="display"
+        />
+      </div>
       <UserDirectory currentUser={currentUser} />
     </PageContainer>
   )
@@ -39,6 +41,8 @@ export function AdminSettings({ user }: { user: UserDto }) {
       editable
       eyebrow="Администратор"
       meta={user.email}
+      phoneSheet
+      showMobileTitle
       title="Настройки"
     >
       <NicknamePanel user={user} />

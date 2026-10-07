@@ -73,7 +73,7 @@ export function NicknamePanel({ className, user }: { className?: string, user: U
   return (
     <SettingsEntry
       className={className}
-      description="Для ссылок и публичного профиля."
+      description="Никнейм для ссылок."
       title="Никнейм"
     >
       {showForm ? (

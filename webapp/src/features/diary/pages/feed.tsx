@@ -29,6 +29,9 @@ import { SharedRationsFeed } from '../SharedRationsFeed'
 const FEED_PILL_TAB_CLASS =
   'ios-float-seg nora-press-grow inline-flex h-full flex-none items-center justify-center gap-1 rounded-full px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-active:text-[var(--nora-text)]'
 
+const FEED_MOBILE_DOCK_CLASS =
+  'mobile-dock fixed z-40 flex items-center md:hidden left-4 bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]'
+
 const FEED_KIND_ICON = {
   Приёмы: UtensilsIcon,
   Рационы: CalendarDaysIcon,
@@ -62,7 +65,7 @@ export function SharedMealsFeedPage({
   }, [query, searchOpen])
 
   return (
-    <div className="news-page relative min-h-full">
+    <div className="news-page relative min-h-full max-md:pb-24">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10"
@@ -89,7 +92,7 @@ export function SharedMealsFeedPage({
               <div className={productFeedToolbarRowClass}>
                 <div
                   aria-label="Лента"
-                  className={cn(diaryToolbarPillClass, 'p-1')}
+                  className={cn(diaryToolbarPillClass, 'hidden p-1 md:flex')}
                   role="group"
                 >
                   {FEED_KINDS.map((option) => {
@@ -221,6 +224,30 @@ export function SharedMealsFeedPage({
               query={query}
             />
           )}
+        </div>
+      </div>
+      <div className={FEED_MOBILE_DOCK_CLASS}>
+        <div
+          aria-label="Лента"
+          className="ios-float-pill ios-float-pill-dock flex h-12 shrink-0 items-center rounded-full p-1"
+          role="group"
+        >
+          {FEED_KINDS.map((option) => {
+            const Icon = FEED_KIND_ICON[option]
+            return (
+              <button
+                aria-pressed={kind === option}
+                className={cn(FEED_PILL_TAB_CLASS, 'h-full px-3 font-medium')}
+                data-active={kind === option || undefined}
+                key={option}
+                onClick={() => setKind(option)}
+                type="button"
+              >
+                <Icon aria-hidden className="size-3.5 shrink-0" strokeWidth={1.75} />
+                {option}
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

@@ -190,14 +190,14 @@ export const ONBOARDING_STEPS: ReadonlyArray<OnboardingStep> = [
   {
     category: 'Образ жизни',
     heading: 'Активность',
-    summary: 'Насколько подвижный обычный день',
+    summary: 'Подвижность обычного дня',
     icon: ActivityIcon,
     fields: [{ ...fieldActivity, hideLabel: false }],
   },
   {
     category: 'Фокус результата',
     heading: 'Цель',
-    summary: 'Цель и темп сдвигают калории',
+    summary: 'Цель и темп',
     icon: TargetIcon,
     fields: [
       { ...fieldGoal, hideLabel: false },
@@ -207,7 +207,7 @@ export const ONBOARDING_STEPS: ReadonlyArray<OnboardingStep> = [
   {
     category: 'Для наставника',
     heading: 'Ограничения',
-    summary: 'Аллергии и продукты, которые нельзя',
+    summary: 'Аллергии и запреты',
     icon: ShieldAlertIcon,
     fields: [fieldRestrictions],
   },

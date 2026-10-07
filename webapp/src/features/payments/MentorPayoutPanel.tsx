@@ -11,7 +11,6 @@ import { readMentorPayoutProfile, writeMentorPayoutProfile, type PayoutProfileKi
 import {
   formatPhone,
   hasFieldErrors,
-  mentorPayoutPhoneMask,
   nextMentorPayoutLabel,
   normalizeInn,
   validateMentorPayoutRequisites,
@@ -19,7 +18,7 @@ import {
 } from './model'
 
 const controlClass =
-  'h-8 min-h-8 !bg-[var(--nora-panel)] px-3 font-[family-name:var(--nora-font)] !text-[13px] !font-light !leading-5 shadow-none disabled:!opacity-100'
+  'h-8 min-h-8 px-3 font-[family-name:var(--nora-font)] !text-[13px] !font-light !leading-5 shadow-none disabled:!opacity-100'
 
 const actionClass =
   'inline-flex w-full cursor-pointer items-center justify-center rounded-[var(--nora-radius-md,8px)] border-0 font-[family-name:var(--nora-font)] text-[13px] font-normal !h-10 !max-h-10 !min-h-10 min-[768px]:!h-[37px] min-[768px]:!max-h-[37px] min-[768px]:!min-h-[37px] shadow-none disabled:cursor-not-allowed'
@@ -78,7 +77,7 @@ export function mentorPayoutStatus(input: {
   if (accrued <= 0) {
     return `Телефон сохранён. Выплата уйдёт ${when}, когда появится сумма.`
   }
-  return `Выплата ${when} на ${mentorPayoutPhoneMask(input.phone ?? '')}.`
+  return `Выплата ${when}.`
 }
 
 export function MentorPayoutPanel({

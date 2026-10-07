@@ -60,8 +60,19 @@ export function GenerationTokenUsagePanel() {
   return (
     <>
     <SettingsEntry
-      description={description}
+      after={(
+        <p className="whitespace-pre-line font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)] lg:hidden">
+          {description}
+        </p>
+      )}
+      description={(
+        <>
+          <span className="lg:hidden">Расход токенов</span>
+          <span className="hidden whitespace-pre-line lg:inline">{description}</span>
+        </>
+      )}
       descriptionClassName="max-w-none line-clamp-none overflow-visible whitespace-pre-line"
+      hideTitleOnMobile
       title="Расход токенов"
     >
       <div className="-my-1.5 flex items-center gap-2.5">
@@ -70,7 +81,8 @@ export function GenerationTokenUsagePanel() {
           htmlFor={switchId}
         >
           <SettingsFieldMark icon={SparklesIcon} />
-          Показывать расход
+          <span className="lg:hidden">Расход</span>
+          <span className="hidden lg:inline">Показывать расход</span>
         </label>
         <span aria-hidden className="h-4 w-px shrink-0 bg-[var(--nora-border)]" />
         <GenerationCurrencySelect className="!h-8 !min-h-8 !bg-[var(--settings-field-bg,var(--nora-panel))]" />
@@ -90,7 +102,7 @@ export function GenerationTokenUsagePanel() {
         <Switch
           aria-label="Показывать расход токенов за генерации"
           checked={visible}
-          className="ml-auto"
+          className="ml-auto data-checked:bg-[var(--nora-text)]!"
           id={switchId}
           onCheckedChange={(checked) => setGenerationTokenUsageVisible(checked)}
           size="lg"

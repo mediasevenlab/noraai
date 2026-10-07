@@ -17,3 +17,15 @@
   opacity: 0.45 !important;
   cursor: default;
 }
+
+/* Add-meal controls would only show as faded buttons. Leave them out. */
+[data-subscription-frozen] :is([data-diary-add-meal], [data-slot="meal-card-add"]) {
+  display: none !important;
+}
+
+/* The subscription capsule takes the phone dock. The menu button stays. */
+@media (max-width: 767px) {
+  html[data-subscription-capsule] .mobile-dock {
+    display: none !important;
+  }
+}
