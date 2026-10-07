@@ -221,9 +221,6 @@ export function UserReferrals({ user }: { user: UserDto }) {
         />
       </SettingsEntry>
       <ReferralsDirectory layout="entry" unpaidRub={unpaid} />
-      <SettingsEntry className="lg:hidden" description="Один раз, после первой оплаты." title="Статистика">
-        <SettingsReadRows rows={payoutRows} />
-      </SettingsEntry>
       <SettingsEntry
         className="lg:w-[28.8rem]"
         description="Дата, накопленная сумма, удержанный налог и сумма, которая придёт."
@@ -231,6 +228,9 @@ export function UserReferrals({ user }: { user: UserDto }) {
         title="История выплат"
       >
         <PayoutHistory accrued={unpaid} ready={payoutReady} records={ledger.payouts} />
+      </SettingsEntry>
+      <SettingsEntry className="lg:hidden" description="Один раз, после первой оплаты." title="Статистика">
+        <SettingsReadRows rows={payoutRows} />
       </SettingsEntry>
     </SettingsCanvas>
   )

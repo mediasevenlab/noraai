@@ -154,7 +154,7 @@ export function MentorPayoutPanel({
           />
           <FieldError>{errors.fullName}</FieldError>
         </Field>
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid gap-3 min-[360px]:grid-cols-2">
           <Field data-invalid={errors.inn ? true : undefined}>
             <FieldLabel>ИНН</FieldLabel>
             <PayoutInput

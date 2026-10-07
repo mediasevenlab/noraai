@@ -353,14 +353,14 @@ function FeedDayStats({
 
   return (
     <div className={DAY_CHIPS_ROW_CLASS}>
-      <div className="flex w-max shrink-0 items-center gap-2">
+      <div className="flex w-max shrink-0 items-center gap-2 max-md:contents">
         {pickable && onPickDay ? (
           <button
             aria-label={`Выбрать приёмы за ${heading}`}
             aria-pressed={picking}
             className={cn(
               dateChipClass,
-              "nora-press-grow",
+              "nora-press-grow max-md:order-1",
               picking && "ring-1 ring-[var(--nora-tint)]",
             )}
             data-diary-day-pick=""
@@ -372,7 +372,7 @@ function FeedDayStats({
           </button>
         ) : (
           <div
-            className={dateChipClass}
+            className={cn(dateChipClass, "max-md:order-1")}
             data-diary-day-plan={planMode && stampKey <= todayKey ? "" : undefined}
           >
             {dateChip}
@@ -409,7 +409,7 @@ function FeedDayStats({
           readOnly={readOnly}
           savedScope={savedScope}
         />
-        <div className={DAY_STAT_CHIP_CLASS}>
+        <div className={cn(DAY_STAT_CHIP_CLASS, "max-md:order-4")}>
           <span className="inline-flex items-center gap-1 tabular-nums">
             <FlameIcon aria-hidden className="size-[13px]" strokeWidth={1.75} />
             {formatCount(totals.kcal)}
@@ -423,6 +423,7 @@ function FeedDayStats({
         <div
           className={cn(
             DAY_STAT_CHIP_CLASS,
+            "max-md:order-2",
             balanceTone === "yellow" &&
               "bg-[var(--nora-badge-yellow-bg)] text-[var(--nora-badge-yellow-text)]",
             balanceTone === "red" &&
@@ -435,8 +436,8 @@ function FeedDayStats({
           {balanceLabel}
         </div>
       </div>
-      <div className="ml-auto flex w-max shrink-0 items-center gap-2">
-        <div className={cn(DAY_STAT_CHIP_CLASS, "gap-2 px-3")}>
+      <div className="ml-auto flex w-max shrink-0 items-center gap-2 max-md:contents">
+        <div className={cn(DAY_STAT_CHIP_CLASS, "gap-2 px-3 max-md:order-3")}>
           <span
             aria-label={`Белки ${formatCount(totals.protein)}`}
             className="inline-flex items-center gap-1 tabular-nums"
