@@ -1,18 +1,12 @@
-import { AtSignIcon, ChevronLeftIcon, ChevronRightIcon, GiftIcon, HashIcon, SearchIcon, UserRoundIcon } from '@/components/icons'
-import { useEffect, useState, type FormEvent, type MouseEvent } from 'react'
+import { ChevronLeftIcon, ChevronRightIcon, SearchIcon } from '@/components/icons'
+import { useEffect, useState, type FormEvent } from 'react'
 
 import { DataTableFrame } from '@/components/dashboard'
-import { SettingsEntry, SettingsFieldMark } from '@/components/settings-canvas'
+import { SettingsEntry } from '@/components/settings-canvas'
 import { NoraBadge, NoraSearch } from '@/components/nora/primitives'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-} from '@/components/ui/pagination'
 import { ProductFeedEmpty, SectionLoading } from '@/components/nora/product-sheet'
+import { cn } from '@/lib/utils'
 import {
   Table,
   TableBody,
@@ -23,20 +17,35 @@ import {
 } from '@/components/ui/table'
 import {
   formatUserReferralBonus,
-  USER_REFERRAL_BONUS,
-  userReferralBonusTotal,
 } from './model'
-import { useUserReferralsQuery } from './queries'
+import { useUserReferralsQuery, usePayoutAccrualQuery } from './queries'
 
-export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'entry' }) {
+const REFERRALS_PAGE_SIZE = 8
+
+const headClass =
+  '!h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)]'
+const cellClass =
+  'h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)]'
+const statusClass = 'h-auto px-2.5 py-3 text-left whitespace-nowrap'
+
+export function ReferralsDirectory({
+  layout = 'card',
+  unpaidRub = null,
+}: {
+  layout?: 'card' | 'entry'
+  /** Unpaid referral bonus after payouts. Falls back to the server total. */
+  unpaidRub?: number | null
+}) {
   const [draftQuery, setDraftQuery] = useState('')
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const referrals = useUserReferralsQuery({
     q: query || undefined,
     page,
-    pageSize: 20,
+    pageSize: REFERRALS_PAGE_SIZE,
   })
+  const accrual = usePayoutAccrualQuery()
+  const bonusById = new Map(accrual.data?.people.map((person) => [person.userId, person.bonusRub]) ?? [])
   const totalPages = referrals.data
     ? Math.max(1, Math.ceil(referrals.data.total / referrals.data.pageSize))
     : 1
@@ -45,10 +54,7 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
     : referrals.isPending
       ? 'Загрузка…'
       : null
-  const bonusTotal = referrals.data
-    ? userReferralBonusTotal(referrals.data.total)
-    : null
-  const perReferralBonusLabel = formatUserReferralBonus(USER_REFERRAL_BONUS)
+  const bonusTotal = unpaidRub != null ? unpaidRub : accrual.isSuccess ? accrual.data.accruedRub : null
 
   useEffect(() => {
     const next = draftQuery.trim()
@@ -97,62 +103,46 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
         )
       )}
       {referrals.data && referrals.data.items.length > 0 && (
-        <Table className="w-full table-fixed text-xs">
+        <Table className="w-full table-fixed">
+          <colgroup>
+            <col className="w-[34%]" />
+            <col className="w-[20%]" />
+            <col className="w-[14%]" />
+            <col className="w-[32%]" />
+          </colgroup>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="w-[40%] px-3.5 text-xs font-medium text-[var(--nora-text)]">
-                <span className="inline-flex items-center gap-1.5">
-                  {layout === 'entry' ? <SettingsFieldMark icon={UserRoundIcon} /> : null}
-                  Аккаунт
-                </span>
-              </TableHead>
-              <TableHead className="w-[20%] pl-6 text-xs font-medium text-[var(--nora-text)]">
-                <span className="inline-flex items-center gap-1.5">
-                  {layout === 'entry' ? <SettingsFieldMark icon={AtSignIcon} /> : null}
-                  Никнейм
-                </span>
-              </TableHead>
-              <TableHead className="w-[20%] text-xs font-medium text-[var(--nora-text)]">
-                <span className="inline-flex items-center gap-1.5">
-                  {layout === 'entry' ? <SettingsFieldMark icon={HashIcon} /> : null}
-                  ID
-                </span>
-              </TableHead>
-              <TableHead className="w-[20%] text-xs font-medium text-[var(--nora-text)]">
-                <span className="inline-flex items-center gap-1.5">
-                  {layout === 'entry' ? <SettingsFieldMark icon={GiftIcon} /> : null}
-                  Бонусы
-                </span>
-              </TableHead>
+              <TableHead className={headClass}>Аккаунт</TableHead>
+              <TableHead className={headClass}>Никнейм</TableHead>
+              <TableHead className={headClass}>ID</TableHead>
+              <TableHead className={headClass}>Бонус</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {referrals.data.items.map((user) => (
-              <TableRow
-                className="even:bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:bg-[var(--nora-row-hover)]"
-                key={user.id}
-              >
-                <TableCell className="h-auto px-3.5 py-2.5 whitespace-normal">
-                  <div className="grid min-w-0 gap-1">
-                    <span className="truncate text-xs font-medium text-[var(--nora-text)]">
-                      {user.displayName ?? user.email}
-                    </span>
-                    <span className="truncate text-[11px] text-[var(--nora-text-tertiary)]">
-                      {user.email}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="h-auto min-w-0 truncate py-2.5 pl-6 text-xs font-medium text-[var(--nora-text-secondary)]">
-                  {user.nickname ?? '—'}
-                </TableCell>
-                <TableCell className="h-auto min-w-0 truncate py-2.5 text-xs font-medium text-[var(--nora-text-secondary)]">
-                  {user.publicId}
-                </TableCell>
-                <TableCell className="h-auto min-w-0 py-2.5">
-                  <NoraBadge variant="green">{perReferralBonusLabel}</NoraBadge>
-                </TableCell>
-              </TableRow>
-            ))}
+            {referrals.data.items.map((user) => {
+              const bonus = bonusById.get(user.id)
+              return (
+                <TableRow
+                  className="even:bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:bg-[var(--nora-row-hover)]"
+                  key={user.id}
+                >
+                  <TableCell className={cellClass}>
+                    <span className="block truncate !font-[350] !text-[color-mix(in_srgb,var(--nora-text)_50%,var(--nora-text-secondary))]">{user.displayName ?? user.email}</span>
+                  </TableCell>
+                  <TableCell className={cellClass}>{user.nickname ?? '—'}</TableCell>
+                  <TableCell className={cellClass}>{user.publicId}</TableCell>
+                  <TableCell className={statusClass}>
+                    {accrual.isSuccess ? (
+                      bonus
+                        ? <NoraBadge className="!font-[250]" variant="green">{formatUserReferralBonus(bonus)}</NoraBadge>
+                        : <NoraBadge className="!font-[250]" variant="yellow">Ждёт оплаты</NoraBadge>
+                    ) : (
+                      <NoraBadge className="!font-[250]" variant="neutral">…</NoraBadge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              )
+            })}
           </TableBody>
         </Table>
       )}
@@ -193,6 +183,7 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
   if (layout === 'entry') {
     return (
       <SettingsEntry
+        className="lg:w-[28.8rem]"
         description="Кто зарегистрировался по вашей ссылке."
         title="Каталог"
       >
@@ -215,14 +206,15 @@ export function ReferralsDirectory({ layout = 'card' }: { layout?: 'card' | 'ent
             }
           >
             {tableBody}
+            {referrals.data && referrals.data.total > 0 ? (
+              <div className="flex items-center justify-between gap-3 border-t border-[var(--nora-divider)] px-3.5 py-3">
+                <p className="font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)] tabular-nums">
+                  {`Показано ${(referrals.data.page - 1) * referrals.data.pageSize + 1}–${Math.min(referrals.data.total, referrals.data.page * referrals.data.pageSize)} из ${referrals.data.total}`}
+                </p>
+                <ReferralPageList onPage={setPage} page={page} totalPages={totalPages} />
+              </div>
+            ) : null}
           </div>
-          {totalPages > 1 ? (
-            <ReferralPageList
-              onPage={setPage}
-              page={page}
-              totalPages={totalPages}
-            />
-          ) : null}
         </div>
       </SettingsEntry>
     )
@@ -261,52 +253,58 @@ function ReferralPageList({
   page: number
   totalPages: number
 }) {
-  const go = (next: number) => (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault()
-    if (next < 1 || next > totalPages || next === page) return
-    onPage(next)
-  }
+  const pageClass = (active: boolean) =>
+    cn(
+      'inline-flex !h-6 !min-h-6 !w-6 !min-w-6 items-center justify-center rounded-full px-0 font-[family-name:var(--nora-font)] text-[12px] font-normal',
+      active
+        ? 'bg-[var(--nora-text)] text-[var(--nora-panel)]'
+        : 'bg-[var(--nora-panel)] text-[var(--nora-text)] hover:bg-[var(--nora-button-bg-hover)]',
+    )
 
   return (
-    <Pagination className="mx-0 justify-end">
-      <PaginationContent>
-        <PaginationItem>
-          <PaginationLink
-            aria-label="Предыдущая страница"
-            className={page <= 1 ? 'pointer-events-none opacity-40' : undefined}
-            href="#referrals-page"
-            onClick={go(page - 1)}
+    <nav aria-label="Страницы рефералов" className="flex flex-wrap items-center justify-end gap-1">
+      <button
+        aria-label="Предыдущая страница"
+        className={cn(pageClass(false), 'disabled:pointer-events-none disabled:opacity-40')}
+        data-generation-control=""
+        disabled={page <= 1}
+        onClick={() => onPage(page - 1)}
+        type="button"
+      >
+        <ChevronLeftIcon className="size-3" />
+      </button>
+      {referralPageItems(page, totalPages).map((item, index) =>
+        item === 'gap' ? (
+          <span
+            className="inline-flex h-6 min-w-6 items-center justify-center text-[12px] text-[var(--nora-text-tertiary)]"
+            key={`gap-${index}`}
           >
-            <ChevronLeftIcon className="size-3.5" />
-          </PaginationLink>
-        </PaginationItem>
-        {referralPageItems(page, totalPages).map((item, index) => (
-          <PaginationItem key={item === 'gap' ? `gap-${index}` : item}>
-            {item === 'gap' ? (
-              <PaginationEllipsis />
-            ) : (
-              <PaginationLink
-                href="#referrals-page"
-                isActive={item === page}
-                onClick={go(item)}
-              >
-                {item}
-              </PaginationLink>
-            )}
-          </PaginationItem>
-        ))}
-        <PaginationItem>
-          <PaginationLink
-            aria-label="Следующая страница"
-            className={page >= totalPages ? 'pointer-events-none opacity-40' : undefined}
-            href="#referrals-page"
-            onClick={go(page + 1)}
+            …
+          </span>
+        ) : (
+          <button
+            aria-current={item === page ? 'page' : undefined}
+            className={pageClass(item === page)}
+            data-generation-control=""
+            key={item}
+            onClick={() => onPage(item)}
+            type="button"
           >
-            <ChevronRightIcon className="size-3.5" />
-          </PaginationLink>
-        </PaginationItem>
-      </PaginationContent>
-    </Pagination>
+            {item}
+          </button>
+        ),
+      )}
+      <button
+        aria-label="Следующая страница"
+        className={cn(pageClass(false), 'disabled:pointer-events-none disabled:opacity-40')}
+        data-generation-control=""
+        disabled={page >= totalPages}
+        onClick={() => onPage(page + 1)}
+        type="button"
+      >
+        <ChevronRightIcon className="size-3" />
+      </button>
+    </nav>
   )
 }
 

@@ -1,0 +1,19 @@
+/* Unpaid user workspace: cards stay visible, but nothing in the section can be used. */
+[data-subscription-frozen] * {
+  pointer-events: none !important;
+}
+
+[data-subscription-frozen] [data-slot="meal-card"] {
+  cursor: default;
+}
+
+/* Finished photos become black and white. Unfinished covers keep the grade they already have. */
+[data-subscription-frozen] [data-slot="meal-card"]:not(:has(.ration-pending-cover)) {
+  filter: grayscale(1);
+}
+
+/* Covers are buttons so a card can open. Fading them washes the photo out. */
+[data-subscription-frozen] :is(button, [role="button"]):not([data-slot="meal-cover"]) {
+  opacity: 0.45 !important;
+  cursor: default;
+}

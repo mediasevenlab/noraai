@@ -86,7 +86,7 @@ export function SiteHeader({
       <div className="ml-auto flex items-center gap-2">
         {showAppearanceMenus ? (
           <>
-            {user.role === 'user' || user.role === 'mentor' ? <SidebarPromoToggle /> : null}
+            {user.role === 'mentor' ? <SidebarPromoToggle /> : null}
             <IconPackMenu />
             <CompositionToneMenu />
             <SidebarShadeMenu />

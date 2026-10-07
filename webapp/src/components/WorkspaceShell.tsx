@@ -40,7 +40,8 @@ import {
   MentorMenteeNavigation,
   MentorMenteesBanner,
 } from '@/features/mentor'
-import { UserAppNavigation, UserMentorBanner } from '@/features/users'
+import { SubscriptionRenewalBanner } from '@/features/payments'
+import { UserAppNavigation } from '@/features/users'
 import {
   AdminDesignSystemNavigation,
   DS_BASE_PATH,
@@ -99,9 +100,11 @@ function getSidebarDefaultOpen() {
 export function WorkspaceShell({
   children,
   onLogout,
+  subscriptionFrozen = false,
   user,
 }: PropsWithChildren<{
   onLogout: () => Promise<void>
+  subscriptionFrozen?: boolean
   user: UserDto
 }>) {
   useDismissAppBootSplash()
@@ -232,13 +235,13 @@ export function WorkspaceShell({
         }
         filterNavigationBySearch={user.role !== 'mentor'}
         footerExtra={
-          navigationLocked || !showSidebarPromoCards
+          navigationLocked
             ? null
             : user.role === 'user'
               ? (
-                  <UserMentorBanner />
+                  <SubscriptionRenewalBanner />
                 )
-              : user.role === 'mentor'
+              : user.role === 'mentor' && showSidebarPromoCards
                 ? (
                     <MentorMenteesBanner />
                   )
@@ -264,7 +267,10 @@ export function WorkspaceShell({
           user={user}
           workspaceItems={navigationLocked ? [] : secondaryItems}
         />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto lg:[scrollbar-gutter:stable] max-md:[-ms-overflow-style:none] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden">
+        <div
+          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto lg:[scrollbar-gutter:stable] max-md:[-ms-overflow-style:none] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden"
+          data-subscription-frozen={subscriptionFrozen ? '' : undefined}
+        >
           {children}
         </div>
         <MobileNavFab

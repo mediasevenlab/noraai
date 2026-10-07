@@ -292,15 +292,7 @@ export function formatMicronutrientLine(item: MealMicronutrient) {
 }
 
 export function assumptionsForMeal(meal: MealEntry): string[] {
-  const stored = visibleMealAssumptions(meal.assumptions)
-  if (stored.length) return stored
-  return [
-    'Вес продуктов оценён по фото, без кухонных весов.',
-    'Масло/соус учтены средним значением для такого блюда.',
-    meal.featured
-      ? 'Калорийность близка к целевой на приём.'
-      : 'Допускается погрешность ±10–15% по КБЖУ.',
-  ]
+  return visibleMealAssumptions(meal.assumptions)
 }
 
 /** One card per unique image from Downloads/Дневник питания (duplicate *(1)* skipped). */

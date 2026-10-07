@@ -265,7 +265,7 @@ describe('ration-imported diary meals', () => {
     expect(isDiaryFeedMealVisible(otherPlan, new Set([weekId]), undefined, now)).toBe(false)
   })
 
-  test('hides the import stamp from the visible assumptions list', () => {
+  test('hides the import stamp and does not invent photo assumptions for a manual ration meal', () => {
     expect(
       assumptionsForMeal({
         id: 'meal-ration',
@@ -282,11 +282,24 @@ describe('ration-imported diary meals', () => {
         assumptions: [RATION_DIARY_SOURCE_MARK],
         fromApi: true,
       }),
-    ).toEqual([
-      'Вес продуктов оценён по фото, без кухонных весов.',
-      'Масло/соус учтены средним значением для такого блюда.',
-      'Допускается погрешность ±10–15% по КБЖУ.',
-    ])
+    ).toEqual([])
+    expect(
+      assumptionsForMeal({
+        id: 'meal-photo',
+        title: 'Сырники',
+        ingredients: 'Творог',
+        category: 'Завтрак',
+        meal: 'Завтрак',
+        at: '2026-08-22T08:30:00.000Z',
+        kcal: 420,
+        protein: 24,
+        fat: 16,
+        carbs: 40,
+        image: '/diary/meals/meal-02.jpg',
+        assumptions: ['Вес продуктов оценён по фото, без кухонных весов.'],
+        fromApi: true,
+      }),
+    ).toEqual(['Вес продуктов оценён по фото, без кухонных весов.'])
   })
 
   test('only user-authored meals can be shared to the feed unless a copy has an owner photo', () => {

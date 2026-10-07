@@ -414,7 +414,7 @@ function SidebarGroupLabel({
       {
         className: cn(
           // 13/20 regular; 8px only when the group is open, so a closed row sits centered between dividers.
-          "mb-2 flex h-auto shrink-0 items-center px-2.5 text-[13px] font-normal leading-5 text-[var(--nora-text)] outline-hidden transition-[margin,opacity] duration-200 ease-linear in-data-[closed]:mb-0 group-data-[collapsible=icon]:hidden focus-visible:shadow-[var(--nora-shadow-focus)] [&>svg]:size-3.5 [&>svg]:shrink-0",
+          "mb-2 flex h-auto shrink-0 items-center px-2.5 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-foreground outline-hidden transition-[margin,opacity] duration-200 ease-linear in-data-[closed]:mb-0 group-data-[collapsible=icon]:hidden focus-visible:shadow-[var(--nora-shadow-focus)] [&>svg]:size-3.5 [&>svg]:shrink-0",
           className
         ),
       },

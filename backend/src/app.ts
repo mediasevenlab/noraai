@@ -11,6 +11,7 @@ import { errorResponse, handleError, validationErrorHook } from './http/errors'
 import { createAuthSecurity, createInternalRateLimit } from './http/security'
 import { createAuthModule, type AuthHttpEnv } from './modules/auth'
 import { createMealsModule } from './modules/meals'
+import { createPaymentsModule } from './modules/payments'
 import { createQuestionnaireProjectUser, createTelegramLinkStore, createUsersModule } from './modules/users'
 
 type CreateAppOptions = {
@@ -19,6 +20,7 @@ type CreateAppOptions = {
   env: AppEnv
   prisma: DbClient
   startMealsPoller?: boolean
+  startPaymentRenewal?: boolean
 }
 
 export function createApp({
@@ -27,6 +29,7 @@ export function createApp({
   env,
   prisma,
   startMealsPoller = false,
+  startPaymentRenewal = false,
 }: CreateAppOptions) {
   const mealRequestBodyLimitBytes = 8 * 1024 * 1024
   const auth = createAuthModule({
@@ -46,6 +49,11 @@ export function createApp({
     requireMentor: auth.requireMentor,
     startPoller: startMealsPoller,
   })
+  const payments = createPaymentsModule({
+    env,
+    requireAuth: auth.requireAuth,
+    startRenewal: startPaymentRenewal,
+  })
   const users = createUsersModule({
     botUsername: env.TELEGRAM_MEALS_BOT_USERNAME,
     notifyBotUsername: env.TELEGRAM_NOTIFY_BOT_USERNAME,
@@ -54,6 +62,7 @@ export function createApp({
     requireAdmin: auth.requireAdmin,
     requireAuth: auth.requireAuth,
     requireMentor: auth.requireMentor,
+    listPaidSubscriptions: payments.listPaidSubscriptions,
     telegramLinks,
   })
   const app = new OpenAPIHono<AuthHttpEnv>({
@@ -102,6 +111,7 @@ export function createApp({
     app.use('/api/plans/*', middleware)
     app.use('/api/admin/*', middleware)
     app.use('/api/mentor/*', middleware)
+    app.use('/api/payments/*', middleware)
   }
   app.get('/', (c) => {
     return c.json({
@@ -138,6 +148,7 @@ export function createApp({
   app.route('/api/admin', users.adminRoutes)
   app.route('/api/mentor', users.mentorRoutes)
   app.route('/api/mentor', meals.mentorMealsRoutes)
+  app.route('/api/payments', payments.routes)
   app.use(
     '/api/internal/*',
     bodyLimit({
@@ -170,7 +181,10 @@ export function createApp({
   app.onError(handleError)
 
   return Object.assign(app, {
-    dispose: meals.dispose,
+    dispose: async () => {
+      payments.dispose()
+      await meals.dispose()
+    },
   })
 }
 

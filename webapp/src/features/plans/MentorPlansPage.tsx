@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { ArrowLeftIcon, CalendarRangeIcon, PencilIcon } from '@/components/icons'
+import { ArrowLeftIcon, CalendarRangeIcon, PencilIcon, UtensilsIcon } from '@/components/icons'
 import { useQueries, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { toast } from '@/components/ui/toast'
@@ -42,6 +42,7 @@ import { planFeedGridClass, readPlanCardLayout, writePlanCardLayout, type PlanCa
 import {
   MOBILE_DOCK_BOTTOM_CLASS,
   MOBILE_DOCK_FAB_CLASS,
+  MOBILE_DOCK_FAB_ICON_ACTIVE_CLASS,
   MOBILE_DOCK_FAB_ICON_CLASS,
   MOBILE_DOCK_PILL_CLASS,
 } from './mobile-dock'
@@ -191,6 +192,7 @@ export function MentorPlansPage() {
   }
 
   return (
+    <>
     <PlanPageShell
       description="Соберите рацион и отправьте его своим пользователям. У них он появится в разделе «План»."
       title="Рационы"
@@ -308,6 +310,17 @@ export function MentorPlansPage() {
         title={planCardDeletePrompt(deletePlanTarget?.title ?? '').title}
       />
     </PlanPageShell>
+    <div className={`${MOBILE_DOCK_BOTTOM_CLASS} left-4 md:hidden`}>
+      <button
+        aria-label="Создать рацион"
+        className={MOBILE_DOCK_FAB_CLASS}
+        onClick={() => setDraft(emptyRationDraft())}
+        type="button"
+      >
+        <UtensilsIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_ACTIVE_CLASS} strokeWidth={1.75} />
+      </button>
+    </div>
+    </>
   )
 }
 

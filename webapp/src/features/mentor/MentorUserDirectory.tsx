@@ -16,17 +16,20 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DetachMentorUserDialog } from './DetachMentorUserDialog'
-import {
-  formatMentorBonus,
-  MENTOR_CONNECTION_BONUS,
-  mentorConnectionBonusTotal,
-} from './model'
+import { formatMentorBonus } from './model'
 import {
   useDetachMentorUserMutation,
   useMentorUsersQuery,
 } from './queries'
+import { usePayoutAccrualQuery } from '@/features/users'
 
 const MENTOR_USERS_PAGE_SIZE = 10
+
+const headClass =
+  '!h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)]'
+const cellClass =
+  'h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)]'
+const statusClass = 'h-auto px-2.5 py-3 text-left whitespace-nowrap'
 
 export function MentorUserDirectory() {
   const [draftQuery, setDraftQuery] = useState('')
@@ -38,6 +41,8 @@ export function MentorUserDirectory() {
     page,
     pageSize: MENTOR_USERS_PAGE_SIZE,
   })
+  const accrual = usePayoutAccrualQuery()
+  const bonusById = new Map(accrual.data?.people.map((person) => [person.userId, person.bonusRub]) ?? [])
   const detach = useDetachMentorUserMutation()
   const totalPages = users.data
     ? Math.max(1, Math.ceil(users.data.total / users.data.pageSize))
@@ -47,10 +52,7 @@ export function MentorUserDirectory() {
     : users.isPending
       ? 'Загрузка…'
       : null
-  const bonusTotal = users.data
-    ? mentorConnectionBonusTotal(users.data.total)
-    : null
-  const perUserBonusLabel = formatMentorBonus(MENTOR_CONNECTION_BONUS)
+  const bonusTotal = accrual.isSuccess ? accrual.data.accruedRub : null
 
   useEffect(() => {
     const next = draftQuery.trim()
@@ -135,71 +137,70 @@ export function MentorUserDirectory() {
             </div>
           )}
           {users.data && users.data.items.length > 0 && (
-            <Table className="w-full table-fixed text-xs">
+            <Table className="w-full table-fixed">
+              <colgroup>
+                <col className="w-[34%]" />
+                <col className="w-[18%]" />
+                <col className="w-[12%]" />
+                <col className="w-[22%]" />
+                <col className="w-[14%]" />
+              </colgroup>
               <TableHeader>
-                <TableRow className="hover:bg-transparent [&_th]:h-10">
-                  <TableHead className="w-[34%] px-3.5 text-xs font-medium text-[var(--nora-text)]">
-                    Пользователь
-                  </TableHead>
-                  <TableHead className="w-[18%] pl-6 text-xs font-medium text-[var(--nora-text)]">
-                    Никнейм
-                  </TableHead>
-                  <TableHead className="w-[16%] text-xs font-medium text-[var(--nora-text)]">
-                    ID
-                  </TableHead>
-                  <TableHead className="w-[18%] text-xs font-medium text-[var(--nora-text)]">
-                    Бонусы
-                  </TableHead>
-                  <TableHead className="w-14 px-2" />
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className={headClass}>Пользователь</TableHead>
+                  <TableHead className={headClass}>Никнейм</TableHead>
+                  <TableHead className={headClass}>ID</TableHead>
+                  <TableHead className={headClass}>Бонусы</TableHead>
+                  <TableHead className={headClass} />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.data.items.map((user) => (
-                  <TableRow
-                    className="even:bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:bg-[var(--nora-row-hover)]"
-                    key={user.id}
-                  >
-                    <TableCell className="h-auto px-3.5 py-2.5 whitespace-normal">
-                      <div className="grid min-w-0 gap-1">
-                        <span className="truncate text-xs font-medium text-[var(--nora-text)]">
-                          {user.displayName ?? user.email}
-                        </span>
-                        <span className="truncate text-[11px] text-[var(--nora-text-tertiary)]">
-                          {user.email}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="h-auto min-w-0 truncate py-2.5 pl-6 text-xs font-medium text-[var(--nora-text-secondary)]">
-                      {user.nickname ?? '—'}
-                    </TableCell>
-                    <TableCell className="h-auto min-w-0 truncate py-2.5 text-xs font-medium text-[var(--nora-text-secondary)]">
-                      {user.publicId}
-                    </TableCell>
-                    <TableCell className="h-auto min-w-0 py-2.5">
-                      <NoraBadge variant="green">{perUserBonusLabel}</NoraBadge>
-                    </TableCell>
-                    <TableCell className="h-auto w-14 px-2 py-2.5 text-center">
-                      <NoraIconButton
-                        aria-label={`Отключить ${user.email}`}
-                        className="!size-8 !min-h-8 !min-w-8 !rounded-full !p-0 shadow-none hover:!text-[var(--nora-error)]"
-                        data-settings-field=""
-                        disabled={detach.isPending}
-                        onClick={() => {
-                          detach.reset()
-                          setPendingDetach(user)
-                        }}
-                      >
-                        <Trash2Icon className="size-4" strokeWidth={1.75} />
-                      </NoraIconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {users.data.items.map((user) => {
+                  const bonus = bonusById.get(user.id)
+                  return (
+                    <TableRow className="hover:bg-[var(--nora-row-hover)]" key={user.id}>
+                      <TableCell className={cn(cellClass, 'whitespace-normal')}>
+                        <div className="grid min-w-0">
+                          <span className="truncate !font-medium !text-[var(--nora-text)]">{user.displayName ?? user.email}</span>
+                          {user.displayName ? (
+                            <span className="truncate !text-[var(--nora-text-tertiary)]">{user.email}</span>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell className={cellClass}>{user.nickname ?? '—'}</TableCell>
+                      <TableCell className={cellClass}>{user.publicId}</TableCell>
+                      <TableCell className={statusClass}>
+                        {accrual.isSuccess ? (
+                          bonus
+                            ? <NoraBadge className="!font-[250]" variant="green">{formatMentorBonus(bonus)}</NoraBadge>
+                            : <NoraBadge className="!font-[250]" variant="yellow">Ждёт оплаты</NoraBadge>
+                        ) : (
+                          <NoraBadge className="!font-[250]" variant="neutral">…</NoraBadge>
+                        )}
+                      </TableCell>
+                      <TableCell className={cn(statusClass, 'text-center')}>
+                        <NoraIconButton
+                          aria-label={`Отключить ${user.email}`}
+                          className="!size-8 !min-h-8 !min-w-8 !rounded-full !p-0 shadow-none hover:!text-[var(--nora-error)]"
+                          data-settings-field=""
+                          disabled={detach.isPending}
+                          onClick={() => {
+                            detach.reset()
+                            setPendingDetach(user)
+                          }}
+                        >
+                          <Trash2Icon className="size-4" strokeWidth={1.75} />
+                        </NoraIconButton>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}
           {users.data && users.data.total > 0 && users.data.items.length > 0 ? (
-            <div className="flex items-center justify-between gap-3 border-t border-[var(--nora-divider)] px-3.5 py-2.5">
-              <p className="font-[family-name:var(--nora-font)] text-[12px] font-[250] leading-4 text-[var(--nora-text-tertiary)] tabular-nums">
+            <div className="flex items-center justify-between gap-3 border-t border-[var(--nora-divider)] px-3.5 py-3">
+              <p className="font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)] tabular-nums">
                 {shownUsersLabel(page, users.data.pageSize, users.data.items.length, users.data.total)}
               </p>
               <UserPageList onPage={setPage} page={page} totalPages={totalPages} />

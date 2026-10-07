@@ -45,7 +45,7 @@ import {
   MentorUsers,
   useMentorUsersQuery,
 } from '@/features/mentor'
-import { MentorPayments, UserPayments } from '@/features/payments'
+import { MentorPayments, SubscriptionAccessProvider, UserPayments, subscriptionFreezeActive, useSubscriptionAccess } from '@/features/payments'
 import { CurrentPlanPage, GeneralNutritionPage, MenteeAssignedPlans, MentorPlanDetailPage, MentorPlansPage } from '@/features/plans'
 import {
   AccountProfile,
@@ -54,6 +54,7 @@ import {
   UserProfile,
   UserReferrals,
   UserSettings,
+  usePayoutAccrualQuery,
 } from '@/features/users'
 
 export function HomePage() {
@@ -477,10 +478,12 @@ export function MentorSettingsPage() {
 export function MentorPaymentsPage() {
   const user = useWorkspaceUser('mentor')
   const users = useMentorUsersQuery({ page: 1, pageSize: 1 })
+  const accrual = usePayoutAccrualQuery()
   return (
     <MentorPayments
+      accruedRub={accrual.isSuccess ? accrual.data.accruedRub : null}
       connectedUsers={users.data?.total ?? null}
-      pending={users.isPending}
+      pending={users.isPending || accrual.isPending}
       user={user}
     />
   )
@@ -563,8 +566,36 @@ function WorkspaceRoute({ role }: { role: UserRole }) {
     return <HrefRedirect href="/app/general" />
   }
 
+  if (role !== 'user') {
+    return (
+      <WorkspaceShell onLogout={auth.logout} user={auth.user}>
+        <Outlet />
+      </WorkspaceShell>
+    )
+  }
+
   return (
-    <WorkspaceShell onLogout={auth.logout} user={auth.user}>
+    <SubscriptionAccessProvider>
+      <FrozenUserWorkspace onLogout={auth.logout} user={auth.user} />
+    </SubscriptionAccessProvider>
+  )
+}
+
+function FrozenUserWorkspace({
+  onLogout,
+  user,
+}: {
+  onLogout: () => Promise<void>
+  user: UserDto
+}) {
+  const pathname = useLocation({ select: (location) => location.pathname })
+  const { overview } = useSubscriptionAccess()
+  return (
+    <WorkspaceShell
+      onLogout={onLogout}
+      subscriptionFrozen={subscriptionFreezeActive({ overview, pathname, role: user.role })}
+      user={user}
+    >
       <Outlet />
     </WorkspaceShell>
   )

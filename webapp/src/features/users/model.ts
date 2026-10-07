@@ -1,4 +1,4 @@
-/** Fixed user payout for each invited referral (placeholder until billing lands). */
+/** 200 ₽ once, for the first payment a referred user makes. A year is twelve months. */
 export const USER_REFERRAL_BONUS = 200
 
 export function userReferralBonusTotal(referralCount: number) {

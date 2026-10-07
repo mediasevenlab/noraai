@@ -1,9 +1,8 @@
 export type MentorPayoutRequisites = {
-  recipientName: string
-  bankName: string
-  bik: string
-  accountNumber: string
-  sbpPhone: string
+  fullName: string
+  inn: string
+  phone: string
+  accepted: boolean
 }
 
 export type UserServicePaymentDetails = {
@@ -44,6 +43,10 @@ export function normalizeCvc(value: string) {
   return digitsOnly(value).slice(0, 4)
 }
 
+export function normalizeInn(value: string) {
+  return digitsOnly(value).slice(0, 12)
+}
+
 export function normalizePhone(value: string) {
   return digitsOnly(value).slice(0, 11)
 }
@@ -62,24 +65,79 @@ export function formatPhone(value: string) {
   return `+${digits.slice(0, 1)} (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 9)}-${digits.slice(9)}`
 }
 
+/** 13% is withheld from a payout to a person. The mentor receives the rest. */
+export const MENTOR_PAYOUT_TAX_RATE = 0.13
+
+export function mentorPayoutWithholding(gross: number) {
+  return Math.round(Math.max(0, gross) * MENTOR_PAYOUT_TAX_RATE)
+}
+
+export function mentorPayoutNet(gross: number) {
+  return Math.max(0, gross) - mentorPayoutWithholding(gross)
+}
+
+/** What is still unpaid after earlier referral payouts. */
+export function unpaidBonusRub(accrued: number, settledRub: number) {
+  return Math.max(0, accrued - Math.max(0, settledRub))
+}
+
+export function mentorPayoutPhoneMask(phone: string) {
+  const digits = digitsOnly(phone)
+  return `+7 … ${digits.slice(-2)}`
+}
+
+/** Calendar date as `дд.мм.гг`. */
+export function formatShortDate(date: Date) {
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = String(date.getFullYear() % 100).padStart(2, '0')
+  return `${day}.${month}.${year}`
+}
+
+/** First day of the month, or next month once that day has passed. */
+export function nextMentorPayoutDate(now = new Date()) {
+  const payout = new Date(now.getFullYear(), now.getMonth(), 1)
+  if (now.getDate() > 1) payout.setMonth(payout.getMonth() + 1)
+  return payout
+}
+
+/** Payouts leave on the first day of the month. */
+export function nextMentorPayoutLabel(now = new Date()) {
+  return nextMentorPayoutDate(now)
+    .toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+    .replace(/\s*г\.$/, '')
+}
+
+function innChecksum(digits: string, weights: readonly number[]) {
+  const sum = weights.reduce((total, weight, index) => total + weight * Number(digits[index]), 0)
+  return (sum % 11) % 10
+}
+
+export function isPersonInn(value: string) {
+  if (!/^\d{12}$/.test(value)) return false
+  const eleventh = innChecksum(value, [7, 2, 4, 10, 3, 5, 9, 4, 6, 8])
+  const twelfth = innChecksum(value, [3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8])
+  return eleventh === Number(value[10]) && twelfth === Number(value[11])
+}
+
 export function validateMentorPayoutRequisites(
   input: MentorPayoutRequisites,
 ): FieldErrors<keyof MentorPayoutRequisites> {
   const errors: FieldErrors<keyof MentorPayoutRequisites> = {}
-  if (input.recipientName.trim().length < 3) {
-    errors.recipientName = 'Укажите ФИО получателя.'
+  const name = input.fullName.trim().replace(/\s+/g, ' ')
+  if (name.split(' ').filter(Boolean).length < 2) {
+    errors.fullName = 'Укажите фамилию и имя, как в паспорте.'
   }
-  if (input.bankName.trim().length < 2) {
-    errors.bankName = 'Укажите название банка.'
+  if (!/^\d{12}$/.test(input.inn)) {
+    errors.inn = 'ИНН физлица — 12 цифр.'
+  } else if (!isPersonInn(input.inn)) {
+    errors.inn = 'Контрольные цифры ИНН не сходятся.'
   }
-  if (!/^\d{9}$/.test(input.bik)) {
-    errors.bik = 'БИК должен содержать 9 цифр.'
+  if (!/^7\d{10}$/.test(input.phone)) {
+    errors.phone = 'Укажите телефон в формате +7.'
   }
-  if (!/^\d{20}$/.test(input.accountNumber)) {
-    errors.accountNumber = 'Расчётный счёт должен содержать 20 цифр.'
-  }
-  if (input.sbpPhone.trim() !== '' && !/^\d{11}$/.test(input.sbpPhone)) {
-    errors.sbpPhone = 'Укажите телефон в формате 11 цифр.'
+  if (!input.accepted) {
+    errors.accepted = 'Без согласия перевод не уйдёт.'
   }
   return errors
 }
@@ -142,8 +200,10 @@ export function billingMonthKey(now = new Date()) {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 }
 
-/** One service tariff until YooKassa test charges are wired. */
+/** One month of the service. A year is twelve months with 20% off. */
 export const USER_SERVICE_PRICE_RUB = 1000
+export const USER_SERVICE_YEAR_PRICE_RUB = 9_600
+export const USER_SERVICE_YEAR_LIST_RUB = 12_000
 
 export type SavedBillingCard = {
   holderName: string
@@ -347,6 +407,14 @@ export const DEMO_USER_SUBSCRIPTION_DAYS_LEFT = 2
 /** Demo billing period length used by the sidebar meter. */
 export const DEMO_USER_SUBSCRIPTION_PERIOD_DAYS = 30
 
+export function renewalCountdownLabel(days: number) {
+  const noun = formatSubscriptionDaysLeft(days)
+  const mod10 = Math.abs(days) % 10
+  const mod100 = Math.abs(days) % 100
+  const verb = mod10 === 1 && mod100 !== 11 ? 'Остался' : 'Осталось'
+  return `${verb} ${noun}`
+}
+
 export function formatSubscriptionDaysLeft(days: number) {
   const abs = Math.max(0, days)
   const mod10 = abs % 10
@@ -419,11 +487,10 @@ export const DEMO_MENTOR_PAYOUTS: ReadonlyArray<MentorPayoutMonth> = [
 ]
 
 export const DEMO_MENTOR_PAYOUT_REQUISITES: MentorPayoutRequisites = {
-  recipientName: 'Иван Иванов',
-  bankName: 'Т-Банк',
-  bik: '044525974',
-  accountNumber: '40817810099910004312',
-  sbpPhone: '79001234567',
+  fullName: 'Иван Иванов',
+  inn: '500100732259',
+  phone: '79001234567',
+  accepted: true,
 }
 
 export function mentorPayoutTotal(months: ReadonlyArray<Pick<MentorPayoutMonth, 'amount'>>) {

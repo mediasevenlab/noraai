@@ -459,7 +459,7 @@ function FeedDayStats({
             {formatCount(totals.carbs)}
           </span>
         </div>
-        <div className={cn(DAY_STAT_CHIP_CLASS, "px-3")}>
+        <div className={cn(DAY_STAT_CHIP_CLASS, "px-3 max-md:hidden")}>
           <UtensilsIcon
             aria-hidden
             className="size-[13px]"
@@ -1482,8 +1482,8 @@ export function NewsPage({
         </header>
 
         <div className="flex flex-col gap-5 max-md:mb-2.5">
-          <section className="flex flex-col">
-            <div className="relative z-10 flex w-full min-w-0 items-center pt-1">
+          <section className="relative z-10 flex flex-col md:sticky md:top-0 md:z-20 md:bg-background">
+            <div className="flex w-full min-w-0 items-center py-1">
               <div className={productFeedToolbarRowClass}>
                 {toolbarStart}
                 {toolbarExtra ? (

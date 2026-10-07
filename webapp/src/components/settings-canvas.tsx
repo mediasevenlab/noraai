@@ -42,9 +42,9 @@ const settingsControlsClass = cn(
   '[&_[data-slot=select-trigger]:not([data-generation-control])]:!h-10 [&_[data-slot=select-trigger]:not([data-generation-control])]:!min-h-10 [&_[data-slot=select-trigger]:not([data-generation-control])]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-slot=select-trigger]:not([data-generation-control])]:!px-3 [&_[data-slot=select-trigger]:not([data-generation-control])]:!text-[13px] [&_[data-slot=select-trigger]:not([data-generation-control])]:!font-normal',
   'lg:[&_[data-slot=select-trigger]:not([data-generation-control])]:!h-8 lg:[&_[data-slot=select-trigger]:not([data-generation-control])]:!min-h-8',
   '[&_[data-settings-field]]:!h-8 [&_[data-settings-field]]:!min-h-8 [&_[data-settings-field]]:!bg-[var(--settings-field-bg,var(--nora-panel))] [&_[data-settings-field]]:!text-[13px]',
-  '[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-generation-control])]:!h-10 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-generation-control])]:!min-h-10 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-generation-control])]:!px-3 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-generation-control])]:!text-[13px] [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-generation-control])]:!font-normal',
-  'lg:[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-generation-control])]:!h-8 lg:[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-generation-control])]:!min-h-8',
-  '[&_button:not([data-choice-plaque]):not([data-slot=switch]):not([data-generation-control])_span]:!text-[13px] [&_button:not([data-choice-plaque]):not([data-slot=switch]):not([data-generation-control])_span]:!font-normal',
+  '[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-slot=checkbox]):not([data-generation-control]):not([data-field-height])]:!h-10 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-slot=checkbox]):not([data-generation-control]):not([data-field-height])]:!min-h-10 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-slot=checkbox]):not([data-generation-control])]:!px-3 [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-slot=checkbox]):not([data-generation-control])]:!text-[13px] [&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-slot=checkbox]):not([data-generation-control])]:!font-normal',
+  'lg:[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-slot=checkbox]):not([data-generation-control]):not([data-field-height])]:!h-8 lg:[&_button:not([data-choice-plaque]):not([data-settings-field]):not([data-text-button]):not([data-slot=switch]):not([data-slot=checkbox]):not([data-generation-control]):not([data-field-height])]:!min-h-8',
+  '[&_button:not([data-choice-plaque]):not([data-slot=switch]):not([data-slot=checkbox]):not([data-generation-control])_span]:!text-[13px] [&_button:not([data-choice-plaque]):not([data-slot=switch]):not([data-slot=checkbox]):not([data-generation-control])_span]:!font-normal',
 )
 
 /** Раскладка страницы настроек в том же виде, что «Разработка». */
@@ -59,6 +59,8 @@ function SettingsCanvasView({
   meta,
   divided = true,
   aside,
+  asideClassName,
+  balanced = false,
   lead,
   panelsId = 'settings-panels',
   phoneSheet,
@@ -68,6 +70,9 @@ function SettingsCanvasView({
   actions?: ReactNode
   /** Extra block in the left column, under the description. */
   aside?: ReactNode
+  asideClassName?: string
+  /** Payments: page edges match settings; the left column is 10% narrower than an even split. */
+  balanced?: boolean
   children: ReactNode
   className?: string
   ctaLabel?: string
@@ -86,13 +91,18 @@ function SettingsCanvasView({
   return (
     <div className={cn(
       'mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-10 px-3 pt-3 pb-8 sm:px-6 md:px-10 md:py-12 lg:flex-row lg:gap-16 lg:px-12',
+      balanced && 'lg:gap-24',
       className,
       (lead || phoneSheet) && 'max-lg:min-h-full max-lg:flex-1 max-lg:gap-0 max-lg:pb-0',
       (lead || phoneSheet) && 'max-lg:bg-[color-mix(in_srgb,var(--nora-text)_9%,var(--background))]',
     )}>
-      <aside className="hidden w-full shrink-0 flex-col gap-6 lg:sticky lg:top-6 lg:flex lg:w-[280px] lg:self-start">
+      <aside className={cn(
+        'hidden w-full shrink-0 flex-col gap-6 lg:sticky lg:top-6 lg:flex lg:self-start',
+        balanced ? 'lg:w-[calc((100%-6rem)*0.45)] lg:max-w-none lg:flex-none' : 'lg:w-[280px]',
+        asideClassName,
+      )}>
         <div>
-          <div className={cn('mb-1', settingsCaptionClass)}>{eyebrow}</div>
+          {eyebrow ? <div className={cn('mb-1', settingsCaptionClass)}>{eyebrow}</div> : null}
           <h1 className="font-heading text-[42px] leading-none font-bold tracking-[-0.04em] text-foreground md:text-[48px]">
             {title}
           </h1>
@@ -121,7 +131,7 @@ function SettingsCanvasView({
         ) : null}
       </aside>
 
-      <section className={cn('min-w-0 flex-1', (lead || phoneSheet) && 'max-lg:flex max-lg:flex-col')} aria-label={title} id={panelsId}>
+      <section className={cn('min-w-0 flex-1', balanced && 'lg:ml-auto lg:w-[calc((100%-6rem)*0.5)] lg:flex-none', (lead || phoneSheet) && 'max-lg:flex max-lg:flex-col')} aria-label={title} id={panelsId}>
         {lead ? <div className="lg:hidden">{lead}</div> : null}
         <div className={cn((lead || phoneSheet) && 'max-lg:relative max-lg:flex max-lg:min-h-0 max-lg:flex-1 max-lg:flex-col', phoneSheet && 'max-lg:mt-5')}>
           {phoneSheet ? <PhoneSheetHandle /> : null}
@@ -206,6 +216,7 @@ function PhoneSheetHandle() {
 
 /** Один раздел настроек — как запись в списке версий. */
 export function SettingsEntry({
+  after,
   children,
   className,
   description,
@@ -213,6 +224,8 @@ export function SettingsEntry({
   marker,
   title,
 }: {
+  /** Sits under the gray block, not inside it. */
+  after?: ReactNode
   children: ReactNode
   className?: string
   description: ReactNode
@@ -232,6 +245,7 @@ export function SettingsEntry({
       <div className={settingsControlsClass} data-settings-well="">
         {children}
       </div>
+      {after ? <div className="mt-3 px-3.5">{after}</div> : null}
     </li>
   )
 }

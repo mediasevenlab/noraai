@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 import { BrandMark } from './BrandMark'
 import { DashboardLink } from './DashboardLink'
 import { NavMain, type DashboardNavigationItem } from './NavMain'
-import { NavUser } from './NavUser'
+import { NavUser, sidebarDockButtonClass } from './NavUser'
 import {
   SidebarSearchField,
   SidebarSearchProvider,
@@ -71,29 +71,30 @@ export function AppSidebar({
             {navigationLocked ? (
               <SidebarMenuButton
                 aria-disabled
-                className="opacity-50"
+                className={cn(sidebarDockButtonClass, 'opacity-50')}
                 disabled
                 size="lg"
                 tooltip="Nutrition"
               >
                 <BrandMark className="opacity-60" />
                 <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                  <span className="truncate font-medium">Nutrition</span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate font-[family-name:var(--nora-font)] font-medium text-foreground">Nutrition</span>
+                  <span className="truncate font-light text-xs text-muted-foreground">
                     {workspaceLabel}
                   </span>
                 </div>
               </SidebarMenuButton>
             ) : (
               <SidebarMenuButton
+                className={sidebarDockButtonClass}
                 render={<DashboardLink to={homePath} />}
                 size="lg"
                 tooltip="Nutrition"
               >
                 <BrandMark />
                 <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                  <span className="truncate font-medium">Nutrition</span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate font-[family-name:var(--nora-font)] font-medium text-foreground">Nutrition</span>
+                  <span className="truncate font-light text-xs text-muted-foreground">
                     {workspaceLabel}
                   </span>
                 </div>
@@ -129,27 +130,32 @@ export function AppSidebar({
           {additionalNavigation}
         </SidebarContent>
         {/*
-          Footer dock: relation card, subscription card, then a plain profile row.
+          Footer dock. A visible relation card gets a hairline above and below.
+          When the card renders nothing, only the line above the account row stays,
+          at the same inset as that row.
         */}
         <SidebarFooter className="mt-auto gap-0 p-0 group-data-[collapsible=icon]:gap-2.5 group-data-[collapsible=icon]:pb-2.5">
           <SidebarSeparator className="my-0" />
-          <div
-            className={cn(
-              'flex flex-col gap-3 px-2 py-3',
-              'group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:gap-2.5 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pb-2.5 group-data-[collapsible=icon]:pt-0',
-            )}
-          >
-            {footerExtra ? (
+          {footerExtra ? (
+            <div className="group/footer-extra hidden has-[a]:block group-data-[collapsible=icon]:has-[a]:flex group-data-[collapsible=icon]:has-[a]:justify-center">
               <div
                 className={cn(
-                  'flex flex-col gap-3',
-                  'group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:gap-2.5',
+                  'px-2 py-3',
+                  'group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0',
                   navigationLocked && 'pointer-events-none opacity-45',
                 )}
               >
                 {footerExtra}
               </div>
-            ) : null}
+              <SidebarSeparator className="my-0" />
+            </div>
+          ) : null}
+          <div
+            className={cn(
+              'px-2 py-3',
+              'group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pb-2.5 group-data-[collapsible=icon]:pt-0',
+            )}
+          >
             <NavUser
               onLogout={onLogout}
               user={user}

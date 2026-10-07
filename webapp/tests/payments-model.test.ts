@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test'
 
+import { ledgerPageWindow } from '../src/features/payments/BillingHistory'
+import { mentorPayoutStatus } from '../src/features/payments/MentorPayoutPanel'
 import {
   billingCardFromDraft,
   cardBrand,
@@ -9,7 +11,11 @@ import {
   formatPhone,
   formatPayoutAmount,
   hasFieldErrors,
+  mentorPayoutNet,
+  mentorPayoutPhoneMask,
   mentorPayoutTotal,
+  mentorPayoutWithholding,
+  nextMentorPayoutLabel,
   DEMO_MENTOR_PAYOUTS,
   DEMO_MENTOR_PAYOUT_REQUISITES,
   DEMO_USER_SERVICE_PAYMENT,
@@ -17,6 +23,8 @@ import {
   DEMO_USER_REFERRAL_PAYOUTS,
   normalizeExpiry,
   formatSubscriptionDaysLeft,
+  renewalCountdownLabel,
+  unpaidBonusRub,
   userReferralPayoutTotal,
   DEMO_USER_SUBSCRIPTION_DAYS_LEFT,
   isSubscriptionExpiringSoon,
@@ -26,28 +34,55 @@ import {
   validateUserServicePayment,
 } from '../src/features/payments/model'
 
-test('mentor payout requisites require bank identity fields', () => {
+test('a payout note does not repeat the amount already shown beside the form', () => {
+  const waiting = mentorPayoutStatus({ accrued: 1_400, phone: null, ready: false })
+  expect(waiting).toBe('Перевод не уйдёт, пока нет телефона и согласия.')
+  const ready = mentorPayoutStatus({
+    accrued: 1_400,
+    phone: '79001234567',
+    ready: true,
+    now: new Date(2026, 9, 7),
+  })
+  expect(ready).toBe('Выплата 1 ноября на +7 … 67.')
+  expect(mentorPayoutStatus({
+    accrued: 1_000,
+    kind: 'referral',
+    phone: '79137067236',
+    ready: true,
+    now: new Date(2026, 9, 7),
+  })).toBe('Бонусы можно копить или запросить выплату в любой момент.')
+  expect(unpaidBonusRub(1_000, 0)).toBe(1_000)
+  expect(unpaidBonusRub(1_000, 1_000)).toBe(0)
+  expect(unpaidBonusRub(1_200, 1_000)).toBe(200)
+})
+
+test('mentor payout requisites are a name, an INN, a phone and consent', () => {
   expect(validateMentorPayoutRequisites({
-    recipientName: 'И',
-    bankName: '',
-    bik: '123',
-    accountNumber: '123',
-    sbpPhone: '123',
+    fullName: 'Иван',
+    inn: '123',
+    phone: '900',
+    accepted: false,
   })).toEqual({
-    recipientName: 'Укажите ФИО получателя.',
-    bankName: 'Укажите название банка.',
-    bik: 'БИК должен содержать 9 цифр.',
-    accountNumber: 'Расчётный счёт должен содержать 20 цифр.',
-    sbpPhone: 'Укажите телефон в формате 11 цифр.',
+    fullName: 'Укажите фамилию и имя, как в паспорте.',
+    inn: 'ИНН физлица — 12 цифр.',
+    phone: 'Укажите телефон в формате +7.',
+    accepted: 'Без согласия перевод не уйдёт.',
   })
 
-  expect(hasFieldErrors(validateMentorPayoutRequisites({
-    recipientName: 'Иван Иванов',
-    bankName: 'Т-Банк',
-    bik: '044525974',
-    accountNumber: '40817810099910004312',
-    sbpPhone: '',
-  }))).toBe(false)
+  expect(validateMentorPayoutRequisites({
+    fullName: 'Ивлев Игорь Юрьевич',
+    inn: '555555555555',
+    phone: '79137067236',
+    accepted: true,
+  }).inn).toBe('Контрольные цифры ИНН не сходятся.')
+  expect(hasFieldErrors(validateMentorPayoutRequisites(DEMO_MENTOR_PAYOUT_REQUISITES))).toBe(false)
+  expect(mentorPayoutWithholding(200)).toBe(26)
+  expect(mentorPayoutNet(200)).toBe(174)
+  expect(mentorPayoutWithholding(600)).toBe(78)
+  expect(mentorPayoutNet(600)).toBe(522)
+  expect(mentorPayoutPhoneMask('79001234567')).toBe('+7 … 67')
+  expect(nextMentorPayoutLabel(new Date(2026, 9, 7))).toBe('1 ноября')
+  expect(nextMentorPayoutLabel(new Date(2026, 10, 1))).toBe('1 ноября')
 })
 
 test('user service payment validates card payload', () => {
@@ -118,14 +153,37 @@ test('user referral payout requisites skip bank name', () => {
   })
 })
 
-test('payments pages prepare a tariff and a payout card without charging', async () => {
+test('the user pays on the YooKassa page and the mentor saves a phone payout', async () => {
   const pages = await Bun.file(new URL('../src/features/payments/pages.tsx', import.meta.url)).text()
-  expect(pages).toContain('USER_SERVICE_PRICE_RUB')
-  expect(pages).toContain('история списаний')
+  const panel = await Bun.file(new URL('../src/features/payments/BillingCardPanel.tsx', import.meta.url)).text()
+  expect(panel).toContain('USER_SERVICE_PRICE_RUB')
+  expect(panel).toContain('USER_SERVICE_YEAR_PRICE_RUB')
+  expect(panel).toContain('Отменить подписку')
+  expect(panel).toContain('Дневник питания')
+  expect(panel).toContain('скидка 20%')
+  expect(pages).toContain('История платежей')
+  expect(pages).toContain('чек уходит на почту')
+  expect(pages).toContain('SubscriptionPayPanel')
   expect(pages).toContain('MENTOR_CONNECTION_BONUS')
-  expect(pages).toContain('BillingCardPanel')
+  expect(pages).toContain('MentorPayoutPanel')
+  expect(pages).toContain('К получению')
+  expect(pages).not.toContain('useBillingCardForm')
+  expect(pages).not.toContain('Карта для выплаты')
   expect(pages).not.toContain('UserBillingPanel')
   expect(pages).not.toContain('Оплата пока недоступна')
+})
+
+test('charge history shows ten rows and a second page for the rest', () => {
+  expect(ledgerPageWindow(12, 1)).toEqual({ current: 1, from: 1, to: 10, totalPages: 2 })
+  expect(ledgerPageWindow(12, 2)).toEqual({ current: 2, from: 11, to: 12, totalPages: 2 })
+  expect(ledgerPageWindow(10, 1).totalPages).toBe(1)
+  expect(ledgerPageWindow(0, 4)).toEqual({ current: 1, from: 0, to: 0, totalPages: 1 })
+})
+
+test('the renewal countdown names one, two, and three days', () => {
+  expect(renewalCountdownLabel(1)).toBe('Остался 1 день')
+  expect(renewalCountdownLabel(2)).toBe('Осталось 2 дня')
+  expect(renewalCountdownLabel(3)).toBe('Осталось 3 дня')
 })
 
 test('card brand follows the networks YooKassa accepts', () => {

@@ -12,6 +12,7 @@
 @import "./styles/planned-cover-blur.css";
 @import "./styles/composer-press.css";
 @import "./styles/icon-pack.css";
+@import "./styles/subscription-freeze.css";
 
 /* Production nginx serves /fonts/ from the landing build, so these files also live in website/public/fonts. */
 @font-face {
@@ -959,6 +960,67 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
     margin: 0 !important;
     transform: scale(var(--ios-type-scale));
     transform-origin: top left;
+  }
+}
+
+/*
+ * Important utilities live in a later cascade layer, so an unlayered
+ * background loses to the well's forced panel fill. Important rules in
+ * the earlier base layer win over those utilities.
+ */
+@layer base {
+  html body [data-settings-well] input[data-payout-field] {
+    color: color-mix(in srgb, var(--nora-text) 50%, var(--nora-text-secondary)) !important;
+    font-weight: 300 !important;
+  }
+
+  html body [data-settings-well] input[data-payout-field]:disabled {
+    background-color: color-mix(in srgb, var(--nora-text) 12%, var(--settings-field-bg, var(--nora-panel))) !important;
+    -webkit-text-fill-color: color-mix(in srgb, var(--nora-text) 50%, var(--nora-text-secondary)) !important;
+  }
+
+  [data-payout-field]:-webkit-autofill,
+  [data-payout-field]:-webkit-autofill:hover,
+  [data-payout-field]:-webkit-autofill:focus,
+  [data-payout-field]:-webkit-autofill:active,
+  [data-payout-field]:autofill {
+    -webkit-text-fill-color: color-mix(in srgb, var(--nora-text) 50%, var(--nora-text-secondary)) !important;
+    caret-color: var(--nora-text);
+    box-shadow: inset 0 0 0 1000px var(--nora-panel) !important;
+    transition: background-color 99999s ease-out 0s;
+  }
+
+  [data-payout-field]:disabled:-webkit-autofill,
+  [data-payout-field]:disabled:-webkit-autofill:hover,
+  [data-payout-field]:disabled:-webkit-autofill:focus,
+  [data-payout-field]:disabled:-webkit-autofill:active,
+  [data-payout-field]:disabled:autofill {
+    -webkit-text-fill-color: color-mix(in srgb, var(--nora-text) 50%, var(--nora-text-secondary)) !important;
+    box-shadow: inset 0 0 0 1000px color-mix(in srgb, var(--nora-text) 12%, var(--settings-field-bg, var(--nora-panel))) !important;
+  }
+
+  .dark [data-settings-well] input[data-payout-field]:disabled,
+  .scheme-editor-dark [data-settings-well] input[data-payout-field]:disabled,
+  [data-scheme="editor-dark"] [data-settings-well] input[data-payout-field]:disabled {
+    background-color: var(--settings-field-bg, var(--nora-panel)) !important;
+  }
+
+  .dark [data-payout-field]:disabled:-webkit-autofill,
+  .dark [data-payout-field]:disabled:-webkit-autofill:hover,
+  .dark [data-payout-field]:disabled:-webkit-autofill:focus,
+  .dark [data-payout-field]:disabled:-webkit-autofill:active,
+  .dark [data-payout-field]:disabled:autofill,
+  .scheme-editor-dark [data-payout-field]:disabled:-webkit-autofill,
+  .scheme-editor-dark [data-payout-field]:disabled:-webkit-autofill:hover,
+  .scheme-editor-dark [data-payout-field]:disabled:-webkit-autofill:focus,
+  .scheme-editor-dark [data-payout-field]:disabled:-webkit-autofill:active,
+  .scheme-editor-dark [data-payout-field]:disabled:autofill,
+  [data-scheme="editor-dark"] [data-payout-field]:disabled:-webkit-autofill,
+  [data-scheme="editor-dark"] [data-payout-field]:disabled:-webkit-autofill:hover,
+  [data-scheme="editor-dark"] [data-payout-field]:disabled:-webkit-autofill:focus,
+  [data-scheme="editor-dark"] [data-payout-field]:disabled:-webkit-autofill:active,
+  [data-scheme="editor-dark"] [data-payout-field]:disabled:autofill {
+    box-shadow: inset 0 0 0 1000px var(--settings-field-bg, var(--nora-panel)) !important;
   }
 }
 

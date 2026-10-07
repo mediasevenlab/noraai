@@ -269,19 +269,17 @@ export function RegisterForm({
             && referralState === 'found'
             && referrer?.role === 'user' && (
             <div
-              className="flex gap-2.5 rounded-[var(--nora-radius-lg)] bg-[var(--nora-tint-dimmed)] px-3 py-2.5"
+              className="flex items-start gap-2.5 rounded-[var(--nora-radius-md)] bg-[var(--nora-panel)] px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--settings-well-stroke,var(--nora-border))]"
               role="status"
             >
-              <InfoIcon
-                aria-hidden
-                className="mt-0.5 size-3.5 shrink-0 text-[var(--nora-tint)]"
-                strokeWidth={2}
-              />
+              <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--nora-text)] text-[var(--nora-on-accent)] dark:bg-[#333333]">
+                <InfoIcon aria-hidden className="size-3.5" strokeWidth={2} />
+              </span>
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-[var(--nora-tint)]">
+                <p className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
                   Вас пригласил пользователь
                 </p>
-                <p className="mt-0.5 text-[11px] leading-relaxed font-normal text-[color-mix(in_srgb,var(--nora-tint)_72%,var(--nora-text))]">
+                <p className="truncate font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 text-[var(--nora-text-secondary)] dark:font-normal">
                   {referrer.displayName ?? referrer.nickname ?? `ID ${referrer.publicId}`}
                 </p>
               </div>

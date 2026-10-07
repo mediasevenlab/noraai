@@ -19,9 +19,8 @@ export { QuestionnaireLivePreview } from './QuestionnaireLivePreview'
 export { QuestionnaireOnboarding } from './QuestionnaireOnboarding'
 export { ReferralLinkPanel } from './ReferralLinkPanel'
 export { UserAppNavigation } from './UserAppNavigation'
-export { UserMentorBanner } from './UserMentorBanner'
 export { UserReferrals } from './pages'
-export { useCurrentUserMentorQuery, useQuestionnaireQuery } from './queries'
+export { useCurrentUserMentorQuery, usePayoutAccrualQuery, useQuestionnaireQuery } from './queries'
 export {
   goalUsesPace,
   questionnaireDailyCalorieTarget,

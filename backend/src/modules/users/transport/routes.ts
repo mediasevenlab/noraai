@@ -18,6 +18,7 @@ import {
   planAssignmentSchema,
   putPlanAssignmentRequestSchema,
   putQuestionnaireRequestSchema,
+  payoutAccrualResponseSchema,
   putUserFavoritesRequestSchema,
   putUserPlanLibraryRequestSchema,
   questionnaireResponseSchema,
@@ -357,6 +358,20 @@ const userReferralsRoute = createRoute({
     400: { content: errorContent, description: 'Invalid query' },
     401: { content: errorContent, description: 'Authentication required' },
     403: { content: errorContent, description: 'User access required' },
+  },
+})
+
+const payoutAccrualRoute = createRoute({
+  method: 'get',
+  path: '/me/payout-accrual',
+  security: bearerSecurity,
+  responses: {
+    200: {
+      content: { 'application/json': { schema: payoutAccrualResponseSchema } },
+      description: 'Bonus accrued from confirmed subscription payments',
+    },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'User or mentor access required' },
   },
 })
 
@@ -760,6 +775,12 @@ export function createUsersRoutes({
       await executeUsers(() =>
         service.listUserReferrals(c.var.user, c.req.valid('query')),
       ),
+      200,
+    )
+  })
+  userRoutes.openapi(payoutAccrualRoute, async (c) => {
+    return c.json(
+      await executeUsers(() => service.readPayoutAccrual(c.var.user)),
       200,
     )
   })

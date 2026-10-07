@@ -32,6 +32,7 @@ export function SidebarRelationCard({
   description,
   href,
   icon: Icon,
+  ink = false,
   label,
   value,
 }: {
@@ -41,6 +42,8 @@ export function SidebarRelationCard({
   description?: string
   href: WorkspaceRoutePath
   icon: LucideIcon
+  /** Renewal action. The icon sits light on a tile the color of the heading. */
+  ink?: boolean
   label: string
   value?: string
 }) {
@@ -53,6 +56,7 @@ export function SidebarRelationCard({
             'h-auto flex-col items-stretch gap-0 overflow-hidden rounded-[var(--nora-radius-xl,14px)] p-3.5',
             'bg-[var(--nora-panel)] text-[var(--nora-text)] shadow-[inset_0_0_0_1px_var(--nora-border),0_3px_10px_rgb(0_0_0/5%)]',
             'hover:bg-[var(--nora-surface)] hover:text-[var(--nora-text)]',
+            ink && 'dark:bg-[var(--nora-surface)] dark:hover:bg-[var(--nora-inset)]',
             'group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:flex-row group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-[var(--nora-radius-md,8px)] group-data-[collapsible=icon]:p-0!',
           )}
           render={<DashboardLink to={href} />}
@@ -64,10 +68,20 @@ export function SidebarRelationCard({
             children when collapsed, and keeps the first div as the icon tile.
           */}
           <div className="flex items-center gap-3 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-[var(--nora-input-bg)] shadow-[inset_0_0_0_1px_var(--nora-border)]">
+            <span
+              className={cn(
+                'flex size-8 shrink-0 items-center justify-center rounded-[10px]',
+                ink
+                  ? 'bg-[var(--nora-text)] dark:bg-[#333333]'
+                  : 'bg-[var(--nora-input-bg)] shadow-[inset_0_0_0_1px_var(--nora-border)]',
+              )}
+            >
               <Icon
                 aria-hidden
-                className="size-3.5 text-[var(--nora-text-secondary)]"
+                className={cn(
+                  'size-4',
+                  ink ? '!text-[var(--nora-on-accent)]' : 'text-[var(--nora-text-secondary)]',
+                )}
                 strokeWidth={2}
               />
             </span>
@@ -104,12 +118,22 @@ export function SidebarRelationCard({
                 {description}
               </p>
             ) : null}
-            <span className={ctaBarClass}>
+            <span
+              className={cn(
+                ctaBarClass,
+                ink && '!bg-[var(--nora-tint)] !text-[var(--nora-on-accent)] shadow-none group-hover/menu-button:!bg-[var(--nora-tint-dark)]',
+              )}
+            >
               <span className={ctaClass}>{actionLabel}</span>
-              <span className={ctaChipClass}>
+              <span className={cn(ctaChipClass, ink && 'bg-[color-mix(in_srgb,#fff_22%,transparent)] shadow-none')}>
                 <ChevronRightIcon
                   aria-hidden
-                  className="size-3.5 text-[var(--nora-text-secondary)] transition-colors duration-[var(--nora-duration,0.15s)] group-hover/menu-button:text-[var(--nora-text)]"
+                  className={cn(
+                    'size-3.5 transition-colors duration-[var(--nora-duration,0.15s)]',
+                    ink
+                      ? '!text-[var(--nora-on-accent)]'
+                      : 'text-[var(--nora-text-secondary)] group-hover/menu-button:text-[var(--nora-text)]',
+                  )}
                 />
               </span>
             </span>

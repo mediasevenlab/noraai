@@ -1,40 +1,108 @@
-import { CircleCheckIcon } from '@/components/icons'
-import { useId, useState, type FormEvent } from 'react'
+import { useState, type ComponentProps, type FormEvent } from 'react'
 
-import { Button } from '@/components/ui/button'
-import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
+import { RefreshCwIcon } from '@/components/icons'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
+
+import { readMentorPayoutProfile, writeMentorPayoutProfile, type PayoutProfileKind } from './card-store'
 import {
-  DEMO_MENTOR_PAYOUT_REQUISITES,
   formatPhone,
   hasFieldErrors,
-  normalizeAccountNumber,
-  normalizeBik,
-  normalizePhone,
+  mentorPayoutPhoneMask,
+  nextMentorPayoutLabel,
+  normalizeInn,
   validateMentorPayoutRequisites,
-  type FieldErrors,
   type MentorPayoutRequisites,
 } from './model'
 
-export function MentorPayoutPanel() {
-  const errorIds = {
-    recipientName: useId(),
-    bankName: useId(),
-    bik: useId(),
-    accountNumber: useId(),
-    sbpPhone: useId(),
-  }
-  const [values, setValues] = useState<MentorPayoutRequisites>(DEMO_MENTOR_PAYOUT_REQUISITES)
-  const [errors, setErrors] = useState<FieldErrors<keyof MentorPayoutRequisites>>({})
-  const [mode, setMode] = useState<'saved' | 'editing'>('saved')
-  const isSaved = mode === 'saved'
-  const isEditing = mode === 'editing'
+const controlClass =
+  'h-8 min-h-8 !bg-[var(--nora-panel)] px-3 font-[family-name:var(--nora-font)] !text-[13px] !font-light !leading-5 shadow-none disabled:!opacity-100'
 
-  const update = <K extends keyof MentorPayoutRequisites>(
-    key: K,
-    value: MentorPayoutRequisites[K],
-  ) => {
-    if (!isEditing) return
+const actionClass =
+  'inline-flex w-full cursor-pointer items-center justify-center rounded-[var(--nora-radius-md,8px)] border-0 font-[family-name:var(--nora-font)] text-[13px] font-normal !h-10 !max-h-10 !min-h-10 min-[768px]:!h-[37px] min-[768px]:!max-h-[37px] min-[768px]:!min-h-[37px] shadow-none disabled:cursor-not-allowed'
+
+const saveClass =
+  `${actionClass} !bg-[var(--nora-tint)] !text-white hover:!bg-[var(--nora-tint-dark)]`
+
+const editClass =
+  `${actionClass} !bg-[#333] !text-white hover:!bg-[#333]`
+
+const idleRequestClass =
+  `${actionClass} !bg-[var(--nora-panel)] !text-[var(--nora-text-tertiary)] disabled:!opacity-100`
+
+const emptyRequisites: MentorPayoutRequisites = {
+  fullName: '',
+  inn: '',
+  phone: '',
+  accepted: false,
+}
+
+function digitsPhone(value: string) {
+  let digits = value.replace(/\D/g, '')
+  if (digits.startsWith('8')) digits = `7${digits.slice(1)}`
+  if (digits.length > 0 && !digits.startsWith('7')) digits = `7${digits}`
+  return digits.slice(0, 11)
+}
+
+function PayoutInput({ className, ...props }: ComponentProps<typeof Input>) {
+  return (
+    <div className="relative h-8">
+      <Input className={cn(controlClass, className)} data-ios-keep="" data-payout-field="" data-settings-field="" {...props} />
+    </div>
+  )
+}
+
+export function mentorPayoutStatus(input: {
+  accrued: number | null
+  kind?: 'mentor' | 'referral'
+  ready: boolean
+  phone: string | null
+  now?: Date
+}) {
+  const accrued = input.accrued ?? 0
+  const when = nextMentorPayoutLabel(input.now)
+  if (input.kind === 'referral') {
+    if (!input.ready) {
+      if (accrued <= 0) return null
+      return 'Перевод не уйдёт, пока нет телефона и согласия.'
+    }
+    return 'Бонусы можно копить или запросить выплату в любой момент.'
+  }
+  if (!input.ready) {
+    if (accrued <= 0) return null
+    return 'Перевод не уйдёт, пока нет телефона и согласия.'
+  }
+  if (accrued <= 0) {
+    return `Телефон сохранён. Выплата уйдёт ${when}, когда появится сумма.`
+  }
+  return `Выплата ${when} на ${mentorPayoutPhoneMask(input.phone ?? '')}.`
+}
+
+export function MentorPayoutPanel({
+  kind = 'mentor',
+  onRequest,
+  onReset,
+  onSaved,
+  unpaidRub = null,
+  userId,
+}: {
+  kind?: PayoutProfileKind
+  onRequest?: () => void
+  onReset?: () => void
+  onSaved?: () => void
+  unpaidRub?: number | null
+  userId: string
+}) {
+  const saved = readMentorPayoutProfile(userId, undefined, kind)
+  const [editing, setEditing] = useState(saved == null)
+  const [values, setValues] = useState<MentorPayoutRequisites>(saved ?? emptyRequisites)
+  const [errors, setErrors] = useState<Partial<Record<keyof MentorPayoutRequisites, string>>>({})
+  const locked = !editing && saved != null
+
+  const update = <K extends keyof MentorPayoutRequisites>(key: K, value: MentorPayoutRequisites[K]) => {
     setValues((current) => ({ ...current, [key]: value }))
     setErrors((current) => {
       if (!current[key]) return current
@@ -46,175 +114,115 @@ export function MentorPayoutPanel() {
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!isEditing) return
     const nextErrors = validateMentorPayoutRequisites(values)
     setErrors(nextErrors)
     if (hasFieldErrors(nextErrors)) return
-    setMode('saved')
+    const fullName = values.fullName.trim().replace(/\s+/g, ' ')
+    writeMentorPayoutProfile(userId, {
+      fullName,
+      inn: values.inn,
+      phone: values.phone,
+      accepted: true,
+    }, undefined, kind)
+    setValues((current) => ({ ...current, fullName }))
+    setEditing(false)
+    onSaved?.()
   }
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden rounded-[var(--nora-radius-lg)] bg-[var(--dash-card-bg,var(--nora-panel))] shadow-[inset_0_0_0_1px_var(--dash-card-ring,var(--nora-border))]">
-      {isSaved ? (
-        <CircleCheckIcon
-          aria-label="Реквизиты сохранены"
-          className="absolute top-3.5 right-3.5 z-[1] size-5 text-green-600"
-        />
+    <form className="relative grid gap-3" noValidate onSubmit={submit}>
+      {onReset ? (
+        <button
+          aria-label="Сбросить выплаты"
+          className="absolute -top-1.5 -right-1.5 inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full p-0 text-[var(--nora-text-secondary)] transition-colors hover:bg-[var(--nora-row-hover)] hover:text-[var(--nora-text)] [&_svg]:size-3.5 [&_svg]:shrink-0"
+          data-generation-control=""
+          onClick={onReset}
+          type="button"
+        >
+          <RefreshCwIcon strokeWidth={1.75} />
+        </button>
       ) : null}
-
-      <div className="border-b border-[var(--nora-divider)] p-3.5 pr-11">
-        <h2 className="text-[13px] font-semibold text-[var(--nora-text)]">
-          Реквизиты для выплат
-        </h2>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--nora-text-tertiary)]">
-          Демонстрационные реквизиты — можно изменить и сохранить.
-        </p>
-      </div>
-
-      <form className="grid flex-1 content-start gap-3.5 p-3.5" noValidate onSubmit={submit}>
-        <Field data-invalid={Boolean(errors.recipientName)}>
-          <FieldLabel
-            className="font-normal text-[var(--nora-text-secondary)]"
-            htmlFor="mentor-payout-name"
-          >
-            ФИО получателя
-          </FieldLabel>
-          <Input
-            aria-describedby={errors.recipientName ? errorIds.recipientName : undefined}
-            aria-invalid={Boolean(errors.recipientName)}
+      <div className="grid gap-3">
+        <Field data-invalid={errors.fullName ? true : undefined}>
+          <FieldLabel>ФИО</FieldLabel>
+          <PayoutInput
             autoComplete="name"
-            className="font-normal"
-            disabled={isSaved}
-            id="mentor-payout-name"
-            onChange={(event) => update('recipientName', event.target.value)}
-            placeholder="Иван Иванов"
-            value={values.recipientName}
+            onChange={(event) => update('fullName', event.target.value)}
+            placeholder="Иванова Мария Петровна"
+            disabled={locked}
+            value={values.fullName}
           />
-          {errors.recipientName ? (
-            <FieldError id={errorIds.recipientName}>{errors.recipientName}</FieldError>
-          ) : null}
+          <FieldError>{errors.fullName}</FieldError>
         </Field>
-
-        <Field data-invalid={Boolean(errors.bankName)}>
-          <FieldLabel
-            className="font-normal text-[var(--nora-text-secondary)]"
-            htmlFor="mentor-payout-bank"
-          >
-            Банк
-          </FieldLabel>
-          <Input
-            aria-describedby={errors.bankName ? errorIds.bankName : undefined}
-            aria-invalid={Boolean(errors.bankName)}
-            className="font-normal"
-            disabled={isSaved}
-            id="mentor-payout-bank"
-            onChange={(event) => update('bankName', event.target.value)}
-            placeholder="Т-Банк"
-            value={values.bankName}
-          />
-          {errors.bankName ? (
-            <FieldError id={errorIds.bankName}>{errors.bankName}</FieldError>
-          ) : null}
-        </Field>
-
-        <div className="grid gap-3.5 sm:grid-cols-2">
-          <Field data-invalid={Boolean(errors.bik)}>
-            <FieldLabel
-              className="font-normal text-[var(--nora-text-secondary)]"
-              htmlFor="mentor-payout-bik"
-            >
-              БИК
-            </FieldLabel>
-            <Input
-              aria-describedby={errors.bik ? errorIds.bik : undefined}
-              aria-invalid={Boolean(errors.bik)}
-              className="font-normal"
-              disabled={isSaved}
-              id="mentor-payout-bik"
+        <div className="grid gap-3 lg:grid-cols-2">
+          <Field data-invalid={errors.inn ? true : undefined}>
+            <FieldLabel>ИНН</FieldLabel>
+            <PayoutInput
+              className="tabular-nums"
               inputMode="numeric"
-              onChange={(event) => update('bik', normalizeBik(event.target.value))}
-              placeholder="044525974"
-              value={values.bik}
+              onChange={(event) => update('inn', normalizeInn(event.target.value))}
+              placeholder="12 цифр"
+              disabled={locked}
+              value={values.inn}
             />
-            <FieldDescription className="font-normal">9 цифр</FieldDescription>
-            {errors.bik ? <FieldError id={errorIds.bik}>{errors.bik}</FieldError> : null}
+            <FieldError>{errors.inn}</FieldError>
           </Field>
-
-          <Field data-invalid={Boolean(errors.sbpPhone)}>
-            <FieldLabel
-              className="font-normal text-[var(--nora-text-secondary)]"
-              htmlFor="mentor-payout-sbp"
-            >
-              Телефон СБП
-            </FieldLabel>
-            <Input
-              aria-describedby={errors.sbpPhone ? errorIds.sbpPhone : undefined}
-              aria-invalid={Boolean(errors.sbpPhone)}
-              className="font-normal"
-              disabled={isSaved}
-              id="mentor-payout-sbp"
+          <Field data-invalid={errors.phone ? true : undefined}>
+            <FieldLabel>Телефон для СБП</FieldLabel>
+            <PayoutInput
+              autoComplete="tel"
+              className="tabular-nums"
               inputMode="tel"
-              onChange={(event) => update('sbpPhone', normalizePhone(event.target.value))}
-              placeholder="+7 (900) 123-45-67"
-              value={formatPhone(values.sbpPhone)}
+              onChange={(event) => update('phone', digitsPhone(event.target.value))}
+              placeholder="+7"
+              disabled={locked}
+              value={formatPhone(values.phone)}
             />
-            <FieldDescription className="font-normal">Необязательно</FieldDescription>
-            {errors.sbpPhone ? (
-              <FieldError id={errorIds.sbpPhone}>{errors.sbpPhone}</FieldError>
-            ) : null}
+            <FieldError>{errors.phone}</FieldError>
           </Field>
         </div>
-
-        <Field data-invalid={Boolean(errors.accountNumber)}>
-          <FieldLabel
-            className="font-normal text-[var(--nora-text-secondary)]"
-            htmlFor="mentor-payout-account"
-          >
-            Расчётный счёт
-          </FieldLabel>
-          <Input
-            aria-describedby={errors.accountNumber ? errorIds.accountNumber : undefined}
-            aria-invalid={Boolean(errors.accountNumber)}
-            className="font-normal"
-            disabled={isSaved}
-            id="mentor-payout-account"
-            inputMode="numeric"
-            onChange={(event) => update(
-              'accountNumber',
-              normalizeAccountNumber(event.target.value),
-            )}
-            placeholder="40817810099910004312"
-            value={values.accountNumber}
-          />
-          <FieldDescription className="font-normal">20 цифр</FieldDescription>
-          {errors.accountNumber ? (
-            <FieldError id={errorIds.accountNumber}>{errors.accountNumber}</FieldError>
-          ) : null}
+        <Field className="my-1.5" data-invalid={errors.accepted ? true : undefined}>
+          <label className="flex items-start gap-2.5">
+            <Checkbox
+              checked={values.accepted}
+              className={cn(
+                'mt-0.5 size-4 border-[color-mix(in_srgb,var(--nora-text)_22%,var(--settings-substrate,var(--nora-border)))] bg-[var(--nora-panel)] [&_svg]:!size-3',
+                locked && 'group-has-disabled/field:!opacity-100 data-checked:!border-[color-mix(in_srgb,var(--nora-text)_14%,var(--settings-field-bg,var(--nora-panel)))] data-checked:!bg-[color-mix(in_srgb,var(--nora-text)_14%,var(--settings-field-bg,var(--nora-panel)))] data-checked:!text-[var(--nora-text)]',
+              )}
+              disabled={locked}
+              onCheckedChange={(value) => update('accepted', value === true)}
+            />
+            <span className="font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[color-mix(in_srgb,color-mix(in_srgb,var(--nora-text)_50%,var(--nora-text-secondary))_50%,var(--nora-text-tertiary))]">
+              Согласен на договор и удержание налога с выплаты.
+            </span>
+          </label>
+          <FieldError>{errors.accepted}</FieldError>
         </Field>
-
-        <div
-          aria-hidden
-          className="mt-auto h-px bg-[var(--nora-divider)]"
-        />
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button className="font-normal" disabled={isSaved} type="submit">
-            Сохранить
-          </Button>
-          <Button
-            className="font-normal"
-            disabled={isEditing}
-            onClick={() => {
-              setErrors({})
-              setMode('editing')
-            }}
-            type="button"
-            variant="outline"
-          >
+      </div>
+      <Separator />
+      <div className={cn('grid gap-2', locked && kind === 'referral' && 'grid-cols-2')}>
+        {locked ? (
+          <button className={editClass} data-field-height="" key="edit" onClick={() => setEditing(true)} type="button">
             Изменить
-          </Button>
-        </div>
-      </form>
-    </div>
+          </button>
+        ) : (
+          <button className={saveClass} data-field-height="" key="save" type="submit">
+            Сохранить
+          </button>
+        )}
+        {locked && kind === 'referral' ? (
+          unpaidRub === 0 ? (
+            <button className={idleRequestClass} data-field-height="" disabled key="idle" type="button">
+              Нет бонусов
+            </button>
+          ) : (
+            <button className={saveClass} data-field-height="" disabled={unpaidRub == null} key="request" onClick={onRequest} type="button">
+              Запросить выплату
+            </button>
+          )
+        ) : null}
+      </div>
+    </form>
   )
 }
+

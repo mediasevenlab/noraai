@@ -5,6 +5,7 @@ import {
   forgetRationParamsSchema,
   mentorUserMutationResponseSchema,
   putQuestionnaireRequestSchema,
+  payoutAccrualResponseSchema,
   generationPricingResponseSchema,
   questionnaireResponseSchema,
   resetGenerationSpendResponseSchema,
@@ -70,6 +71,10 @@ export function getUserReferrals(
   })
   if (query.q) search.set('q', query.q)
   return transport.request(`/api/users/me/referrals?${search}`, userReferralsResponseSchema)
+}
+
+export function getPayoutAccrual(transport: AuthenticatedTransport) {
+  return transport.request('/api/users/me/payout-accrual', payoutAccrualResponseSchema)
 }
 
 export function getQuestionnaire(transport: AuthenticatedTransport) {

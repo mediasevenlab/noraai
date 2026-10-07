@@ -14,12 +14,17 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { Typography } from '@/components/typography'
+import { cn } from '@/lib/utils'
 import {
   AccountMenuContent,
   useAccountLogout,
   userInitials,
 } from './AccountMenu'
 import type { DashboardNavigationItem } from './NavMain'
+
+/** Header and account row: the old hover fill at rest, one step darker on hover. */
+export const sidebarDockButtonClass =
+  '!bg-[var(--nora-row-hover)] hover:!bg-[var(--nora-row-active-bg)] active:!bg-[var(--nora-row-active-bg)] data-[state=open]:!bg-[var(--nora-row-active-bg)] dark:hover:!bg-[color-mix(in_srgb,var(--sidebar)_78%,black)] dark:active:!bg-[color-mix(in_srgb,var(--sidebar)_78%,black)] dark:data-[state=open]:!bg-[color-mix(in_srgb,var(--sidebar)_78%,black)]'
 
 export function NavUser({
   onLogout,
@@ -51,7 +56,7 @@ export function NavUser({
               render={
                 <SidebarMenuButton
                   aria-label="Открыть меню аккаунта"
-                  className="data-[state=open]:bg-[var(--nora-row-hover)] group-data-[collapsible=icon]:p-0!"
+                  className={cn(sidebarDockButtonClass, 'group-data-[collapsible=icon]:p-0!')}
                   size="lg"
                   tooltip={displayName}
                 />
@@ -69,10 +74,10 @@ export function NavUser({
                 </Avatar>
               </div>
               <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-medium">
+                <span className="truncate font-[family-name:var(--nora-font)] font-medium text-foreground">
                   {displayName}
                 </span>
-                <span className="truncate text-xs text-muted-foreground">
+                <span className="truncate font-light text-xs text-muted-foreground">
                   {user.email}
                 </span>
               </div>

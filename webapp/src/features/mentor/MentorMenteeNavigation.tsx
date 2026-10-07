@@ -183,7 +183,7 @@ export function MentorMenteeNavigation() {
   return (
     <nav aria-label="Пользователи наставника">
       <Collapsible
-        className="group/collapsible data-[closed]:-mt-1"
+        className="group/collapsible -mt-1"
         open={searching || open}
         onOpenChange={(next) => {
           if (!searching) setOpen(next)

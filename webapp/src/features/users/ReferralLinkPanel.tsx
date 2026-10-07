@@ -25,10 +25,12 @@ const VARIANT_COPY: Record<
 }
 
 export function ReferralLinkPanel({
+  className,
   user,
   variant = 'referral',
   layout = 'card',
 }: {
+  className?: string
   user: UserDto
   variant?: ReferralLinkVariant
   layout?: 'card' | 'entry'
@@ -109,6 +111,7 @@ export function ReferralLinkPanel({
   if (layout === 'entry') {
     return (
       <SettingsEntry
+        className={className}
         description={copy.description}
         title={copy.title}
       >

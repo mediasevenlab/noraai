@@ -88,6 +88,8 @@ const envSchema = z.object({
   N8N_TRANSCRIBE_WEBHOOK_URL: optionalUrlSchema,
   N8N_MENTOR_NOTIFY_WEBHOOK_URL: optionalUrlSchema,
   MEALS_UPLOAD_DIR: optionalStringSchema,
+  YOOKASSA_SHOP_ID: optionalStringSchema,
+  YOOKASSA_SECRET_KEY: optionalStringSchema,
 }).superRefine((env, ctx) => {
   validateJwtSecret(env, ctx)
   validateProductionRuntime(env, ctx)

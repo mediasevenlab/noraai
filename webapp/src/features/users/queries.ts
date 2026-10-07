@@ -12,6 +12,7 @@ import {
   connectCurrentUserToMentor,
   getCurrentUserMentor,
   getQuestionnaire,
+  getPayoutAccrual,
   getUserReferrals,
   putQuestionnaire,
   startTelegramLink,
@@ -22,6 +23,7 @@ const userQueryKeys = {
   currentMentor: () => ['session', 'users', 'current-mentor'] as const,
   questionnaire: () => ['session', 'users', 'questionnaire'] as const,
   referrals: (query: UserReferralsQuery) => ['session', 'users', 'referrals', query] as const,
+  payoutAccrual: () => ['session', 'users', 'payout-accrual'] as const,
 }
 
 export function useUpdateProfileMutation() {
@@ -61,11 +63,24 @@ export function useCurrentUserMentorQuery(enabled = true) {
   })
 }
 
+export function usePayoutAccrualQuery() {
+  const auth = useAuth()
+  return useQuery({
+    queryKey: userQueryKeys.payoutAccrual(),
+    queryFn: () => getPayoutAccrual(auth.transport),
+    enabled: Boolean(auth.user),
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+  })
+}
+
 export function useUserReferralsQuery(query: UserReferralsQuery) {
   const auth = useAuth()
   return useQuery({
     queryKey: userQueryKeys.referrals(query),
     queryFn: () => getUserReferrals(auth.transport, query),
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 }
 

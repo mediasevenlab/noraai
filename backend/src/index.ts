@@ -8,6 +8,7 @@ const app = createApp({
   env: runtime.env,
   prisma: runtime.prisma,
   startMealsPoller: true,
+  startPaymentRenewal: true,
 })
 
 const server = Bun.serve({

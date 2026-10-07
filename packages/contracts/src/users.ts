@@ -510,6 +510,16 @@ export const adminUsersResponseSchema = z
   })
   .strict()
 
+export const payoutAccrualResponseSchema = z
+  .object({
+    accruedRub: z.number().int().nonnegative(),
+    people: z.array(z.object({
+      userId: z.string().min(1),
+      bonusRub: z.number().int().positive(),
+    }).strict()),
+  })
+  .strict()
+
 export const adminDashboardResponseSchema = z
   .object({
     totalUsers: z.number().int().nonnegative(),
@@ -593,6 +603,7 @@ export type ConnectCurrentUserToMentorRequest = z.infer<
 export type CurrentUserMentorResponse = z.infer<typeof currentUserMentorResponseSchema>
 export type UserReferralsQuery = z.infer<typeof userReferralsQuerySchema>
 export type UserReferralsResponse = z.infer<typeof userReferralsResponseSchema>
+export type PayoutAccrualResponse = z.infer<typeof payoutAccrualResponseSchema>
 export type MentorUserMutationResponse = z.infer<typeof mentorUserMutationResponseSchema>
 export type MentorRationMeal = z.infer<typeof mentorRationMealSchema>
 export type MentorRation = z.infer<typeof mentorRationSchema>

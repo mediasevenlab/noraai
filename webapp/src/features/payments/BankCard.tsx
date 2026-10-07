@@ -22,11 +22,14 @@ const networks = ['visa', 'mastercard', 'mir', 'unionpay', 'jcb'] as const satis
 
 export function BankCard({
   brand,
+  compact = false,
   expiry,
   holderName,
   number,
 }: {
   brand: CardBrand
+  /** Narrow left column: smaller type so the number stays on one line. */
+  compact?: boolean
   expiry: string
   holderName: string
   number: string
@@ -48,7 +51,10 @@ export function BankCard({
       />
       <div
         aria-label={`Карта ${brand === 'unknown' ? '' : brand}`.trim()}
-        className="relative grid aspect-[1.7/1] w-full grid-rows-[auto_1fr_auto] px-5 py-4 sm:px-6 sm:py-5"
+        className={cn(
+          'relative grid aspect-[1.7/1] w-full grid-rows-[auto_1fr_auto]',
+          compact ? 'px-4 py-3.5' : 'px-5 py-4 sm:px-6 sm:py-5',
+        )}
       >
         <div className="flex items-start justify-between gap-3">
           <span className="flex items-center gap-3">
@@ -57,7 +63,10 @@ export function BankCard({
           </span>
           <CardBrandMark brand={brand} />
         </div>
-        <p className="flex items-center font-[family-name:var(--nora-font)] text-[18px] font-medium tracking-[0.16em] tabular-nums sm:text-[22px]">
+        <p className={cn(
+          'flex items-center font-[family-name:var(--nora-font)] font-medium tabular-nums',
+          compact ? 'text-[15px] tracking-[0.12em]' : 'text-[18px] tracking-[0.16em] sm:text-[22px]',
+        )}>
           {number || '•••• •••• •••• ••••'}
         </p>
         <div className="flex items-end gap-4">

@@ -208,7 +208,7 @@ test('mentor and user relation status lives in the sidebar footer, not the deskt
 
   expect(shell).toContain('footerExtra=')
   expect(shell).toContain('showSidebarPromoCards')
-  expect(shell).toContain('<UserMentorBanner')
+  expect(shell).toContain('<SubscriptionRenewalBanner')
   expect(shell).toContain('<MentorMenteesBanner')
   expect(shell).not.toContain('SidebarSubscriptionCard')
   expect(header).toContain('SidebarPromoToggle')
@@ -235,13 +235,13 @@ test('mentor and user relation status lives in the sidebar footer, not the deskt
   expect(card).toMatch(/<div className="flex items-center gap-/)
 
   const banner = readFileSync(
-    new URL('../src/features/users/UserMentorBanner.tsx', import.meta.url),
+    new URL('../src/features/payments/SubscriptionRenewalBanner.tsx', import.meta.url),
     'utf8',
   )
-  expect(banner).toContain('Подключить')
-  expect(banner).toContain('Подключить наставника')
-  expect(banner).toContain('Подключите наставника')
-  expect(banner).not.toContain('if (!mentor) return null')
+  expect(banner).toContain('Продлить')
+  expect(banner).toContain('Не продлена')
+  expect(banner).toContain('href="/app/payments"')
+  expect(banner).toContain('if (!overview?.renewalNotice) return null')
 
   const subscription = readFileSync(
     new URL('../src/features/payments/SidebarSubscriptionCard.tsx', import.meta.url),
@@ -293,8 +293,9 @@ test('sidebar user card uses the same type scale as the brand header', () => {
 
   expect(header).toContain(typeScale)
   expect(user).toContain(typeScale)
-  expect(user).toContain('truncate font-medium')
-  expect(user).toContain('truncate text-xs text-muted-foreground')
+  expect(header).toContain('truncate font-[family-name:var(--nora-font)] font-medium text-foreground')
+  expect(user).toContain('truncate font-[family-name:var(--nora-font)] font-medium text-foreground')
+  expect(user).toContain('truncate font-light text-xs text-muted-foreground')
   expect(user).toContain('rounded-lg')
   expect(user).toContain('after:rounded-lg')
   expect(user).not.toContain('rounded-full')

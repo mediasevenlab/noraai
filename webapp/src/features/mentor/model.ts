@@ -1,4 +1,4 @@
-/** Fixed mentor payout for each connected user (placeholder until billing lands). */
+/** 200 ₽ for each month a mentee has actually paid. A year is twelve months. */
 export const MENTOR_CONNECTION_BONUS = 200
 
 export function mentorConnectionBonusTotal(connectedUserCount: number) {

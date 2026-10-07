@@ -3,9 +3,22 @@ import type { UserDto } from '@web-app-demo/contracts'
 import { useState } from 'react'
 
 import { userGeneralSearch } from '@/features/navigation'
+import {
+  clearReferralPayoutLedger,
+  formatPayoutAmount,
+  mentorPayoutNet,
+  mentorPayoutStatus,
+  readReferralPayoutLedger,
+  settleReferralPayout,
+  unpaidBonusRub,
+  MentorPayoutPanel,
+  PaymentFacts,
+  PayoutHistory,
+  readMentorPayoutProfile,
+} from '@/features/payments'
 
 import { NoraPageHeader, PageContainer } from '@/components/PageLayout'
-import { SettingsCanvas } from '@/components/settings-canvas'
+import { SettingsCanvas, SettingsEntry, SettingsReadRows } from '@/components/settings-canvas'
 import { AccountProfileCard } from './AccountProfileCard'
 import { ClientProfileCard, QuestionnaireEditorProvider, useQuestionnaireEditor } from './ClientProfileCard'
 import { MentorConnectionPanel } from './MentorConnectionPanel'
@@ -17,6 +30,8 @@ import { MaintenanceCaloriesPanel } from './MaintenanceCaloriesPanel'
 import { TelegramUsernamePanel } from './TelegramUsernamePanel'
 import { ReferralLinkPanel } from './ReferralLinkPanel'
 import { ReferralsDirectory } from './ReferralsDirectory'
+import { useUserReferralsQuery, usePayoutAccrualQuery } from './queries'
+import { USER_REFERRAL_BONUS } from './model'
 
 /** Legacy /app entry — Общее is the user landing. */
 export function UserHome() {
@@ -140,19 +155,83 @@ export function UserSettings({
 }
 
 export function UserReferrals({ user }: { user: UserDto }) {
+  const referrals = useUserReferralsQuery({ page: 1, pageSize: 20 })
+  const accrual = usePayoutAccrualQuery()
+  const referralCount = referrals.data?.total ?? null
+  const accrued = accrual.isSuccess ? accrual.data.accruedRub : null
+  const [profile, setProfile] = useState(() => readMentorPayoutProfile(user.id, undefined, 'referral'))
+  const [ledger, setLedger] = useState(() => readReferralPayoutLedger(user.id))
+  const unpaid = accrued == null ? null : unpaidBonusRub(accrued, ledger.settledRub)
+  const payoutReady = profile != null
+  const payoutStatus = mentorPayoutStatus({
+    accrued: unpaid,
+    kind: 'referral',
+    phone: profile?.phone ?? null,
+    ready: payoutReady,
+  })
+  const payoutRows = [
+    { label: 'За месяц', value: formatPayoutAmount(USER_REFERRAL_BONUS) },
+    { label: 'За год', value: formatPayoutAmount(USER_REFERRAL_BONUS * 12) },
+    { label: 'Рефералов', value: referralCount == null ? '—' : String(referralCount) },
+    { label: 'Накоплено', value: unpaid == null ? '—' : formatPayoutAmount(unpaid) },
+    { label: 'К получению', value: unpaid == null ? '—' : formatPayoutAmount(mentorPayoutNet(unpaid)) },
+  ]
+
   return (
     <SettingsCanvas
-      ctaLabel="Рефералы"
-      description="Ссылка запоминает людей, которые зарегистрировались по ней. В каталоге видно, кто пришёл, и бонус за каждого."
+      aside={referrals.isPending || accrual.isPending ? null : (
+        <PaymentFacts
+          description="Число приглашённых и сумма к выплате."
+          rows={payoutRows}
+          title="Статистика"
+        />
+      )}
+      asideClassName="lg:w-[308px]"
+      description="Единоразовый бонус за приглашение, после первой оплаты приглашённого."
+      descriptionClassName="line-clamp-none max-w-none"
+      showJumpLink={false}
       divided={false}
-      eyebrow="Социальная сеть"
+      eyebrow=""
       meta={user.email}
       panelsId="referrals-panels"
       phoneSheet
       title="Рефералы"
     >
-      <ReferralLinkPanel layout="entry" user={user} />
-      <ReferralsDirectory layout="entry" />
+      <ReferralLinkPanel className="lg:w-[28.8rem]" layout="entry" user={user} />
+      <SettingsEntry
+        className="lg:w-[28.8rem]"
+        after={payoutStatus ? (
+          <p className="text-right font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)]">
+            {payoutStatus}
+          </p>
+        ) : null}
+        description="ФИО, ИНН и телефон счёта в СБП."
+        title="Данные для выплат"
+      >
+        <MentorPayoutPanel
+          kind="referral"
+          onRequest={() => {
+            if (accrued == null) return
+            setLedger(settleReferralPayout(user.id, { accruedRub: accrued }))
+          }}
+          onReset={() => setLedger(clearReferralPayoutLedger(user.id))}
+          onSaved={() => setProfile(readMentorPayoutProfile(user.id, undefined, 'referral'))}
+          unpaidRub={unpaid}
+          userId={user.id}
+        />
+      </SettingsEntry>
+      <ReferralsDirectory layout="entry" unpaidRub={unpaid} />
+      <SettingsEntry className="lg:hidden" description="Один раз, после первой оплаты." title="Статистика">
+        <SettingsReadRows rows={payoutRows} />
+      </SettingsEntry>
+      <SettingsEntry
+        className="lg:w-[28.8rem]"
+        description="Дата, накопленная сумма, удержанный налог и сумма, которая придёт."
+        descriptionClassName="max-w-none"
+        title="История выплат"
+      >
+        <PayoutHistory accrued={unpaid} ready={payoutReady} records={ledger.payouts} />
+      </SettingsEntry>
     </SettingsCanvas>
   )
 }
