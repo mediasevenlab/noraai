@@ -148,6 +148,32 @@ html[data-hybrid] {
   }
 }
 
+/* Phone section rules sit on the list edge. Subtitles are inset another 14px, so the line follows that text. */
+@media (max-width: 1023px) {
+  [data-settings-sections] > li:not(:last-child) {
+    border-bottom-color: transparent;
+    background-image: linear-gradient(
+      color-mix(in oklab, var(--border) 70%, transparent),
+      color-mix(in oklab, var(--border) 70%, transparent)
+    );
+    background-repeat: no-repeat;
+    background-origin: border-box;
+    background-position: center bottom;
+    background-size: calc(100% - 28px) 1px;
+  }
+
+  /* A phone tab hides the other sections. A hidden sibling is not a neighbor, so the last visible block has no trailing rule. */
+  [data-settings-sections] > li:not(:has(~ li:not(.max-lg\:hidden))) {
+    background-image: none;
+    border-bottom-width: 0;
+  }
+
+  /* The next subtitle's glyphs sit 3px below its box. Shorten the top padding so the gap under the rule matches the gap above it. */
+  [data-settings-sections] > li:not(:first-child) {
+    padding-top: 21px;
+  }
+}
+
 html[data-hybrid] #root {
   box-sizing: border-box;
   min-height: 100dvh;
@@ -815,19 +841,27 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
   }
 
   /* Beat the well's 13px label utility so edit mode matches the read row. */
-  html [data-settings-well] [data-slot='field-label'] {
+  html [data-settings-well] [data-slot='field-label']:not([data-table-head]) {
     font-size: 14px !important;
     line-height: 1.25rem !important;
   }
 
-  [data-settings-well] [data-slot='field-label'],
+  html [data-settings-well] [data-slot='field-label'][data-table-head] {
+    font-family: var(--nora-font) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    line-height: 1.25rem !important;
+    color: var(--nora-text) !important;
+  }
+
+  [data-settings-well] [data-slot='field-label']:not([data-table-head]),
   [data-settings-well] [data-slot='select-trigger'],
   [data-settings-well] button,
   [data-settings-well] label,
-  [data-settings-well] span:not([data-option-note]):not([data-nora-badge]):not([data-settings-meta]):not([data-payment-value]),
+  [data-settings-well] span:not([data-option-note]):not([data-nora-badge]):not([data-settings-meta]):not([data-payment-value]):not([data-settings-caption]):not([data-table-text]),
   [data-onboarding-form] [data-slot='field-label'],
   [data-onboarding-form] label,
-  [data-onboarding-form] span:not([data-option-note]):not([data-nora-badge]):not([data-settings-meta]):not([data-payment-value]) {
+  [data-onboarding-form] span:not([data-option-note]):not([data-nora-badge]):not([data-settings-meta]):not([data-payment-value]):not([data-settings-caption]) {
     font-size: 14px !important;
   }
 
@@ -835,6 +869,14 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
   [data-onboarding-form] [data-option-note] {
     font-size: 13px !important;
     font-weight: 250 !important;
+  }
+
+  [data-settings-well] [data-settings-caption] {
+    font-family: var(--nora-font) !important;
+    font-size: 13px !important;
+    font-weight: 250 !important;
+    line-height: 1.25rem !important;
+    color: var(--nora-text-tertiary) !important;
   }
 
   [data-settings-well] [data-settings-meta] {
@@ -986,6 +1028,19 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
     transform: scale(var(--ios-type-scale));
     transform-origin: top left;
   }
+
+  /* Catalog search stays in the header row. The well rule above lifts settings search into a slot. */
+  [data-settings-well] [data-catalog-frame] [data-settings-search] {
+    position: relative !important;
+    top: auto;
+    left: auto;
+    width: auto !important;
+    max-width: none !important;
+    height: 2rem !important;
+    min-height: 2rem !important;
+    margin: 0 !important;
+    transform: none;
+  }
 }
 
 /*
@@ -994,6 +1049,22 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
  * the earlier base layer win over those utilities.
  */
 @layer base {
+  @media (max-width: 767px) {
+    html [data-settings-well] [data-settings-search] input {
+      font-family: var(--nora-font) !important;
+      font-size: calc(13px / var(--ios-type-scale, 0.875)) !important;
+      font-weight: 250 !important;
+      line-height: calc(1.25rem / var(--ios-type-scale, 0.875)) !important;
+      color: var(--nora-text-secondary) !important;
+    }
+
+    html [data-settings-well] [data-settings-search] input::placeholder {
+      font-weight: 250 !important;
+      color: var(--nora-text-secondary) !important;
+      opacity: 1;
+    }
+  }
+
   html body [data-settings-well] input[data-payout-field] {
     color: color-mix(in srgb, var(--nora-text) 50%, var(--nora-text-secondary)) !important;
     font-weight: 300 !important;
@@ -1013,6 +1084,15 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
     caret-color: var(--nora-text);
     box-shadow: inset 0 0 0 1000px var(--nora-panel) !important;
     transition: background-color 99999s ease-out 0s;
+  }
+
+  [data-payout-field]:not(:disabled):-webkit-autofill:focus,
+  [data-payout-field]:not(:disabled):-webkit-autofill:focus-visible,
+  [data-payout-field]:not(:disabled):autofill:focus,
+  [data-payout-field]:not(:disabled):autofill:focus-visible {
+    box-shadow:
+      var(--nora-shadow-focus),
+      inset 0 0 0 1000px var(--nora-panel) !important;
   }
 
   [data-payout-field]:disabled:-webkit-autofill,
@@ -1162,10 +1242,29 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
 @layer utilities {
   [data-settings-well] input[data-payout-field]:not(:disabled) {
     background-color: var(--nora-panel) !important;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nora-text) 28%, transparent) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nora-text) 12%, transparent) !important;
     color: var(--nora-text) !important;
     -webkit-text-fill-color: var(--nora-text) !important;
     caret-color: var(--nora-text);
+  }
+
+  /* Focus stays a quiet hairline. The shared blue ring is too loud on these fields. */
+  [data-settings-well] :is(input, textarea):not([type='checkbox']):not([type='radio']):focus,
+  [data-settings-well] :is(input, textarea):not([type='checkbox']):not([type='radio']):focus-visible {
+    outline: none !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nora-text) 12%, transparent) !important;
+  }
+
+  [data-settings-well] input[data-payout-field]:not(:disabled):focus,
+  [data-settings-well] input[data-payout-field]:not(:disabled):focus-visible {
+    outline: none !important;
+    box-shadow: var(--nora-shadow-focus) !important;
+  }
+
+  [data-settings-well] [data-settings-search] input:not([type='checkbox']):not([type='radio']):focus,
+  [data-settings-well] [data-settings-search] input:not([type='checkbox']):not([type='radio']):focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
   }
 
   [data-settings-well] input[data-payout-field]:disabled {

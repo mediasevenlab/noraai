@@ -30,7 +30,7 @@ export function NoraPageHeader({
 }: {
   actions?: ReactNode
   align?: 'start' | 'center'
-  description: string
+  description?: string
   showBrand?: boolean
   title: string
   titleSize?: 'brand' | 'display'
@@ -56,28 +56,32 @@ export function NoraPageHeader({
           <h1 className={titleClass}>{title}</h1>
         </div>
       )}
-      <div
-        className={
-          centered
-            ? 'mt-1.5 flex w-full flex-col items-center gap-2'
-            : 'mt-1.5 flex items-start justify-between gap-3'
-        }
-      >
-        <p
+      {description || actions ? (
+        <div
           className={
             centered
-              ? noraPageDescriptionClass
-              : `min-w-0 flex-1 ${noraPageDescriptionClass}`
+              ? 'mt-1.5 flex w-full flex-col items-center gap-2'
+              : 'mt-1.5 flex items-start justify-between gap-3'
           }
         >
-          {description}
-        </p>
-        {actions ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {actions}
-          </div>
-        ) : null}
-      </div>
+          {description ? (
+            <p
+              className={
+                centered
+                  ? noraPageDescriptionClass
+                  : `min-w-0 flex-1 ${noraPageDescriptionClass}`
+              }
+            >
+              {description}
+            </p>
+          ) : null}
+          {actions ? (
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              {actions}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </header>
   )
 }

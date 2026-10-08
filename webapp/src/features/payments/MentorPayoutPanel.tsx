@@ -143,7 +143,7 @@ export function MentorPayoutPanel({
       ) : null}
       <div className="grid gap-3">
         <Field data-invalid={errors.fullName ? true : undefined}>
-          <FieldLabel>ФИО</FieldLabel>
+          <FieldLabel data-table-head="">ФИО</FieldLabel>
           <PayoutInput
             autoComplete="name"
             onChange={(event) => update('fullName', event.target.value)}
@@ -155,7 +155,7 @@ export function MentorPayoutPanel({
         </Field>
         <div className="grid gap-3 min-[360px]:grid-cols-2">
           <Field data-invalid={errors.inn ? true : undefined}>
-            <FieldLabel>ИНН</FieldLabel>
+            <FieldLabel data-table-head="">ИНН</FieldLabel>
             <PayoutInput
               className="tabular-nums"
               inputMode="numeric"
@@ -167,7 +167,7 @@ export function MentorPayoutPanel({
             <FieldError>{errors.inn}</FieldError>
           </Field>
           <Field data-invalid={errors.phone ? true : undefined}>
-            <FieldLabel>Телефон для СБП</FieldLabel>
+            <FieldLabel data-table-head="">Телефон для СБП</FieldLabel>
             <PayoutInput
               autoComplete="tel"
               className="tabular-nums"
@@ -191,7 +191,7 @@ export function MentorPayoutPanel({
               disabled={locked}
               onCheckedChange={(value) => update('accepted', value === true)}
             />
-            <span className="font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[color-mix(in_srgb,color-mix(in_srgb,var(--nora-text)_50%,var(--nora-text-secondary))_50%,var(--nora-text-tertiary))]">
+            <span className="font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)]" data-settings-caption="">
               Согласен на договор и удержание налога с выплаты.
             </span>
           </label>

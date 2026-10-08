@@ -207,7 +207,10 @@ export function UserReferrals({ user }: { user: UserDto }) {
       <SettingsEntry
         className="lg:w-[28.8rem]"
         after={payoutStatus ? (
-          <p className="text-right font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)]">
+          <p
+            className="text-right font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)]"
+            data-mobile-hide={payoutStatus.startsWith('Бонусы можно копить') ? '' : undefined}
+          >
             {payoutStatus}
           </p>
         ) : null}

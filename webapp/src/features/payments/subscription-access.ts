@@ -20,8 +20,14 @@ export function localDateKey(date: Date) {
   return `${date.getFullYear()}-${month}-${day}`
 }
 
-/** Account pages stay usable so a lapsed user can still pay and sign out. */
-const OPEN_WITHOUT_SUBSCRIPTION = ['/app/payments', '/app/settings', '/app/profile', '/app/onboarding']
+/** Account pages stay usable so a lapsed user can still pay, invite, and sign out. */
+const OPEN_WITHOUT_SUBSCRIPTION = [
+  '/app/payments',
+  '/app/referrals',
+  '/app/settings',
+  '/app/profile',
+  '/app/onboarding',
+]
 
 export function subscriptionFreezeActive(input: {
   overview: { renewalNotice: 'ending' | 'failed' | 'unpaid' | null } | null

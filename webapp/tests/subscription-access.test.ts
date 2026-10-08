@@ -11,8 +11,10 @@ test('a user without coverage is frozen outside the account pages', () => {
   expect(subscriptionFreezeActive({ overview: unpaid, pathname: '/app/general', role: 'user' })).toBe(true)
   expect(subscriptionFreezeActive({ overview: unpaid, pathname: '/app/feed', role: 'user' })).toBe(true)
   expect(subscriptionFreezeActive({ overview: unpaid, pathname: '/app/payments', role: 'user' })).toBe(false)
+  expect(subscriptionFreezeActive({ overview: unpaid, pathname: '/app/referrals', role: 'user' })).toBe(false)
   expect(subscriptionFreezeActive({ overview: unpaid, pathname: '/app/settings', role: 'user' })).toBe(false)
   expect(subscriptionFreezeActive({ overview: unpaid, pathname: '/app/profile', role: 'user' })).toBe(false)
+  expect(subscriptionFreezeActive({ overview: unpaid, pathname: '/mentor/users', role: 'mentor' })).toBe(false)
 })
 
 test('the mobile capsule stays until payment when coverage has ended, and hides for one day during the countdown', () => {

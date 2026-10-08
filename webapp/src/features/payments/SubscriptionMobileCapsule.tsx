@@ -65,7 +65,7 @@ export function SubscriptionMobileCapsule() {
 
   return (
     <div
-      className="fixed z-40 flex md:hidden left-4 max-w-[calc(100vw-6.5rem)] bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]"
+      className="fixed z-40 flex items-center gap-2 md:hidden left-4 right-[4.75rem] bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]"
       data-subscription-capsule=""
     >
       <div className={`flex h-12 min-w-0 items-center rounded-full bg-[var(--nora-text)] p-1 text-[var(--nora-panel)] shadow-[0_1px_2px_rgb(0_0_0/18%),0_8px_20px_rgb(0_0_0/28%)] ${dismissible ? '' : 'pr-3'}`}>
@@ -93,6 +93,7 @@ export function SubscriptionMobileCapsule() {
           </button>
         ) : null}
       </div>
+      <div className="flex shrink-0 items-center gap-2 empty:hidden" data-capsule-actions="" id="subscription-dock-actions" />
     </div>
   )
 }

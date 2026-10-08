@@ -23,10 +23,11 @@ import { useUserReferralsQuery, usePayoutAccrualQuery } from './queries'
 const REFERRALS_PAGE_SIZE = 8
 
 const headClass =
-  '!h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)]'
+  '!h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] first:pl-4 last:pr-4'
 const cellClass =
-  'h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)]'
-const statusClass = 'h-auto px-2.5 py-3 text-left whitespace-nowrap'
+  'h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-4 last:pr-4'
+const statusClass = 'h-auto px-2.5 py-3 text-left whitespace-nowrap first:pl-4 last:pr-4'
+const referralRowClass = 'col-span-full grid grid-cols-subgrid'
 
 export function ReferralsDirectory({
   layout = 'card',
@@ -103,15 +104,9 @@ export function ReferralsDirectory({
         )
       )}
       {referrals.data && referrals.data.items.length > 0 && (
-        <Table className="w-full table-fixed">
-          <colgroup>
-            <col className="w-[28%]" />
-            <col className="w-[24%]" />
-            <col className="w-[12%]" />
-            <col className="w-[36%]" />
-          </colgroup>
+        <Table className="grid w-full grid-cols-[max-content_max-content_max-content_max-content] justify-between [&_tbody]:contents [&_thead]:contents">
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
+            <TableRow className={cn(referralRowClass, 'hover:bg-transparent')}>
               <TableHead className={headClass}>Аккаунт</TableHead>
               <TableHead className={headClass}>Никнейм</TableHead>
               <TableHead className={headClass}>ID</TableHead>
@@ -123,11 +118,11 @@ export function ReferralsDirectory({
               const bonus = bonusById.get(user.id)
               return (
                 <TableRow
-                  className="even:bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:bg-[var(--nora-row-hover)]"
+                  className={cn(referralRowClass, 'even:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:!bg-[var(--nora-row-hover)]')}
                   key={user.id}
                 >
                   <TableCell className={cellClass}>
-                    <span className="block truncate !font-[350] !text-[color-mix(in_srgb,var(--nora-text)_50%,var(--nora-text-secondary))]">{user.displayName ?? user.email}</span>
+                    <span className="block max-w-[10rem] truncate" data-table-text="">{user.displayName ?? user.email}</span>
                   </TableCell>
                   <TableCell className={cellClass}>{user.nickname ?? '—'}</TableCell>
                   <TableCell className={cellClass}>{user.publicId}</TableCell>
@@ -166,7 +161,7 @@ export function ReferralsDirectory({
       aria-label="Поиск рефералов"
       className="h-8 min-h-8 w-full bg-[var(--nora-panel)]"
       icon={<SearchIcon className="!size-4 max-[767px]:!size-[calc(1rem/0.875)]" strokeWidth={1.75} />}
-      inputClassName="text-[13px] !font-light leading-5 placeholder:!font-light"
+      inputClassName="!text-[13px] !font-[250] !leading-5 !text-[var(--nora-text-secondary)] placeholder:!font-[250] placeholder:!text-[var(--nora-text-secondary)] placeholder:opacity-100"
       onChange={(event) => setDraftQuery(event.target.value)}
       placeholder="Поиск рефералов…"
       value={draftQuery}
@@ -189,7 +184,7 @@ export function ReferralsDirectory({
       >
         <div className="grid gap-2.5">
           <form className="grid w-full grid-cols-2 items-center gap-2" onSubmit={submitSearch}>
-            <div className="min-w-0">
+            <div className="min-w-0 pl-4">
               {description ? (
                 <p className="font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
                   {description}

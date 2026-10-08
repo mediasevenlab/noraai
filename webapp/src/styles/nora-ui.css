@@ -48,7 +48,7 @@
   --settings-field-bg: #2b2b2b;
   --auth-field-bg: #1f1f1f;
   --settings-well-stroke: transparent;
-  --settings-well-glint: rgba(255, 255, 255, 0.08);
+  --settings-well-glint: rgba(255, 255, 255, 0.15);
 
   --nora-text: #ffffff;
   --nora-text-secondary: #999999;
@@ -955,9 +955,10 @@ html[data-android] .ios-glass-glare-soft {
   padding: 1px;
   background: linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--settings-well-stroke, var(--settings-divider)) 62%, transparent) 0%,
-    color-mix(in srgb, var(--settings-well-stroke, var(--settings-divider)) 22%, transparent) 28%,
-    transparent 58%
+    var(--settings-well-glint) 0%,
+    color-mix(in srgb, var(--settings-well-stroke, var(--settings-well-glint)) 55%, transparent) 36%,
+    color-mix(in srgb, var(--settings-well-stroke, var(--settings-well-glint)) 24%, transparent) 72%,
+    transparent 100%
   );
   pointer-events: none;
   -webkit-mask:
@@ -968,6 +969,12 @@ html[data-android] .ios-glass-glare-soft {
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
   mask-composite: exclude;
+}
+
+/* Block subtitles stay quiet in light and a step brighter on the dark canvas. */
+.scheme-editor-dark [data-settings-subtitle],
+[data-scheme="editor-dark"] [data-settings-subtitle] {
+  color: #b3b3b3;
 }
 
 /* Wells: a hairline that catches light on top and fades out below. */
@@ -983,9 +990,10 @@ html[data-android] .ios-glass-glare-soft {
   padding: 1px;
   background: linear-gradient(
     to bottom,
-    color-mix(in srgb, var(--settings-well-stroke, var(--settings-divider)) 62%, transparent) 0%,
-    color-mix(in srgb, var(--settings-well-stroke, var(--settings-divider)) 22%, transparent) 28%,
-    transparent 58%
+    var(--settings-well-glint) 0%,
+    color-mix(in srgb, var(--settings-well-stroke, var(--settings-well-glint)) 55%, transparent) 36%,
+    color-mix(in srgb, var(--settings-well-stroke, var(--settings-well-glint)) 24%, transparent) 72%,
+    transparent 100%
   );
   pointer-events: none;
   -webkit-mask:
@@ -996,6 +1004,20 @@ html[data-android] .ios-glass-glare-soft {
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
   mask-composite: exclude;
+}
+
+/* Dark stroke is clear, so the fade has to ride the glint or the sides vanish. */
+.scheme-editor-dark [data-settings-well]::before,
+[data-scheme="editor-dark"] [data-settings-well]::before,
+.scheme-editor-dark [data-questionnaire-preview]::before,
+[data-scheme="editor-dark"] [data-questionnaire-preview]::before {
+  background: linear-gradient(
+    to bottom,
+    var(--settings-well-glint) 0%,
+    color-mix(in srgb, var(--settings-well-glint) 55%, transparent) 36%,
+    color-mix(in srgb, var(--settings-well-glint) 24%, transparent) 72%,
+    transparent 100%
+  );
 }
 
 /* Same resting drop shadow as a meal card. The card outline stays the table divider. */
@@ -1012,23 +1034,11 @@ html[data-android] .ios-glass-glare-soft {
   --meal-card-shadow-ink: #000000;
 }
 
-/* Breath 3 block gray, not the greener canvas. Header, footer, and even rows share it. */
-[data-catalog-frame] {
-  --catalog-stripe: color-mix(in srgb, var(--settings-substrate, #f3f3f4) 70%, var(--nora-panel));
-}
-
-[data-catalog-frame] [data-catalog-band],
-[data-catalog-frame] [data-slot="table-body"] tr:nth-child(even) {
-  background-color: var(--catalog-stripe);
-}
-
-[data-catalog-frame] [data-slot="table-body"] tr:hover {
-  background-color: color-mix(in srgb, var(--settings-substrate, #f3f3f4) 88%, var(--nora-panel));
-}
+/* Catalog cards use the same panel as the other tables. Row color lives on the row. */
 
 [data-catalog-frame] [data-slot="table-body"] tr:nth-child(even) [data-slot="select-trigger"],
 [data-catalog-frame] [data-slot="table-body"] tr:nth-child(even) [data-catalog-delete] {
-  background-color: var(--nora-panel);
+  background-color: var(--nora-input-bg);
 }
 
 [data-catalog-frame] [data-slot="table-body"] tr [data-catalog-delete]:hover {

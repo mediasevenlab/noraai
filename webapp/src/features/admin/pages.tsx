@@ -23,11 +23,7 @@ export function AdminUsers({ currentUser }: { currentUser: UserDto }) {
   return (
     <PageContainer>
       <div className="max-lg:px-3.5">
-        <NoraPageHeader
-          description="Поиск аккаунтов и смена ролей."
-          title="Пользователи"
-          titleSize="display"
-        />
+        <NoraPageHeader title="Пользователи" />
       </div>
       <UserDirectory currentUser={currentUser} />
     </PageContainer>

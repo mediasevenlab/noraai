@@ -175,7 +175,7 @@ export function MentorPayments({
     >
       <SettingsEntry
         after={payoutStatus ? (
-          <p className="text-right font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-secondary)]">
+          <p className="text-right font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)]">
             {payoutStatus}
           </p>
         ) : null}
@@ -193,13 +193,6 @@ export function MentorPayments({
           userId={user.id}
         />
       </SettingsEntry>
-      <SettingsEntry className="lg:hidden" description="Бонус за подопечных" title="Выплаты">
-        {pending ? (
-          <SectionLoading className="min-h-16 py-4" label="Загрузка начислений" />
-        ) : (
-          <SettingsReadRows rows={payoutRows} tone="facts" />
-        )}
-      </SettingsEntry>
       <SettingsEntry
         className="lg:w-[28.8rem]"
         description={(
@@ -212,6 +205,13 @@ export function MentorPayments({
         title="История выплат"
       >
         <PayoutHistory accrued={accrued} ready={payoutReady} />
+      </SettingsEntry>
+      <SettingsEntry className="lg:hidden" description="Бонус за подопечных" title="Выплаты">
+        {pending ? (
+          <SectionLoading className="min-h-16 py-4" label="Загрузка начислений" />
+        ) : (
+          <SettingsReadRows rows={payoutRows} tone="facts" />
+        )}
       </SettingsEntry>
     </SettingsCanvas>
   )

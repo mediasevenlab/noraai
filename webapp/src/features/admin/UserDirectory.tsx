@@ -10,7 +10,6 @@ import { ChevronLeftIcon, ChevronRightIcon, SearchIcon, Trash2Icon } from '@/com
 import { formatGenerationMoney, formatGenerationSpend } from '@/features/diary'
 import { GenerationCurrencySelect, useGenerationCurrency } from '@/features/users'
 
-import { DataTableFrame } from '@/components/dashboard'
 import { cn } from '@/lib/utils'
 import {
   productToolbarSelectContentClass,
@@ -53,10 +52,15 @@ import {
 import { DeleteUserDialog } from './DeleteUserDialog'
 import { RoleChangeDialog } from './RoleChangeDialog'
 
+const directoryRowClass = 'col-span-full grid grid-cols-subgrid'
+const directoryStickyClass =
+  'max-md:first:sticky max-md:first:left-0 max-md:first:z-20 max-md:first:min-w-0 max-md:first:overflow-hidden max-md:first:bg-[var(--nora-panel)] max-md:first:shadow-[1px_0_0_var(--nora-divider)]'
 const directoryHeadClass =
-  '!h-10 px-3.5 !text-[12px] !font-normal text-[var(--nora-text-tertiary)]'
+  `flex items-center !h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] first:pl-4 last:pr-4 ${directoryStickyClass}`
 const directoryCellClass =
-  'h-auto px-3.5 py-2.5 !text-[13px] !font-normal leading-5'
+  `flex items-center h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-4 last:pr-4 ${directoryStickyClass}`
+const directoryTableClass =
+  'grid w-max min-w-full grid-cols-[11rem_max-content_max-content_max-content_max-content_max-content_max-content] max-md:grid-cols-[7.5rem_max-content_max-content_max-content_max-content_max-content_max-content] justify-between max-md:justify-start [&_tbody]:contents [&_thead]:contents'
 
 type PendingRoleChange = {
   role: UserRole
@@ -127,26 +131,19 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
   const totalSpend = usersQuery.data?.generationSpend
   const totalSpendMoney =
     totalSpend && totalSpend.tokens > 0 ? formatGenerationMoney(totalSpend, currency) : null
-  const shownCount = usersQuery.data?.items.length
+  const shownCount = usersQuery.data?.items.length ?? 0
+  const pageSize = usersQuery.data?.pageSize ?? 19
+  const shownFrom = usersQuery.data && shownCount > 0 ? (usersQuery.data.page - 1) * pageSize + 1 : 0
+  const shownTo = shownFrom > 0 ? shownFrom + shownCount - 1 : 0
   const description = usersQuery.data
-    ? `${shownCount} показано из ${usersQuery.data.total}`
+    ? null
     : viewState === 'error'
       ? 'Недоступно'
       : 'Загрузка…'
 
-  const summary = usersQuery.data
-    ? `Страница ${usersQuery.data.page} из ${pagination?.totalPages ?? 1} · ${usersQuery.data.total} пользователей${
-        pagination?.wasBounded
-          ? ` · Доступны первые ${pagination.reachableUsers} совпадений`
-          : ''
-      }`
-    : viewState === 'error'
-      ? 'Пользователи недоступны'
-      : 'Загрузка пользователей'
-
   return (
     <>
-      <div className="grid gap-4">
+      <div className="grid min-w-0 gap-4">
         {mutationFeedback === 'success' && roleMutation.isSuccess && (
           <Alert>
             <AlertTitle>Роль изменена</AlertTitle>
@@ -165,43 +162,32 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
           </Alert>
         )}
 
-        <DataTableFrame
-          controls={
-            <DirectoryPager
-              onPage={setPage}
-              page={usersQuery.data?.page ?? page}
-              totalPages={pagination?.totalPages ?? 1}
-            />
-          }
-          description={description}
-          nextDisabled={!pagination?.canGoNext}
-          onNext={() => setPage((current) => current + 1)}
-          onPrevious={() => setPage((current) => Math.max(1, current - 1))}
-          previousDisabled={page <= 1}
-          summary={summary}
-          title="Каталог пользователей"
-          toolbar={
-            <div className="flex items-center gap-2">
-              <GenerationCurrencySelect className="!h-8 !min-h-8 !bg-[var(--nora-panel)]" />
-              <NoraSearch
-                aria-label="Поиск пользователей"
-                className="h-8 min-h-8 w-[240px] !rounded-full !bg-[var(--nora-panel)]"
-                icon={<SearchIcon />}
-                inputClassName="!text-[13px] !font-normal leading-5"
-                onChange={(event) => setDraftQuery(event.target.value)}
-                placeholder="Имя, ник или почта…"
-                value={draftQuery}
-              />
-              <DirectoryRoleFilter
-                onChange={(next) => {
-                  setRoleFilter(next)
-                  setPage(1)
-                }}
-                value={roleFilter}
-              />
-            </div>
-          }
+        <div
+          className="min-w-0 rounded-[16px] bg-[var(--settings-substrate,var(--nora-inset))] p-3.5"
+          data-settings-well=""
         >
+        <div className="min-w-0 overflow-hidden rounded-[12px] bg-[var(--nora-panel)]" data-catalog-frame="">
+          <div className="flex flex-nowrap items-center justify-between gap-2 border-b border-[var(--nora-divider)] px-3.5 py-3">
+            <div className="min-w-0 shrink max-md:hidden">
+              <h2 className="truncate font-[family-name:var(--nora-font)] text-[13px] font-[550] leading-5 text-[var(--nora-text)]">
+                Каталог пользователей
+              </h2>
+              {description ? (
+                <p className="truncate font-[family-name:var(--nora-font)] text-[12px] font-[250] leading-5 text-[var(--nora-text-tertiary)]">
+                  {description}
+                </p>
+              ) : null}
+            </div>
+            <DirectoryToolbar
+              draftQuery={draftQuery}
+              onQuery={setDraftQuery}
+              onRole={(next) => {
+                setRoleFilter(next)
+                setPage(1)
+              }}
+              role={roleFilter}
+            />
+          </div>
           {viewState === 'loading' && <DirectoryLoading />}
           {viewState === 'error' && usersQuery.isError && (
             <DirectoryError
@@ -211,66 +197,9 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
           )}
           {viewState === 'empty' && <DirectoryEmpty hasQuery={query.length > 0} />}
           {viewState === 'ready' && usersQuery.data && (
-            <>
-            <ul className="md:hidden">
-              {usersQuery.data.items.map((user) => {
-                const canDelete = canDeleteAdminUser(currentUser.id, user)
-                const busy = deleteMutation.isPending
-                const spend = user.generationSpend && user.generationSpend.tokens > 0
-                  ? formatGenerationSpend(user.generationSpend, currency)
-                  : '—'
-                return (
-                  <li
-                    className="border-b border-[var(--nora-divider)] px-3.5 py-3 last:border-b-0"
-                    key={user.id}
-                  >
-                    <div className="flex items-start gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-[family-name:var(--nora-font)] text-[13px] font-[550] leading-5">
-                          {user.displayName ?? user.email}
-                        </p>
-                        <p className="truncate font-[family-name:var(--nora-font)] text-[12px] font-[250] leading-5 text-[var(--nora-text-tertiary)]">
-                          {user.email}
-                        </p>
-                      </div>
-                      <DirectoryRoleSelect
-                        busy={busy || roleMutation.isPending}
-                        currentUserId={currentUser.id}
-                        onRole={(role) => {
-                          roleMutation.reset()
-                          setPendingRole({ role, user })
-                        }}
-                        user={user}
-                      />
-                      <DirectoryDeleteButton
-                        busy={busy}
-                        canDelete={canDelete}
-                        onDelete={() => {
-                          deleteMutation.reset()
-                          setPendingDelete(user)
-                        }}
-                        user={user}
-                      />
-                    </div>
-                    <p className="mt-1 truncate font-[family-name:var(--nora-font)] text-[12px] font-[250] leading-5 text-[var(--nora-text-secondary)]">
-                      {`${user.nickname ?? '—'} · ${user.publicId} · ${new Date(user.createdAt).toLocaleDateString('ru-RU')} · ${spend}`}
-                    </p>
-                  </li>
-                )
-              })}
-            </ul>
-            <Table className="hidden table-fixed !text-[13px] md:table">
-              <colgroup>
-                <col className="w-[22%]" />
-                <col className="w-[14%]" />
-                <col className="w-[8%]" />
-                <col className="w-[16%]" />
-                <col className="w-[14%]" />
-                <col className="w-[16%]" />
-                <col className="w-12" />
-              </colgroup>
+            <Table className={directoryTableClass}>
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
+                <TableRow className={cn(directoryRowClass, 'hover:bg-transparent')}>
                   <TableHead className={directoryHeadClass}>Пользователь</TableHead>
                   <TableHead className={directoryHeadClass}>Никнейм</TableHead>
                   <TableHead className={directoryHeadClass}>ID</TableHead>
@@ -282,7 +211,7 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
                       <span className="font-[250]"> ({totalSpendMoney})</span>
                     ) : null}
                   </TableHead>
-                  <TableHead className="w-12 px-2" />
+                  <TableHead className={directoryHeadClass} />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -290,21 +219,28 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
                   const canDelete = canDeleteAdminUser(currentUser.id, user)
                   const busy = deleteMutation.isPending
                   return (
-                    <TableRow key={user.id}>
-                      <TableCell className={cn(directoryCellClass, 'whitespace-normal')}>
-                        <div className="grid min-w-0 gap-0.5">
-                          <span className="truncate font-[550] leading-5">
-                            {user.displayName ?? user.email}
-                          </span>
-                          <span className="truncate text-[12px] font-[250] leading-5 text-[var(--nora-text-tertiary)]">
+                    <TableRow
+                      className={cn(
+                        directoryRowClass,
+                        'even:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:!bg-[var(--nora-row-hover)]',
+                        'max-md:even:[&>:first-child]:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,var(--nora-panel))] max-md:hover:[&>:first-child]:![background-image:linear-gradient(var(--nora-row-hover),var(--nora-row-hover))]',
+                      )}
+                      key={user.id}
+                    >
+                      <TableCell className={cn(directoryCellClass, 'max-w-[11rem] flex-col items-start justify-center whitespace-normal max-md:max-w-[7.5rem]')}>
+                        <span className="block w-full min-w-0 truncate !text-[var(--nora-text)]" data-table-text="">
+                          {user.displayName ?? user.email}
+                        </span>
+                        {user.displayName ? (
+                          <span className="block w-full min-w-0 truncate text-[12px] text-[var(--nora-text-tertiary)]" data-table-text="">
                             {user.email}
                           </span>
-                        </div>
+                        ) : null}
                       </TableCell>
-                      <TableCell className={cn(directoryCellClass, 'truncate text-[var(--nora-text-secondary)]')}>
+                      <TableCell className={directoryCellClass}>
                         {user.nickname ?? '—'}
                       </TableCell>
-                      <TableCell className={cn(directoryCellClass, 'text-[var(--nora-text-secondary)]')}>
+                      <TableCell className={directoryCellClass}>
                         {user.publicId}
                       </TableCell>
                       <TableCell className={directoryCellClass}>
@@ -318,7 +254,7 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
                           user={user}
                         />
                       </TableCell>
-                      <TableCell className={cn(directoryCellClass, 'text-[var(--nora-text-secondary)]')}>
+                      <TableCell className={directoryCellClass}>
                         {new Date(user.createdAt).toLocaleDateString('ru-RU')}
                       </TableCell>
                       <TableCell className={cn(directoryCellClass, 'tabular-nums')}>
@@ -326,7 +262,7 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
                           ? formatGenerationSpend(user.generationSpend, currency)
                           : '—'}
                       </TableCell>
-                      <TableCell className="px-2 py-2.5">
+                      <TableCell className={directoryCellClass}>
                         <DirectoryDeleteButton
                           busy={busy}
                           canDelete={canDelete}
@@ -342,9 +278,24 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
                 })}
               </TableBody>
             </Table>
-            </>
           )}
-        </DataTableFrame>
+          {viewState === 'ready' && usersQuery.data ? (
+            <div className="flex flex-nowrap items-center justify-between gap-2 border-t border-[var(--nora-divider)] px-3.5 py-3">
+              <p className="min-w-0 truncate font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)] tabular-nums">
+                {`Показано ${shownFrom}–${shownTo} из ${usersQuery.data.total}`}
+                {pagination?.wasBounded ? ` · первые ${pagination.reachableUsers}` : ''}
+              </p>
+              {(pagination?.totalPages ?? 1) > 1 ? (
+                <DirectoryPager
+                  onPage={setPage}
+                  page={usersQuery.data.page}
+                  totalPages={pagination?.totalPages ?? 1}
+                />
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+        </div>
       </div>
 
       <RoleChangeDialog
@@ -394,7 +345,7 @@ function DirectoryRoleSelect({
     >
       <SelectTrigger
         aria-label={`Роль для ${user.email}`}
-        className="!h-8 !min-h-8 w-fit !gap-1.5 !rounded-full !px-3 font-[family-name:var(--nora-font)] !text-[13px] !font-normal"
+        className="!h-8 !min-h-8 w-fit !gap-1.5 !rounded-full !bg-[var(--nora-input-bg)] !px-3 font-[family-name:var(--nora-font)] !text-[13px] !font-normal"
       >
         <span className="truncate text-left">{user.role}</span>
       </SelectTrigger>
@@ -451,6 +402,34 @@ const roleFilterLabel: Record<UserRole | 'all', string> = {
   admin: 'admin',
 }
 
+function DirectoryToolbar({
+  draftQuery,
+  onQuery,
+  onRole,
+  role,
+}: {
+  draftQuery: string
+  onQuery: (value: string) => void
+  onRole: (value: UserRole | 'all') => void
+  role: UserRole | 'all'
+}) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-nowrap items-center justify-end gap-1.5">
+      <GenerationCurrencySelect className="!h-8 !min-h-8 shrink-0 !bg-[var(--nora-input-bg)] max-md:!w-auto max-md:!min-w-0 max-md:!px-2.5" />
+      <DirectoryRoleFilter onChange={onRole} value={role} />
+      <NoraSearch
+        aria-label="Поиск пользователей"
+        className="h-8 min-h-8 w-full min-w-0 max-w-[240px] flex-1 !rounded-full !bg-[var(--nora-input-bg)]"
+        icon={<SearchIcon />}
+        inputClassName="!text-[13px] !font-normal leading-5 truncate"
+        onChange={(event) => onQuery(event.target.value)}
+        placeholder="Имя, ник или почта…"
+        value={draftQuery}
+      />
+    </div>
+  )
+}
+
 function DirectoryRoleFilter({
   onChange,
   value,
@@ -469,7 +448,7 @@ function DirectoryRoleFilter({
     >
       <SelectTrigger
         aria-label="Тип пользователей"
-        className="!h-8 !min-h-8 w-fit !rounded-full !bg-[var(--nora-panel)] !px-3 font-[family-name:var(--nora-font)] !text-[13px] !font-normal"
+        className="!h-8 !min-h-8 w-fit shrink-0 !rounded-full !bg-[var(--nora-input-bg)] !px-3 font-[family-name:var(--nora-font)] !text-[13px] !font-normal max-md:!px-2.5"
         type="button"
       >
         <span className="truncate text-left">{roleFilterLabel[value]}</span>
@@ -496,14 +475,14 @@ function DirectoryPager({
 }) {
   const pageClass = (active: boolean) =>
     cn(
-      'inline-flex h-8 min-h-8 min-w-8 items-center justify-center rounded-full px-2.5 font-[family-name:var(--nora-font)] text-[13px] font-normal',
+      'inline-flex !h-6 !min-h-6 !w-6 !min-w-6 items-center justify-center rounded-full px-0 font-[family-name:var(--nora-font)] text-[12px] font-normal',
       active
         ? 'bg-[var(--nora-text)] text-[var(--nora-panel)]'
         : 'bg-[var(--nora-panel)] text-[var(--nora-text)] hover:bg-[var(--nora-button-bg-hover)]',
     )
 
   return (
-    <nav aria-label="Страницы пользователей" className="flex flex-wrap items-center justify-end gap-1">
+    <nav aria-label="Страницы пользователей" className="flex shrink-0 flex-nowrap items-center justify-end gap-1">
       <button
         aria-label="Предыдущая страница"
         className={cn(pageClass(false), 'disabled:pointer-events-none disabled:opacity-40')}
@@ -511,12 +490,12 @@ function DirectoryPager({
         onClick={() => onPage(page - 1)}
         type="button"
       >
-        <ChevronLeftIcon className="size-3.5" />
+        <ChevronLeftIcon className="size-3" />
       </button>
       {directoryPageItems(page, totalPages).map((item, index) =>
         item === 'gap' ? (
           <span
-            className="inline-flex h-8 min-w-8 items-center justify-center text-[13px] text-[var(--nora-text-tertiary)]"
+            className="inline-flex h-6 min-w-6 items-center justify-center text-[12px] text-[var(--nora-text-tertiary)]"
             key={`gap-${index}`}
           >
             …
@@ -540,7 +519,7 @@ function DirectoryPager({
         onClick={() => onPage(page + 1)}
         type="button"
       >
-        <ChevronRightIcon className="size-3.5" />
+        <ChevronRightIcon className="size-3" />
       </button>
     </nav>
   )

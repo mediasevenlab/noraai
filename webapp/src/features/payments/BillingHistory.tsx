@@ -86,36 +86,9 @@ export function PayoutHistory({
   const visible = rows.slice(range.from - 1, range.to)
   return (
     <div className="overflow-hidden rounded-[12px] bg-[var(--nora-panel)]">
-      <ul className="md:hidden">
-        {visible.map((row) => {
-          const tax = mentorPayoutWithholding(row.gross)
-          const net = mentorPayoutNet(row.gross)
-          return (
-            <li
-              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 border-b border-[var(--nora-divider)] px-3.5 py-3 last:border-b-0"
-              key={row.id}
-            >
-              <p className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
-                {row.at}
-              </p>
-              <PayoutStatusBadge status={row.status} />
-              <p className="col-span-2 font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-secondary)]">
-                {`Накоплено ${formatPayoutAmount(row.gross)} · Налог ${formatPayoutAmount(tax)} · Придёт ${formatPayoutAmount(net)}`}
-              </p>
-            </li>
-          )
-        })}
-      </ul>
-      <Table className="hidden w-full table-fixed md:table">
-        <colgroup>
-          <col className="w-[18%]" />
-          <col className="w-[18%]" />
-          <col className="w-[16%]" />
-          <col className="w-[18%]" />
-          <col className="w-[30%]" />
-        </colgroup>
+      <Table className="grid w-full grid-cols-[max-content_max-content_max-content_max-content_max-content] justify-between [&_tbody]:contents [&_thead]:contents">
         <TableHeader>
-          <TableRow className="hover:bg-transparent">
+          <TableRow className={cn(ledgerRowClass, 'hover:bg-transparent')}>
             <TableHead className={payoutHeadClass}>Дата</TableHead>
             <TableHead className={payoutHeadClass}>Накоплено</TableHead>
             <TableHead className={payoutHeadClass}>Налог</TableHead>
@@ -128,7 +101,10 @@ export function PayoutHistory({
             const tax = mentorPayoutWithholding(row.gross)
             const net = mentorPayoutNet(row.gross)
             return (
-              <TableRow className="hover:bg-[var(--nora-row-hover)]" key={row.id}>
+              <TableRow
+                className={cn(ledgerRowClass, 'even:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:!bg-[var(--nora-row-hover)]')}
+                key={row.id}
+              >
                 <TableCell className={payoutCellClass}>{row.at}</TableCell>
                 <TableCell className={payoutCellClass}>{formatPayoutAmount(row.gross)}</TableCell>
                 <TableCell className={payoutCellClass}>{formatPayoutAmount(tax)}</TableCell>
@@ -167,18 +143,17 @@ function PayoutStatusBadge({ status }: { status: 'paid' | 'waiting' | 'needs-dat
   )
 }
 
+const ledgerRowClass = 'col-span-full grid grid-cols-subgrid'
 const payoutHeadClass =
-  '!h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)]'
+  '!h-auto px-0.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] first:pl-4 last:pr-4'
 const payoutCellClass =
-  'h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)]'
-const payoutStatusClass = 'h-auto px-2.5 py-3 text-left whitespace-nowrap'
-
-/** Same 13px as the labels and amounts on this page. */
+  'h-auto px-0.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-4 last:pr-4'
+const payoutStatusClass = 'h-auto px-0.5 py-3 text-left whitespace-nowrap first:pl-4 last:pr-4'
 const headClass =
-  '!h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] md:px-3.5'
+  '!h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] first:pl-4 last:pr-4'
 const cellClass =
-  'h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] md:px-3.5'
-const statusClass = 'h-auto px-2.5 py-3 text-left whitespace-nowrap md:px-3.5'
+  'h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-4 last:pr-4'
+const statusClass = 'h-auto px-2.5 py-3 text-left whitespace-nowrap first:pl-4 last:pr-4'
 
 function LedgerTable({
   available,
@@ -222,15 +197,9 @@ function LedgerTable({
           </p>
         </div>
       ) : null}
-      <Table className="w-full table-fixed">
-        <colgroup>
-          <col className="w-[24%] md:w-[28%]" />
-          <col className="w-[26%] md:w-[28%]" />
-          <col className="w-[18%] md:w-[20%]" />
-          <col className="w-[32%] md:w-[24%]" />
-        </colgroup>
+      <Table className="grid w-full grid-cols-[max-content_max-content_max-content_max-content] justify-between [&_tbody]:contents [&_thead]:contents">
         <TableHeader>
-          <TableRow className="hover:bg-transparent">
+          <TableRow className={cn(ledgerRowClass, 'hover:bg-transparent')}>
             <TableHead className={headClass}>Дата</TableHead>
             <TableHead className={headClass}>Операция</TableHead>
             <TableHead className={headClass}>Сумма</TableHead>
@@ -240,7 +209,7 @@ function LedgerTable({
         <TableBody>
           {visible.map((entry) => (
             <TableRow
-              className="even:bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:bg-[var(--nora-row-hover)]"
+              className={cn(ledgerRowClass, 'even:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:!bg-[var(--nora-row-hover)]')}
               key={entry.id}
             >
               <TableCell className={cellClass}>{formatWhen(entry.at)}</TableCell>

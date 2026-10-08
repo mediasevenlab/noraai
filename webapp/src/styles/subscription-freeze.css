@@ -23,9 +23,30 @@
   display: none !important;
 }
 
-/* The subscription capsule takes the phone dock. The menu button stays. */
+/* The subscription capsule takes the phone dock. The menu button stays.
+   Profile and settings keep their edit control as a round button beside the capsule. */
 @media (max-width: 767px) {
   html[data-subscription-capsule] .mobile-dock {
     display: none !important;
+  }
+
+  [data-capsule-actions] [data-settings-dock] {
+    position: static;
+    display: flex;
+  }
+
+  [data-capsule-actions] [data-settings-dock] > button {
+    width: 3rem;
+    min-width: 3rem;
+    max-width: 3rem;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+    font-size: 0;
+  }
+
+  [data-capsule-actions] [data-settings-dock] > button svg {
+    width: 1rem;
+    height: 1rem;
   }
 }
