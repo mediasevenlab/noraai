@@ -877,7 +877,7 @@ test('diary card footer keeps bookmark and share without an overflow menu', () =
   )
   const actions = news.slice(
     news.indexOf('function CardActions('),
-    news.indexOf('function MealCard('),
+    news.indexOf('function FeedListAuthorLabel('),
   )
   const macros = news.slice(
     news.indexOf('function MacrosLine'),

@@ -1,11 +1,12 @@
-import type {
-  CreateUserMealRequest,
-  MealMicronutrient,
-  MealPortionItem,
+import {
+  AUTHORED_PLAN_DAY_COUNT_MAX,
+  type CreateUserMealRequest,
+  type MealMicronutrient,
+  type MealPortionItem,
 } from '@web-app-demo/contracts'
 
 import { createAuthoredPlan, type AuthoredPlan } from '@/platform/authored-plans'
-import { PLAN_SLOT_COUNT, planSlotIndex } from '@/platform/plan-slots'
+import { planSlotIndex } from '@/platform/plan-slots'
 
 import {
   currentWeekPlanStampId,
@@ -141,7 +142,7 @@ export function diaryNewPlanTitle(
 }
 
 export const DIARY_NEW_PLAN_MIN_DAYS = 1
-export const DIARY_NEW_PLAN_MAX_DAYS = PLAN_SLOT_COUNT
+export const DIARY_NEW_PLAN_MAX_DAYS = AUTHORED_PLAN_DAY_COUNT_MAX
 
 export function diaryNewPlanDayCount(count: number) {
   if (!Number.isFinite(count)) return DIARY_NEW_PLAN_MIN_DAYS

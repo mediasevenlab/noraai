@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
+import { AUTHORED_PLAN_DAY_COUNT_MAX } from '@web-app-demo/contracts'
+
 import {
   ASSIGNED_AUTHORED_RATIONS_STORAGE_PREFIX,
   AUTHORED_RATIONS_STORAGE_PREFIX,
@@ -153,7 +155,9 @@ describe('mentor authored rations', () => {
     expect(two[1]![0]?.title).toBe('')
     let days = [emptyPlanDayMeals()]
     for (let index = 0; index < 10; index += 1) days = addPlanDraftDay(days)
-    expect(days).toHaveLength(7)
+    expect(days).toHaveLength(11)
+    for (let index = 0; index < 40; index += 1) days = addPlanDraftDay(days)
+    expect(days).toHaveLength(AUTHORED_PLAN_DAY_COUNT_MAX)
 
     const missingTitle = finalizePlanDaysDraft(
       { id: null, title: '  ', description: '', goal: 'Похудение' },

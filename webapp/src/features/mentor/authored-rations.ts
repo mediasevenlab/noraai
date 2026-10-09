@@ -1,6 +1,8 @@
-import type { MentorRation, UpsertMentorRationRequest } from '@web-app-demo/contracts'
-
-import { PLAN_SLOT_COUNT } from '@/platform/plan-slots'
+import {
+  AUTHORED_PLAN_DAY_COUNT_MAX,
+  type MentorRation,
+  type UpsertMentorRationRequest,
+} from '@web-app-demo/contracts'
 
 import {
   rationDayTotals,
@@ -248,7 +250,7 @@ export function draftMealsWithTitles(draft: RationDraft) {
 }
 
 export const PLAN_DRAFT_MIN_DAYS = 1
-export const PLAN_DRAFT_MAX_DAYS = PLAN_SLOT_COUNT
+export const PLAN_DRAFT_MAX_DAYS = AUTHORED_PLAN_DAY_COUNT_MAX
 
 export function emptyPlanDayMeals(): RationMealDraft[] {
   return [emptyMealDraft('Завтрак')]

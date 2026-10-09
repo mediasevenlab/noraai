@@ -448,7 +448,6 @@ export function SharedMealsFeed({
             key={meal.id}
             layout={layout}
             meal={meal}
-            onDelete={() => undefined}
             onOpen={() => setOpenId(meal.id)}
             allowShare={meal.userId === auth.user?.id}
             onShare={() => {

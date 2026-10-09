@@ -41,6 +41,7 @@ import {
   planDayTabParts,
   rationDaysFromSharedRation,
   buildWeekPlanFromSharedRation,
+  rationDaysFromBoard,
   rationStampDays,
   sharedRationSnapshotFromWeekPlan,
   WEEK_PLAN_CARD_SLOTS,
@@ -490,7 +491,9 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('description: catalog.description')
   expect(page).toContain('plan?.description.trim()')
   expect(page).toContain('showHeaderOnMobile')
-  expect(page).toContain('const canMutateDays = Boolean(plan && !catalogView && !feedPreview)')
+  expect(page).toContain(
+    'const canMutateDays = Boolean(\n    plan && !catalogView && !feedPreview && !isAssignedPlanId(plan.id),\n  )',
+  )
   expect(page).toContain('onAddEmptyDay={canMutateDays ? addEmptyDay : undefined}')
   expect(page).toContain('onRemoveEmptyDay={canMutateDays ? removeEmptyDay : undefined}')
   expect(page).not.toContain('!feedPreview && !isAssignedPlanId(plan.id) ? addEmptyDay')
@@ -505,7 +508,8 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   )
   expect(mobileHeader).toContain('noraProductTitleClass')
   expect(mobileHeader).toContain('aria-label="О рационе"')
-  expect(mobileHeader).not.toContain('bg-[var(--nora-inset)]')
+  expect(mobileHeader).toContain('INFO_BAR_CLASS')
+  expect(mobileHeader).toContain('INFO_MARK_CLASS')
   expect(mobileHeader).not.toContain('CalendarDaysIcon')
   expect(shell).toContain('rounded-[16px] bg-[var(--nora-inset)] p-2.5')
   expect(shell).toContain('noraProductTitleClass')
@@ -516,33 +520,43 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(shell).toContain('productSheetOverlayChipClass')
   expect(shell).toContain('aria-label="О рационе"')
   expect(shell).toContain('data-plan-info-open=""')
-  expect(shell).toContain("inline-flex size-8 shrink-0 items-center justify-center rounded-full")
+  expect(shell).toContain('flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--nora-text)]')
   expect(shell).toContain('h-auto max-h-[calc(100dvh-var(--modal-sheet-inset))]')
   expect(shell).not.toContain('top-[var(--modal-sheet-inset)] bottom-0')
-  expect(shell).toContain('flex items-center justify-between gap-3')
-  expect(shell).toContain('INFO_SECTION_HEADING_CLASS')
+  expect(shell).toContain('min-w-0 flex-1 truncate text-left')
+  expect(shell).not.toContain('<DialogHeader')
+  expect(shell).toContain('text-[13px] font-normal leading-5 text-[var(--nora-text)]')
+  expect(shell).toContain(
+    'text-[13px] font-light leading-5 text-[var(--nora-text-secondary)] dark:text-[color-mix(in_srgb,var(--nora-text)_42%,var(--nora-text-secondary))]',
+  )
+  expect(shell).toContain('Описание:')
+  expect(shell).toContain('Показатели:')
+  expect(shell).toContain('mb-1.5 pl-4 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]')
   expect(shell).toContain('text-[13px] font-medium leading-5 text-[var(--nora-text)]')
-  expect(shell).toContain('text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)]')
   expect(shell).toContain('noraProductTitleClass')
   expect(shell).not.toContain('items-start justify-between')
-  expect(shell).toContain('Описание')
-  expect(shell).toContain('Показатели')
+  expect(shell).not.toContain('>Описание<')
+  expect(shell).not.toContain('>Показатели<')
   expect(shell).not.toContain('Сводка')
   expect(shell).toContain('FACT_ICON_WRAP_CLASS')
   expect(shell).toContain('rounded-full')
-  expect(shell).toContain("bg-[color-mix(in_srgb,var(--nora-text)_9%,var(--nora-panel))]")
+  expect(shell).toContain('bg-[var(--nora-panel)] text-[var(--nora-text-secondary)]')
+  expect(shell).not.toContain('bg-[var(--nora-input-bg)]/72')
+  expect(shell).not.toContain('data-plan-info-divider=""')
+  expect(shell).toContain('px-4 py-3')
   expect(shell).toContain('data-plan-info-summary=""')
-  expect(shell).toContain('data-plan-info-edit=""')
   expect(shell).toContain('CalendarDaysIcon')
   expect(shell).toContain('UtensilsIcon')
   expect(shell).toContain('FlameIcon')
   expect(shell).toContain('onEdit')
   expect(shell).toContain('aria-label="Изменить"')
-  expect(page).toContain('onEdit={canEdit ? openEditor : undefined}')
+  expect(shell.slice(shell.indexOf('data-plan-info=""'))).not.toContain('Изменить')
+  expect(page).toContain('onEdit={canEdit ? () => openEditor() : undefined}')
   const infoBody = shell.slice(shell.indexOf('overflow-y-auto'))
   expect(infoBody.indexOf('MealFeedPhoto')).toBeGreaterThan(-1)
-  expect(infoBody.indexOf('MealFeedPhoto')).toBeLessThan(infoBody.indexOf('Описание'))
-  expect(shell).toContain('data-plan-info-edit=""')
+  expect(infoBody.indexOf('MealFeedPhoto')).toBeLessThan(infoBody.indexOf('DialogDescription'))
+  expect(infoBody.indexOf('DialogDescription')).toBeLessThan(infoBody.indexOf('data-plan-info-summary=""'))
+  expect(shell).not.toContain('data-plan-info-edit=""')
   expect(shell).toContain('CalendarDaysIcon')
   expect(shell).toContain("fact.label !== 'Цель'")
   const coverBadge = source.slice(
@@ -730,9 +744,9 @@ test('week plan card paints a plan summary plaque and a taller preview', () => {
   expect(page).toContain('PlanOutlineDialog')
   expect(page).toContain('Изменить')
   expect(page).toContain('PencilIcon')
-  expect(page).toContain('<PencilIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_CLASS}')
+  expect(page).not.toContain('<PencilIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_CLASS}')
   expect(page).not.toContain('>Редактировать<')
-  expect(page).toContain('PLAN_MOBILE_DOCK_EDIT_ID')
+  expect(page).not.toContain('PLAN_MOBILE_DOCK_EDIT_ID')
   expect(page).toContain('data-plan-outline-open=""')
   expect(page).toContain('disabled={movingMeals}')
   expect(page).toContain("'disabled:opacity-100'")
@@ -857,6 +871,11 @@ test('a mentor plan with day indexes keeps each day', () => {
   expect(plan.days.map((day) => day.kcal)).toEqual([300, 400])
   expect(plan.kcal).toBe(350)
   expect(plan.mealsCount).toBe(2)
+  const moved = rationDaysFromBoard(ration, [
+    { meals: [...plan.days[0]!.meals, ...plan.days[1]!.meals] },
+    { meals: [] },
+  ])
+  expect(moved.map((day) => day.meals.map((meal) => meal.title))).toEqual([['Овсянка', 'Омлет'], []])
 })
 
 test('stamping a mentor plan keeps each day instead of piling meals onto day 1', () => {
@@ -973,11 +992,12 @@ test('mobilePlanDayTabs drops trailing empty padded days unless selected', () =>
   ).toEqual(['2026-08-31', '2026-09-06'])
 })
 
-test('nextPlanDayCount appends an empty day up to the week slot cap', () => {
+test('nextPlanDayCount appends an empty day up to the plan day cap', () => {
   expect(nextPlanDayCount(0)).toBe(1)
   expect(nextPlanDayCount(3)).toBe(4)
-  expect(nextPlanDayCount(7)).toBe(7)
+  expect(nextPlanDayCount(7)).toBe(8)
   expect(nextPlanDayCount(0, 4)).toBe(5)
+  expect(nextPlanDayCount(30)).toBe(30)
 })
 
 test('removeEmptyPlanDay drops a trailing empty day and keeps filled meals', () => {
@@ -1047,6 +1067,7 @@ test('current plan lays meals under a diary-sized day badge', () => {
     expect(source).toContain('active && !picking &&')
     expect(source).toContain('PLAN_DAY_TAB_SLOTS')
     expect(source).toContain('PLAN_DAY_TAB_SIZE_CLASS')
+    expect(source).toContain('w-[3.25rem] min-w-[3.25rem] max-w-[3.25rem] shrink-0 grow-0')
     expect(source).toContain('no-scrollbar flex w-full gap-1.5 overflow-x-auto overscroll-x-contain')
     expect(source).not.toContain('placeholderCount')
     expect(source).not.toContain('PLAN_DAY_TAB_PLACEHOLDER_CLASS')
@@ -1073,11 +1094,15 @@ test('current plan lays meals under a diary-sized day badge', () => {
     expect(source).toContain('canReorder')
     expect(source).toContain('data-plan-day-tab')
   expect(source).toContain("aria-label={picking ? 'Отмена' : 'Переместить'}")
-  expect(source).toContain('MOBILE_DOCK_FAB_CLASS')
+  expect(source).toContain('MOBILE_DOCK_PILL_CLASS')
+  expect(source).toContain('Переместить')
   expect(source).toContain('ArrowLeftRightIcon')
   expect(source).toContain('XIcon')
   expect(source).toContain('PLAN_MEALS_MOVE_HINT')
   expect(source).toContain('data-plan-move-hint=""')
+  expect(source.indexOf('data-plan-move-hint=""')).toBeGreaterThan(source.indexOf('role="tablist"'))
+  expect(source.slice(source.indexOf('data-plan-move-hint=""') - 120, source.indexOf('data-plan-move-hint=""'))).toContain('pl-2.5')
+  expect(source).toContain('active && !picking\n                          ? \'bg-[var(--nora-tint)] text-white\'')
   expect(source).toContain('noraPageDescriptionClass')
   expect(source).not.toContain('toast.info(PLAN_MEALS_MOVE_HINT')
   expect(source).not.toContain("id: 'plan-meals-move-hint'")
@@ -1298,7 +1323,7 @@ test('week plan preview meals fill the shopping list without a diary stamp', () 
     ration: SAMPLE_RATIONS[0]!,
     now,
   })
-  expect(plan.days[0]?.meals[0]?.assumptions).toBeUndefined()
+  expect(plan.days[0]?.meals[0]?.assumptions).toEqual(['mentor-meal:0:0'])
   expect(plan.days[0]?.meals[0]?.fromApi).toBe(false)
   expect(
     planShoppingItems(plan.days.flatMap((day) => day.meals)).map((item) => item.label),

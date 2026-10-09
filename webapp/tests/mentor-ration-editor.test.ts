@@ -235,9 +235,9 @@ test('day editor covers a full written day in plan mode', () => {
   expect(editor).not.toContain('Соберите день как карточку каталога')
   expect(editor).toContain('data-modal-frame="meal"')
   expect(editor).toContain('!text-[15px] !font-medium !leading-6')
-  expect(editor).toContain("FIELD_LABEL_CLASS =\n  'font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'")
-  expect(editor).toContain("SECTION_HEADING_CLASS =\n  'font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'")
-  expect(editor).toContain('text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]')
+  expect(editor).toContain("FIELD_LABEL_CLASS =\n  'mb-1.5 pl-4 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'")
+  expect(editor).toContain("SECTION_HEADING_CLASS =\n  'mb-1.5 pl-4 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'")
+  expect(editor).toContain('text-[12px] font-light text-[var(--nora-text-tertiary)]')
   expect(editor).toContain('min-h-0 flex-1 overflow-y-auto')
   expect(editor).toContain('nextUnusedMealSlot(')
   expect(editor).not.toContain('CircleIcon')
@@ -282,7 +282,8 @@ test('day editor covers a full written day in plan mode', () => {
   expect(editor).toContain('{copy.overviewTab}')
   expect(editor).toContain('{totals.kcal} ккал · Б {totals.protein} · Ж {totals.fat} · У {totals.carbs}')
   expect(editor).toContain("descriptionPlaceholder: 'Коротко, что в дне'")
-  expect(editor).toContain("min-h-16 px-3 py-2.5")
+  expect(editor).toContain('min-h-0 w-full px-4 py-3 [field-sizing:content]')
+  expect(editor).toContain('!min-h-0 w-full resize-none px-4 py-3 [field-sizing:content]')
   expect(editor).toContain('ZapIcon')
   expect(editor).toContain('FlameIcon')
   expect(editor).toContain('DropletIcon')
@@ -296,8 +297,8 @@ test('day editor covers a full written day in plan mode', () => {
   expect(editor).toContain('placeholder:font-[300]')
   expect(editor).toContain('!bg-[var(--nora-inset)]')
   expect(editor).toContain('SLOT_ROW_CLASS')
-  expect(editor).toContain('!min-h-24 w-full resize-y px-3 py-2.5')
-  expect(editor).toContain('rows={4}')
+  expect(editor).toContain('!min-h-0 w-full resize-none px-4 py-3 [field-sizing:content]')
+  expect(editor).not.toContain('rows={4}')
   expect(editor).toContain('ios-glass-glare-soft')
   expect(editor).toContain('!text-[13px] !font-normal !leading-5')
   expect(editor).toContain('inline-flex size-8 shrink-0 items-center justify-center rounded-full')
@@ -309,14 +310,14 @@ test('day editor covers a full written day in plan mode', () => {
   expect(editor).toContain('LINE_INPUT_CLASS')
   expect(editor).not.toContain('MEAL_TITLE_FIELD_CLASS')
   expect(editor).toContain('GOAL_FIELD_CLASS')
-  expect(editor).toContain('!py-0 !h-8 !min-h-8 !max-h-8 !rounded-[10px]')
+  expect(editor).toContain('!py-0 !h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem] !rounded-[var(--nora-radius-md,8px)]')
   expect(editor).toContain('!rounded-full !px-2.5')
   expect(editor).toContain("className={GOAL_FIELD_CLASS}")
   expect(editor).toMatch(
-    /className=\{TITLE_FIELD_CLASS\}[\s\S]*?placeholder=\{copy.titlePlaceholder\}/,
+    /className=\{HEADER_TITLE_FIELD_CLASS\}[\s\S]*?placeholder=\{copy.titlePlaceholder\}/,
   )
   expect(editor).toMatch(
-    /SLOT_ROW_CLASS[\s\S]*?className=\{LINE_INPUT_CLASS\}[\s\S]*?placeholder="Название блюда"/,
+    /className=\{TITLE_FIELD_CLASS\}[\s\S]*?placeholder="Название блюда"/,
   )
   expect(editor.slice(
     editor.indexOf('function MealDraftCard('),

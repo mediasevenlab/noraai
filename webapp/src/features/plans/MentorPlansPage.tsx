@@ -46,10 +46,11 @@ import {
   MOBILE_DOCK_FAB_ICON_ACTIVE_CLASS,
   MOBILE_DOCK_FAB_ICON_CLASS,
   MOBILE_DOCK_PILL_CLASS,
+  PLAN_MOBILE_DOCK_MOVE_ID,
 } from './mobile-dock'
 import { PlanToolbar, planToolbarPillClass, visiblePlanCards, type PlanFeedTab } from './PlanToolbar'
 import { WeekPlanCard } from './WeekPlanCard'
-import { buildWeekPlanFromRation, sharedRationSnapshotFromWeekPlan } from './week-plan'
+import { buildWeekPlanFromRation, rationDaysFromBoard, sharedRationSnapshotFromWeekPlan } from './week-plan'
 
 export function MentorPlansPage() {
   const auth = useAuth()
@@ -349,6 +350,22 @@ export function MentorPlanDetailPage({ planId }: { planId: string }) {
     void navigate({ to: '/mentor/plans' })
   }
 
+  async function persistMealOrder(nextDays: readonly { meals: readonly { assumptions?: readonly string[] }[] }[]) {
+    if (!entry) return
+    const days = rationDaysFromBoard(entry, nextDays)
+    const body = mentorPlanUpsertFromDays(days)
+    if (!body) {
+      toast.error('В рационе должен остаться хотя бы один приём')
+      throw new Error('empty ration')
+    }
+    try {
+      await updatePlan.mutateAsync({ planId, body })
+    } catch (error) {
+      toast.error('Не удалось сохранить порядок')
+      throw error
+    }
+  }
+
   async function saveEdited(days: readonly RationEntry[]) {
     const body = mentorPlanUpsertFromDays(days)
     if (!body) {
@@ -382,6 +399,7 @@ export function MentorPlanDetailPage({ planId }: { planId: string }) {
         }
         showHeaderOnMobile
         title={plan?.title ?? 'Рацион'}
+        onEdit={plan ? () => setEditing(true) : undefined}
       >
         {plansQuery.isError ? (
           <ProductFeedEmpty
@@ -439,8 +457,10 @@ export function MentorPlanDetailPage({ planId }: { planId: string }) {
               </div>
             </section>
             <CurrentPlanMeals
+              canReorder
               completedIds={new Set()}
               days={plan.days}
+              onCommitDays={persistMealOrder}
               onDetachPlanMeal={() => undefined}
               readOnly
             />
@@ -457,10 +477,7 @@ export function MentorPlanDetailPage({ planId }: { planId: string }) {
           >
             <ArrowLeftIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_CLASS} strokeWidth={1.75} />
           </button>
-          <button className={MOBILE_DOCK_PILL_CLASS} onClick={() => setEditing(true)} type="button">
-            <PencilIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_CLASS} strokeWidth={1.75} />
-            Изменить
-          </button>
+          <span className="flex items-center gap-2 empty:hidden" id={PLAN_MOBILE_DOCK_MOVE_ID} />
         </div>
       ) : null}
       {editDraft && entry ? (

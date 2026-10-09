@@ -156,7 +156,7 @@ test('plan meals board starts a hold-to-drag reorder', () => {
   expect(source).toContain('canReorder')
   expect(source).toContain('PlanMealDragHandle')
   expect(source).toContain("aria-label={picking ? 'Отмена' : 'Переместить'}")
-  expect(source).toContain('MOBILE_DOCK_FAB_CLASS')
+  expect(source).toContain('MOBILE_DOCK_PILL_CLASS')
   expect(source).toContain('Приёмы перемещены')
   expect(source).toContain('data-plan-move-hint=""')
   expect(source).toContain('порядок.\\nНажмите карточку')

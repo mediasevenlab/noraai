@@ -114,27 +114,31 @@ const FIELD_TYPE_CLASS = cn(
   'font-[family-name:var(--nora-font)] !text-[13px] !font-normal !leading-5',
   'text-[var(--nora-text)] placeholder:font-light placeholder:font-[300] placeholder:text-[var(--nora-input-placeholder)]',
 )
+const FIELD_COPY_CLASS = cn(
+  'font-[family-name:var(--nora-font)] !text-[13px] !font-light !leading-5',
+  'text-[var(--nora-text-secondary)] dark:text-[color-mix(in_srgb,var(--nora-text)_42%,var(--nora-text-secondary))]',
+  'placeholder:font-light placeholder:font-[300] placeholder:text-[var(--nora-input-placeholder)]',
+)
 const FIELD_CHIP_CLASS = 'rounded-[14px] !bg-[var(--nora-inset)]'
 const FIELD_FACE_CLASS = '!bg-[var(--nora-panel)]'
-const FIELD_CLASS = cn(FIELD_TYPE_CLASS, FIELD_CHIP_CLASS, 'w-full px-3')
-const TITLE_FIELD_CLASS = cn(
-  FIELD_TYPE_CLASS,
-  '!bg-[var(--nora-inset)] w-full px-3 !py-0 !h-8 !min-h-8 !max-h-8 !rounded-[10px]',
-)
+const SINGLE_LINE_FIELD_CLASS =
+  '!bg-[var(--nora-inset)] w-full px-4 !py-0 !h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem] !rounded-[var(--nora-radius-md,8px)]'
+const PLAQUE_INPUT_CLASS = cn(FIELD_TYPE_CLASS, SINGLE_LINE_FIELD_CLASS)
+const TITLE_FIELD_CLASS = PLAQUE_INPUT_CLASS
 const LINE_INPUT_CLASS = cn(
   FIELD_TYPE_CLASS,
   FIELD_FACE_CLASS,
-  '!h-8 !min-h-8 !max-h-8 min-w-0 flex-1 !rounded-full !px-2.5',
+  '!h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem] min-w-0 flex-1 !rounded-full !px-2.5',
 )
 const GOAL_FIELD_CLASS = cn(
   FIELD_TYPE_CLASS,
   FIELD_CHIP_CLASS,
-  'w-full px-3 !py-0 !h-8 !min-h-8 !max-h-8',
-  'data-[size=default]:!h-8 data-[size=default]:!min-h-8 data-[size=default]:!max-h-8',
+  'w-full px-3 !py-0 !h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem]',
+  'data-[size=default]:!h-[2.42rem] data-[size=default]:!min-h-[2.42rem] data-[size=default]:!max-h-[2.42rem]',
 )
 const EDITOR_COVER_CLASS = cn(
   FIELD_CHIP_CLASS,
-  'relative aspect-[16/9] min-h-[7.5rem] w-full overflow-hidden p-0',
+  'relative aspect-[16/9] min-h-[7.5rem] w-full overflow-hidden !rounded-[16px] p-0',
 )
 const MEAL_COVER_BUTTON_CLASS = EDITOR_COVER_CLASS
 const PLAN_EDITOR_COVER_CLASS = EDITOR_COVER_CLASS
@@ -157,7 +161,7 @@ function CoverChangeChip() {
   )
 }
 const SLOT_ROW_CLASS = cn(
-  'ios-glass-glare-soft flex min-h-12 items-center gap-2 rounded-[14px] px-2 py-2',
+  'ios-glass-glare-soft flex min-h-12 items-center gap-2.5 rounded-[14px] pl-2.5 pr-2.5',
   'bg-[var(--nora-inset)]',
 )
 const PLAN_DAY_ROW_SURFACE_CLASS = cn(
@@ -196,9 +200,9 @@ const MEAL_INDEX_CLASS = cn(
   'text-[var(--nora-text-secondary)]',
 )
 const FIELD_LABEL_CLASS =
-  'font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
+  'mb-1.5 pl-4 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
 const SECTION_HEADING_CLASS =
-  'font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
+  'mb-1.5 pl-4 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
 const ADD_MEAL_CLASS = cn(
   'nora-press-grow ios-glass-glare inline-flex h-8 min-h-8 max-h-8 shrink-0 items-center gap-1.5 rounded-full border-0 py-0 pr-3 pl-1.5',
   'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-none tracking-normal',
@@ -240,14 +244,11 @@ const MEAL_TAB_CLASS = productSheetTabTriggerDarkClass
 const DESCRIPTION_TAB_CLASS = productSheetTabTriggerDarkClass
 const SECTION_DIVIDER_CLASS = 'border-t border-[var(--nora-divider)]'
 const TITLE_GOAL_ROW_CLASS = 'grid grid-cols-[minmax(0,1fr)_10.5rem] items-start gap-3'
-const HEADER_TITLE_FIELD_CLASS = cn(
-  FIELD_TYPE_CLASS,
-  '!bg-[var(--nora-inset)] w-full px-3 !py-0 !h-8 !min-h-8 !max-h-8 !rounded-[10px]',
-)
+const HEADER_TITLE_FIELD_CLASS = cn(FIELD_COPY_CLASS, SINGLE_LINE_FIELD_CLASS)
 const HEADER_DESC_FIELD_CLASS = cn(
-  FIELD_TYPE_CLASS,
+  FIELD_COPY_CLASS,
   FIELD_CHIP_CLASS,
-  '!min-h-24 w-full resize-y px-3 py-2.5 !h-auto !max-h-none',
+  '!min-h-0 w-full resize-none px-4 py-3 [field-sizing:content] !h-auto !max-h-none',
 )
 const EDITOR_TABS_DOCK_CLASS = productSheetTabDockClass
 const MACRO_ICON_CLASS = 'size-[13px] shrink-0'
@@ -257,7 +258,7 @@ const SLOT_ITEMS = RATION_MEAL_SLOTS.map((slot) => ({ value: slot, label: slot }
 const SLOT_SELECT_CLASS = cn(
   FIELD_TYPE_CLASS,
   FIELD_FACE_CLASS,
-  '!h-8 !min-h-8 !max-h-8 w-[8.5rem] !rounded-full !px-2.5',
+  '!h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem] w-[8.5rem] !rounded-full !px-2.5',
 )
 const GOAL_ITEMS = RATION_GOALS.map((goal) => ({ value: goal, label: goal }))
 const SLOT_TAB_ICONS = {
@@ -762,11 +763,11 @@ export function RationEditorDialog({
             </div>
           ) : null}
           <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
-            <div className="flex flex-col gap-4 px-3 pt-3 pb-8 sm:px-4">
+            <div className="flex flex-col gap-3 px-3 pt-3 pb-8 sm:px-4">
               <TabsContent className="mt-0" data-ration-tab="description" value={DESCRIPTION_TAB}>
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3">
                   {mode === 'plan' ? (
-                    <div className="grid gap-2" data-plan-editor-identity="">
+                    <div className="flex flex-col gap-3" data-plan-editor-identity="">
                       <label className="grid min-w-0">
                         <button
                           aria-label="Сменить обложку"
@@ -822,9 +823,9 @@ export function RationEditorDialog({
                           type="file"
                         />
                       </label>
-                      <label className="grid min-w-0 gap-1">
+                      <label className="flex min-w-0 flex-col gap-1.5">
                         <span className={FIELD_LABEL_CLASS}>Название</span>
-                        <div className="md:contents max-md:relative max-md:h-8 max-md:w-full" data-ios-13-slot="">
+                        <div className="[--ios-px:1rem] md:contents max-md:relative max-md:h-[2.42rem] max-md:w-full" data-ios-13-slot="">
                           <NoraInput
                             className={HEADER_TITLE_FIELD_CLASS}
                             onChange={(event) => patch({ title: event.target.value })}
@@ -833,14 +834,13 @@ export function RationEditorDialog({
                           />
                         </div>
                       </label>
-                      <label className="grid min-w-0 gap-1">
+                      <label className="flex min-w-0 flex-col gap-1.5">
                         <span className={FIELD_LABEL_CLASS}>{copy.descriptionLabel}</span>
-                        <div className="[--ios-min:6rem] md:contents max-md:block max-md:w-full" data-ios-13-slot="area">
+                        <div className="[--ios-min:0px] [--ios-px:1rem] [--ios-py:0.75rem] md:contents max-md:block max-md:w-full" data-ios-13-slot="area">
                           <NoraTextarea
                             className={HEADER_DESC_FIELD_CLASS}
                             onChange={(event) => patch({ description: event.target.value })}
                             placeholder={copy.descriptionPlaceholder}
-                            rows={4}
                             value={form.description}
                           />
                         </div>
@@ -849,7 +849,7 @@ export function RationEditorDialog({
                   ) : null}
                   {mode === 'ration' ? (
                     <section>
-                      <p className="whitespace-pre-line font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
+                      <p className="whitespace-pre-line font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 text-[var(--nora-text-secondary)] dark:text-[color-mix(in_srgb,var(--nora-text)_42%,var(--nora-text-secondary))]">
                         {preview.description || 'Названия приёмов появятся здесь'}
                       </p>
                       <p className="mt-2 font-[family-name:var(--nora-font)] text-[12px] font-light leading-4 text-[var(--nora-text-tertiary)] tabular-nums">
@@ -860,18 +860,18 @@ export function RationEditorDialog({
                   ) : null}
                   {showGoal ? (
                     <div className={TITLE_GOAL_ROW_CLASS}>
-                      <label className="grid min-w-0 gap-1.5">
+                      <label className="flex min-w-0 flex-col gap-1.5">
                         <span className={FIELD_LABEL_CLASS}>Название</span>
-                        <div className="md:contents max-md:relative max-md:h-8 max-md:w-full" data-ios-13-slot="">
+                        <div className="[--ios-px:1rem] md:contents max-md:relative max-md:h-[2.42rem] max-md:w-full" data-ios-13-slot="">
                           <NoraInput
-                            className={TITLE_FIELD_CLASS}
+                            className={HEADER_TITLE_FIELD_CLASS}
                             onChange={(event) => patch({ title: event.target.value })}
                             placeholder={copy.titlePlaceholder}
                             value={form.title}
                           />
                         </div>
                       </label>
-                      <label className="grid min-w-0 gap-1.5">
+                      <label className="flex min-w-0 flex-col gap-1.5">
                         <span className={FIELD_LABEL_CLASS}>Цель</span>
                         <NoraSelect
                           className={GOAL_FIELD_CLASS}
@@ -888,11 +888,11 @@ export function RationEditorDialog({
                     </div>
                   ) : null}
                   {mode === 'ration' ? (
-                    <label className="grid gap-1.5">
+                    <label className="flex flex-col gap-1.5">
                       <span className={FIELD_LABEL_CLASS}>{copy.descriptionLabel}</span>
-                      <div className="[--ios-min:4rem] md:contents max-md:block max-md:w-full" data-ios-13-slot="area">
+                      <div className="[--ios-min:0px] [--ios-px:1rem] [--ios-py:0.75rem] md:contents max-md:block max-md:w-full" data-ios-13-slot="area">
                         <NoraTextarea
-                          className={cn(FIELD_CLASS, 'min-h-16 px-3 py-2.5')}
+                          className={cn(FIELD_COPY_CLASS, FIELD_CHIP_CLASS, 'min-h-0 w-full px-4 py-3 [field-sizing:content]')}
                           onChange={(event) => patch({ description: event.target.value })}
                           placeholder={copy.descriptionPlaceholder}
                           value={form.description}
@@ -938,7 +938,7 @@ export function RationEditorDialog({
                   key={meal.key}
                   value={meal.key}
                 >
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-3">
                     {!inPlanDay ? (
                       <MealsSectionHeading
                         addLabel={copy.addMeal}
@@ -1179,7 +1179,7 @@ function PlanDayPlaqueList({
   const draggingMeals = draggingDay ? titledDraftMeals(draggingDay).length : 0
 
   return (
-    <div className="grid gap-2" data-plan-editor-days="">
+    <div className="flex flex-col gap-1.5" data-plan-editor-days="">
       <p className={SECTION_HEADING_CLASS}>Добавленные дни</p>
       {days.map((day, index) => {
         const mealCount = titledDraftMeals(day).length
@@ -1303,7 +1303,7 @@ function MealsSectionHeading({
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <p className={cn(SECTION_HEADING_CLASS, 'min-w-0 truncate')}>{heading}</p>
+      <p className={cn(SECTION_HEADING_CLASS, 'mb-0 min-w-0 truncate')}>{heading}</p>
       <div className="flex min-w-0 shrink-0 items-center gap-1.5">
         <button className={ADD_MEAL_CLASS} onClick={onAdd} type="button">
           <span className={ADD_MEAL_PLUS_CLASS}>
@@ -1424,7 +1424,7 @@ function MealOrderList({
   }
 
   return (
-    <div className="grid gap-2" data-meal-order-list="">
+    <div className="grid gap-1.5" data-meal-order-list="">
       {meals.map((meal, index) => (
         <div
           className={cn(draggingKey === meal.key && 'opacity-70')}
@@ -1503,7 +1503,7 @@ function MealDraftCard({
   }
 
   return (
-    <section className="flex flex-col gap-1.5">
+    <section className="flex flex-col gap-3">
       {slotChrome ? (
         <MealSlotToolbar
           index={index}
@@ -1554,20 +1554,18 @@ function MealDraftCard({
         ref={fileRef}
         type="file"
       />
-      <div className="grid gap-1.5">
+      <div className="flex flex-col gap-1.5">
         <p className={FIELD_LABEL_CLASS}>Название</p>
-        <div className={SLOT_ROW_CLASS}>
-          <div className="md:contents max-md:relative max-md:h-8 max-md:min-w-0 max-md:flex-1" data-ios-13-slot="">
-            <NoraInput
-              className={LINE_INPUT_CLASS}
-              onChange={(event) => onPatch({ title: event.target.value })}
-              placeholder="Название блюда"
-              value={meal.title}
-            />
-          </div>
+        <div className="[--ios-px:1rem] md:contents max-md:relative max-md:h-[2.42rem] max-md:w-full" data-ios-13-slot="">
+          <NoraInput
+            className={TITLE_FIELD_CLASS}
+            onChange={(event) => onPatch({ title: event.target.value })}
+            placeholder="Название блюда"
+            value={meal.title}
+          />
         </div>
       </div>
-      <div className="grid gap-1.5">
+      <div className="flex flex-col gap-1.5">
         <p className={FIELD_LABEL_CLASS}>Ценность</p>
         <div className="grid grid-cols-4 gap-1.5">
           {MACRO_FIELDS.map((field) => (
@@ -1582,7 +1580,7 @@ function MealDraftCard({
           ))}
         </div>
       </div>
-      <div className="grid gap-4">
+      <div className="flex flex-col gap-3">
         <DraftLineList
           addAriaLabel="Добавить ингредиент"
           items={draftLineItems(meal.ingredients)}
@@ -1620,13 +1618,13 @@ function DraftLineList({
   onChange: (items: string[]) => void
 }) {
   return (
-    <div className="grid gap-2" data-draft-line-list={label}>
+    <div className="flex flex-col gap-1.5" data-draft-line-list={label}>
       <p className={SECTION_HEADING_CLASS}>{label}</p>
       {items.map((item, index) => (
         <div className="flex items-center gap-2" key={`${label}-${index}`}>
           <div className={cn(SLOT_ROW_CLASS, 'min-w-0 flex-1')}>
             <span className={MEAL_INDEX_CLASS}>{index + 1}</span>
-            <div className="md:contents max-md:relative max-md:h-8 max-md:min-w-0 max-md:flex-1" data-ios-13-slot="">
+            <div className="md:contents max-md:relative max-md:h-[2.42rem] max-md:min-w-0 max-md:flex-1" data-ios-13-slot="">
               <NoraInput
                 className={LINE_INPUT_CLASS}
                 onChange={(event) => onChange(setDraftLine(items, index, event.target.value))}
@@ -1673,18 +1671,18 @@ function MacroField({
   onChange?: (value: string) => void
 }) {
   return (
-    <label className={cn('grid gap-1', FIELD_CHIP_CLASS, 'px-2 py-2')}>
-      <span className="inline-flex items-center justify-center gap-1 font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
+    <label className={cn('grid gap-1', FIELD_CHIP_CLASS, 'px-2.5 py-2.5')}>
+      <span className="inline-flex items-center justify-center gap-1 font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)]">
         <Icon aria-hidden className={MACRO_ICON_CLASS} strokeWidth={1.75} />
         {label}
       </span>
-      <div className="md:contents max-md:relative max-md:h-8 max-md:w-full" data-ios-13-slot="">
+      <div className="md:contents max-md:relative max-md:h-[2.42rem] max-md:w-full" data-ios-13-slot="">
         <NoraInput
           aria-label={ariaLabel ?? label}
           className={cn(
             FIELD_TYPE_CLASS,
             FIELD_FACE_CLASS,
-            '!h-8 !rounded-[10px] px-1 text-center tabular-nums',
+            '!h-[2.42rem] !rounded-[10px] px-1 text-center tabular-nums',
           )}
           inputMode="decimal"
           onChange={(event) => onChange?.(event.target.value)}

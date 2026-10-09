@@ -192,9 +192,9 @@ export function NoraInput({ className, error, ...props }: NoraInputProps) {
   return (
     <input
       className={cn(
-        "block w-full border-0 px-2 outline-none transition-shadow duration-150",
+        "block w-full border-0 px-3 outline-none transition-shadow duration-150",
         font,
-        controlH,
+        "h-[2.42rem] min-h-[2.42rem] max-h-[2.42rem]",
         radiusMd,
         "bg-[var(--nora-input-bg)] text-[var(--nora-input-text)] placeholder:text-[var(--nora-input-placeholder)]",
         "focus:shadow-[var(--nora-shadow-focus)]",
@@ -337,7 +337,7 @@ export function NoraSelect({
       <SelectTrigger
         className={cn(
           "box-border w-full min-w-0 shadow-none ring-0",
-          "h-[var(--nora-control-h)] min-h-[var(--nora-control-h)] max-h-[var(--nora-control-h)]",
+          "h-[2.42rem] min-h-[2.42rem] max-h-[2.42rem]",
           selectFont,
           radiusMd,
           "bg-[var(--nora-input-bg)] text-[var(--nora-input-text)]",

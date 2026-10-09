@@ -84,6 +84,7 @@ export {
   assignedRationOnDay,
   localDayKey,
   rationMealCreateDrafts,
+  rationPlanDaySlots,
   rationPlanWeekDays,
   weekPlanOptions,
 } from './ration-assignments'

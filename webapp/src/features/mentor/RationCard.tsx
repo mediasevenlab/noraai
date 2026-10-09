@@ -2,11 +2,18 @@ import * as React from 'react'
 import {
   BookmarkIcon,
   CookieIcon,
+  EllipsisIcon,
   PencilIcon,
   ShoppingBagIcon,
   Trash2Icon,
   ZapIcon,
 } from '@/components/icons'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 import { NoraButton, NoraHoverTip, NoraIconButton } from '@/components/nora/primitives'
 import {
@@ -492,6 +499,52 @@ export function RationCard({
                   <ShoppingBagIcon className="size-4" />
                 </NoraIconButton>
               </NoraHoverTip>
+              {onEdit || onDelete ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    aria-label="Ещё"
+                    className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-[var(--nora-radius-md)] border-0 text-[var(--nora-text-secondary)] md:hidden"
+                    data-ration-card-more=""
+                    nativeButton
+                    onClick={(event) => event.stopPropagation()}
+                    onPointerDown={(event) => event.stopPropagation()}
+                  >
+                    <EllipsisIcon aria-hidden className="size-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="account-workspace-menu w-max min-w-0 rounded-[16px]!"
+                    side="bottom"
+                    sideOffset={6}
+                  >
+                    {onEdit ? (
+                      <DropdownMenuItem
+                        className="whitespace-nowrap"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onEdit()
+                        }}
+                      >
+                        <PencilIcon className="size-4" />
+                        Изменить
+                      </DropdownMenuItem>
+                    ) : null}
+                    {onDelete ? (
+                      <DropdownMenuItem
+                        className="whitespace-nowrap"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onDelete()
+                        }}
+                        variant="destructive"
+                      >
+                        <Trash2Icon className="size-4" />
+                        Удалить
+                      </DropdownMenuItem>
+                    ) : null}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
             </div>
           </div>
         </div>

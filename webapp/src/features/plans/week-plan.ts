@@ -15,12 +15,15 @@ import type { SharedRation, SharedRationSnapshot } from '@web-app-demo/contracts
 import {
   assignedRationOnDay,
   localDayKey,
+  rationPlanDaySlots,
   rationPlanWeekDays,
   weekPlanOptions,
   type RationEntry,
 } from '@/features/mentor'
 import type { PlanGoal } from '@/platform/authored-plans'
-import { addLocalDays, dateFromDayKey, PLAN_SLOT_COUNT, startOfLocalDay } from '@/platform/plan-slots'
+import { AUTHORED_PLAN_DAY_COUNT_MAX } from '@web-app-demo/contracts'
+
+import { addLocalDays, dateFromDayKey, startOfLocalDay } from '@/platform/plan-slots'
 
 import type { CatalogPlan } from './plan-catalog'
 
@@ -135,7 +138,7 @@ export function planDayOrdinal(day: Pick<WeekPlanDay, 'short' | 'label'>, fallba
   return hit ? Number(hit[1]) : fallback
 }
 
-export const PLAN_DAY_TAB_SLOTS = 7
+export const PLAN_DAY_TAB_SLOTS = AUTHORED_PLAN_DAY_COUNT_MAX
 
 /** Next authored day count when the mobile plus tab adds an empty day. */
 export function nextPlanDayCount(dayCount: number, occupiedDays = 0) {
@@ -144,7 +147,7 @@ export function nextPlanDayCount(dayCount: number, occupiedDays = 0) {
     Number.isFinite(occupiedDays) ? Math.trunc(occupiedDays) : 0,
     0,
   )
-  return Math.min(PLAN_SLOT_COUNT, current + 1)
+  return Math.min(AUTHORED_PLAN_DAY_COUNT_MAX, current + 1)
 }
 
 export function planDayTabParts(day: Pick<WeekPlanDay, 'short' | 'label'>, index = 0) {
@@ -188,10 +191,10 @@ export function padPlanDaysForEditor(
     byOrdinal.set(planDayOrdinal(day, index + 1), day)
   }
   const maxOrdinal = Math.min(
-    PLAN_SLOT_COUNT,
+    AUTHORED_PLAN_DAY_COUNT_MAX,
     Math.max(days.length, requested, ...byOrdinal.keys()),
   )
-  const weekDays = rationPlanWeekDays(now)
+  const weekDays = rationPlanDaySlots(maxOrdinal, now)
   const padded: WeekPlanDay[] = []
   for (let ordinal = 1; ordinal <= maxOrdinal; ordinal += 1) {
     const existing = byOrdinal.get(ordinal)
@@ -217,7 +220,7 @@ export function removeEmptyPlanDay(
     return days.map((day) => ({ ...day, meals: [...day.meals] }))
   }
   const remaining = days.filter((_, itemIndex) => itemIndex !== index)
-  const weekDays = rationPlanWeekDays(now)
+  const weekDays = rationPlanDaySlots(remaining.length, now)
   return remaining.map((day, slotIndex) => {
     const slot = weekDays[slotIndex]
     if (!slot) return { ...day, meals: [...day.meals] }
@@ -466,6 +469,37 @@ export function rationStampDays(ration: RationEntry): RationEntry[] {
   return days
 }
 
+const MENTOR_MEAL_MARK = 'mentor-meal:'
+
+/** Rebuild mentor ration days from the board, keeping each meal tied to its source row. */
+export function rationDaysFromBoard(
+  ration: RationEntry,
+  days: readonly { meals: readonly { assumptions?: readonly string[] }[] }[],
+): RationEntry[] {
+  const byDay = new Map<number, RationEntry['meals']>()
+  for (const meal of ration.meals) {
+    const dayIndex = meal.dayIndex ?? 0
+    const list = byDay.get(dayIndex) ?? []
+    list.push(meal)
+    byDay.set(dayIndex, list)
+  }
+  return days.map((day) => {
+    const meals = day.meals.flatMap((meal) => {
+      const mark = meal.assumptions?.find((item) => item.startsWith(MENTOR_MEAL_MARK))
+      if (!mark) return []
+      const [dayIndex, mealIndex] = mark.slice(MENTOR_MEAL_MARK.length).split(':')
+      const found = byDay.get(Number(dayIndex))?.[Number(mealIndex)]
+      return found ? [found] : []
+    })
+    return {
+      ...ration,
+      meals,
+      days: 1,
+      mealsPerDay: meals.length,
+    }
+  })
+}
+
 function rationForPlanDay(ration: RationEntry, dayIndex: number): RationEntry | null {
   const meals = ration.meals.filter((meal) => (meal.dayIndex ?? 0) === dayIndex)
   if (meals.length === 0) return null
@@ -497,11 +531,11 @@ export function buildWeekPlanFromRation(input: {
   now?: Date
 }): WeekPlan {
   const now = input.now ?? new Date()
-  const weekDays = rationPlanWeekDays(now)
   const grouped = rationHasLaterDays(input.ration.meals)
   const lastIndex = grouped
     ? Math.max(...input.ration.meals.map((meal) => meal.dayIndex ?? 0))
     : 0
+  const weekDays = rationPlanDaySlots(Math.max(7, lastIndex + 1), now)
   const slots: WeekPlanDay[] = weekDays.map((day, index) => {
     const ration = grouped
       ? index <= lastIndex
@@ -551,7 +585,7 @@ export function buildWeekPlanFromCatalog(input: {
   now?: Date
 }): WeekPlan {
   const now = input.now ?? new Date()
-  const weekDays = rationPlanWeekDays(now)
+  const weekDays = rationPlanDaySlots(Math.max(7, input.plan.days.length), now)
   const slots: WeekPlanDay[] = weekDays.map((day, index) => {
     const ration = input.plan.days[index] ?? null
     const meals = ration ? previewMealsFromRation(ration, day.date, input.plan.id) : []
@@ -640,8 +674,8 @@ export function buildWeekPlanFromSharedRation(input: {
   now?: Date
 }): WeekPlan {
   const now = input.now ?? new Date()
-  const weekDays = rationPlanWeekDays(now)
   const rationDays = rationDaysFromSharedRation(input.ration)
+  const weekDays = rationPlanDaySlots(Math.max(7, rationDays.length), now)
   const slots: WeekPlanDay[] = weekDays.map((day, index) => {
     const ration = rationDays[index] ?? null
     const filled = Boolean(ration && ration.meals.length > 0)
@@ -702,6 +736,7 @@ function previewMealsFromRation(ration: RationEntry, day: Date, planId: string):
       carbs: meal.carbs,
       image: meal.image,
       clientComment: steps || undefined,
+      assumptions: [`${MENTOR_MEAL_MARK}${meal.dayIndex ?? 0}:${index}`],
       fromApi: false,
     }
   })

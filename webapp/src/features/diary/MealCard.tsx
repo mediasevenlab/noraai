@@ -5,6 +5,7 @@ import {
   ChevronRightIcon,
   CircleCheckIcon,
   CircleIcon,
+  EllipsisIcon,
   HeartIcon,
   PlusIcon,
   Share2Icon,
@@ -12,6 +13,12 @@ import {
   Trash2Icon,
   ZapIcon,
 } from '@/components/icons'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 import {
   productCardAuthorAnchorClass,
@@ -555,6 +562,7 @@ function CardActions({
   canShare = true,
   canSave = true,
   hideFooterShare = false,
+  hideShareOnPhone = false,
   saveDisabled = false,
   savePressed = false,
   sharePressed = false,
@@ -566,6 +574,7 @@ function CardActions({
   canSave?: boolean
   canShare?: boolean
   hideFooterShare?: boolean
+  hideShareOnPhone?: boolean
   saveDisabled?: boolean
   savePressed?: boolean
   sharePressed?: boolean
@@ -577,19 +586,21 @@ function CardActions({
   return (
     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
       {hideFooterShare ? null : (
-        <NoraHoverTip label={shareLabel}>
-          <NoraIconButton
-            aria-label={shareLabel}
-            active={shared}
-            className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
-            data-demo-pressed={sharePressed ? '' : undefined}
-            data-slot="meal-card-share"
-            disabled={!canShare}
-            onClick={onShare}
-          >
-            <Share2Icon className="size-4" />
-          </NoraIconButton>
-        </NoraHoverTip>
+        <span className={cn('inline-flex', hideShareOnPhone && 'max-md:hidden')}>
+          <NoraHoverTip label={shareLabel}>
+            <NoraIconButton
+              aria-label={shareLabel}
+              active={shared}
+              className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
+              data-demo-pressed={sharePressed ? '' : undefined}
+              data-slot="meal-card-share"
+              disabled={!canShare}
+              onClick={onShare}
+            >
+              <Share2Icon className="size-4" />
+            </NoraIconButton>
+          </NoraHoverTip>
+        </span>
       )}
       {canSave ? (
         <NoraHoverTip label={saveLabel}>
@@ -756,6 +767,66 @@ export function RationPlanDoneButton({
   )
 }
 
+function MealCardMoreMenu({
+  onDelete,
+  onShare,
+  shareDisabled = false,
+  shared = false,
+}: {
+  onDelete?: () => void
+  onShare?: () => void
+  shareDisabled?: boolean
+  shared?: boolean
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label="Ещё"
+        className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-[var(--nora-radius-md)] border-0 text-[var(--nora-text-secondary)] md:hidden"
+        data-meal-card-more=""
+        nativeButton
+        onClick={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <EllipsisIcon aria-hidden className="size-4" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="account-workspace-menu w-max min-w-0 rounded-[16px]!"
+        side="bottom"
+        sideOffset={6}
+      >
+        {onShare ? (
+          <DropdownMenuItem
+            className="whitespace-nowrap"
+            disabled={shareDisabled}
+            onClick={(event) => {
+              event.stopPropagation()
+              onShare()
+            }}
+          >
+            <Share2Icon className="size-4" />
+            {shared ? 'Скрыть из ленты' : 'Поделиться'}
+          </DropdownMenuItem>
+        ) : null}
+        {onDelete ? (
+          <DropdownMenuItem
+            className="whitespace-nowrap"
+            onClick={(event) => {
+              event.stopPropagation()
+              onDelete()
+            }}
+            variant="destructive"
+          >
+            <Trash2Icon className="size-4" />
+            Удалить
+          </DropdownMenuItem>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 export function MealCard({
   meal,
   images,
@@ -772,6 +843,7 @@ export function MealCard({
   onOpen,
   allowShare = false,
   hideFooterShare = false,
+  menuOpen,
   showSave = true,
   savePressed = false,
   sharePressed = false,
@@ -856,6 +928,17 @@ export function MealCard({
     const timer = window.setTimeout(() => setUnreadMarkMounted(false), 700)
     return () => window.clearTimeout(timer)
   }, [unread, unreadMarkMounted])
+  const phoneDelete = menuOpen === undefined && !readOnly && Boolean(onDelete)
+  const phoneShare = menuOpen === undefined && !hideFooterShare
+  const mealCardMore =
+    phoneDelete || phoneShare ? (
+      <MealCardMoreMenu
+        onDelete={phoneDelete ? onDelete : undefined}
+        onShare={phoneShare ? onShare : undefined}
+        shareDisabled={!canShare}
+        shared={Boolean(meal.shared)}
+      />
+    ) : null
 
   return (
     <article
@@ -1072,21 +1155,23 @@ export function MealCard({
                   />
                 ) : null}
                 {hideFooterShare || !canShare ? null : (
-                  <NoraHoverTip label={meal.shared ? 'Скрыть из ленты' : 'Поделиться'}>
-                    <NoraIconButton
-                      aria-label={meal.shared ? 'Скрыть из ленты' : 'Поделиться'}
-                      active={Boolean(meal.shared)}
-                      className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
-                      data-demo-pressed={sharePressed ? '' : undefined}
-                      data-slot="meal-card-share"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        onShare()
-                      }}
-                    >
-                      <Share2Icon className="size-4" />
-                    </NoraIconButton>
-                  </NoraHoverTip>
+                  <span className={cn('inline-flex', phoneShare && 'max-md:hidden')}>
+                    <NoraHoverTip label={meal.shared ? 'Скрыть из ленты' : 'Поделиться'}>
+                      <NoraIconButton
+                        aria-label={meal.shared ? 'Скрыть из ленты' : 'Поделиться'}
+                        active={Boolean(meal.shared)}
+                        className="nora-press-grow size-6! shrink-0 !bg-transparent shadow-none hover:!bg-transparent hover:text-[var(--nora-text)] active:!bg-transparent [&_svg]:size-4"
+                        data-demo-pressed={sharePressed ? '' : undefined}
+                        data-slot="meal-card-share"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onShare()
+                        }}
+                      >
+                        <Share2Icon className="size-4" />
+                      </NoraIconButton>
+                    </NoraHoverTip>
+                  </span>
                 )}
                 {showSave ? (
                 <NoraHoverTip label={saved ? 'Убрать' : 'Сохранить'}>
@@ -1119,6 +1204,7 @@ export function MealCard({
                     onToggle={onToggleLike}
                   />
                 ) : null}
+                {mealCardMore}
               </div>
             </>
           ) : (
@@ -1149,6 +1235,7 @@ export function MealCard({
                   canShare={canShare}
                   saveDisabled={favoriteDisabled}
                   hideFooterShare={hideFooterShare}
+                  hideShareOnPhone={phoneShare}
                   savePressed={savePressed}
                   sharePressed={sharePressed}
                   saved={saved}
@@ -1156,6 +1243,7 @@ export function MealCard({
                   onToggleSave={onToggleSave}
                   onShare={onShare}
                 />
+                {mealCardMore}
               </div>
             </>
           )}

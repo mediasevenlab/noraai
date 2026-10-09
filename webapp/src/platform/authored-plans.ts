@@ -1,6 +1,5 @@
-import { rationGoalSchema } from '@web-app-demo/contracts'
+import { AUTHORED_PLAN_DAY_COUNT_MAX, rationGoalSchema } from '@web-app-demo/contracts'
 
-import { PLAN_SLOT_COUNT } from '@/platform/plan-slots'
 import type { SavedAccountScope } from '@/platform/saved-ids'
 
 export const AUTHORED_PLAN_ID_PREFIX = 'plan_'
@@ -53,7 +52,7 @@ export function parsePlanGoal(value: unknown): PlanGoal | null {
 export function parseAuthoredPlanDayCount(value: unknown): number | undefined {
   if (typeof value !== 'number' || !Number.isFinite(value)) return undefined
   const count = Math.trunc(value)
-  if (count < 1 || count > PLAN_SLOT_COUNT) return undefined
+  if (count < 1 || count > AUTHORED_PLAN_DAY_COUNT_MAX) return undefined
   return count
 }
 

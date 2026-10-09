@@ -25,6 +25,7 @@ import {
   emptyRationDraft,
   isAuthoredPlanId,
   mentorRationToEntry,
+  rationPlanDaySlots,
   rationPlanWeekDays,
   RationEditorDialog,
   useCreateMentorPlanMutation,
@@ -76,7 +77,6 @@ import {
   MOBILE_DOCK_FAB_ICON_CLASS,
   MOBILE_DOCK_PILL_CLASS,
   PLAN_MOBILE_DOCK_ACTION_ID,
-  PLAN_MOBILE_DOCK_EDIT_ID,
   PLAN_MOBILE_DOCK_EXTRA_ID,
 } from './mobile-dock'
 import {
@@ -105,6 +105,8 @@ import { useSyncedPlanLibrary } from './use-plan-library'
 import { PlanToolbar, visiblePlanCards, partitionPlanCards, PlanGroupHeading, PLAN_GROUP_ICONS, planToolbarPillClass, type PlanFeedTab, type PlanLibrary } from './PlanToolbar'
 import { useCurrentWeekPlan } from './use-current-week-plan'
 import { WeekPlanCard } from './WeekPlanCard'
+import { AUTHORED_PLAN_DAY_COUNT_MAX } from '@web-app-demo/contracts'
+
 import { buildWeekPlan, buildWeekPlanFromCatalog, buildWeekPlanFromRation, buildWeekPlanFromSharedRation, formatPlanActiveRange, nextPlanDayCount, padPlanDaysForEditor, planOccupancyMarks, rationDaysFromSharedRation, rationStampDays, removeEmptyPlanDay, sharedRationSnapshotFromWeekPlan, type WeekPlan } from './week-plan'
 
 export function PlanPage({
@@ -217,31 +219,16 @@ export function PlanPage({
   )
   const assignedCards = React.useMemo(
     () =>
-      (assignment.data?.authoredPlans ?? []).map((item) => {
-        const ration = mentorRationToEntry(item)
-        const stamped = mealsForWeekPlan(meals, item.id, weekPlan.id)
-        if (stamped.length > 0) {
-          return buildWeekPlan({
-            completedIds,
-            coverImage: item.image,
-            description: item.description,
-            detachedIds,
-            goal: parsePlanGoal(item.goal),
-            meals,
-            planId: item.id,
-            rations,
-            title: item.title,
-          })
-        }
-        return buildWeekPlanFromRation({
+      (assignment.data?.authoredPlans ?? []).map((item) =>
+        buildWeekPlanFromRation({
           coverImage: item.image,
           goal: parsePlanGoal(item.goal),
           planId: item.id,
-          ration,
+          ration: mentorRationToEntry(item),
           title: item.title,
-        })
-      }),
-    [assignment.data, completedIds, detachedIds, meals, rations, weekPlan.id],
+        }),
+      ),
+    [assignment.data],
   )
   const catalogCards = React.useMemo(
     () => PLAN_CATALOG.map((item) => buildWeekPlanFromCatalog({ plan: item })),
@@ -887,20 +874,6 @@ export function CurrentPlanPage({
     if (catalog) return buildWeekPlanFromCatalog({ plan: catalog })
     const assigned = assignment.data?.authoredPlans.find((item) => item.id === resolvedPlanId)
     if (!assigned) return null
-    const stamped = mealsForWeekPlan(meals, assigned.id, weekPlan.id)
-    if (stamped.length > 0) {
-      return buildWeekPlan({
-        completedIds,
-        coverImage: assigned.image,
-        description: assigned.description,
-        detachedIds,
-        goal: parsePlanGoal(assigned.goal),
-        meals,
-        planId: assigned.id,
-        rations,
-        title: assigned.title,
-      })
-    }
     return buildWeekPlanFromRation({
       coverImage: assigned.image,
       goal: parsePlanGoal(assigned.goal),
@@ -938,20 +911,20 @@ export function CurrentPlanPage({
     return applyPlanMealLayout(scheduledDays, readPlanMealLayout(savedScope, plan.id))
   }, [layoutRevision, plan, savedScope.email, savedScope.userId, scheduledDays])
   const editorDayCount = React.useMemo(() => {
-    if (!plan) return 0
+    if (!plan || isAssignedPlanId(plan.id)) return 0
     const stored = authored.find((item) => item.id === plan.id)?.dayCount ?? 0
     const layoutCount = planLayoutDayCount(
       readPlanMealLayout(savedScope, plan.id),
-      rationPlanWeekDays().map((day) => day.dayKey),
+      rationPlanDaySlots(AUTHORED_PLAN_DAY_COUNT_MAX).map((day) => day.dayKey),
     )
     return Math.max(stored, layoutCount, feedPreview ? sharedRation?.days ?? 0 : 0)
   }, [authored, feedPreview, layoutRevision, plan, savedScope.email, savedScope.userId, sharedRation?.days])
   const catalogView = Boolean(catalog)
-  const canMutateDays = Boolean(plan && !catalogView && !feedPreview)
+  const canMutateDays = Boolean(
+    plan && !catalogView && !feedPreview && !isAssignedPlanId(plan.id),
+  )
   const canEdit = Boolean(plan && !catalogView && !feedPreview && !isAssignedPlanId(plan.id))
   const [dockExtra, setDockExtra] = React.useState<HTMLElement | null>(null)
-  const [dockEdit, setDockEdit] = React.useState<HTMLElement | null>(null)
-  const [movingMeals, setMovingMeals] = React.useState(false)
   React.useLayoutEffect(() => {
     if (showMobileBackDock || !(catalogView || feedPreview)) {
       setDockExtra(null)
@@ -959,13 +932,6 @@ export function CurrentPlanPage({
     }
     setDockExtra(document.getElementById(PLAN_MOBILE_DOCK_EXTRA_ID))
   }, [catalogView, feedPreview, planId, sharedRationId, showMobileBackDock])
-  React.useLayoutEffect(() => {
-    if (showMobileBackDock) {
-      setDockEdit(null)
-      return
-    }
-    setDockEdit(document.getElementById(PLAN_MOBILE_DOCK_EDIT_ID))
-  }, [planId, sharedRationId, showMobileBackDock])
   const loadingPlan = isPending || Boolean(sharedRationId && sharedRationsQuery.isPending)
   const loadError = isError || Boolean(sharedRationId && sharedRationsQuery.isError)
   const backListLabel = sharedRationId ? 'К ленте' : 'К планам'
@@ -1221,18 +1187,6 @@ export function CurrentPlanPage({
       Изменить
     </button>
   ) : null
-  const mobileEditButton = canEdit ? (
-    <button
-      className={cn(MOBILE_DOCK_PILL_CLASS, 'disabled:opacity-100')}
-      data-plan-outline-open=""
-      disabled={movingMeals}
-      onClick={() => openEditor()}
-      type="button"
-    >
-      <PencilIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_CLASS} strokeWidth={1.75} />
-      Изменить
-    </button>
-  ) : null
 
   async function saveOutline(next: {
     title: string
@@ -1317,9 +1271,9 @@ export function CurrentPlanPage({
       }
       facts={headerFacts}
       coverImage={plan?.coverImage}
-      onEdit={canEdit ? openEditor : undefined}
       showHeaderOnMobile
       title={plan?.title ?? 'План'}
+      onEdit={canEdit ? () => openEditor() : undefined}
     >
       {loadError ? (
         <ProductFeedEmpty
@@ -1396,11 +1350,10 @@ export function CurrentPlanPage({
             layoutRevision={layoutRevision}
             onAddEmptyDay={canMutateDays ? addEmptyDay : undefined}
             onDetachPlanMeal={detachPlanMeal}
-            onPickingChange={setMovingMeals}
             onRemoveEmptyDay={canMutateDays ? removeEmptyDay : undefined}
             planId={plan.id}
             pickIntoMentorPlans={auth.user?.role === 'mentor' && feedPreview}
-            readOnly={catalogView || feedPreview}
+            readOnly={catalogView || feedPreview || isAssignedPlanId(plan.id)}
           />
         </>
       )}
@@ -1415,12 +1368,10 @@ export function CurrentPlanPage({
         >
           <ArrowLeftIcon aria-hidden className={MOBILE_DOCK_FAB_ICON_CLASS} strokeWidth={1.75} />
         </button>
-        {mobileEditButton}
         {catalogMineButton}
       </div>
     ) : (
       <>
-        {mobileEditButton && dockEdit ? createPortal(mobileEditButton, dockEdit) : null}
         {catalogMineButton && dockExtra ? createPortal(catalogMineButton, dockExtra) : null}
       </>
     )}

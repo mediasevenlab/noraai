@@ -62,15 +62,24 @@ const FIELD_TYPE_CLASS = cn(
   'font-[family-name:var(--nora-font)] !text-[13px] !font-normal !leading-5',
   'text-[var(--nora-text)] placeholder:font-light placeholder:font-[300] placeholder:text-[var(--nora-input-placeholder)]',
 )
+const FIELD_COPY_CLASS = cn(
+  'font-[family-name:var(--nora-font)] !text-[13px] !font-light !leading-5',
+  'text-[var(--nora-text-secondary)] dark:text-[color-mix(in_srgb,var(--nora-text)_42%,var(--nora-text-secondary))]',
+  'placeholder:font-light placeholder:font-[300] placeholder:text-[var(--nora-input-placeholder)]',
+)
 const FIELD_CHIP_CLASS = 'rounded-[14px] !bg-[var(--nora-inset)]'
 const TITLE_FIELD_CLASS = cn(
   FIELD_TYPE_CLASS,
-  '!bg-[var(--nora-inset)] w-full px-3 !py-0 !h-8 !min-h-8 !max-h-8 !rounded-[10px]',
+  '!bg-[var(--nora-inset)] w-full px-4 !py-0 !h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem] !rounded-[var(--nora-radius-md,8px)]',
+)
+const RATION_TITLE_FIELD_CLASS = cn(
+  FIELD_COPY_CLASS,
+  '!bg-[var(--nora-inset)] w-full px-4 !py-0 !h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem] !rounded-[var(--nora-radius-md,8px)]',
 )
 const FIELD_LABEL_CLASS =
-  'font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
+  'mb-1.5 pl-4 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
 const SECTION_HEADING_CLASS =
-  'font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
+  'mb-1.5 pl-4 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
 const SAVE_BUTTON_CLASS = cn(
   'nora-press-grow inline-flex h-10 min-h-10 max-h-10 w-full items-center justify-center rounded-[14px] border-0 px-4',
   'font-[family-name:var(--nora-font)] text-[13px] font-medium leading-none',
@@ -78,17 +87,17 @@ const SAVE_BUTTON_CLASS = cn(
 )
 const LINE_INPUT_CLASS = cn(
   FIELD_TYPE_CLASS,
-  '!bg-[var(--nora-panel)] !h-8 !min-h-8 !max-h-8 min-w-0 flex-1 !rounded-full !px-2.5',
+  '!bg-[var(--nora-panel)] !h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem] min-w-0 flex-1 !rounded-full !px-2.5',
 )
 const COVER_CLASS = cn(
-  'relative aspect-[16/9] min-h-[7.5rem] w-full overflow-hidden rounded-[14px] bg-[var(--nora-inset)]',
+  'relative aspect-[16/9] min-h-[7.5rem] w-full overflow-hidden rounded-[16px] bg-[var(--nora-inset)]',
 )
 const COVER_CHIP_CLASS = cn(
   'pointer-events-none absolute top-2 right-2 z-[1] inline-flex size-8 items-center justify-center rounded-full',
   'bg-[color-mix(in_srgb,var(--nora-text)_55%,transparent)] text-[var(--nora-panel)]',
 )
 const SLOT_ROW_CLASS = cn(
-  'ios-glass-glare-soft flex min-h-12 items-center gap-2 rounded-[14px] px-2 py-2',
+  'ios-glass-glare-soft flex min-h-12 items-center gap-2.5 rounded-[14px] pl-2.5 pr-2.5',
   'bg-[var(--nora-inset)]',
 )
 const MEAL_INDEX_CLASS = cn(
@@ -353,9 +362,9 @@ export function AuthMentorRationCreateSheet({
         value={tabValue}
       >
         <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollRef}>
-          <div className="flex flex-col gap-4 px-3 pt-3 pb-8 sm:px-4">
+          <div className="flex flex-col gap-3 px-3 pt-3 pb-8 sm:px-4">
             <TabsContent className="mt-0" data-ration-tab="description" value="description">
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3">
                 <div className={COVER_CLASS}>
                   <img
                     alt=""
@@ -366,11 +375,11 @@ export function AuthMentorRationCreateSheet({
                     <ImagePlusIcon aria-hidden className="size-4" strokeWidth={1.75} />
                   </span>
                 </div>
-                <label className="grid min-w-0 gap-1" data-mentor-create-focus={state.focus === 'title' ? '' : undefined}>
+                <label className="flex min-w-0 flex-col gap-1.5" data-mentor-create-focus={state.focus === 'title' ? '' : undefined}>
                   <span className={FIELD_LABEL_CLASS}>Название</span>
-                  <div className="md:contents max-md:relative max-md:h-8 max-md:w-full" data-ios-13-slot="">
+                  <div className="[--ios-px:1rem] md:contents max-md:relative max-md:h-[2.42rem] max-md:w-full" data-ios-13-slot="">
                     <NoraInput
-                      className={TITLE_FIELD_CLASS}
+                      className={RATION_TITLE_FIELD_CLASS}
                       onChange={() => undefined}
                       placeholder="Например, Офис без срывов"
                       readOnly
@@ -378,11 +387,11 @@ export function AuthMentorRationCreateSheet({
                     />
                   </div>
                 </label>
-                <label className="grid gap-1" data-mentor-create-focus={state.focus === 'description' ? '' : undefined}>
+                <label className="flex flex-col gap-1.5" data-mentor-create-focus={state.focus === 'description' ? '' : undefined}>
                   <span className={FIELD_LABEL_CLASS}>Описание</span>
-                  <div className="[--ios-min:6rem] md:contents max-md:block max-md:w-full" data-ios-13-slot="area">
+                  <div className="[--ios-min:0px] [--ios-px:1rem] [--ios-py:0.75rem] md:contents max-md:block max-md:w-full" data-ios-13-slot="area">
                     <NoraTextarea
-                      className={cn(FIELD_TYPE_CLASS, FIELD_CHIP_CLASS, 'min-h-24 w-full px-3 py-2.5')}
+                      className={cn(FIELD_COPY_CLASS, FIELD_CHIP_CLASS, 'min-h-0 w-full resize-none px-4 py-3 [field-sizing:content]')}
                       onChange={() => undefined}
                       placeholder="Коротко, что в плане"
                       readOnly
@@ -390,7 +399,7 @@ export function AuthMentorRationCreateSheet({
                     />
                   </div>
                 </label>
-                <div className="grid gap-2">
+                <div className="flex flex-col gap-1.5">
                   <p className={SECTION_HEADING_CLASS}>Добавленные дни</p>
                   {DEMO_PLAN_DAYS.map((day) => {
                     const count = day === 0 ? titledMealCount : 0
@@ -529,7 +538,7 @@ function DraftLine({
         data-mentor-create-focus={focused ? '' : undefined}
       >
         <span className={MEAL_INDEX_CLASS}>{index + 1}</span>
-        <div className="md:contents max-md:relative max-md:h-8 max-md:min-w-0 max-md:flex-1" data-ios-13-slot="">
+        <div className="md:contents max-md:relative max-md:h-[2.42rem] max-md:min-w-0 max-md:flex-1" data-ios-13-slot="">
           <NoraInput
             className={LINE_INPUT_CLASS}
             onChange={() => undefined}
@@ -557,7 +566,7 @@ function MealDraftFields({
   meal: AuthMentorCreateMealProgress
 }) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <div className={COVER_CLASS}>
         {meal.image ? (
           <img alt="" className="absolute inset-0 size-full object-cover" src={meal.image} />
@@ -571,32 +580,30 @@ function MealDraftFields({
           <ImagePlusIcon aria-hidden className="size-4" strokeWidth={1.75} />
         </span>
       </div>
-      <div className="grid gap-1.5" data-mentor-create-focus={focus === 'meal-title' ? '' : undefined}>
+      <div className="flex flex-col gap-1.5" data-mentor-create-focus={focus === 'meal-title' ? '' : undefined}>
         <p className={FIELD_LABEL_CLASS}>Название</p>
-        <div className={SLOT_ROW_CLASS}>
-          <div className="md:contents max-md:relative max-md:h-8 max-md:min-w-0 max-md:flex-1" data-ios-13-slot="">
-            <NoraInput
-              className={LINE_INPUT_CLASS}
-              onChange={() => undefined}
-              placeholder="Название блюда"
-              readOnly
-              value={meal.title}
-            />
-          </div>
+        <div className="[--ios-px:1rem] md:contents max-md:relative max-md:h-[2.42rem] max-md:w-full" data-ios-13-slot="">
+          <NoraInput
+            className={TITLE_FIELD_CLASS}
+            onChange={() => undefined}
+            placeholder="Название блюда"
+            readOnly
+            value={meal.title}
+          />
         </div>
       </div>
-      <div className="grid gap-1.5" data-mentor-create-focus={focus === 'macros' ? '' : undefined}>
+      <div className="flex flex-col gap-1.5" data-mentor-create-focus={focus === 'macros' ? '' : undefined}>
         <p className={FIELD_LABEL_CLASS}>Ценность</p>
         <div className="grid grid-cols-4 gap-1.5">
           {MACRO_FIELDS.map((field) => (
-            <label className={cn('grid gap-1', FIELD_CHIP_CLASS, 'px-2 py-2')} key={field.key}>
-              <span className="inline-flex items-center justify-center gap-1 font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
+            <label className={cn('grid gap-1', FIELD_CHIP_CLASS, 'px-2.5 py-2.5')} key={field.key}>
+              <span className="inline-flex items-center justify-center gap-1 font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)]">
                 <field.icon className="size-[13px] shrink-0" strokeWidth={1.75} />
                 {field.label}
               </span>
-              <div className="md:contents max-md:relative max-md:h-8 max-md:w-full" data-ios-13-slot="">
+              <div className="md:contents max-md:relative max-md:h-[2.42rem] max-md:w-full" data-ios-13-slot="">
                 <NoraInput
-                  className={cn(FIELD_TYPE_CLASS, '!h-8 !rounded-[10px] bg-[var(--nora-panel)] px-1 text-center tabular-nums')}
+                  className={cn(FIELD_TYPE_CLASS, '!h-[2.42rem] !rounded-[10px] bg-[var(--nora-panel)] px-1 text-center tabular-nums')}
                   onChange={() => undefined}
                   readOnly
                   value={meal.macros[field.key]}
@@ -606,8 +613,8 @@ function MealDraftFields({
           ))}
         </div>
       </div>
-      <div className="grid gap-4">
-        <div className="grid gap-2" data-draft-line-list="Ингредиенты">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1.5" data-draft-line-list="Ингредиенты">
           <p className={SECTION_HEADING_CLASS}>Ингредиенты</p>
           {(meal.ingredients.length > 0 ? meal.ingredients : ['']).map((item, lineIndex) => (
             <DraftLine
@@ -619,7 +626,7 @@ function MealDraftFields({
             />
           ))}
         </div>
-        <div className="grid gap-2" data-draft-line-list="Шаги">
+        <div className="flex flex-col gap-1.5" data-draft-line-list="Шаги">
           <p className={SECTION_HEADING_CLASS}>Шаги</p>
           {(meal.steps.length > 0 ? meal.steps : ['']).map((item, lineIndex) => (
             <DraftLine

@@ -184,9 +184,9 @@ export const questionnaireResponseSchema = z
 export const rationGoalSchema = z.enum(['Похудение', 'Набор', 'Поддержание', 'Здоровье'])
 export const rationMealSlotSchema = z.enum(['Завтрак', 'Обед', 'Ужин', 'Перекус'])
 
-/** A mentor plan can hold a full week of meals, same ceiling as a shared ration. */
+/** A mentor plan can hold up to a month of days. Shared rations use the same ceiling. */
 export const MENTOR_RATION_MEAL_LIMIT = 80
-export const AUTHORED_PLAN_DAY_COUNT_MAX = 7
+export const AUTHORED_PLAN_DAY_COUNT_MAX = 30
 
 export const mentorRationMealSchema = z
   .object({

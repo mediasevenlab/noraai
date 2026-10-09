@@ -73,11 +73,13 @@ function startOfMondayWeek(now: Date) {
   return date
 }
 
-/** Current local week, Monday first. */
-export function rationPlanWeekDays(now = new Date()): RationPlanWeekDay[] {
+/** Consecutive plan days from this week's Monday. Day 1 is Monday; day 8 is the next Monday. */
+export function rationPlanDaySlots(count: number, now = new Date()): RationPlanWeekDay[] {
+  const total = Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0
+  if (total === 0) return []
   const monday = startOfMondayWeek(now)
   const todayKey = localDayKey(now)
-  return WEEKDAY_PLAN.map((_, index) => {
+  return Array.from({ length: total }, (_, index) => {
     const date = new Date(monday)
     date.setDate(monday.getDate() + index)
     return {
@@ -88,6 +90,11 @@ export function rationPlanWeekDays(now = new Date()): RationPlanWeekDay[] {
       isToday: localDayKey(date) === todayKey,
     }
   })
+}
+
+/** Current local week, Monday first. */
+export function rationPlanWeekDays(now = new Date()): RationPlanWeekDay[] {
+  return rationPlanDaySlots(WEEKDAY_PLAN.length, now)
 }
 
 export type WeekPlanOption = {

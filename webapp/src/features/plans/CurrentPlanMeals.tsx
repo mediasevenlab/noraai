@@ -72,8 +72,8 @@ import { mergeFavoriteIds } from '@/platform/saved-ids'
 
 import { defaultPlanDayKey, filledPlanBoardDays, mobilePlanDayTabs, padPlanDaysForEditor, PLAN_DAY_TAB_SLOTS, planDayTabParts, type WeekPlanDay } from './week-plan'
 import {
-  MOBILE_DOCK_FAB_CLASS,
   MOBILE_DOCK_FAB_ICON_CLASS,
+  MOBILE_DOCK_PILL_CLASS,
   PLAN_MOBILE_DOCK_MOVE_ID,
 } from './mobile-dock'
 import {
@@ -97,7 +97,9 @@ const PLAN_DAY_BADGE_CLASS =
 const PLAN_DAY_TAB_CLASS =
   'nora-press-grow relative flex h-[4.75rem] flex-col items-center justify-between rounded-full bg-[var(--nora-inset)] px-1 pb-2 pt-2.5 outline-none focus-visible:shadow-[var(--nora-shadow-focus)]'
 const PLAN_DAY_TAB_SELECTED_CLASS = 'bg-[#2C2C2E]'
-const PLAN_DAY_TAB_SIZE_CLASS = 'w-14 shrink-0'
+/** Capsule center lines up with the header info button: bar padding plus the 32px mark. */
+const PLAN_DAY_TAB_SIZE_CLASS =
+  'w-[3.25rem] min-w-[3.25rem] max-w-[3.25rem] shrink-0 grow-0'
 
 function pickerDaysFromPlan(days: readonly WeekPlanDay[], dayCount = 0): FeedPlanWeekDay[] {
   return padPlanDaysForEditor(days, new Date(), dayCount).map((day, index) => {
@@ -128,6 +130,7 @@ export function CurrentPlanMeals({
   readOnly = false,
   canReorder,
   layoutRevision = 0,
+  onCommitDays,
 }: {
   completedIds: ReadonlySet<string>
   dayCount?: number
@@ -142,6 +145,8 @@ export function CurrentPlanMeals({
   readOnly?: boolean
   canReorder?: boolean
   layoutRevision?: number
+  /** Persist the board on the server instead of a local layout. */
+  onCommitDays?: (days: readonly WeekPlanDay[]) => void | Promise<void>
 }) {
   const auth = useAuth()
   const mealDialogDismissLocked = useMealDialogDismissLocked()
@@ -168,9 +173,10 @@ export function CurrentPlanMeals({
     () => padPlanDaysForEditor(days, new Date(), dayCount),
     [dayCount, days],
   )
+  const storeLayout = allowReorder && !onCommitDays
   const appliedDays = React.useMemo(
-    () => applyPlanMealLayout(paddedDays, layout),
-    [layout, paddedDays],
+    () => (storeLayout ? applyPlanMealLayout(paddedDays, layout) : paddedDays),
+    [layout, paddedDays, storeLayout],
   )
   const [previewDays, setPreviewDays] = React.useState<WeekPlanDay[] | null>(null)
   const boardDays = previewDays ?? appliedDays
@@ -260,13 +266,37 @@ export function CurrentPlanMeals({
     return () => onPickingChange?.(false)
   }, [onPickingChange])
 
+  const onCommitDaysRef = React.useRef(onCommitDays)
+  onCommitDaysRef.current = onCommitDays
+  const persistedPreview = React.useRef<WeekPlanDay[] | null>(null)
+  const commitToken = React.useRef(0)
   React.useEffect(() => {
     if (dragging || !previewDays) return
-    const next = layoutFromDays(previewDays)
-    setLayout(next)
-    if (planId) writePlanMealLayout(savedScope, planId, next)
+    if (persistedPreview.current === previewDays) return
+    persistedPreview.current = previewDays
+    const commit = onCommitDaysRef.current
+    if (commit) {
+      const token = ++commitToken.current
+      void Promise.resolve(commit(previewDays)).catch(() => {
+        if (commitToken.current !== token) return
+        persistedPreview.current = null
+        setPreviewDays(null)
+      })
+      return
+    }
+    const stored = layoutFromDays(previewDays)
+    setLayout(stored)
+    if (planId) writePlanMealLayout(savedScope, planId, stored)
+    persistedPreview.current = null
     setPreviewDays(null)
   }, [dragging, planId, previewDays, savedScope.email, savedScope.userId])
+  const daysSignature = days
+    .map((day) => `${day.dayKey}:${day.meals.map((meal) => meal.id).join(',')}`)
+    .join('|')
+  React.useEffect(() => {
+    persistedPreview.current = null
+    setPreviewDays(null)
+  }, [daysSignature])
 
   React.useEffect(() => {
     if (!pendingSelectLastDay.current) return
@@ -518,10 +548,7 @@ export function CurrentPlanMeals({
   }
 
   function commitDays(next: WeekPlanDay[]) {
-    const stored = layoutFromDays(next)
-    setLayout(stored)
-    if (planId) writePlanMealLayout(savedScope, planId, stored)
-    setPreviewDays(null)
+    setPreviewDays(next)
   }
 
   function movePickedTo(dayKey: string) {
@@ -706,14 +733,6 @@ export function CurrentPlanMeals({
   return (
     <>
       <div className="flex flex-col gap-3 md:hidden">
-        {picking ? (
-          <p
-            className={cn(noraPageDescriptionClass, 'max-w-none whitespace-pre-line')}
-            data-plan-move-hint=""
-          >
-            {PLAN_MEALS_MOVE_HINT}
-          </p>
-        ) : null}
         <div
           aria-label="Дни плана"
           className="no-scrollbar flex w-full gap-1.5 overflow-x-auto overscroll-x-contain"
@@ -723,7 +742,7 @@ export function CurrentPlanMeals({
           {canAddEmptyDay ? (
             <button
               aria-label="Добавить день"
-              className={cn(PLAN_DAY_TAB_CLASS, 'w-12 shrink-0')}
+              className={cn(PLAN_DAY_TAB_CLASS, PLAN_DAY_TAB_SIZE_CLASS)}
               data-plan-add-day=""
               disabled={tabDays.length >= PLAN_DAY_TAB_SLOTS}
               onClick={() => {
@@ -789,7 +808,7 @@ export function CurrentPlanMeals({
                     <span
                       className={cn(
                         'flex size-7 items-center justify-center rounded-full text-[13px] font-semibold leading-none tabular-nums',
-                        active
+                        active && !picking
                           ? 'bg-[var(--nora-tint)] text-white'
                           : 'bg-[var(--nora-panel)] text-[var(--nora-text)]',
                       )}
@@ -801,6 +820,14 @@ export function CurrentPlanMeals({
               )
             })}
         </div>
+        {picking ? (
+          <p
+            className={cn(noraPageDescriptionClass, 'max-w-none whitespace-pre-line pl-2.5')}
+            data-plan-move-hint=""
+          >
+            {PLAN_MEALS_MOVE_HINT}
+          </p>
+        ) : null}
         {selectedDay ? (
           <section className="flex flex-col gap-3 md:gap-5">
             {dayMeta(selectedDay, Boolean(onRemoveEmptyDay) && selectedDay.meals.length === 0)}
@@ -837,7 +864,7 @@ export function CurrentPlanMeals({
             <button
               aria-label={picking ? 'Отмена' : 'Переместить'}
               aria-pressed={picking}
-              className={MOBILE_DOCK_FAB_CLASS}
+              className={MOBILE_DOCK_PILL_CLASS}
               data-active={picking || undefined}
               onClick={togglePicking}
               type="button"
@@ -851,6 +878,7 @@ export function CurrentPlanMeals({
                   strokeWidth={1.75}
                 />
               )}
+              {picking ? 'Отмена' : 'Переместить'}
             </button>,
             dockMove,
           )
