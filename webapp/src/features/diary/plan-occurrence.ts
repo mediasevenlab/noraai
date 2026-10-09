@@ -13,9 +13,12 @@ import {
 } from '@/platform/plan-slots'
 import { readSavedIdSet, writeSavedIdSet, type SavedAccountScope } from '@/platform/saved-ids'
 
+import { localCalendarDayKey, localDayKey } from './diary-feed'
 import { feedMealStampOnDay } from './feed-import'
 import {
   currentWeekPlanStampId,
+  DIARY_PLAN_SOURCE_PREFIX,
+  RATION_DIARY_LOG_PREFIX,
   isRationImportedMeal,
   isRationPlanDone,
   isRationPlanPending,
@@ -79,9 +82,9 @@ export function keepsWeeklyPlanOnDiaryDelete(
  * Plan meals land on the selected start date plus their slot
  * (Day 1 = start, Day 2 = start + 1, …). Without a start, Day 1 is today.
  *
- * Completed meals keep stored `at` so they do not drift as "today" advances.
- * Persist `planOccurrenceStampWhilePending` on "Выполнить" first, or the card
- * jumps from the shown day back onto the template stamp.
+ * A completed meal stays on the day it was eaten. That row is diary history,
+ * not a consumed ration slot. `openPlanDiaryCards` opens the slot again when
+ * the ration is assigned to a different day.
  */
 export function planOccurrenceDiaryAt(
   meal: Pick<MealEntry, 'at'> & {
@@ -236,6 +239,100 @@ export function planOccurrenceDiaryAtWithLayout(
   )
   if (layoutAt) return layoutAt
   return planOccurrenceDiaryAt(meal, input.completedIds, now, planStart)
+}
+
+const OPEN_PLAN_CARD_PREFIX = 'open:'
+
+/** Diary-only id for a ration slot shown again after an earlier completion. */
+export function openPlanDiaryCardId(mealId: string, dayKey: string) {
+  return `${OPEN_PLAN_CARD_PREFIX}${mealId}:${dayKey}`
+}
+
+export function openPlanDiarySourceId(cardId: string): string | null {
+  if (!cardId.startsWith(OPEN_PLAN_CARD_PREFIX)) return null
+  const mealId = cardId.slice(OPEN_PLAN_CARD_PREFIX.length, OPEN_PLAN_CARD_PREFIX.length + 36)
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(mealId)) {
+    return null
+  }
+  return mealId
+}
+
+function diaryHistorySourceId(assumptions: readonly string[] | undefined) {
+  const logged = assumptions?.find((item) => item.startsWith(RATION_DIARY_LOG_PREFIX))
+  if (logged) {
+    const id = logged.slice(RATION_DIARY_LOG_PREFIX.length).trim()
+    if (id) return id
+  }
+  const hit = assumptions?.find((item) => item.startsWith(DIARY_PLAN_SOURCE_PREFIX))
+  if (!hit) return null
+  const id = hit.slice(DIARY_PLAN_SOURCE_PREFIX.length).trim()
+  return id || null
+}
+
+type OpenPlanMeal = Pick<MealEntry, 'id' | 'at'> & {
+  fromApi?: boolean
+  title?: string
+  assumptions?: readonly string[]
+}
+
+/**
+ * Pending cards for the current ration assignment.
+ * A meal already eaten on another day stays in history and still opens here,
+ * until this assignment's day itself has a completion.
+ */
+export function openPlanDiaryCards<T extends OpenPlanMeal>(
+  meals: readonly T[],
+  input: {
+    now?: Date
+    showWholePlan?: boolean
+    completedIds?: ReadonlySet<string>
+    skippedIds?: ReadonlySet<string>
+    selectedPlanIds: ReadonlySet<string>
+    historyAt?: (meal: T) => string
+    planStartFor: (planId: string) => Date | null
+    layoutFor?: (planId: string) => PlanMealLayout | null
+    planMealsFor?: (planId: string) => ReadonlyArray<{ id: string; at: string }>
+  },
+): T[] {
+  const now = input.now ?? new Date()
+  const todayKey = localCalendarDayKey(now)
+  const historyAt = input.historyAt ?? ((meal: T) => meal.at)
+  const cards: T[] = []
+  for (const meal of meals) {
+    if (input.skippedIds?.has(meal.id)) continue
+    if (diaryHistorySourceId(meal.assumptions)) continue
+    if (!isRationImportedMeal(meal) || !isRationPlanDone(meal, input.completedIds)) continue
+    const planId = diaryPlanIdForMeal(meal, input.selectedPlanIds, now)
+    if (!planId) continue
+    const assumptions = (meal.assumptions ?? []).filter((item) => item !== RATION_DIARY_DONE_MARK)
+    const projected = planOccurrenceDiaryAtWithLayout(
+      { ...meal, assumptions },
+      {
+        now,
+        planStart: input.planStartFor(planId),
+        layout: input.layoutFor?.(planId) ?? null,
+        planMeals: input.planMealsFor?.(planId) ?? [],
+        completedIds: new Set(),
+      },
+    )
+    const projectedKey = localDayKey(projected)
+    if (localDayKey(historyAt(meal)) === projectedKey) continue
+    if (projectedKey < todayKey) continue
+    if (projectedKey > todayKey && !input.showWholePlan) continue
+    const alreadyEatenToday = meals.some((other) => {
+      if (diaryHistorySourceId(other.assumptions) !== meal.id) return false
+      if (!isRationPlanDone(other, input.completedIds)) return false
+      return localDayKey(historyAt(other)) === projectedKey
+    })
+    if (alreadyEatenToday) continue
+    cards.push({
+      ...meal,
+      id: openPlanDiaryCardId(meal.id, projectedKey),
+      at: projected,
+      assumptions,
+    })
+  }
+  return cards
 }
 
 /** 0-based slot inside the layout day that currently holds this meal. */

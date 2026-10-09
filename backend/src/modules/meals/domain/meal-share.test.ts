@@ -14,6 +14,7 @@ import {
   RATION_DIARY_DONE_MARK,
   RATION_DIARY_SOURCE_MARK,
   RATION_PLAN_ID_PREFIX,
+  uniqueSharedFeedMeals,
   WEEK_PLAN_ID_PREFIX,
   withAuthorPhotoMark,
 } from './meal-share'
@@ -42,6 +43,11 @@ test('personal meals can be published; derived copies need an owner photo', () =
       assumptions: [RATION_DIARY_SOURCE_MARK],
       extraImageKeys: ['meals/owner-photo.webp'],
     }),
+  ).toBe(false)
+  expect(
+    mealCanPublishToFeed({
+      assumptions: [RATION_DIARY_SOURCE_MARK, MEAL_AUTHOR_PHOTO_MARK],
+    }),
   ).toBe(true)
   expect(
     mealCanPublishToFeed({
@@ -62,9 +68,62 @@ test('refine keeps origin stamps and records an owner photo', () => {
     `${RATION_PLAN_ID_PREFIX}office`,
     'Банан спелый',
   ])
+  expect(
+    preserveMealShareAssumptions(
+      [
+        RATION_DIARY_SOURCE_MARK,
+        `${WEEK_PLAN_ID_PREFIX}plan_1`,
+        'Дневник:edce2e88-c11f-46a4-af88-b2251f6fb908',
+        RATION_DIARY_DONE_MARK,
+        'Выполнение:edce2e88-c11f-46a4-af88-b2251f6fb908',
+      ],
+      ['Куриные окорочка с кожей', 'Вес по рецепту'],
+    ),
+  ).toEqual([
+    RATION_DIARY_SOURCE_MARK,
+    `${WEEK_PLAN_ID_PREFIX}plan_1`,
+    'Дневник:edce2e88-c11f-46a4-af88-b2251f6fb908',
+    RATION_DIARY_DONE_MARK,
+    'Выполнение:edce2e88-c11f-46a4-af88-b2251f6fb908',
+    'Куриные окорочка с кожей',
+    'Вес по рецепту',
+  ])
   expect(withAuthorPhotoMark([CATALOG_FAVORITE_SOURCE_MARK])).toEqual([
     CATALOG_FAVORITE_SOURCE_MARK,
     MEAL_AUTHOR_PHOTO_MARK,
   ])
   expect(withAuthorPhotoMark([MEAL_AUTHOR_PHOTO_MARK])).toEqual([MEAL_AUTHOR_PHOTO_MARK])
+})
+
+test('the feed keeps one copy of the same image and every replaced cover', () => {
+  const items = uniqueSharedFeedMeals([
+    {
+      id: '11111111-1111-4111-8111-111111111111',
+      title: 'Овсянка',
+      imageKey: 'covers/oats.webp',
+      assumptions: ['Добавлено из каталога'],
+    },
+    {
+      id: '22222222-2222-4222-8222-222222222222',
+      title: 'Овсянка',
+      imageKey: 'covers/oats.webp',
+      assumptions: [],
+    },
+    {
+      id: '33333333-3333-4333-8333-333333333333',
+      title: 'Овсянка',
+      imageKey: 'covers/oats.webp',
+      assumptions: [],
+    },
+    {
+      id: '44444444-4444-4444-8444-444444444444',
+      title: 'Овсянка',
+      imageKey: 'covers/mine.webp',
+      assumptions: ['Добавлено из каталога', MEAL_AUTHOR_PHOTO_MARK],
+    },
+  ])
+  expect(items.map((item) => item.id)).toEqual([
+    '22222222-2222-4222-8222-222222222222',
+    '44444444-4444-4444-8444-444444444444',
+  ])
 })

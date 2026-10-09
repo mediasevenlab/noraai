@@ -3,6 +3,27 @@ import type { MealCategory, MealMicronutrient, MealPortionItem, MealSlot } from 
 export const REFINE_ATTACH_PHOTO_INSTRUCTION =
   'Добавь к текущему составу продукты с приложенного фото. Существующие позиции не удаляй. Пересчитай КБЖУ на объединённый приём.'
 
+export const REFINE_REPLACE_PHOTO_INSTRUCTION =
+  'Новые фото заменяют текущий приём и его снимок. Опиши только то, что на них, и не переноси продукты со старой карточки.'
+
+/** Photo plus a phrase like «добавь это к текущему приёму» keeps the plate and the gallery. */
+export function photoAttachKeepsCurrentMeal(message: string) {
+  const text = message.toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim()
+  if (!text) return false
+  if (/не\s+замен/.test(text)) return true
+  if (/добав[а-я]*(?:\s+\S+){0,6}\s+к\s+(?:текущ|уже|эт(?:от|ому|им)|существующ)/.test(text)) {
+    return true
+  }
+  if (/добав[а-я]*(?:\s+\S+){0,6}\s+к\s+(?:этому\s+)?прием/.test(text)) return true
+  if (/дополн[а-я]*(?:\s+\S+){0,4}\s+(?:этот\s+|текущ[а-я]*\s+|уже\s+)?прием/.test(text)) {
+    return true
+  }
+  if (/дополн[а-я]*(?:\s+\S+){0,3}\s+(?:текущ|этот|уже)/.test(text)) return true
+  if (/прибав[а-я]*(?:\s+\S+){0,4}\s+к\s+(?:текущ|прием|уже)/.test(text)) return true
+  if (/остав[а-я]*(?:\s+\S+){0,4}\s+добав/.test(text)) return true
+  return false
+}
+
 export type MealCompositionFields = {
   title: string
   ingredients: string
@@ -76,7 +97,7 @@ function titleKeepsOriginal(original: string, incoming: string) {
   return from.length > 0 && to.includes(from)
 }
 
-/** Photo refine must augment the current plate, not replace it with the new frame. */
+/** Only when the user asked to add the new photo onto the current meal. */
 export function applyAdditivePhotoRefine(
   current: MealCompositionFields,
   incoming: MealCompositionFields,

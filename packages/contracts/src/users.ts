@@ -333,6 +333,7 @@ export const authoredUserPlanSchema = z
     goal: rationGoalSchema.nullable(),
     sourceCatalogId: catalogPlanIdSchema.optional(),
     sourceSharedRationId: z.string().uuid().optional(),
+    sourceMentorPlanId: z.string().uuid().optional(),
     dayCount: z.number().int().min(1).max(AUTHORED_PLAN_DAY_COUNT_MAX).optional(),
   })
   .strict()
@@ -420,6 +421,7 @@ export const sharedRationSchema = z
     authorName: z.string().trim().min(1).max(80).optional(),
     likeCount: z.number().int().nonnegative().default(0),
     liked: z.boolean().default(false),
+    likedAt: z.string().datetime().optional(),
     own: z.boolean().default(false),
   })
   .strict()

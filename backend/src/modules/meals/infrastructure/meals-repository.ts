@@ -237,7 +237,7 @@ export function createPrismaMealsRepository(db: DbClient): MealsRepository {
           _count: { select: { likes: true } },
           likes: {
             where: { userId: viewerUserId },
-            select: { userId: true },
+            select: { createdAt: true },
             take: 1,
           },
         },
@@ -247,6 +247,7 @@ export function createPrismaMealsRepository(db: DbClient): MealsRepository {
         authorName: authorLabel(row.user),
         likeCount: row._count.likes,
         liked: row.likes.length > 0,
+        likedAt: row.likes[0]?.createdAt ?? null,
       }))
     },
     async isMentorOf(mentorUserId, menteeUserId) {
@@ -435,6 +436,9 @@ export function createPrismaMealsRepository(db: DbClient): MealsRepository {
         versions: content.versions,
         activeVersionId: content.activeVersionId,
         ...(content.recordedAt ? { recordedAt: content.recordedAt } : {}),
+        ...(content.imageKey !== undefined
+          ? { imageKey: content.imageKey, imageMime: content.imageMime ?? null }
+          : {}),
       }
       if (content.expectedActiveVersionId !== undefined) {
         const updated = await db.meal.updateMany({

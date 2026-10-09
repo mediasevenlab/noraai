@@ -154,6 +154,26 @@ export function reconcileLocalFavoriteIds(
   return next
 }
 
+/** Later bookmarks in the stored list are the newer ones and come first. */
+export function orderByLatestBookmark<T extends { id: string }>(
+  items: readonly T[],
+  bookmarkIds: Iterable<string>,
+): T[] {
+  const rank = new Map<string, number>()
+  const ids = [...bookmarkIds]
+  ids.forEach((id, index) => {
+    rank.set(id, index)
+  })
+  return [...items].sort((left, right) => {
+    const leftRank = rank.get(left.id)
+    const rightRank = rank.get(right.id)
+    if (leftRank == null && rightRank == null) return 0
+    if (leftRank == null) return 1
+    if (rightRank == null) return -1
+    return rightRank - leftRank
+  })
+}
+
 export type CalorieBalanceTone = 'yellow' | 'red' | 'green'
 
 /** Same yellow / red / green rule as the diary day chips. */

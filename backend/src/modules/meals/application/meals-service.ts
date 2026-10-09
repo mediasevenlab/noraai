@@ -18,6 +18,7 @@ import {
   mealAssumptionsArePlanCopy,
   mealCanPublishToFeed,
   preserveMealShareAssumptions,
+  uniqueSharedFeedMeals,
   withAuthorPhotoMark,
 } from '../domain/meal-share'
 import {
@@ -34,7 +35,9 @@ import {
 import { detectMealImageMime } from '../domain/meal-image'
 import {
   applyAdditivePhotoRefine,
+  photoAttachKeepsCurrentMeal,
   REFINE_ATTACH_PHOTO_INSTRUCTION,
+  REFINE_REPLACE_PHOTO_INSTRUCTION,
 } from '../domain/meal-composition'
 import { mapGeminiCardToMealFields } from '../domain/mapping'
 import {
@@ -97,6 +100,12 @@ type MealCreateInput = Omit<CreateMealFromBotRequest, 'telegramUpdateId'> & {
     imageBase64: string
     imageMime?: CreateMealFromBotRequest['imageMime']
   }>
+}
+
+function mealImageRevision(url: string, revision: string | null | undefined) {
+  if (!revision) return url
+  const join = url.includes('?') ? '&' : '?'
+  return `${url}${join}v=${encodeURIComponent(revision)}`
 }
 
 function refineImages(input: RefineMealRequest) {
@@ -377,19 +386,14 @@ export class MealsService {
   async listSharedMeals(viewerUserId: string) {
     const items = await this.dependencies.repository.listSharedMeals(200, viewerUserId)
     return {
-      items: items
-        .filter((meal) =>
-          mealCanPublishToFeed({
-            assumptions: meal.assumptions,
-            extraImageKeys: extraImageKeysForActiveVersion(meal.versions, meal.activeVersionId),
-          }),
-        )
+      items: uniqueSharedFeedMeals(items)
         .slice(0, 80)
         .map((meal) =>
           this.toDto(this.hydrateVersions(meal), {
             authorName: meal.authorName,
             likeCount: meal.likeCount,
             liked: meal.liked,
+            likedAt: meal.likedAt,
           }),
         ),
     }
@@ -416,7 +420,7 @@ export class MealsService {
     ) {
       throw new MealsFailure(
         'forbidden',
-        'Копию из каталога, плана или ленты можно опубликовать только после своего фото',
+        'Копию из каталога, плана или ленты можно опубликовать только после замены фото',
       )
     }
     if ((meal.sharedAt != null) === shared) {
@@ -765,15 +769,21 @@ export class MealsService {
       throw new MealsFailure('bad_request', 'Достигнут лимит уточнений (2)')
     }
     const images = refineImages(input)
-    const message =
-      input.message.trim()
-      || (images.length > 0 ? REFINE_ATTACH_PHOTO_INSTRUCTION : '')
+    const userText = input.message.trim()
+    const keepCurrentMeal = images.length > 0 && photoAttachKeepsCurrentMeal(userText)
+    const replacePhotos = images.length > 0 && !keepCurrentMeal
+    const message = replacePhotos
+      ? [userText, REFINE_REPLACE_PHOTO_INSTRUCTION].filter(Boolean).join('\n')
+      : keepCurrentMeal
+        ? [userText, REFINE_ATTACH_PHOTO_INSTRUCTION].filter(Boolean).join('\n')
+        : userText
     if (!message && images.length === 0) {
       throw new MealsFailure('bad_request', 'message or image required')
     }
     // Text-only refine: card JSON already has title/portion/macros — skip cover
     // photo to cut Gemini latency (often several seconds for the image alone).
-    const needsCoverPhoto = images.length > 0
+    // A new photo replaces the meal, so the old cover is not sent either.
+    const needsCoverPhoto = keepCurrentMeal
     let coverBase64: string | undefined
     let coverMime: string | undefined
     if (needsCoverPhoto && ensured.imageKey) {
@@ -794,10 +804,11 @@ export class MealsService {
         base64: image.imageBase64,
         mime: image.imageMime,
       })),
+      photoMode: replacePhotos ? 'replace' : keepCurrentMeal ? 'augment' : undefined,
     })
     const analyzed = mapGeminiCardToMealFields(result.meal)
     const current = this.toVersioned(ensured)
-    const fields = images.length > 0
+    const fields = keepCurrentMeal
       ? applyAdditivePhotoRefine(
           {
             title: current.title,
@@ -816,9 +827,14 @@ export class MealsService {
           analyzed,
         )
       : analyzed
-    const extraImageKeys = await this.extraImageKeysAfterRefine(ensured, mealId, input)
+    const replaced = replacePhotos
+      ? await this.replacedMealImages(ensured, mealId, images)
+      : null
+    const extraImageKeys = replaced
+      ? replaced.extraImageKeys
+      : await this.extraImageKeysAfterRefine(ensured, mealId, input)
     let assumptions = preserveMealShareAssumptions(ensured.assumptions, fields.assumptions)
-    if (images.length > 0) assumptions = withAuthorPhotoMark(assumptions)
+    if (replacePhotos) assumptions = withAuthorPhotoMark(assumptions)
     const refinedBase = ensureMealVersions({
       ...current,
       title: fields.title,
@@ -855,6 +871,9 @@ export class MealsService {
       versions: withHistory.versions,
       activeVersionId: withHistory.activeVersionId!,
       expectedActiveVersionId: ensured.activeVersionId,
+      ...(replaced
+        ? { imageKey: replaced.imageKey, imageMime: replaced.imageMime }
+        : {}),
     })
     const recorded = generationUsageToRecord({
       call: parseGenerationLedger(result.usage),
@@ -1178,6 +1197,45 @@ export class MealsService {
     }
   }
 
+  private async replacedMealImages(
+    meal: MealRecord,
+    mealId: string,
+    images: ReturnType<typeof refineImages>,
+  ) {
+    const [cover, ...rest] = images
+    if (!cover) {
+      return {
+        imageKey: meal.imageKey,
+        imageMime: meal.imageMime,
+        extraImageKeys: [] as string[],
+      }
+    }
+    const savedCover = await this.dependencies.imageStore.saveImage({
+      userId: meal.userId,
+      mealId,
+      imageBase64: cover.imageBase64,
+      imageMime: cover.imageMime,
+      variant: 'cover',
+    })
+    const extraImageKeys: string[] = []
+    for (const image of rest) {
+      const saved = await this.dependencies.imageStore.saveImage({
+        userId: meal.userId,
+        mealId,
+        imageBase64: image.imageBase64,
+        imageMime: image.imageMime,
+        variant: 'extra',
+      })
+      if (saved.imageKey === savedCover.imageKey || extraImageKeys.includes(saved.imageKey)) continue
+      extraImageKeys.push(saved.imageKey)
+    }
+    return {
+      imageKey: savedCover.imageKey,
+      imageMime: savedCover.imageMime,
+      extraImageKeys,
+    }
+  }
+
   private async extraImageKeysAfterRefine(
     meal: MealRecord,
     mealId: string,
@@ -1220,10 +1278,11 @@ export class MealsService {
 
   private toDto(
     meal: MealRecord,
-    extras?: {
+      extras?: {
       authorName?: string
       likeCount?: number
       liked?: boolean
+      likedAt?: Date | null
       omitSpend?: boolean
       unread?: boolean
     },
@@ -1246,11 +1305,17 @@ export class MealsService {
       protein: ensured.protein,
       fat: ensured.fat,
       carbs: ensured.carbs,
-      imageUrl: meal.imageKey
-        ? this.dependencies.imageUrlBuilder.build(meal.id)
-        : `/api/meals/${meal.id}/image`,
+      imageUrl: mealImageRevision(
+        meal.imageKey
+          ? this.dependencies.imageUrlBuilder.build(meal.id)
+          : `/api/meals/${meal.id}/image`,
+        ensured.activeVersionId,
+      ),
       extraImageUrls: extraImageKeys.map((_, index) =>
-        this.dependencies.imageUrlBuilder.buildExtra(meal.id, index),
+        mealImageRevision(
+          this.dependencies.imageUrlBuilder.buildExtra(meal.id, index),
+          ensured.activeVersionId,
+        ),
       ),
       portionItems: ensured.portionItems,
       clientComment: ensured.clientComment,
@@ -1263,6 +1328,7 @@ export class MealsService {
       shared: meal.sharedAt != null,
       likeCount: extras?.likeCount ?? 0,
       liked: extras?.liked ?? false,
+      ...(extras?.likedAt ? { likedAt: extras.likedAt.toISOString() } : {}),
       ...(extras?.authorName ? { authorName: extras.authorName } : {}),
       ...(typeof extras?.unread === 'boolean' ? { unread: extras.unread } : {}),
       ...(extras?.omitSpend ? {} : this.mealSpendFields(meal)),

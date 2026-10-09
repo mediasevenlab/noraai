@@ -1,8 +1,10 @@
 import { expect, test } from 'bun:test'
 
-import { orderRationCopiesAfterSource, rationCopyTitle } from '../src/features/plans/ration-copy'
+import { orderRationCopiesAfterSource, rationCanCopyForEdit, rationCopyTitle } from '../src/features/plans/ration-copy'
 
 test('ration copies are numbered from the original title', () => {
+  expect(rationCanCopyForEdit('catalog_week')).toBe(false)
+  expect(rationCanCopyForEdit('plan_9573f9f3-206e-4eb4-9975-3f7d9ad8a9aa')).toBe(true)
   expect(rationCopyTitle('Офис', [])).toBe('Офис копия 1')
   expect(rationCopyTitle('Офис', ['Офис копия 1'])).toBe('Офис копия 2')
   expect(rationCopyTitle('Офис копия 1', ['Офис копия 1', 'Офис копия 2'])).toBe('Офис копия 3')

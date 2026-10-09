@@ -34,6 +34,7 @@ import { formatMealStamp } from './diary-feed'
 import { MealFeedPhoto } from './meal-feed-photo'
 import { prefetchMealPhoto } from './media-display'
 import {
+  diaryMealCanFavorite,
   isRationImportedMeal,
   isRationPlanDone,
   isRationPlanPending,
@@ -244,11 +245,15 @@ export function commitMealVersionExtras(
   toVersionId: string,
   extraSrc: string | null,
   toIndex?: number,
+  replaceGallery?: string[],
 ) {
   const byVersion = galleries[mealId] ?? {}
-  const inherited = byVersion[fromVersionId] ?? []
-  const extras =
-    extraSrc && !inherited.includes(extraSrc) ? [...inherited, extraSrc] : inherited
+  const inherited = replaceGallery ? [] : (byVersion[fromVersionId] ?? [])
+  const extras = replaceGallery
+    ? replaceGallery
+    : extraSrc && !inherited.includes(extraSrc)
+      ? [...inherited, extraSrc]
+      : inherited
   const next = { ...byVersion, [toVersionId]: extras }
   if (toIndex != null && toIndex >= 0) next[`index:${toIndex}`] = extras
   return {
@@ -549,6 +554,7 @@ function CardActions({
   canShare = true,
   canSave = true,
   hideFooterShare = false,
+  saveDisabled = false,
   savePressed = false,
   sharePressed = false,
   onToggleSave,
@@ -559,6 +565,7 @@ function CardActions({
   canSave?: boolean
   canShare?: boolean
   hideFooterShare?: boolean
+  saveDisabled?: boolean
   savePressed?: boolean
   sharePressed?: boolean
   onToggleSave: () => void
@@ -596,6 +603,7 @@ function CardActions({
             )}
             data-demo-pressed={savePressed ? '' : undefined}
             data-slot="meal-card-bookmark"
+            disabled={saveDisabled}
             onClick={onToggleSave}
           >
             <BookmarkIcon className={cn('size-4', saved && 'fill-current')} />
@@ -835,6 +843,7 @@ export function MealCard({
   const list = layout === 'list'
   const canShare =
     (mealCanShareToFeed(meal) || Boolean(meal.shared)) && (!readOnly || allowShare)
+  const favoriteDisabled = !diaryMealCanFavorite(meal, completedIds, saved)
   const titlePress = usePressWithoutScroll(onOpen)
   const [unreadMarkMounted, setUnreadMarkMounted] = React.useState(unread)
   React.useEffect(() => {
@@ -1090,8 +1099,10 @@ export function MealCard({
                         : 'hover:text-[var(--nora-text)]',
                     )}
                     data-slot="meal-card-bookmark"
+                    disabled={favoriteDisabled}
                     onClick={(event) => {
                       event.stopPropagation()
+                      if (favoriteDisabled) return
                       onToggleSave()
                     }}
                   >
@@ -1135,6 +1146,7 @@ export function MealCard({
                 <CardActions
                   canSave={showSave && !readOnly}
                   canShare={canShare}
+                  saveDisabled={favoriteDisabled}
                   hideFooterShare={hideFooterShare}
                   savePressed={savePressed}
                   sharePressed={sharePressed}

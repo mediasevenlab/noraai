@@ -1033,9 +1033,10 @@ describe('MealsService', () => {
     ).rejects.toMatchObject({ kind: 'forbidden' })
   })
 
-  test('refineMeal with attach photo still loads cover image', async () => {
+  test('refineMeal with a new photo does not send the old cover', async () => {
     const existing = mealRecord({ imageKey: 'cover.jpg', imageMime: 'image/jpeg' })
-    let refineInput: { coverBase64?: string; attachBase64?: string } | undefined
+    let refineInput: { coverBase64?: string; attachBase64?: string; photoMode?: string } | undefined
+    let coverReads = 0
     const service = new MealsService({
       analyzer: {
         analyze: async () => {
@@ -1064,7 +1065,10 @@ describe('MealsService', () => {
       },
       imageStore: {
         saveImage: async () => ({ imageKey: 'a', imageMime: 'image/jpeg' }),
-        readImage: async () => Buffer.from('cover-bytes'),
+        readImage: async () => {
+          coverReads += 1
+          return Buffer.from('cover-bytes')
+        },
       },
       imageUrlBuilder: imageUrls(),
       repository: repositoryStub({
@@ -1074,8 +1078,8 @@ describe('MealsService', () => {
             ...content,
             id: existing.id,
             userId: existing.userId,
-            imageKey: existing.imageKey,
-            imageMime: existing.imageMime,
+            imageKey: content.imageKey ?? existing.imageKey,
+            imageMime: content.imageMime ?? existing.imageMime,
           }),
       }),
     })
@@ -1087,12 +1091,24 @@ describe('MealsService', () => {
     )
 
     expect(refineInput?.attachBase64).toBe('att')
-    expect(refineInput?.coverBase64).toBe(Buffer.from('cover-bytes').toString('base64'))
+    expect(refineInput?.coverBase64).toBeUndefined()
+    expect(refineInput?.photoMode).toBe('replace')
+    expect(coverReads).toBe(0)
   })
 
-  test('refineMeal with attach photo keeps extras on the new version', async () => {
-    const existing = mealRecord({ imageKey: 'cover.jpg', imageMime: 'image/jpeg' })
+  test('refineMeal with a new photo replaces the cover and drops old extras', async () => {
+    const existing = mealRecord({
+      imageKey: 'cover.jpg',
+      imageMime: 'image/jpeg',
+      versions: [
+        {
+          ...mealRecord().versions[0]!,
+          extraImageKeys: ['meals/old-extra.jpg'],
+        },
+      ],
+    })
     let savedVersions: MealRecord['versions'] = []
+    let savedImageKey: string | null | undefined
     let savedVariant: 'cover' | 'extra' | undefined
     const service = new MealsService({
       analyzer: {
@@ -1120,7 +1136,7 @@ describe('MealsService', () => {
       imageStore: {
         saveImage: async (input) => {
           savedVariant = input.variant
-          return { imageKey: 'meals/extra-shawarma.jpg', imageMime: 'image/jpeg' }
+          return { imageKey: 'meals/new-cover.jpg', imageMime: 'image/jpeg' }
         },
         readImage: async () => Buffer.from('cover-bytes'),
       },
@@ -1129,12 +1145,13 @@ describe('MealsService', () => {
         findMealById: async () => existing,
         updateMealContent: async (_id, content) => {
           savedVersions = content.versions
+          savedImageKey = content.imageKey
           return mealRecord({
             ...content,
             id: existing.id,
             userId: existing.userId,
-            imageKey: existing.imageKey,
-            imageMime: existing.imageMime,
+            imageKey: content.imageKey ?? existing.imageKey,
+            imageMime: content.imageMime ?? existing.imageMime,
           })
         },
       }),
@@ -1146,15 +1163,18 @@ describe('MealsService', () => {
       { message: '', imageBase64: 'att', imageMime: 'image/jpeg' },
     )
 
-    expect(savedVersions[0]?.extraImageKeys ?? []).toEqual([])
-    expect(savedVersions[1]?.extraImageKeys).toEqual(['meals/extra-shawarma.jpg'])
-    expect(savedVariant).toBe('extra')
-    expect(refined.meal.extraImageUrls).toEqual([`/img/${existing.id}/extras/0`])
-    expect(refined.meal.imageUrl).toBe(`/img/${existing.id}`)
+    expect(savedVersions[0]?.extraImageKeys).toEqual(['meals/old-extra.jpg'])
+    expect(savedVersions[1]?.extraImageKeys ?? []).toEqual([])
+    expect(savedVariant).toBe('cover')
+    expect(savedImageKey).toBe('meals/new-cover.jpg')
+    expect(refined.meal.extraImageUrls).toEqual([])
+    expect(refined.meal.imageUrl).toBe(
+      `/img/${existing.id}?v=${encodeURIComponent(refined.meal.activeVersionId)}`,
+    )
     expect(refined.meal.assumptions).toContain('Добавлено своё фото')
   })
 
-  test('refineMeal keeps every attached photo', async () => {
+  test('refineMeal keeps the first new photo as the cover and the rest as extras', async () => {
     const existing = mealRecord({
       title: 'Овсянка',
       ingredients: 'Овсянка',
@@ -1166,6 +1186,7 @@ describe('MealsService', () => {
       carbs: 40,
     })
     let savedKeys: string[] = []
+    let savedVariants: Array<'cover' | 'extra' | undefined> = []
     let attachCount = 0
     const service = new MealsService({
       analyzer: {
@@ -1194,9 +1215,12 @@ describe('MealsService', () => {
         },
       },
       imageStore: {
-        saveImage: async () => {
-          const imageKey = `meals/extra-${savedKeys.length + 1}.jpg`
-          savedKeys = [...savedKeys, imageKey]
+        saveImage: async (input) => {
+          const imageKey =
+            input.variant === 'extra'
+              ? `meals/extra-${savedVariants.length + 1}.jpg`
+              : `meals/cover-${savedVariants.length + 1}.jpg`
+          savedVariants = [...savedVariants, input.variant]
           return { imageKey, imageMime: 'image/jpeg' }
         },
         readImage: async () => Buffer.from('cover-bytes'),
@@ -1230,10 +1254,11 @@ describe('MealsService', () => {
     )
 
     expect(attachCount).toBe(2)
-    expect(savedKeys).toEqual(['meals/extra-1.jpg', 'meals/extra-2.jpg'])
+    expect(savedVariants).toEqual(['cover', 'extra'])
+    expect(savedKeys).toEqual(['meals/extra-2.jpg'])
   })
 
-  test('refineMeal with attach photo keeps the current foods and adds the photo foods', async () => {
+  test('refineMeal with a new photo replaces the meal instead of summing it', async () => {
     const existing = mealRecord({
       title: 'Рецепт шашлыка из свинины в духовке',
       ingredients: 'Свинина, лук',
@@ -1299,17 +1324,101 @@ describe('MealsService', () => {
       { message: '', imageBase64: 'att', imageMime: 'image/jpeg' },
     )
 
-    expect(refineMessage).toContain('Добавь к текущему составу')
-    expect(refineMessage).toContain('Существующие позиции не удаляй')
+    expect(refineMessage).toContain('заменяют текущий приём')
+    expect(refineMessage).not.toContain('Существующие позиции не удаляй')
+    expect(refined.meal.title).toBe('Шаурма')
+    expect(refined.meal.meal).toBe('Ужин')
+    expect(refined.meal.portionItems.map((item) => item.label)).toEqual(['Шаурма ~200 г'])
+    expect(refined.meal.kcal).toBe(400)
+    expect(refined.meal.protein).toBe(20)
+  })
+
+  test('refineMeal adds the photo when the note asks to keep the current meal', async () => {
+    const existing = mealRecord({
+      title: 'Рецепт шашлыка из свинины в духовке',
+      ingredients: 'Свинина, лук',
+      category: 'Мясо',
+      mealSlot: 'Обед',
+      kcal: 715,
+      protein: 43,
+      fat: 56,
+      carbs: 9,
+      imageKey: 'cover.jpg',
+      portionItems: [
+        { label: 'Свинина ~120 г', kcal: 320, protein: 28, fat: 22, carbs: 0 },
+        { label: 'Лук репчатый ~80 г', kcal: 32, protein: 1, fat: 0, carbs: 7 },
+      ],
+    })
+    let refineInput: { coverBase64?: string; photoMode?: string } | undefined
+    let savedVariant: 'cover' | 'extra' | undefined
+    let savedImageKey: string | null | undefined
+    const service = new MealsService({
+      analyzer: {
+        analyze: async () => {
+          throw new Error('unused')
+        },
+        refine: async (input) => {
+          refineInput = input
+          return {
+            ok: true as const,
+            model: 'gemini-test',
+            meal: {
+              title: 'Шаурма',
+              excerpt: 'Шаурма',
+              body: '',
+              category: 'Мясо',
+              mealType: 'Ужин',
+              tags: [] as string[],
+              nutrition: { kcal: 400, protein: 20, fat: 12, carbs: 30 },
+              clientNoteStructured: '',
+              composition: [{ label: 'Шаурма ~200 г', kcal: 400, protein: 20, fat: 12, carbs: 30 }],
+              assumptions: [],
+              micronutrients: [],
+            },
+          }
+        },
+      },
+      imageStore: {
+        saveImage: async (input) => {
+          savedVariant = input.variant
+          return { imageKey: 'meals/extra.jpg', imageMime: 'image/jpeg' }
+        },
+        readImage: async () => Buffer.from('cover-bytes'),
+      },
+      imageUrlBuilder: imageUrls(),
+      repository: repositoryStub({
+        findMealById: async () => existing,
+        updateMealContent: async (_id, content) => {
+          savedImageKey = content.imageKey
+          return mealRecord({
+            ...content,
+            id: existing.id,
+            userId: existing.userId,
+            imageKey: existing.imageKey,
+            imageMime: existing.imageMime,
+          })
+        },
+      }),
+    })
+
+    const refined = await service.refineMeal(
+      { id: existing.userId, role: 'user' },
+      existing.id,
+      { message: 'добавь это к текущему приему', imageBase64: 'att', imageMime: 'image/jpeg' },
+    )
+
+    expect(refineInput?.photoMode).toBe('augment')
+    expect(refined.meal.assumptions).not.toContain('Добавлено своё фото')
+    expect(refineInput?.coverBase64).toBe(Buffer.from('cover-bytes').toString('base64'))
+    expect(savedVariant).toBe('extra')
+    expect(savedImageKey).toBeUndefined()
     expect(refined.meal.title).toBe('Рецепт шашлыка из свинины в духовке')
-    expect(refined.meal.meal).toBe('Обед')
+    expect(refined.meal.kcal).toBe(1115)
     expect(refined.meal.portionItems.map((item) => item.label)).toEqual([
       'Свинина ~120 г',
       'Лук репчатый ~80 г',
       'Шаурма ~200 г',
     ])
-    expect(refined.meal.kcal).toBe(1115)
-    expect(refined.meal.protein).toBe(63)
   })
 
   test('refineMeal skips extra slides when attach reuses the cover key', async () => {
@@ -1399,7 +1508,9 @@ describe('MealsService', () => {
 
     const listed = await service.listCurrentUserMeals(existing.userId)
     expect(listed.items[0]?.extraImageUrls).toEqual([])
-    expect(listed.items[0]?.imageUrl).toBe(`/img/${existing.id}`)
+    expect(listed.items[0]?.imageUrl).toBe(
+      `/img/${existing.id}?v=${encodeURIComponent(existing.activeVersionId!)}`,
+    )
   })
 
   test('selectMealVersion restores original snapshot', async () => {
@@ -1598,7 +1709,7 @@ describe('MealsService', () => {
         },
         listSharedMeals: async () =>
           stored.sharedAt
-            ? [{ ...stored, authorName: 'Иван', likeCount: 0, liked: false }]
+            ? [{ ...stored, authorName: 'Иван', likeCount: 0, liked: false, likedAt: null }]
             : [],
       }),
     })
@@ -1639,8 +1750,8 @@ describe('MealsService', () => {
           return mealRecord({ id, sharedAt: null })
         },
         listSharedMeals: async () => [
-          { ...rationMeal, sharedAt: new Date('2026-08-25T12:00:00.000Z'), authorName: 'Наставник', likeCount: 0, liked: false },
-          { ...shared, authorName: 'Иван', likeCount: likes.length, liked: likes.some((row) => row.userId === shared.userId) },
+          { ...rationMeal, sharedAt: new Date('2026-08-25T12:00:00.000Z'), authorName: 'Наставник', likeCount: 0, liked: false, likedAt: null },
+          { ...shared, authorName: 'Иван', likeCount: likes.length, liked: likes.some((row) => row.userId === shared.userId), likedAt: null },
         ],
         setMealLike: async (mealId, userId, liked) => {
           likes = liked
@@ -1686,7 +1797,11 @@ describe('MealsService', () => {
     ).rejects.toMatchObject({ kind: 'forbidden' })
     const uniquified = mealRecord({
       id: '88888888-8888-4888-8888-888888888888',
-      assumptions: ['Добавлено из каталога', 'Каталог:plan-preview:catalog_loss:1'],
+      assumptions: [
+        'Добавлено из каталога',
+        'Каталог:plan-preview:catalog_loss:1',
+        'Добавлено своё фото',
+      ],
       versions: [
         {
           id: '99999999-9999-4999-8999-999999999999',

@@ -28,7 +28,7 @@ import {
   diaryMealStampOnDay,
   appendFeedMealToMentorPlan,
   diaryPlanCopiesOnDay,
-  diaryPlanSourceId,
+  diaryPlanCopySourceId,
   mentorWeekdayIndex,
   preferredMealPhotoSrc,
   favoriteMealIdsForSync,
@@ -43,6 +43,7 @@ import {
   MealOpenDetail,
   MEAL_DIALOG_COVER_CLASS,
   MEAL_DIALOG_FRAME_CLASS,
+  isRationPlanPending,
   mealCardOrigin,
   mealCanShareToFeed,
   mealShareBlockedMessage,
@@ -346,6 +347,7 @@ export function CurrentPlanMeals({
   async function toggleSave(meal: MealEntry) {
     if (!subjectId) return
     const willSave = !saved.has(meal.id)
+    if (willSave && isRationPlanPending(meal, completedIds)) return
     if (isPlanPreviewMealId(meal.id) && willSave) {
       try {
         const image = await mealImageFromUrl(meal.image)
@@ -443,7 +445,7 @@ export function CurrentPlanMeals({
     if (fresh.length === 0) {
       const copyIds = [
         ...new Set(
-          diaryPlanCopiesOnDay(occupancyMeals, diaryPlanSourceId(meal), day.date, planId, planId).map(
+          diaryPlanCopiesOnDay(occupancyMeals, diaryPlanCopySourceId(meal), day.date, planId, planId).map(
             (copy) => copy.id,
           ),
         ),
@@ -470,7 +472,7 @@ export function CurrentPlanMeals({
     try {
       const source = fresh[0]!
       if (
-        diaryMealOnPlanDay(occupancyMeals, diaryPlanSourceId(source), day.date, planId, planId)
+        diaryMealOnPlanDay(occupancyMeals, diaryPlanCopySourceId(source), day.date, planId, planId)
       ) {
         toast('Этот приём уже в этом дне')
         return

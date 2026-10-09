@@ -368,23 +368,27 @@ export function AuthMentorRationCreateSheet({
                 </div>
                 <label className="grid min-w-0 gap-1" data-mentor-create-focus={state.focus === 'title' ? '' : undefined}>
                   <span className={FIELD_LABEL_CLASS}>Название</span>
-                  <NoraInput
-                    className={TITLE_FIELD_CLASS}
-                    onChange={() => undefined}
-                    placeholder="Например, Офис без срывов"
-                    readOnly
-                    value={state.title}
-                  />
+                  <div className="md:contents max-md:relative max-md:h-8 max-md:w-full" data-ios-13-slot="">
+                    <NoraInput
+                      className={TITLE_FIELD_CLASS}
+                      onChange={() => undefined}
+                      placeholder="Например, Офис без срывов"
+                      readOnly
+                      value={state.title}
+                    />
+                  </div>
                 </label>
                 <label className="grid gap-1" data-mentor-create-focus={state.focus === 'description' ? '' : undefined}>
                   <span className={FIELD_LABEL_CLASS}>Описание</span>
-                  <NoraTextarea
-                    className={cn(FIELD_TYPE_CLASS, FIELD_CHIP_CLASS, 'min-h-24 w-full px-3 py-2.5')}
-                    onChange={() => undefined}
-                    placeholder="Коротко, что в плане"
-                    readOnly
-                    value={state.description}
-                  />
+                  <div className="[--ios-min:6rem] md:contents max-md:block max-md:w-full" data-ios-13-slot="area">
+                    <NoraTextarea
+                      className={cn(FIELD_TYPE_CLASS, FIELD_CHIP_CLASS, 'min-h-24 w-full px-3 py-2.5')}
+                      onChange={() => undefined}
+                      placeholder="Коротко, что в плане"
+                      readOnly
+                      value={state.description}
+                    />
+                  </div>
                 </label>
                 <div className="grid gap-2">
                   <p className={SECTION_HEADING_CLASS}>Добавленные дни</p>
@@ -525,13 +529,15 @@ function DraftLine({
         data-mentor-create-focus={focused ? '' : undefined}
       >
         <span className={MEAL_INDEX_CLASS}>{index + 1}</span>
-        <NoraInput
-          className={LINE_INPUT_CLASS}
-          onChange={() => undefined}
-          placeholder={placeholder}
-          readOnly
-          value={value}
-        />
+        <div className="md:contents max-md:relative max-md:h-8 max-md:min-w-0 max-md:flex-1" data-ios-13-slot="">
+          <NoraInput
+            className={LINE_INPUT_CLASS}
+            onChange={() => undefined}
+            placeholder={placeholder}
+            readOnly
+            value={value}
+          />
+        </div>
         <span className="ml-auto inline-flex size-8 items-center justify-center text-[var(--nora-text-secondary)]">
           <Trash2Icon className="size-4" />
         </span>
@@ -568,13 +574,15 @@ function MealDraftFields({
       <div className="grid gap-1.5" data-mentor-create-focus={focus === 'meal-title' ? '' : undefined}>
         <p className={FIELD_LABEL_CLASS}>Название</p>
         <div className={SLOT_ROW_CLASS}>
-          <NoraInput
-            className={LINE_INPUT_CLASS}
-            onChange={() => undefined}
-            placeholder="Название блюда"
-            readOnly
-            value={meal.title}
-          />
+          <div className="md:contents max-md:relative max-md:h-8 max-md:min-w-0 max-md:flex-1" data-ios-13-slot="">
+            <NoraInput
+              className={LINE_INPUT_CLASS}
+              onChange={() => undefined}
+              placeholder="Название блюда"
+              readOnly
+              value={meal.title}
+            />
+          </div>
         </div>
       </div>
       <div className="grid gap-1.5" data-mentor-create-focus={focus === 'macros' ? '' : undefined}>
@@ -586,12 +594,14 @@ function MealDraftFields({
                 <field.icon className="size-[13px] shrink-0" strokeWidth={1.75} />
                 {field.label}
               </span>
-              <NoraInput
-                className={cn(FIELD_TYPE_CLASS, '!h-8 !rounded-[10px] bg-[var(--nora-panel)] px-1 text-center tabular-nums')}
-                onChange={() => undefined}
-                readOnly
-                value={meal.macros[field.key]}
-              />
+              <div className="md:contents max-md:relative max-md:h-8 max-md:w-full" data-ios-13-slot="">
+                <NoraInput
+                  className={cn(FIELD_TYPE_CLASS, '!h-8 !rounded-[10px] bg-[var(--nora-panel)] px-1 text-center tabular-nums')}
+                  onChange={() => undefined}
+                  readOnly
+                  value={meal.macros[field.key]}
+                />
+              </div>
             </label>
           ))}
         </div>

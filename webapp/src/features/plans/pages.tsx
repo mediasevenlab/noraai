@@ -38,6 +38,7 @@ import {
   MENTOR_FEED_PLAN_CAP,
   mentorPlanRequestFromSharedRation,
   daysCountLabel,
+  orderByLatestBookmark,
   mealsCountLabel,
   mealsForWeekPlan,
   mealRemovedWithRation,
@@ -61,7 +62,7 @@ import {
   rationCardNeedsLocalHide,
   unhideRation,
 } from './hidden-rations'
-import { orderRationCopiesAfterSource, rationCopyTitle, rationDaysForCopy } from './ration-copy'
+import { orderRationCopiesAfterSource, rationCanCopyForEdit, rationCopyTitle, rationDaysForCopy } from './ration-copy'
 import { readPlanStartDate, suggestedPlanStartDate } from '@/platform/plan-start'
 import { dayKeyFromDate, startOfLocalDay } from '@/platform/plan-slots'
 import { withAuthoredPlan, withoutAuthoredPlan } from '@/platform/plan-library-local'
@@ -256,10 +257,11 @@ export function PlanPage({
       }),
     [assignedCards, authoredCards, catalogCards, hiddenPlanIds, meals, weekPlan],
   )
-  const cards = React.useMemo(
-    () => visiblePlanCards(allCards, query, savedIds, tab, library),
-    [allCards, library, query, savedIds, tab],
-  )
+  const cards = React.useMemo(() => {
+    const visible = visiblePlanCards(allCards, query, savedIds, tab, library)
+    if (tab !== 'Избранное') return visible
+    return orderByLatestBookmark(visible, snapshot.savedPlanIds)
+  }, [allCards, library, query, savedIds, snapshot.savedPlanIds, tab])
   const favoritesEmpty = tab === 'Избранное' && !query.trim()
   const catalogEmpty = library === 'catalog' && !favoritesEmpty
 
@@ -368,6 +370,7 @@ export function PlanPage({
   }
 
   async function copyPlan(plan: WeekPlan) {
+    if (!rationCanCopyForEdit(plan.id)) return
     if (copyingPlanId || creating) return
     if (!auth.user || auth.user.role !== 'user') {
       toast.error('Войдите, чтобы скопировать рацион')
@@ -386,11 +389,15 @@ export function PlanPage({
       plan.title,
       authored.map((item) => item.title),
     )
+    const origin = authored.find((item) => item.id === plan.id)
     const created = createAuthoredPlan({
       coverImage: plan.coverImage,
       dayCount: days.length,
       description: plan.description,
       goal: plan.goal,
+      sourceCatalogId: isCatalogPlanId(plan.id) ? plan.id : origin?.sourceCatalogId,
+      sourceMentorPlanId: isAssignedPlanId(plan.id) ? plan.id : origin?.sourceMentorPlanId,
+      sourceSharedRationId: origin?.sourceSharedRationId,
       title,
     })
     if (!created) return
@@ -453,7 +460,7 @@ export function PlanPage({
       return
     }
     if (nextShared && authoredPlan && !authoredPlanCanShareToFeed(authoredPlan)) {
-      toast.error('Копию из каталога или ленты нельзя повторно отправить в ленту')
+      toast.error('Копию из каталога, ленты или рациона наставника нельзя отправить в ленту')
       return
     }
     const snapshotPayload = sharedRationSnapshotFromWeekPlan(plan)
@@ -571,7 +578,7 @@ export function PlanPage({
         }}
         onToggleSave={() => toggleSave(plan.id, plan.title)}
         copying={copyingPlanId === plan.id}
-        onCopy={() => void copyPlan(plan)}
+        onCopy={rationCanCopyForEdit(plan.id) ? () => void copyPlan(plan) : undefined}
         onDelete={() => setDeletePlanTarget({ id: plan.id, title: plan.title })}
         onShare={() => void toggleShare(plan)}
         canShare={

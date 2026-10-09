@@ -29,7 +29,7 @@ import {
   toMentorRationDto,
   tryToMentorRationDto,
 } from '../domain/mentor-ration'
-import { snapshotFromRequest, toSharedRationDto } from '../domain/shared-ration'
+import { snapshotFromRequest, toSharedRationDto, visibleSharedFeedRations } from '../domain/shared-ration'
 import type {
   AdminDashboardReader,
   AdminUsersReader,
@@ -251,7 +251,7 @@ export class UsersService {
     const store = this.requireSharedRationsStore()
     const items = await store.listShared(200, principal.id)
     return {
-      items: items.slice(0, 80).map((row) =>
+      items: visibleSharedFeedRations(items).slice(0, 80).map((row) =>
         toSharedRationDto(row, { own: row.authorId === principal.id }),
       ),
     }
@@ -268,7 +268,7 @@ export class UsersService {
       if (owned && !authoredPlanCanShareToFeed(owned)) {
         throw new UsersFailure(
           'forbidden',
-          'Копию из каталога или ленты нельзя повторно отправить в ленту',
+          'Копию из каталога, ленты или рациона наставника нельзя отправить в ленту',
         )
       }
     }

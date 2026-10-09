@@ -28,6 +28,13 @@ export const MEAL_REFINE_PHOTO_RULES = [
   'Не переписывай состав только по новому кадру и не удаляй продукты текущей карточки, если пользователь явно не попросил убрать их.',
 ]
 
+export const MEAL_REPLACE_PHOTO_RULES = [
+  'Новые фото ЗАМЕНЯЮТ текущую карточку и её снимок. Старый состав не сохраняй.',
+  'Верни composition только по новым фото. Не переноси продукты, которых нет на этих снимках.',
+  'Если фото несколько — разбери каждый кадр и собери одну карточку нового приёма.',
+  'Если пользователь ещё написал уточнение — примени его к новому составу, а не к старой карточке.',
+]
+
 export const MEAL_MULTI_PHOTO_RULES = [
   'Если фото несколько, определи роль каждого кадра:',
   '— разные блюда/продукты одного приёма: разбери ВСЕ кадры и объедини в одну карточку на весь приём;',
@@ -152,6 +159,20 @@ const REFINE_PROMPT = [
   '  ]',
   '}',
 ].join('\n')
+
+export function refineSystemPrompt(photoMode?: 'replace' | 'augment') {
+  if (photoMode !== 'replace') return REFINE_PROMPT
+  return REFINE_PROMPT.replace(
+    '2) Дополнительное фото — дополняет текущую карточку, а не заменяет её.',
+    '2) Новые фото заменяют текущую карточку. Состав бери только с новых снимков.',
+  )
+    .replace(MEAL_REFINE_PHOTO_RULES.join('\n'), MEAL_REPLACE_PHOTO_RULES.join('\n'))
+    .replace(
+      'Пересчитай nutrition (КБЖУ) под объединённый состав. Целые числа.',
+      'Пересчитай nutrition (КБЖУ) по новому составу. Целые числа.',
+    )
+}
+
 type GeminiEnv = Pick<
   AppEnv,
   | 'GEMINI_API_KEY'
@@ -271,13 +292,14 @@ export async function refineMealWithGemini(
     attachBase64?: string
     attachMime?: string
     attachImages?: Array<{ base64: string; mime?: string }>
+    photoMode?: 'replace' | 'augment'
   },
 ): Promise<MealsGeminiResponse> {
   const parts: Array<Record<string, unknown>> = [
-    { text: REFINE_PROMPT },
+    { text: refineSystemPrompt(input.photoMode) },
     { text: `Текущая карточка:\n${JSON.stringify(input.card)}` },
   ]
-  if (input.coverBase64) {
+  if (input.coverBase64 && input.photoMode !== 'replace') {
     parts.push({ text: 'Исходное фото блюда:' })
     parts.push({
       inline_data: {
@@ -293,7 +315,10 @@ export async function refineMealWithGemini(
       : []
   if (attachImages.length > 0) {
     parts.push({
-      text: 'Дополнительные фото пользователя. Если на кадре еда — добавь эти продукты к текущему составу. Если этикетка/КБЖУ — уточни веса, не удаляя остальные позиции. Учти каждый кадр.',
+      text:
+        input.photoMode === 'replace'
+          ? 'Новые фото пользователя. Они заменяют текущий приём. Верни карточку только по этим кадрам, без продуктов со старой карточки.'
+          : 'Дополнительные фото пользователя. Если на кадре еда — добавь эти продукты к текущему составу. Если этикетка/КБЖУ — уточни веса, не удаляя остальные позиции. Учти каждый кадр.',
     })
     for (const image of attachImages) {
       parts.push({
@@ -314,7 +339,10 @@ export async function refineMealWithGemini(
     })
   } else if (attachImages.length > 0) {
     parts.push({
-      text: 'Пользователь приложил фото без текста. Добавь к текущему составу продукты с фото, существующие позиции сохрани, пересчитай КБЖУ на объединённый приём.',
+      text:
+        input.photoMode === 'replace'
+          ? 'Пользователь приложил фото без текста. Замени текущий приём тем, что на фото. Не сохраняй старые продукты.'
+          : 'Пользователь приложил фото без текста. Добавь к текущему составу продукты с фото, существующие позиции сохрани, пересчитай КБЖУ на объединённый приём.',
     })
   }
   return generateMealCard(env, parts)

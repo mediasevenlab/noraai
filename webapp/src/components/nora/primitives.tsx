@@ -215,9 +215,13 @@ export function NoraTextarea({
     const el = ref.current
     if (!el || typeof ResizeObserver === 'undefined') return
     const apply = () => {
-      const scaled =
-        window.matchMedia('(max-width: 767px)').matches &&
-        el.closest('[data-settings-well]')
+      const mobile = window.matchMedia('(max-width: 767px)').matches
+      const slot = el.closest('[data-ios-13-slot]')
+      if (mobile && slot) {
+        el.style.setProperty('margin-bottom', `${-el.offsetHeight * (1 - 13 / 16)}px`, 'important')
+        return
+      }
+      const scaled = mobile && el.closest('[data-settings-well]')
       el.style.marginBottom = scaled ? `${-el.offsetHeight * (1 - 13 / 16)}px` : ''
     }
     apply()

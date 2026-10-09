@@ -165,6 +165,18 @@ describe('user and admin contracts', () => {
       }).authoredPlans[0]?.sourceSharedRationId,
     ).toBe(fromFeed.sourceSharedRationId)
     expect(
+      userPlanLibrarySchema.parse({
+        authoredPlans: [{
+          ...authored,
+          sourceMentorPlanId: '019c0000-0000-7000-8000-000000000302',
+        }],
+        savedPlanIds: [],
+        selectedPlanIds: [],
+        planStarts: [],
+        updatedAt: '2026-09-07T12:00:00.000Z',
+      }).authoredPlans[0]?.sourceMentorPlanId,
+    ).toBe('019c0000-0000-7000-8000-000000000302')
+    expect(
       putUserPlanLibraryRequestSchema.parse({
         authoredPlans: [{ ...authored, description: '  ' }],
         savedPlanIds: ['  catalog_loss  '],

@@ -824,22 +824,26 @@ export function RationEditorDialog({
                       </label>
                       <label className="grid min-w-0 gap-1">
                         <span className={FIELD_LABEL_CLASS}>Название</span>
-                        <NoraInput
-                          className={HEADER_TITLE_FIELD_CLASS}
-                          onChange={(event) => patch({ title: event.target.value })}
-                          placeholder={copy.titlePlaceholder}
-                          value={form.title}
-                        />
+                        <div className="md:contents max-md:relative max-md:h-8 max-md:w-full" data-ios-13-slot="">
+                          <NoraInput
+                            className={HEADER_TITLE_FIELD_CLASS}
+                            onChange={(event) => patch({ title: event.target.value })}
+                            placeholder={copy.titlePlaceholder}
+                            value={form.title}
+                          />
+                        </div>
                       </label>
                       <label className="grid min-w-0 gap-1">
                         <span className={FIELD_LABEL_CLASS}>{copy.descriptionLabel}</span>
-                        <NoraTextarea
-                          className={HEADER_DESC_FIELD_CLASS}
-                          onChange={(event) => patch({ description: event.target.value })}
-                          placeholder={copy.descriptionPlaceholder}
-                          rows={4}
-                          value={form.description}
-                        />
+                        <div className="[--ios-min:6rem] md:contents max-md:block max-md:w-full" data-ios-13-slot="area">
+                          <NoraTextarea
+                            className={HEADER_DESC_FIELD_CLASS}
+                            onChange={(event) => patch({ description: event.target.value })}
+                            placeholder={copy.descriptionPlaceholder}
+                            rows={4}
+                            value={form.description}
+                          />
+                        </div>
                       </label>
                     </div>
                   ) : null}
@@ -858,12 +862,14 @@ export function RationEditorDialog({
                     <div className={TITLE_GOAL_ROW_CLASS}>
                       <label className="grid min-w-0 gap-1.5">
                         <span className={FIELD_LABEL_CLASS}>Название</span>
-                        <NoraInput
-                          className={TITLE_FIELD_CLASS}
-                          onChange={(event) => patch({ title: event.target.value })}
-                          placeholder={copy.titlePlaceholder}
-                          value={form.title}
-                        />
+                        <div className="md:contents max-md:relative max-md:h-8 max-md:w-full" data-ios-13-slot="">
+                          <NoraInput
+                            className={TITLE_FIELD_CLASS}
+                            onChange={(event) => patch({ title: event.target.value })}
+                            placeholder={copy.titlePlaceholder}
+                            value={form.title}
+                          />
+                        </div>
                       </label>
                       <label className="grid min-w-0 gap-1.5">
                         <span className={FIELD_LABEL_CLASS}>Цель</span>
@@ -884,12 +890,14 @@ export function RationEditorDialog({
                   {mode === 'ration' ? (
                     <label className="grid gap-1.5">
                       <span className={FIELD_LABEL_CLASS}>{copy.descriptionLabel}</span>
-                      <NoraTextarea
-                        className={cn(FIELD_CLASS, 'min-h-16 px-3 py-2.5')}
-                        onChange={(event) => patch({ description: event.target.value })}
-                        placeholder={copy.descriptionPlaceholder}
-                        value={form.description}
-                      />
+                      <div className="[--ios-min:4rem] md:contents max-md:block max-md:w-full" data-ios-13-slot="area">
+                        <NoraTextarea
+                          className={cn(FIELD_CLASS, 'min-h-16 px-3 py-2.5')}
+                          onChange={(event) => patch({ description: event.target.value })}
+                          placeholder={copy.descriptionPlaceholder}
+                          value={form.description}
+                        />
+                      </div>
                     </label>
                   ) : null}
                   {mode === 'ration' ? <div aria-hidden className={SECTION_DIVIDER_CLASS} /> : null}
@@ -1549,12 +1557,14 @@ function MealDraftCard({
       <div className="grid gap-1.5">
         <p className={FIELD_LABEL_CLASS}>Название</p>
         <div className={SLOT_ROW_CLASS}>
-          <NoraInput
-            className={LINE_INPUT_CLASS}
-            onChange={(event) => onPatch({ title: event.target.value })}
-            placeholder="Название блюда"
-            value={meal.title}
-          />
+          <div className="md:contents max-md:relative max-md:h-8 max-md:min-w-0 max-md:flex-1" data-ios-13-slot="">
+            <NoraInput
+              className={LINE_INPUT_CLASS}
+              onChange={(event) => onPatch({ title: event.target.value })}
+              placeholder="Название блюда"
+              value={meal.title}
+            />
+          </div>
         </div>
       </div>
       <div className="grid gap-1.5">
@@ -1616,12 +1626,14 @@ function DraftLineList({
         <div className="flex items-center gap-2" key={`${label}-${index}`}>
           <div className={cn(SLOT_ROW_CLASS, 'min-w-0 flex-1')}>
             <span className={MEAL_INDEX_CLASS}>{index + 1}</span>
-            <NoraInput
-              className={LINE_INPUT_CLASS}
-              onChange={(event) => onChange(setDraftLine(items, index, event.target.value))}
-              placeholder={placeholder}
-              value={item}
-            />
+            <div className="md:contents max-md:relative max-md:h-8 max-md:min-w-0 max-md:flex-1" data-ios-13-slot="">
+              <NoraInput
+                className={LINE_INPUT_CLASS}
+                onChange={(event) => onChange(setDraftLine(items, index, event.target.value))}
+                placeholder={placeholder}
+                value={item}
+              />
+            </div>
             <button
               aria-label={removeAriaLabel}
               className={cn(MEAL_TRASH_CLASS, 'ml-auto')}
@@ -1666,17 +1678,19 @@ function MacroField({
         <Icon aria-hidden className={MACRO_ICON_CLASS} strokeWidth={1.75} />
         {label}
       </span>
-      <NoraInput
-        aria-label={ariaLabel ?? label}
-        className={cn(
-          FIELD_TYPE_CLASS,
-          FIELD_FACE_CLASS,
-          '!h-8 !rounded-[10px] px-1 text-center tabular-nums',
-        )}
-        inputMode="decimal"
-        onChange={(event) => onChange?.(event.target.value)}
-        value={value}
-      />
+      <div className="md:contents max-md:relative max-md:h-8 max-md:w-full" data-ios-13-slot="">
+        <NoraInput
+          aria-label={ariaLabel ?? label}
+          className={cn(
+            FIELD_TYPE_CLASS,
+            FIELD_FACE_CLASS,
+            '!h-8 !rounded-[10px] px-1 text-center tabular-nums',
+          )}
+          inputMode="decimal"
+          onChange={(event) => onChange?.(event.target.value)}
+          value={value}
+        />
+      </div>
     </label>
   )
 }

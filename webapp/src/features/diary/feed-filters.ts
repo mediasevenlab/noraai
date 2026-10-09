@@ -49,6 +49,16 @@ export function matchesSharedMealQuery(meal: MealEntry, query: string) {
   return haystack.includes(needle)
 }
 
+/** Newest like first. Cards without a like stamp stay after the dated ones. */
+export function orderByLikedAt<T extends { likedAt?: string | null }>(items: readonly T[]): T[] {
+  return [...items].sort((left, right) => {
+    const leftAt = left.likedAt ?? ''
+    const rightAt = right.likedAt ?? ''
+    if (leftAt === rightAt) return 0
+    return leftAt < rightAt ? 1 : -1
+  })
+}
+
 export function filterSharedMeals(
   meals: readonly MealEntry[],
   input: {

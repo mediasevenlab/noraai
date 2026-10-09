@@ -14,6 +14,7 @@ test('normalizePlanLibrary keeps authored metadata, favorites, selection and sta
     goal: 'Похудение',
     sourceCatalogId: 'catalog_office',
     sourceSharedRationId: '019c0000-0000-7000-8000-000000000301',
+    sourceMentorPlanId: '019c0000-0000-7000-8000-000000000302',
     dayCount: 4,
   }
 
@@ -42,6 +43,7 @@ test('normalizePlanLibrary keeps authored metadata, favorites, selection and sta
         goal: 'Похудение',
         sourceCatalogId: 'catalog_office',
         sourceSharedRationId: '019c0000-0000-7000-8000-000000000301',
+        sourceMentorPlanId: '019c0000-0000-7000-8000-000000000302',
         dayCount: 4,
       },
     ],
@@ -98,5 +100,8 @@ test('cloned catalog or feed plans cannot be published to the feed', () => {
   expect(authoredPlanCanShareToFeed({ sourceCatalogId: 'catalog_office' })).toBe(false)
   expect(
     authoredPlanCanShareToFeed({ sourceSharedRationId: '019c0000-0000-7000-8000-000000000301' }),
+  ).toBe(false)
+  expect(
+    authoredPlanCanShareToFeed({ sourceMentorPlanId: '019c0000-0000-7000-8000-000000000302' }),
   ).toBe(false)
 })

@@ -11,6 +11,7 @@ import {
   currentWeekPlanStampId,
   DIARY_PLAN_SOURCE_PREFIX,
   isPlannedDiaryMeal,
+  isRationDiaryLog,
   isRationPlanPending,
   mealBelongsToWeekPlan,
   RATION_DIARY_SOURCE_MARK,
@@ -39,6 +40,7 @@ export type DiaryMealDraftSource = {
   portionItems?: Array<string | MealPortionItem>
   micronutrients?: MealMicronutrient[]
   assumptions?: readonly string[]
+  versions?: readonly unknown[]
 }
 
 export type DiaryPlanStamp = {
@@ -64,6 +66,27 @@ export function diaryPlanSourceIdFromAssumptions(
 /** Original diary meal id, even after the copy is copied again. */
 export function diaryPlanSourceId(meal: { id: string; assumptions?: readonly string[] }) {
   return diaryPlanSourceIdFromAssumptions(meal.assumptions) ?? meal.id
+}
+
+/**
+ * A completed ration card that the user then changed is its own meal.
+ * Until that edit, it still occupies the same ration slots as the template.
+ */
+export function isDiaryOccurrenceUnique(meal: {
+  assumptions?: readonly string[]
+  versions?: readonly unknown[]
+}) {
+  return isRationDiaryLog(meal) && (meal.versions?.length ?? 0) > 1
+}
+
+/** Identity used when copying a diary card onto a ration day. */
+export function diaryPlanCopySourceId(meal: {
+  id: string
+  assumptions?: readonly string[]
+  versions?: readonly unknown[]
+}) {
+  if (isDiaryOccurrenceUnique(meal)) return meal.id
+  return diaryPlanSourceId(meal)
 }
 
 export function diaryWeekPlanOptions(
@@ -234,6 +257,7 @@ export function diaryMealOnPlanDay(
 ): boolean {
   const wantSlot = planSlotIndex(day)
   return meals.some((meal) => {
+    if (isRationDiaryLog(meal)) return false
     const stamp = meal.recordedAt ?? meal.at
     if (!stamp) return false
     if (planSlotIndex(new Date(stamp)) !== wantSlot) return false
@@ -252,7 +276,7 @@ export function diaryPlanCopiesOnDay(
 ): Array<DiaryPlanStamp & { id: string }> {
   const wantSlot = planSlotIndex(day)
   return meals.filter((meal): meal is DiaryPlanStamp & { id: string } => {
-    if (!meal.id) return false
+    if (!meal.id || isRationDiaryLog(meal)) return false
     const stamp = meal.recordedAt ?? meal.at
     if (!stamp) return false
     if (planSlotIndex(new Date(stamp)) !== wantSlot) return false
@@ -262,7 +286,11 @@ export function diaryPlanCopiesOnDay(
   })
 }
 
-export function diaryMealsFreshForPlanDay<T extends { id: string; assumptions?: readonly string[] }>(
+export function diaryMealsFreshForPlanDay<T extends {
+  id: string
+  assumptions?: readonly string[]
+  versions?: readonly unknown[]
+}>(
   candidates: readonly T[],
   meals: readonly DiaryPlanStamp[],
   day: Date,
@@ -275,7 +303,7 @@ export function diaryMealsFreshForPlanDay<T extends { id: string; assumptions?: 
   const fresh: T[] = []
   for (const meal of candidates) {
     if (!diaryMealCanCopyToPlan(meal, completedIds, options)) continue
-    const sourceId = diaryPlanSourceId(meal)
+    const sourceId = diaryPlanCopySourceId(meal)
     if (seen.has(sourceId)) continue
     if (diaryMealOnPlanDay(meals, sourceId, day, planId, fallbackPlanId)) continue
     seen.add(sourceId)
@@ -285,7 +313,11 @@ export function diaryMealsFreshForPlanDay<T extends { id: string; assumptions?: 
 }
 
 export function diaryPlanDayOccupancy(
-  candidates: readonly { id: string; assumptions?: readonly string[] }[],
+  candidates: readonly {
+    id: string
+    assumptions?: readonly string[]
+    versions?: readonly unknown[]
+  }[],
   meals: readonly DiaryPlanStamp[],
   day: Date,
   planId: string,
@@ -295,7 +327,7 @@ export function diaryPlanDayOccupancy(
 ) {
   const unique = new Map<string, { id: string; assumptions?: readonly string[] }>()
   for (const meal of candidates) {
-    const sourceId = diaryPlanSourceId(meal)
+    const sourceId = diaryPlanCopySourceId(meal)
     if (!unique.has(sourceId)) unique.set(sourceId, meal)
   }
   let already = 0
@@ -303,7 +335,7 @@ export function diaryPlanDayOccupancy(
   for (const meal of unique.values()) {
     if (!diaryMealCanCopyToPlan(meal, completedIds, options)) continue
     copyable += 1
-    if (diaryMealOnPlanDay(meals, diaryPlanSourceId(meal), day, planId, fallbackPlanId)) {
+    if (diaryMealOnPlanDay(meals, diaryPlanCopySourceId(meal), day, planId, fallbackPlanId)) {
       already += 1
     }
   }
@@ -347,7 +379,7 @@ export function diaryMealCreatePlanDraft(
   planId: string,
   now = new Date(),
 ): CreateUserMealRequest {
-  const sourceId = diaryPlanSourceId(meal)
+  const sourceId = diaryPlanCopySourceId(meal)
   return {
     title: meal.title,
     ingredients: meal.ingredients,

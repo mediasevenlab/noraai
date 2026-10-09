@@ -128,3 +128,24 @@ test('counts unread meals per mentee and skips pending plan cards', () => {
     { userId: menteeB, unreadCount: 1 },
   ])
 })
+
+test('a diary completion of a ration meal is not a mentor unread event', () => {
+  expect(
+    mentorUnreadEventAt({
+      assumptions: [RATION_DIARY_SOURCE_MARK, RATION_DIARY_DONE_MARK, 'Выполнение:meal-1'],
+      createdAt: after,
+      updatedAt: after,
+    }),
+  ).toBeNull()
+  expect(
+    isMentorUnreadMeal(
+      {
+        id: '55555555-5555-4555-8555-555555555555',
+        assumptions: [RATION_DIARY_SOURCE_MARK, 'Выполнение:meal-1'],
+        createdAt: after,
+        updatedAt: after,
+      },
+      new Set(),
+    ),
+  ).toBe(false)
+})

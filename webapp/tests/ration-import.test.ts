@@ -8,6 +8,7 @@ import {
   isDiaryMealOnFutureDay,
   isPendingPlanMealShownInDiary,
   isRationImportedMeal,
+  diaryMealCanFavorite,
   isRationPlanDone,
   isRationPlanPending,
   mealBelongsToWeekPlan,
@@ -103,6 +104,15 @@ describe('ration-imported diary meals', () => {
         fromApi: true,
       }),
     ).toBe(false)
+    expect(diaryMealCanFavorite(meal)).toBe(false)
+    expect(diaryMealCanFavorite(meal, new Set([meal.id]))).toBe(true)
+    expect(diaryMealCanFavorite(meal, undefined, true)).toBe(true)
+    expect(
+      diaryMealCanFavorite({
+        title: 'Говядина и гречка',
+        fromApi: true,
+      }),
+    ).toBe(true)
   })
 
   test('diary cards keep a meal origin even when the meal came from a ration', () => {
@@ -340,14 +350,14 @@ describe('ration-imported diary meals', () => {
         assumptions: [RATION_DIARY_SOURCE_MARK],
         extraImages: ['/api/meals/x/extras/0'],
       }),
-    ).toBe(true)
+    ).toBe(false)
     expect(
       mealShareBlockedMessage({
         title: 'План',
         fromApi: true,
         assumptions: [RATION_DIARY_SOURCE_MARK],
       }),
-    ).toContain('своего фото')
+    ).toContain('замены фото')
     expect(visibleMealAssumptions([RATION_DIARY_SOURCE_MARK, MEAL_AUTHOR_PHOTO_MARK, 'Вес по фото'])).toEqual([
       'Вес по фото',
     ])

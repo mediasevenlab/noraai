@@ -5,8 +5,10 @@ import {
   MEAL_COMPOSITION_LINE_RULES,
   MEAL_MULTI_PHOTO_RULES,
   MEAL_REFINE_PHOTO_RULES,
+  MEAL_REPLACE_PHOTO_RULES,
   isTransientGeminiNetworkError,
   parseGeminiCandidateText,
+  refineSystemPrompt,
 } from './gemini-client'
 import { MealsFailure } from '../domain/errors'
 
@@ -53,6 +55,17 @@ describe('meal refine photo prompt', () => {
     expect(rules).toContain('не заменяет')
     expect(rules).toContain('Существующие позиции сохрани')
     expect(rules).toContain('Не переписывай состав только по новому кадру')
+    expect(refineSystemPrompt('augment')).toContain('ДОПОЛНЯЕТ текущую карточку')
+  })
+
+  test('tells the model to replace the card when the new photos are the meal', () => {
+    const rules = MEAL_REPLACE_PHOTO_RULES.join('\n')
+    expect(rules).toContain('ЗАМЕНЯЮТ текущую карточку')
+    expect(rules).toContain('Старый состав не сохраняй')
+    const prompt = refineSystemPrompt('replace')
+    expect(prompt).toContain('ЗАМЕНЯЮТ текущую карточку')
+    expect(prompt).not.toContain('ДОПОЛНЯЕТ текущую карточку')
+    expect(prompt).toContain('по новому составу')
   })
 })
 

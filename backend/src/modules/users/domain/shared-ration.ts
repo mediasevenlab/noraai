@@ -29,6 +29,7 @@ export type SharedRationRecord = {
   authorName?: string
   likeCount?: number
   liked?: boolean
+  likedAt?: Date | null
 }
 
 export type SharedRationSnapshotFields = {
@@ -97,6 +98,25 @@ export function snapshotFromRequest(snapshot: SharedRationSnapshot): SharedRatio
   }
 }
 
+/** Catalog copies stay out of the feed. Identical published rations collapse to one row. */
+export function visibleSharedFeedRations<T extends {
+  sourcePlanId: string
+  title: string
+  coverImage: string
+  kcal: number
+}>(items: readonly T[]): T[] {
+  const seen = new Set<string>()
+  const visible: T[] = []
+  for (const item of items) {
+    if (item.sourcePlanId.startsWith('catalog_')) continue
+    const key = `${item.title.trim().toLowerCase()}\0${item.coverImage.trim()}\0${item.kcal}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    visible.push(item)
+  }
+  return visible
+}
+
 function authorLabel(name: string | undefined) {
   const trimmed = name?.trim()
   if (!trimmed) return undefined
@@ -128,6 +148,7 @@ export function toSharedRationDto(
     ...(authorLabel(row.authorName) ? { authorName: authorLabel(row.authorName) } : {}),
     likeCount: row.likeCount ?? 0,
     liked: Boolean(row.liked),
+    ...(row.likedAt ? { likedAt: row.likedAt.toISOString() } : {}),
     own: Boolean(extras?.own),
   }
 }

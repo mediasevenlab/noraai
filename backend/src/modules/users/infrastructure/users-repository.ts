@@ -326,7 +326,7 @@ export function createPrismaUsersRepository(db: DbClient): UsersRepository {
           _count: { select: { likes: true } },
           likes: {
             where: { userId: viewerUserId },
-            select: { userId: true },
+            select: { createdAt: true },
             take: 1,
           },
         },
@@ -336,6 +336,7 @@ export function createPrismaUsersRepository(db: DbClient): UsersRepository {
           authorName: sharedRationAuthorLabel(row.author),
           likeCount: row._count.likes,
           liked: row.likes.length > 0,
+          likedAt: row.likes[0]?.createdAt ?? null,
         }),
       )
     },
@@ -356,7 +357,7 @@ export function createPrismaUsersRepository(db: DbClient): UsersRepository {
           _count: { select: { likes: true } },
           likes: {
             where: { userId },
-            select: { userId: true },
+            select: { createdAt: true },
             take: 1,
           },
         },
@@ -368,6 +369,7 @@ export function createPrismaUsersRepository(db: DbClient): UsersRepository {
         authorName: sharedRationAuthorLabel(row.author),
         likeCount: row._count.likes,
         liked: row.likes.length > 0,
+        likedAt: row.likes[0]?.createdAt ?? null,
       })
     },
     async getQuestionnaire(userId) {
@@ -880,7 +882,7 @@ function toSharedRationRecord(
     createdAt: Date
     updatedAt: Date
   },
-  extras?: { authorName?: string; likeCount?: number; liked?: boolean },
+  extras?: { authorName?: string; likeCount?: number; liked?: boolean; likedAt?: Date | null },
 ) {
   return {
     id: row.id,

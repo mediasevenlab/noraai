@@ -21,6 +21,7 @@ export function mentorUnreadEventAt(meal: {
   updatedAt: Date
 }): Date | null {
   if (mealAssumptionsAreCatalogCopy(meal.assumptions)) return null
+  if (meal.assumptions.some((item) => item.startsWith('Выполнение:'))) return null
   if (isPlannedMealPending(meal.assumptions)) return null
   if (mealAssumptionsBlockShare(meal.assumptions)) return meal.updatedAt
   return meal.createdAt

@@ -86,6 +86,7 @@ export function MealAddDraftDialog({
     toVersionId: string
     toIndex?: number
     extraSrc: string | null
+    replaceGallery?: string[]
   }) => void
 }) {
   const auth = useAuth()

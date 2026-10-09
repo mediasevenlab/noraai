@@ -10,6 +10,7 @@ import {
   usableMealCover,
   type MealEntry,
 } from '@/features/diary'
+import { isRationDiaryLog } from '@/features/diary/ration-import'
 import type { SharedRation, SharedRationSnapshot } from '@web-app-demo/contracts'
 import {
   assignedRationOnDay,
@@ -296,7 +297,9 @@ export function plannedMealsOnDay(
   const matches = meals
     .filter(
       (meal) =>
-        isRationImportedMeal(meal) && mondayIndex(new Date(meal.at)) === wantWeekday,
+        isRationImportedMeal(meal)
+        && !isRationDiaryLog(meal)
+        && mondayIndex(new Date(meal.at)) === wantWeekday,
     )
     .slice()
     .sort((left, right) => (left.at < right.at ? -1 : left.at > right.at ? 1 : 0))

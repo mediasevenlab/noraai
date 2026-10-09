@@ -36,7 +36,7 @@ import {
   sharedRationAddLabel,
   sharedRationMealCreateDrafts,
 } from './feed-ration-clone'
-import { filterSharedRations, type FeedGoal } from './feed-filters'
+import { filterSharedRations, orderByLikedAt, type FeedGoal } from './feed-filters'
 import { displayPlanCover } from './meal-cover'
 import { mealImageFromUrl } from './meal-image-pick'
 import { authorInitials, FeedListAuthorLabel, MealLikeButton } from './MealCard'
@@ -56,7 +56,12 @@ function patchSharedRationLike(
       let likeCount = item.likeCount
       if (liked && !item.liked) likeCount += 1
       if (!liked && item.liked) likeCount = Math.max(0, likeCount - 1)
-      return { ...item, liked, likeCount }
+      return {
+        ...item,
+        liked,
+        likeCount,
+        ...(liked ? { likedAt: new Date().toISOString() } : { likedAt: undefined }),
+      }
     }),
   }
 }
@@ -315,7 +320,10 @@ export function SharedRationsFeed({
     ? snapshotFromPlanLibrary(planLibraryQuery.data).authoredPlans
     : snapshot.authoredPlans
   const visible = React.useMemo(
-    () => filterSharedRations(rations, { likedOnly, goal, query, period }),
+    () => {
+      const filtered = filterSharedRations(rations, { likedOnly, goal, query, period })
+      return likedOnly ? orderByLikedAt(filtered) : filtered
+    },
     [rations, likedOnly, goal, query, period],
   )
   const filtersActive = likedOnly || Boolean(query.trim()) || goal != null || period != null

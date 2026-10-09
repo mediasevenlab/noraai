@@ -22,6 +22,8 @@ export type AuthoredPlan = {
   sourceCatalogId?: string
   /** Feed ration this authored copy was added from. */
   sourceSharedRationId?: string
+  /** Mentor ration this authored copy was taken from. */
+  sourceMentorPlanId?: string
   /** Authored day count, including trailing empty days. */
   dayCount?: number
 }
@@ -38,8 +40,9 @@ export function isAssignedPlanId(planId: string) {
 export function authoredPlanCanShareToFeed(plan: {
   sourceCatalogId?: string
   sourceSharedRationId?: string
+  sourceMentorPlanId?: string
 }) {
-  return !plan.sourceCatalogId && !plan.sourceSharedRationId
+  return !plan.sourceCatalogId && !plan.sourceSharedRationId && !plan.sourceMentorPlanId
 }
 
 export function parsePlanGoal(value: unknown): PlanGoal | null {
@@ -62,6 +65,7 @@ export function createAuthoredPlan(input: {
   goal?: PlanGoal | null
   sourceCatalogId?: string
   sourceSharedRationId?: string
+  sourceMentorPlanId?: string
   dayCount?: number
 }): AuthoredPlan | null {
   const title = input.title.trim()
@@ -71,6 +75,10 @@ export function createAuthoredPlan(input: {
   const sourceSharedRationId =
     input.sourceSharedRationId?.trim() && UUID_RE.test(input.sourceSharedRationId.trim())
       ? input.sourceSharedRationId.trim()
+      : undefined
+  const sourceMentorPlanId =
+    input.sourceMentorPlanId?.trim() && UUID_RE.test(input.sourceMentorPlanId.trim())
+      ? input.sourceMentorPlanId.trim()
       : undefined
   const dayCount = parseAuthoredPlanDayCount(input.dayCount)
   return {
@@ -84,6 +92,7 @@ export function createAuthoredPlan(input: {
     goal: input.goal ?? null,
     ...(sourceCatalogId ? { sourceCatalogId } : {}),
     ...(sourceSharedRationId ? { sourceSharedRationId } : {}),
+    ...(sourceMentorPlanId ? { sourceMentorPlanId } : {}),
     ...(dayCount ? { dayCount } : {}),
   }
 }
@@ -119,6 +128,8 @@ function parseAuthoredPlans(raw: string | null): AuthoredPlan[] {
         typeof record.sourceCatalogId === 'string' ? record.sourceCatalogId.trim() : ''
       const sourceSharedRationId =
         typeof record.sourceSharedRationId === 'string' ? record.sourceSharedRationId.trim() : ''
+      const sourceMentorPlanId =
+        typeof record.sourceMentorPlanId === 'string' ? record.sourceMentorPlanId.trim() : ''
       const dayCount = parseAuthoredPlanDayCount(record.dayCount)
       plans.push({
         id,
@@ -129,6 +140,7 @@ function parseAuthoredPlans(raw: string | null): AuthoredPlan[] {
         goal: parsePlanGoal(record.goal),
         ...(sourceCatalogId.startsWith('catalog_') ? { sourceCatalogId } : {}),
         ...(UUID_RE.test(sourceSharedRationId) ? { sourceSharedRationId } : {}),
+        ...(UUID_RE.test(sourceMentorPlanId) ? { sourceMentorPlanId } : {}),
         ...(dayCount ? { dayCount } : {}),
       })
     }

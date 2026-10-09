@@ -10,6 +10,8 @@ import {
   mealListAfterPlanDone,
   orderDiaryDayByPlanLayout,
   planLayoutSlotIndex,
+  openPlanDiaryCards,
+  openPlanDiarySourceId,
   planOccurrenceDiaryAt,
   planOccurrenceDiaryAtWithLayout,
   planOccurrenceStampWhilePending,
@@ -17,6 +19,8 @@ import {
   writeSkippedPlanMealIds,
 } from '../src/features/diary/plan-occurrence'
 import { readDiaryPlanAtById, writeDiaryPlanAtById } from '../src/features/diary/ration-done'
+import { diaryPlanSourceAssumption } from '../src/features/diary/diary-plan-import'
+import { rationDiaryLogAssumption } from '../src/features/diary/ration-import'
 import {
   isDiaryFeedMealVisible,
   RATION_DIARY_DONE_MARK,
@@ -110,14 +114,78 @@ describe('diary vs weekly plan occurrences', () => {
     const start = new Date(2026, 9, 5, 12, 0, 0)
     const eaten = {
       ...pendingPlanMeal,
+      at: new Date(2026, 9, 1, 8, 30, 0).toISOString(),
       assumptions: [...pendingPlanMeal.assumptions, RATION_DIARY_DONE_MARK],
     }
-    const at = planOccurrenceDiaryAt(eaten, undefined, new Date(2026, 9, 5, 12), start)
+    const now = new Date(2026, 9, 8, 12, 0, 0)
+    const at = planOccurrenceDiaryAt(eaten, undefined, now, start)
     expect(at).toBe(eaten.at)
-    const completed = new Set([pendingPlanMeal.id])
-    expect(planOccurrenceDiaryAt(pendingPlanMeal, completed, new Date(2026, 9, 5, 12), start)).toBe(
-      pendingPlanMeal.at,
-    )
+    const opened = openPlanDiaryCards([eaten], {
+      now,
+      selectedPlanIds: new Set([PLAN_ID]),
+      planStartFor: () => start,
+    })
+    expect(opened).toHaveLength(1)
+    expect(new Date(opened[0]!.at).getDate()).toBe(8)
+    expect(opened[0]!.assumptions).not.toContain(RATION_DIARY_DONE_MARK)
+    expect(openPlanDiarySourceId(opened[0]!.id)).toBe(eaten.id)
+  })
+
+  test('a completion on the assigned day does not open a second card', () => {
+    const start = new Date(2026, 9, 5, 12, 0, 0)
+    const eaten = {
+      ...pendingPlanMeal,
+      at: new Date(2026, 9, 8, 8, 30, 0).toISOString(),
+      assumptions: [...pendingPlanMeal.assumptions, RATION_DIARY_DONE_MARK],
+    }
+    const opened = openPlanDiaryCards([eaten], {
+      now: new Date(2026, 9, 8, 12, 0, 0),
+      selectedPlanIds: new Set([PLAN_ID]),
+      planStartFor: () => start,
+    })
+    expect(opened).toHaveLength(0)
+  })
+
+  test('an earlier completion stays history when this assignment is already logged', () => {
+    const start = new Date(2026, 9, 5, 12, 0, 0)
+    const eaten = {
+      ...pendingPlanMeal,
+      at: new Date(2026, 9, 1, 8, 30, 0).toISOString(),
+      assumptions: [...pendingPlanMeal.assumptions, RATION_DIARY_DONE_MARK],
+    }
+    const todayCopy = {
+      ...eaten,
+      id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      at: new Date(2026, 9, 8, 8, 30, 0).toISOString(),
+      assumptions: [...eaten.assumptions, diaryPlanSourceAssumption(eaten.id)],
+    }
+    const opened = openPlanDiaryCards([eaten, todayCopy], {
+      now: new Date(2026, 9, 8, 12, 0, 0),
+      selectedPlanIds: new Set([PLAN_ID]),
+      planStartFor: () => start,
+    })
+    expect(opened).toHaveLength(0)
+  })
+
+  test('a diary completion stays out of the ration board', () => {
+    const start = new Date(2026, 9, 5, 12, 0, 0)
+    const eaten = {
+      ...pendingPlanMeal,
+      at: new Date(2026, 9, 1, 8, 30, 0).toISOString(),
+      assumptions: [...pendingPlanMeal.assumptions, RATION_DIARY_DONE_MARK],
+    }
+    const log = {
+      ...eaten,
+      id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      at: new Date(2026, 9, 8, 8, 30, 0).toISOString(),
+      assumptions: [...eaten.assumptions, rationDiaryLogAssumption(eaten.id)],
+    }
+    const opened = openPlanDiaryCards([eaten, log], {
+      now: new Date(2026, 9, 8, 12, 0, 0),
+      selectedPlanIds: new Set([PLAN_ID]),
+      planStartFor: () => start,
+    })
+    expect(opened).toHaveLength(0)
   })
 
   test('feed copies without a week plan are not treated as a plan template', () => {

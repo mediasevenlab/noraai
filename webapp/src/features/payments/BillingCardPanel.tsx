@@ -40,9 +40,9 @@ const quietActionClass =
 const fieldButtonClass =
   'w-full !h-10 !max-h-10 !min-h-10 min-[768px]:!h-[37px] min-[768px]:!max-h-[37px] min-[768px]:!min-h-[37px]'
 
-/** Same ink as the section title. In the dark scheme that ink is light. */
-const inkButtonClass =
-  '!bg-[var(--nora-text)] !text-[var(--nora-bg)] shadow-none hover:!opacity-90 disabled:!opacity-45'
+/** Same fill as the tariff card, so on the gray well it reads as a plate, not a faint outline. */
+const tariffButtonClass =
+  '!bg-[var(--settings-field-bg,var(--nora-panel))] !text-[var(--nora-text)] !shadow-none hover:!bg-[color-mix(in_srgb,var(--nora-text)_4%,var(--settings-field-bg,var(--nora-panel)))] disabled:!opacity-45'
 
 const TARIFF_POINTS = [
   'Дневник питания',
@@ -344,7 +344,7 @@ export function SubscriptionPayPanel({
       <div className="grid gap-3 rounded-[12px] bg-[var(--settings-field-bg,var(--nora-panel))] px-3.5 py-3.5">
         <div className="flex items-baseline justify-between gap-4">
           <p className="font-heading text-[18px] leading-tight font-bold tracking-[-0.02em] text-foreground">Подписка</p>
-          <p className="shrink-0 whitespace-nowrap font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)] tabular-nums">
+          <p className="shrink-0 whitespace-nowrap font-[family-name:var(--nora-font)] text-[18px] font-normal leading-tight tracking-[-0.02em] text-[var(--nora-text)] tabular-nums">
             {price} {period === 'year' ? 'в год' : 'в месяц'}
             {period === 'year' ? (
               <span className="ml-2 text-[12px] font-[250] text-[var(--nora-text-tertiary)]">скидка 20%</span>
@@ -353,7 +353,8 @@ export function SubscriptionPayPanel({
         </div>
         <div
           aria-label="Срок оплаты"
-          className="flex h-9 w-full items-stretch rounded-[8px] bg-[color-mix(in_srgb,#000_4%,transparent)] p-0.5 shadow-[inset_0_1px_1px_rgba(0,0,0,0.05)]"
+          className="flex h-9 w-full items-stretch overflow-hidden rounded-[10px] bg-[var(--period-track)] p-0.5"
+          data-period-track=""
           role="group"
         >
           <PeriodChoice active={period === 'month'} label="Месяц" onClick={() => setPeriod('month')} />
@@ -371,7 +372,7 @@ export function SubscriptionPayPanel({
         </ul>
       </div>
       {showPay || showCancel ? (
-        <div className="grid gap-3 px-3.5">
+        <div className="grid gap-3">
           {showPay ? (
             <Button
               className={cn(primaryActionClass, fieldButtonClass)}
@@ -385,7 +386,7 @@ export function SubscriptionPayPanel({
           ) : null}
           {showCancel ? (
             <Button
-              className={cn(fieldButtonClass, inkButtonClass)}
+              className={cn(fieldButtonClass, tariffButtonClass)}
               data-field-height=""
               disabled={busy}
               onClick={() => void cancel()}
@@ -418,12 +419,14 @@ function PeriodChoice({
     <button
       aria-pressed={active}
       className={cn(
-        'm-0 h-full min-w-0 flex-1 rounded-[6px] border-0 p-0 font-[family-name:var(--nora-font)] text-[13px] font-normal !shadow-none outline-none',
+        'm-0 h-auto min-h-0 min-w-0 flex-1 self-stretch rounded-[8px] border-0 p-0 font-[family-name:var(--nora-font)] text-[13px] font-normal outline-none',
         active
-          ? 'bg-[var(--nora-text)] text-[var(--nora-bg)]'
-          : 'bg-transparent text-[var(--nora-text-secondary)]',
+          ? 'bg-[var(--settings-field-bg,var(--nora-panel))] text-[var(--nora-text)] shadow-[var(--nora-shadow-button)]'
+          : 'bg-transparent text-[var(--nora-text-secondary)] shadow-none',
       )}
-      data-choice-plaque=""
+      data-active={active ? '' : undefined}
+      data-field-height=""
+      data-period-choice=""
       onClick={onClick}
       type="button"
     >
@@ -481,7 +484,7 @@ export function SubscriptionStatusLine({ overview }: { overview: SubscriptionOve
   const status = subscriptionStatus(overview)
   if (!status) return null
   return (
-    <p className="px-3.5 font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-secondary)]">
+    <p className="font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-secondary)]">
       {status}
     </p>
   )
@@ -489,8 +492,7 @@ export function SubscriptionStatusLine({ overview }: { overview: SubscriptionOve
 
 function subscriptionStatus(overview: SubscriptionOverview) {
   if (overview.paidUntil) {
-    const card = overview.cardLast4 ? `, карта •••• ${overview.cardLast4}` : ''
-    return `Оплачено до ${formatSubscriptionDay(overview.paidUntil)}${card}.`
+    return `Оплачено до ${formatSubscriptionDay(overview.paidUntil)}.`
   }
   if (overview.renewalNotice === 'failed') {
     const card = overview.cardLast4 ? ` с карты •••• ${overview.cardLast4}` : ''

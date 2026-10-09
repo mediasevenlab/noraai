@@ -67,6 +67,8 @@ export type MealContentUpdate = {
   recordedAt?: Date
   /** Reject the write when a newer version became active while this request ran. */
   expectedActiveVersionId?: string | null
+  imageKey?: string | null
+  imageMime?: string | null
 }
 
 export type MealsRepository = {
@@ -93,7 +95,12 @@ export type MealsRepository = {
   listSharedMeals(
     limit: number,
     viewerUserId: string,
-  ): Promise<Array<MealRecord & { authorName: string; likeCount: number; liked: boolean }>>
+  ): Promise<Array<MealRecord & {
+    authorName: string
+    likeCount: number
+    liked: boolean
+    likedAt: Date | null
+  }>>
   isMentorOf(mentorUserId: string, menteeUserId: string): Promise<boolean>
   listMenteeIdsForMentor(mentorUserId: string): Promise<string[]>
   findMentorMealNotifyTarget(menteeUserId: string): Promise<{
@@ -208,6 +215,7 @@ export type MealAnalyzer = {
     attachBase64?: string
     attachMime?: string
     attachImages?: Array<{ base64: string; mime?: string }>
+    photoMode?: 'replace' | 'augment'
   }): Promise<MealsGeminiResponse>
   transcribe?(input: MealsTranscribeRequest): Promise<MealsTranscribeResponse>
 }

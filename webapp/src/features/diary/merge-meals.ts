@@ -36,6 +36,7 @@ export function mealDtoToEntry(meal: MealDto): MealEntry {
     authorName: meal.authorName,
     likeCount: meal.likeCount,
     liked: meal.liked,
+    ...(meal.likedAt ? { likedAt: meal.likedAt } : {}),
     unread: meal.unread,
     generationSpend: meal.generationSpend,
   }

@@ -25,8 +25,31 @@ export const WEEK_PLAN_ID_PREFIX = 'План:'
 export const WEEK_PLAN_LIVE_ID_PREFIX = 'week:'
 /** Hidden stamp that keeps the original diary meal id after a copy is added to a plan. */
 export const DIARY_PLAN_SOURCE_PREFIX = 'Дневник:'
+/**
+ * Diary completion of a ration meal. The ration card stays untouched;
+ * this row is today's eaten copy and leaves the plan board.
+ */
+export const RATION_DIARY_LOG_PREFIX = 'Выполнение:'
 /** Hidden stamp after the owner attached their own photo to a derived card. */
 export const MEAL_AUTHOR_PHOTO_MARK = 'Добавлено своё фото'
+
+export function rationDiaryLogAssumption(sourceMealId: string) {
+  return `${RATION_DIARY_LOG_PREFIX}${sourceMealId}`
+}
+
+export function rationDiaryLogSourceId(
+  assumptions: readonly string[] | undefined,
+): string | null {
+  const hit = assumptions?.find((item) => item.startsWith(RATION_DIARY_LOG_PREFIX))
+  if (!hit) return null
+  const id = hit.slice(RATION_DIARY_LOG_PREFIX.length).trim()
+  return id || null
+}
+
+/** True for a diary history row of a ration meal, not the ration card itself. */
+export function isRationDiaryLog(meal: { assumptions?: readonly string[] }) {
+  return rationDiaryLogSourceId(meal.assumptions) != null
+}
 
 export function rationPlanAssumption(rationId: string) {
   return `${RATION_PLAN_ID_PREFIX}${rationId}`
@@ -109,7 +132,8 @@ export function visibleMealAssumptions(assumptions: string[] | undefined): strin
         && !item.startsWith(WEEK_PLAN_ID_PREFIX)
         && !item.startsWith(FEED_SOURCE_ID_PREFIX)
         && !item.startsWith(CATALOG_FAVORITE_ID_PREFIX)
-        && !item.startsWith(DIARY_PLAN_SOURCE_PREFIX),
+        && !item.startsWith(DIARY_PLAN_SOURCE_PREFIX)
+        && !item.startsWith(RATION_DIARY_LOG_PREFIX),
     ) ?? []
   )
 }
@@ -155,13 +179,12 @@ export function isPlannedDiaryMeal(
   return isFeedImportedMeal(meal) || isRationImportedMeal(meal)
 }
 
-/** Own diary meals can go to the public feed. Catalog, plan, and feed copies need an owner photo. */
+/** Own diary meals can go to the public feed. A derived copy needs a replaced cover. */
 export function mealHasAuthorPhoto(meal: {
   assumptions?: readonly string[]
   extraImages?: readonly string[]
 }): boolean {
-  if (meal.assumptions?.includes(MEAL_AUTHOR_PHOTO_MARK)) return true
-  return Boolean(meal.extraImages?.some((src) => src.trim().length > 0))
+  return Boolean(meal.assumptions?.includes(MEAL_AUTHOR_PHOTO_MARK))
 }
 
 export function mealCanShareToFeed(meal: {
@@ -182,7 +205,7 @@ export function mealShareBlockedMessage(meal: {
   assumptions?: readonly string[]
 }): string {
   if (isPlannedDiaryMeal(meal) || isCatalogFavoriteMeal(meal)) {
-    return 'Копию из каталога, плана или ленты можно отправить только после своего фото в карточке'
+    return 'Копию из каталога, плана или ленты можно отправить только после замены фото карточки'
   }
   return 'В ленту можно отправить только свой приём'
 }
@@ -213,6 +236,21 @@ export function isRationPlanDone(
   completedIds?: ReadonlySet<string>,
 ): boolean {
   return isPlannedDiaryMeal(meal) && !isRationPlanPending(meal, completedIds)
+}
+
+/** Bookmark adds only an eaten meal. An existing bookmark can still be removed. */
+export function diaryMealCanFavorite(
+  meal: {
+    id?: string
+    fromApi?: boolean
+    title?: string
+    assumptions?: readonly string[]
+  },
+  completedIds?: ReadonlySet<string>,
+  saved = false,
+) {
+  if (saved) return true
+  return !isRationPlanPending(meal, completedIds)
 }
 
 /**

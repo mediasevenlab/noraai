@@ -31,8 +31,11 @@ import {
 import { ComposerPressSurface } from './ComposerPressSurface'
 import { useAuthDemoSeeking } from './auth-demo-playback'
 import { ComposerTypedText } from './composer-typed-text'
-import { formatMealStamp, isApiMealId } from './diary-feed'
+import { formatMealStamp, isApiMealId, localDayKey } from './diary-feed'
+import { diaryMealCreatePlanDraft } from './diary-plan-import'
+import { openPlanDiarySourceId } from './plan-occurrence'
 import { ComposerAttachChips, MealFormingStepList } from './composer-ui'
+import { photoAttachKeepsCurrentMeal } from './photo-attach'
 import { RationPlanDoneButton, MealAuthorByline } from './MealCard'
 import {
   advanceMealRevealCursor,
@@ -51,7 +54,17 @@ import {
 import { mealRefiningSteps } from './meal-forming-steps'
 import { MealAttachMenu, queueMealImageFile } from './meal-attach-menu'
 import { mealCorrectionLimitReached } from './meal-corrections'
-import { isPlannedDiaryMeal, isRationPlanDone, isRationPlanPending } from './ration-import'
+import {
+  isPlannedDiaryMeal,
+  isRationDiaryLog,
+  isRationImportedMeal,
+  isRationPlanDone,
+  isRationPlanPending,
+  RATION_DIARY_DONE_MARK,
+  RATION_DIARY_LOG_PREFIX,
+  rationDiaryLogAssumption,
+  weekPlanIdFromAssumptions,
+} from './ration-import'
 import {
   mealAttachLimitMessage,
   mealImageFromUrl,
@@ -277,6 +290,8 @@ export function MealOpenDetail({
   onCompositionTyped,
   onMacrosRevealChange,
   onCompletePlan,
+  diaryLocksRationTemplate = false,
+  onDiaryOccurrence,
   onAddToDiary,
   addingToDiary = false,
   onDemoPromoted,
@@ -299,6 +314,9 @@ export function MealOpenDetail({
   onCompositionTyped?: () => void
   onMacrosRevealChange?: (state: MealMacrosRevealState) => void
   onCompletePlan?: () => void
+  /** Diary edits of a ration card are written to a separate history row. */
+  diaryLocksRationTemplate?: boolean
+  onDiaryOccurrence?: (mealId: string) => void
   onAddToDiary?: () => void
   addingToDiary?: boolean
   onDemoPromoted?: (demoId: string, apiMealId: string) => void
@@ -308,6 +326,7 @@ export function MealOpenDetail({
     toVersionId: string
     toIndex?: number
     extraSrc: string | null
+    replaceGallery?: string[]
   }) => void
   onToggleLike?: () => void
 }) {
@@ -416,6 +435,52 @@ export function MealOpenDetail({
     }
   }, [refineReveal])
 
+  function rationTemplateLocked() {
+    if (!diaryLocksRationTemplate || isRationDiaryLog(meal)) return false
+    return Boolean(openPlanDiarySourceId(meal.id) || isRationImportedMeal(meal))
+  }
+
+  async function ensureDiaryLogId(): Promise<string> {
+    const templateId = openPlanDiarySourceId(meal.id) ?? meal.id
+    const planId = weekPlanIdFromAssumptions(meal.assumptions)
+    if (!planId || !subjectUserId || !auth.user) return ensurePersistedMealId()
+    const draft = diaryMealCreatePlanDraft(
+      { ...meal, id: templateId },
+      planId,
+      new Date(meal.at),
+    )
+    draft.recordedAt = meal.at
+    draft.clientKey = `occ:${templateId}:${localDayKey(meal.at)}`.slice(0, 64)
+    draft.assumptions = [
+      ...draft.assumptions.filter(
+        (item) => item !== RATION_DIARY_DONE_MARK && !item.startsWith(RATION_DIARY_LOG_PREFIX),
+      ),
+      RATION_DIARY_DONE_MARK,
+      rationDiaryLogAssumption(templateId),
+    ]
+    const image = meal.image ? await mealImageFromUrl(meal.image) : null
+    if (image) {
+      draft.imageBase64 = image.base64
+      draft.imageMime = image.mime
+    }
+    const isOwn = auth.user.id === subjectUserId
+    const result = isOwn
+      ? await createMyMeal(auth.transport, draft)
+      : await createMentorUserMeal(auth.transport, subjectUserId, draft)
+    queryClient.setQueryData<{ items: Array<(typeof result)['meal']> }>(
+      mealsQueryKeys.forSubject(subjectUserId),
+      (previous) => {
+        const items = previous?.items ?? []
+        const nextItems = items.some((item) => item.id === result.meal.id)
+          ? items.map((item) => (item.id === result.meal.id ? result.meal : item))
+          : [result.meal, ...items]
+        return { ...previous, items: nextItems }
+      },
+    )
+    onDiaryOccurrence?.(result.meal.id)
+    return result.meal.id
+  }
+
   async function ensurePersistedMealId(): Promise<string> {
     if (!subjectUserId || !auth.user) {
       throw new Error('Нет пользователя для сохранения приёма')
@@ -471,7 +536,9 @@ export function MealOpenDetail({
     setRefineReveal('waiting')
     setMacroSettled(0)
     try {
-      const mealId = await ensurePersistedMealId()
+      const mealId = rationTemplateLocked()
+        ? await ensureDiaryLogId()
+        : await ensurePersistedMealId()
       const body = {
         message: text,
         imageBase64: ready[0]?.base64,
@@ -485,13 +552,24 @@ export function MealOpenDetail({
       const result = isOwn
         ? await refineMyMeal(auth.transport, mealId, body)
         : await refineMentorUserMeal(auth.transport, subjectUserId, mealId, body)
+      const keepCurrentPhotos = ready.length > 0 && photoAttachKeepsCurrentMeal(text)
+      const shownMeal =
+        ready.length > 0 && !keepCurrentPhotos
+          ? {
+              ...result.meal,
+              imageUrl: `data:${ready[0]!.mime};base64,${ready[0]!.base64}`,
+              extraImageUrls: ready.slice(1).map(
+                (image) => `data:${image.mime};base64,${image.base64}`,
+              ),
+            }
+          : result.meal
       queryClient.setQueryData<{ items: Array<(typeof result)['meal']> }>(
         mealsQueryKeys.forSubject(subjectUserId),
         (previous) => {
           const items = previous?.items ?? []
-          const nextItems = items.some((item) => item.id === result.meal.id)
-            ? items.map((item) => (item.id === result.meal.id ? result.meal : item))
-            : [result.meal, ...items]
+          const nextItems = items.some((item) => item.id === shownMeal.id)
+            ? items.map((item) => (item.id === shownMeal.id ? shownMeal : item))
+            : [shownMeal, ...items]
           return {
             ...previous,
             items: nextItems,
@@ -499,26 +577,37 @@ export function MealOpenDetail({
           }
         },
       )
-      const toVersionId = result.meal.activeVersionId || result.meal.versions.at(-1)?.id || ''
-      const toIndex = Math.max(0, result.meal.versions.length - 1)
+      const toVersionId = shownMeal.activeVersionId || shownMeal.versions.at(-1)?.id || ''
+      const toIndex = Math.max(0, shownMeal.versions.length - 1)
       if (ready.length === 0) {
         onCommitVersionGallery?.({
-          mealId: result.meal.id,
+          mealId: shownMeal.id,
           fromVersionId: activeVersion,
           toVersionId,
           toIndex,
           extraSrc: null,
         })
-      } else {
+      } else if (keepCurrentPhotos) {
         for (const image of ready) {
           onCommitVersionGallery?.({
-            mealId: result.meal.id,
+            mealId: shownMeal.id,
             fromVersionId: activeVersion,
             toVersionId,
             toIndex,
             extraSrc: `data:${image.mime};base64,${image.base64}`,
           })
         }
+      } else {
+        onCommitVersionGallery?.({
+          mealId: shownMeal.id,
+          fromVersionId: activeVersion,
+          toVersionId,
+          toIndex,
+          extraSrc: null,
+          replaceGallery: ready.slice(1).map(
+            (image) => `data:${image.mime};base64,${image.base64}`,
+          ),
+        })
       }
       setNote('')
       pendingAttachesRef.current = 0
@@ -544,7 +633,14 @@ export function MealOpenDetail({
   }
 
   async function onSelectVersion(versionId: string) {
-    if (!canRefine || !isPersisted || !subjectUserId || !auth.user || versionId === activeVersion) {
+    if (
+      !canRefine
+      || !isPersisted
+      || rationTemplateLocked()
+      || !subjectUserId
+      || !auth.user
+      || versionId === activeVersion
+    ) {
       return
     }
     setBusy(true)

@@ -1,6 +1,12 @@
 import type { RationEntry, RationGoal, RationMeal } from '@/features/mentor'
 
+import { isCatalogPlanId } from './plan-catalog'
 import type { WeekPlan } from './week-plan'
+
+/** Ready catalog cards stay as-is. A copy for editing starts from «Мои» or a mentor ration. */
+export function rationCanCopyForEdit(planId: string) {
+  return !isCatalogPlanId(planId)
+}
 
 const COPY_SUFFIX = / копия (\d+)$/u
 

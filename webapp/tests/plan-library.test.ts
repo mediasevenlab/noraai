@@ -121,4 +121,7 @@ test('cloned catalog or feed plans cannot be published to the feed', () => {
   expect(
     authoredPlanCanShareToFeed({ sourceSharedRationId: '019c0000-0000-7000-8000-000000000301' }),
   ).toBe(false)
+  expect(
+    authoredPlanCanShareToFeed({ sourceMentorPlanId: '019c0000-0000-7000-8000-000000000302' }),
+  ).toBe(false)
 })

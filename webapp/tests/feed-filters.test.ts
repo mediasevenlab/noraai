@@ -4,6 +4,7 @@ import {
   FEED_GOAL_KCAL_RANGE,
   filterSharedMeals,
   filterSharedRations,
+  orderByLikedAt,
   goalsForMealKcal,
   mealMatchesFeedGoal,
   type FeedGoal,
@@ -174,4 +175,13 @@ test('feed period keeps meals whose recorded day is inside the picked range', ()
       },
     }).map((item) => item.id),
   ).toEqual(['sep'])
+})
+
+test('likes and bookmarks show the latest mark first', () => {
+  const meals = [
+    meal({ id: 'old', kcal: 400, likedAt: '2026-10-01T08:00:00.000Z' }),
+    meal({ id: 'new', kcal: 400, likedAt: '2026-10-08T08:00:00.000Z' }),
+    meal({ id: 'plain', kcal: 400 }),
+  ]
+  expect(orderByLikedAt(meals).map((item) => item.id)).toEqual(['new', 'old', 'plain'])
 })

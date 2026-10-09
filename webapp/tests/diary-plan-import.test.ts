@@ -15,6 +15,7 @@ import {
   diaryNewPlanDays,
   diaryNewPlanTitle,
   diaryPlanCopiesOnDay,
+  diaryPlanCopySourceId,
   diaryPlanDayOccupancy,
   diaryPlanDraftClientKey,
   diaryPlanPickerItems,
@@ -550,5 +551,37 @@ describe('diary meals copied into a weekly plan', () => {
     expect(
       diaryMealPhotoSrc(copy, [{ id: SOURCE.id, imageUrl: '/diary/croissant.jpg' }]),
     ).toBe('/diary/croissant.jpg')
+  })
+
+  test('an edited diary completion can join a day that already holds the ration card', () => {
+    const planId = 'plan_one'
+    const day = new Date(2026, 9, 8, 12, 30, 0)
+    const template = {
+      id: SOURCE.id,
+      at: day.toISOString(),
+      assumptions: [RATION_DIARY_SOURCE_MARK, weekPlanAssumption(planId), RATION_DIARY_DONE_MARK],
+    }
+    const log = {
+      ...SOURCE,
+      id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      at: day.toISOString(),
+      assumptions: [
+        RATION_DIARY_SOURCE_MARK,
+        weekPlanAssumption(planId),
+        diaryPlanSourceAssumption(SOURCE.id),
+        RATION_DIARY_DONE_MARK,
+        `Выполнение:${SOURCE.id}`,
+      ],
+    }
+    const untouched = { ...log, versions: [{ id: 'v1' }] }
+    const edited = { ...log, versions: [{ id: 'v1' }, { id: 'v2' }] }
+    expect(diaryPlanCopySourceId(untouched)).toBe(SOURCE.id)
+    expect(diaryPlanCopySourceId(edited)).toBe(edited.id)
+    expect(diaryMealsFreshForPlanDay([untouched], [template], day, planId, planId)).toEqual([])
+    expect(diaryMealsFreshForPlanDay([edited], [template, edited], day, planId, planId)).toEqual([edited])
+    expect(diaryMealOnPlanDay([template, edited], edited.id, day, planId, planId)).toBe(false)
+    const draft = diaryMealCreatePlanDraft(edited, planId, day)
+    expect(draft.assumptions).toContain(diaryPlanSourceAssumption(edited.id))
+    expect(draft.assumptions.some((item) => item.startsWith('Выполнение:'))).toBe(false)
   })
 })

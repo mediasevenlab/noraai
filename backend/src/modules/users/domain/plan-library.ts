@@ -25,6 +25,7 @@ export type AuthoredUserPlanRecord = {
   goal: 'Похудение' | 'Набор' | 'Поддержание' | 'Здоровье' | null
   sourceCatalogId?: string
   sourceSharedRationId?: string
+  sourceMentorPlanId?: string
   dayCount?: number
 }
 
@@ -89,6 +90,8 @@ function parseAuthoredPlan(value: unknown, nowIso: string): AuthoredUserPlanReco
     typeof record.sourceCatalogId === 'string' ? record.sourceCatalogId.trim() : ''
   const sourceSharedRationId =
     typeof record.sourceSharedRationId === 'string' ? record.sourceSharedRationId.trim() : ''
+  const sourceMentorPlanId =
+    typeof record.sourceMentorPlanId === 'string' ? record.sourceMentorPlanId.trim() : ''
   const createdAt =
     typeof record.createdAt === 'string' && !Number.isNaN(Date.parse(record.createdAt))
       ? new Date(record.createdAt).toISOString()
@@ -103,6 +106,7 @@ function parseAuthoredPlan(value: unknown, nowIso: string): AuthoredUserPlanReco
     goal: parseGoal(record.goal),
     ...(CATALOG_PLAN_ID_RE.test(sourceCatalogId) ? { sourceCatalogId } : {}),
     ...(SHARED_RATION_ID_RE.test(sourceSharedRationId) ? { sourceSharedRationId } : {}),
+    ...(SHARED_RATION_ID_RE.test(sourceMentorPlanId) ? { sourceMentorPlanId } : {}),
     ...(dayCount ? { dayCount } : {}),
   }
 }
@@ -110,8 +114,9 @@ function parseAuthoredPlan(value: unknown, nowIso: string): AuthoredUserPlanReco
 export function authoredPlanCanShareToFeed(plan: {
   sourceCatalogId?: string
   sourceSharedRationId?: string
+  sourceMentorPlanId?: string
 }) {
-  return !plan.sourceCatalogId && !plan.sourceSharedRationId
+  return !plan.sourceCatalogId && !plan.sourceSharedRationId && !plan.sourceMentorPlanId
 }
 
 function uniquePlanIds(value: unknown): string[] {

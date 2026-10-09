@@ -52,13 +52,14 @@ import {
 import { DeleteUserDialog } from './DeleteUserDialog'
 import { RoleChangeDialog } from './RoleChangeDialog'
 
-const directoryRowClass = 'col-span-full grid grid-cols-subgrid'
+const directoryRowClass = 'col-span-full grid grid-cols-subgrid !border-0'
 const directoryStickyClass =
   'max-md:first:sticky max-md:first:left-0 max-md:first:z-20 max-md:first:min-w-0 max-md:first:overflow-hidden max-md:first:bg-[var(--nora-panel)] max-md:first:shadow-[1px_0_0_var(--nora-divider)]'
+const directoryRuleClass = 'border-b border-[var(--nora-divider)]'
 const directoryHeadClass =
-  `flex items-center !h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] first:pl-4 last:pr-4 ${directoryStickyClass}`
+  `flex items-center !h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] first:pl-4 last:pr-4 ${directoryRuleClass} ${directoryStickyClass}`
 const directoryCellClass =
-  `flex items-center h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-4 last:pr-4 ${directoryStickyClass}`
+  `flex items-center h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-4 last:pr-4 ${directoryRuleClass} ${directoryStickyClass}`
 const directoryTableClass =
   'grid w-max min-w-full grid-cols-[11rem_max-content_max-content_max-content_max-content_max-content_max-content] max-md:grid-cols-[7.5rem_max-content_max-content_max-content_max-content_max-content_max-content] justify-between max-md:justify-start [&_tbody]:contents [&_thead]:contents'
 
@@ -222,6 +223,7 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
                     <TableRow
                       className={cn(
                         directoryRowClass,
+                        'last:[&>td]:border-b-0',
                         'even:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:!bg-[var(--nora-row-hover)]',
                         'max-md:even:[&>:first-child]:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,var(--nora-panel))] max-md:hover:[&>:first-child]:![background-image:linear-gradient(var(--nora-row-hover),var(--nora-row-hover))]',
                       )}

@@ -21,6 +21,7 @@ const authoredUserPlanWireSchema = z
     goal: z.unknown().nullable().optional(),
     sourceCatalogId: z.string().optional(),
     sourceSharedRationId: z.string().optional(),
+    sourceMentorPlanId: z.string().optional(),
     dayCount: z.number().optional(),
   })
   .passthrough()
@@ -63,6 +64,7 @@ function coerceAuthoredPlan(value: unknown): AuthoredPlan | null {
   if (!id.startsWith('plan_') || !title) return null
   const sourceCatalogId = parsed.data.sourceCatalogId?.trim() ?? ''
   const sourceSharedRationId = parsed.data.sourceSharedRationId?.trim() ?? ''
+  const sourceMentorPlanId = parsed.data.sourceMentorPlanId?.trim() ?? ''
   const goal = parsed.data.goal
   const dayCount = parseAuthoredPlanDayCount(parsed.data.dayCount)
   return {
@@ -77,6 +79,7 @@ function coerceAuthoredPlan(value: unknown): AuthoredPlan | null {
         : null,
     ...(sourceCatalogId.startsWith('catalog_') ? { sourceCatalogId } : {}),
     ...(isAssignedPlanId(sourceSharedRationId) ? { sourceSharedRationId } : {}),
+    ...(isAssignedPlanId(sourceMentorPlanId) ? { sourceMentorPlanId } : {}),
     ...(dayCount ? { dayCount } : {}),
   }
 }
@@ -114,6 +117,7 @@ export function toUserPlanLibrary(raw: z.infer<typeof userPlanLibraryWireSchema>
       goal: plan.goal,
       ...(plan.sourceCatalogId ? { sourceCatalogId: plan.sourceCatalogId } : {}),
       ...(plan.sourceSharedRationId ? { sourceSharedRationId: plan.sourceSharedRationId } : {}),
+      ...(plan.sourceMentorPlanId ? { sourceMentorPlanId: plan.sourceMentorPlanId } : {}),
       ...(plan.dayCount ? { dayCount: plan.dayCount } : {}),
     })
   }
@@ -145,6 +149,7 @@ export function snapshotFromPlanLibrary(library: UserPlanLibrary): PlanLibrarySn
       goal: plan.goal,
       ...(plan.sourceCatalogId ? { sourceCatalogId: plan.sourceCatalogId } : {}),
       ...(plan.sourceSharedRationId ? { sourceSharedRationId: plan.sourceSharedRationId } : {}),
+      ...(plan.sourceMentorPlanId ? { sourceMentorPlanId: plan.sourceMentorPlanId } : {}),
       ...(plan.dayCount ? { dayCount: plan.dayCount } : {}),
     })),
     savedPlanIds: library.savedPlanIds,
@@ -170,6 +175,7 @@ export function putRequestFromSnapshot(
       goal: plan.goal,
       ...(plan.sourceCatalogId ? { sourceCatalogId: plan.sourceCatalogId } : {}),
       ...(plan.sourceSharedRationId ? { sourceSharedRationId: plan.sourceSharedRationId } : {}),
+      ...(plan.sourceMentorPlanId ? { sourceMentorPlanId: plan.sourceMentorPlanId } : {}),
       ...(plan.dayCount ? { dayCount: plan.dayCount } : {}),
     })
     return parsed.success ? [parsed.data] : []

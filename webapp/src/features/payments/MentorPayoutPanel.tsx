@@ -133,7 +133,7 @@ export function MentorPayoutPanel({
       {onReset ? (
         <button
           aria-label="Сбросить выплаты"
-          className="absolute -top-1.5 -right-1.5 inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full p-0 text-[var(--nora-text-secondary)] transition-colors hover:bg-[var(--nora-row-hover)] hover:text-[var(--nora-text)] [&_svg]:size-3.5 [&_svg]:shrink-0"
+          className="absolute -top-1.5 -right-1.5 z-20 inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full p-0 text-[var(--nora-text-secondary)] transition-colors before:absolute before:-top-2 before:-right-2 before:bottom-0 before:left-0 before:content-[''] hover:bg-[var(--nora-row-hover)] hover:text-[var(--nora-text)] [&_svg]:size-3.5 [&_svg]:shrink-0"
           data-generation-control=""
           onClick={onReset}
           type="button"

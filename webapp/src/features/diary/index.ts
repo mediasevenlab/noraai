@@ -13,6 +13,8 @@ export {
   setMealCoverExtras,
   usableMealCover,
 } from './meal-cover'
+// Auth sheets read this while the diary barrel is still loading.
+export { AUTH_MEAL_OPEN_SCALE } from './auth-meal-carousel'
 export {
   isPlannedDiaryMeal,
   mealCanShareToFeed,
@@ -28,7 +30,11 @@ export {
   isDiaryMealOnFutureDay,
   currentWeekPlanStampId,
   RATION_DIARY_DONE_MARK,
+  RATION_DIARY_LOG_PREFIX,
   RATION_DIARY_SOURCE_MARK,
+  isRationDiaryLog,
+  rationDiaryLogAssumption,
+  rationDiaryLogSourceId,
   rationIdFromAssumptions,
   rationPlanAssumption,
   setRationImportedMealTitles,
@@ -95,6 +101,7 @@ export {
   diaryMealStampOnDay,
   diaryMealsFreshForPlanDay,
   diaryPlanCopiesOnDay,
+  diaryPlanCopySourceId,
   diaryPlanDayOccupancy,
   diaryPlanSourceId,
 } from './diary-plan-import'
@@ -118,7 +125,7 @@ export {
   MealDialogHero,
   useMealDialogDismissLocked,
 } from './meal-sheet'
-export { feedDayHeading, isApiMealId, favoriteMealIdsForSync, reconcileLocalFavoriteIds, daysCountLabel, mealsCountLabel, mealsPerDayLabel, rationsCountLabel, calorieBalanceTone, CALORIE_BALANCE_CHIP_CLASS } from './diary-feed'
+export { feedDayHeading, isApiMealId, favoriteMealIdsForSync, orderByLatestBookmark, reconcileLocalFavoriteIds, daysCountLabel, mealsCountLabel, mealsPerDayLabel, rationsCountLabel, calorieBalanceTone, CALORIE_BALANCE_CHIP_CLASS } from './diary-feed'
 export {
   catalogFavoriteCreateDraft,
   isCatalogFavoriteMeal,
@@ -161,7 +168,6 @@ export {
   AUTH_MEAL_COVER_FADE_MS,
   AUTH_MEAL_EXPAND_MS,
   AUTH_MEAL_INTRO,
-  AUTH_MEAL_OPEN_SCALE,
   AUTH_MEAL_SIDE_SCALE,
   AUTH_MEAL_SIDE_X_REM,
   AUTH_MEAL_SAVE_DEMO,

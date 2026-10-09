@@ -4,8 +4,21 @@ import {
   applyAdditivePhotoRefine,
   excerptFromPortionItems,
   mergeAdditivePortionItems,
+  photoAttachKeepsCurrentMeal,
   portionItemKey,
 } from './meal-composition'
+
+test('a new photo replaces the meal unless the note asks to add it to the current one', () => {
+  expect(photoAttachKeepsCurrentMeal('')).toBe(false)
+  expect(photoAttachKeepsCurrentMeal('добавь банан')).toBe(false)
+  expect(photoAttachKeepsCurrentMeal('убери лук')).toBe(false)
+  expect(photoAttachKeepsCurrentMeal('добавь банан к обеду')).toBe(false)
+  expect(photoAttachKeepsCurrentMeal('добавь это к текущему приему')).toBe(true)
+  expect(photoAttachKeepsCurrentMeal('Добавь это к текущему приёму.')).toBe(true)
+  expect(photoAttachKeepsCurrentMeal('пожалуйста, добавь к уже существующему приёму')).toBe(true)
+  expect(photoAttachKeepsCurrentMeal('дополни этот приём')).toBe(true)
+  expect(photoAttachKeepsCurrentMeal('не заменяй, просто добавь фото')).toBe(true)
+})
 
 test('portion keys ignore weights and punctuation so the same food matches', () => {
   expect(portionItemKey('Свинина — 2 кг ~120 г')).toBe('свинина')

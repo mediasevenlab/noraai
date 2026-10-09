@@ -273,6 +273,7 @@ export const mealSchema = z
     authorName: z.string().trim().min(1).max(80).optional(),
     likeCount: z.number().int().nonnegative().default(0),
     liked: z.boolean().default(false),
+    likedAt: z.string().datetime().optional(),
     /** Mentor diary only: this card has not been viewed by the current mentor. */
     unread: z.boolean().optional(),
     /** Money billed for this meal, frozen when each call was made. Absent when nothing was recorded. */

@@ -64,6 +64,7 @@ export type MealEntry = {
   authorName?: string
   likeCount?: number
   liked?: boolean
+  likedAt?: string
   /** Mentor diary: this card has not been viewed yet. */
   unread?: boolean
   /** Sum of every AI call for this meal. Independent of the selected version. */

@@ -54,6 +54,7 @@ import { readPlanLibrarySnapshot, withAuthoredPlan } from "@/platform/plan-libra
 import { readPlanMealLayout } from "@/platform/plan-meal-layout";
 import { mergeFavoriteIds, type SavedAccountScope } from "@/platform/saved-ids";
 import { cn } from "@/lib/utils";
+import { readPlanStartDate } from "@/platform/plan-start";
 import { dateFromDayKey } from "@/platform/plan-slots";
 
 import {
@@ -106,7 +107,7 @@ import {
   diaryMealsFreshForPlanDay,
   diaryMealStampOnDay,
   diaryPlanCopiesOnDay,
-  diaryPlanSourceId,
+  diaryPlanCopySourceId,
   diaryWeekPlanOptions,
 } from "../diary-plan-import";
 import type { FeedPlanWeekDay } from "../feed-import";
@@ -117,6 +118,9 @@ import {
   diaryPlanIdForMeal,
   diaryPlanStartForMeal,
   mealListAfterPlanDone,
+  openPlanDiaryCardId,
+  openPlanDiaryCards,
+  openPlanDiarySourceId,
   orderDiaryDayByPlanLayout,
   planLayoutSlotIndex,
   planOccurrenceDiaryAtWithLayout,
@@ -128,8 +132,13 @@ import {
   isDiaryFeedMealVisible,
   isDiaryMealOnCurrentDay,
   isDiaryMealOnFutureDay,
+  isRationDiaryLog,
+  isRationImportedMeal,
   isRationPlanDone,
   isRationPlanPending,
+  RATION_DIARY_DONE_MARK,
+  rationDiaryLogAssumption,
+  rationDiaryLogSourceId,
   mealCanShareToFeed,
   mealShareBlockedMessage,
   mealCardOrigin,
@@ -160,6 +169,7 @@ import {
   groupMealsByDay,
   isApiMealId,
   favoriteMealIdsForSync,
+  orderByLatestBookmark,
   localCalendarDayKey,
   localDayKey,
   mealsCountLabel,
@@ -476,6 +486,23 @@ function FeedDayStats({
 /**
  * Лента дневника питания пользователя.
  */
+async function attachOccurrencePhoto<
+  T extends { imageBase64?: string; imageMime?: string },
+>(meal: MealEntry, draft: T): Promise<T> {
+  const photoSrc = preferredMealPhotoSrc(meal);
+  if (!photoSrc) return draft;
+  try {
+    const image = await mealImageFromUrl(photoSrc);
+    if (image) {
+      draft.imageBase64 = image.base64;
+      draft.imageMime = image.mime;
+    }
+  } catch {
+    // The diary copy still records the completion if the cover cannot be copied.
+  }
+  return draft;
+}
+
 export function NewsPage({
   subjectUserId,
   subjectEmail,
@@ -568,6 +595,9 @@ export function NewsPage({
   const [skippedIds, setSkippedIds] = React.useState<Set<string>>(
     () => new Set(),
   );
+  const [hiddenOpenCardIds, setHiddenOpenCardIds] = React.useState<Set<string>>(
+    () => new Set(),
+  );
   const [openId, setOpenId] = React.useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<MealEntry | null>(null);
   const [deletingCard, setDeletingCard] = React.useState(false);
@@ -613,6 +643,7 @@ export function NewsPage({
   const reportMealsViewedRef = React.useRef(reportMealsViewed);
   reportMealsViewedRef.current = reportMealsViewed;
   const planDoneInFlightRef = React.useRef(new Set<string>());
+  const occurrenceEpochRef = React.useRef(new Map<string, number>());
 
   React.useEffect(() => {
     if (readOnly || user?.role !== "user") return;
@@ -652,6 +683,7 @@ export function NewsPage({
       setCompletedIds(new Set());
       setDiaryAtById({});
       setSkippedIds(new Set());
+      setHiddenOpenCardIds(new Set());
       return;
     }
     const scope = {
@@ -665,6 +697,7 @@ export function NewsPage({
     setCompletedIds(readCompletedRationMealIds(scope));
     setDiaryAtById(readDiaryPlanAtById(scope));
     setSkippedIds(readSkippedPlanMealIds(scope));
+    setHiddenOpenCardIds(new Set());
     setTab("Все");
     setQuery("");
     setSearchOpen(false);
@@ -811,10 +844,46 @@ export function NewsPage({
     return new Date().toISOString();
   }, [periodStartIso, subjectEmail, user, subjectId, userMeals]);
 
-  const openMealSource = userMeals.find((m) => m.id === openId) ?? null;
-  const openMeal = openMealSource
-    ? { ...openMealSource, at: diaryAtForMeal(openMealSource) }
-    : null;
+  const openPlanCards = React.useMemo(() => {
+    if (!seesSubjectDiary || selectedPlanIds.size === 0) return [];
+    const opened = openPlanDiaryCards(userMeals, {
+      showWholePlan,
+      completedIds,
+      skippedIds,
+      selectedPlanIds,
+      historyAt: (meal) => diaryAtForMeal(meal),
+      planStartFor: (planId) => {
+        const remoteStart = subjectPlan?.planStarts[planId];
+        if (remoteStart) return dateFromDayKey(remoteStart);
+        return readPlanStartDate(savedScope, planId);
+      },
+      layoutFor: (planId) => readPlanMealLayout(savedScope, planId),
+      planMealsFor: (planId) =>
+        userMeals.filter(
+          (meal) => diaryPlanIdForMeal(meal, selectedPlanIds) === planId,
+        ),
+    });
+    if (hiddenOpenCardIds.size === 0) return opened;
+    return opened.filter((meal) => !hiddenOpenCardIds.has(meal.id));
+  }, [
+    completedIds,
+    diaryAtById,
+    hiddenOpenCardIds,
+    savedScope,
+    seesSubjectDiary,
+    selectedPlanIds,
+    showWholePlan,
+    skippedIds,
+    subjectPlan,
+    userMeals,
+  ]);
+  const openPlanCard = openPlanCards.find((meal) => meal.id === openId) ?? null;
+  const openMealSource = openPlanCard ?? userMeals.find((m) => m.id === openId) ?? null;
+  const openMeal = openPlanCard
+    ? openPlanCard
+    : openMealSource
+      ? { ...openMealSource, at: diaryAtForMeal(openMealSource) }
+      : null;
   const openMealPending = openMeal
     ? isRationPlanPending(openMeal, completedIds)
     : false;
@@ -847,6 +916,12 @@ export function NewsPage({
     if (readOnly || !subjectId) return;
     const next = new Set(saved);
     const willSave = !next.has(id);
+    if (willSave) {
+      const meal =
+        userMeals.find((item) => item.id === id) ??
+        openPlanCards.find((item) => item.id === id);
+      if (meal && isRationPlanPending(meal, completedIds)) return;
+    }
     if (willSave) next.add(id);
     else next.delete(id);
     const ok = await persistFavoriteIds(next);
@@ -887,6 +962,54 @@ export function NewsPage({
 
   function toggleRationMealDone(id: string) {
     if (readOnly || !subjectId) return;
+    const sourceId = openPlanDiarySourceId(id);
+    if (sourceId) {
+      if (planDoneInFlightRef.current.has(sourceId)) return;
+      const card = openPlanCards.find((item) => item.id === id);
+      const source = userMeals.find((item) => item.id === sourceId);
+      if (!card || !source || !isDiaryMealOnCurrentDay(card)) return;
+      planDoneInFlightRef.current.add(sourceId);
+      const epoch = (occurrenceEpochRef.current.get(sourceId) ?? 0) + 1;
+      occurrenceEpochRef.current.set(sourceId, epoch);
+      const planId = diaryPlanIdForMeal(source, selectedPlanIds);
+      if (!planId) {
+        planDoneInFlightRef.current.delete(sourceId);
+        return;
+      }
+      const dayKey = localDayKey(card.at);
+      const draft = diaryMealCreatePlanDraft(source, planId, new Date(card.at));
+      draft.recordedAt = card.at;
+      draft.clientKey = `occ:${sourceId}:${dayKey}`.slice(0, 64);
+      if (!draft.assumptions.includes(RATION_DIARY_DONE_MARK)) {
+        draft.assumptions = [...draft.assumptions, RATION_DIARY_DONE_MARK];
+      }
+      if (!draft.assumptions.some((item) => item === rationDiaryLogAssumption(sourceId))) {
+        draft.assumptions = [...draft.assumptions, rationDiaryLogAssumption(sourceId)];
+      }
+      toast.success("Приём отмечен как выполненный");
+      void attachOccurrencePhoto(source, draft)
+        .then((ready) => createMyMeal(auth.transport, ready))
+        .then((result) => {
+          if (occurrenceEpochRef.current.get(sourceId) !== epoch) return;
+          queryClient.setQueryData<{ items: Array<{ id: string }> }>(
+            mealsQueryKeys.forSubject(subjectId),
+            (current) => {
+              if (!current) return { items: [result.meal] };
+              if (current.items.some((item) => item.id === result.meal.id)) return current;
+              return { ...current, items: [result.meal, ...current.items] };
+            },
+          );
+          if (openId === id) setOpenId(result.meal.id);
+        })
+        .catch(() => {
+          if (occurrenceEpochRef.current.get(sourceId) !== epoch) return;
+          toast.error("Не удалось сохранить выполнение");
+        })
+        .finally(() => {
+          planDoneInFlightRef.current.delete(sourceId);
+        });
+      return;
+    }
     const meal = userMeals.find((item) => item.id === id);
     if (!meal) return;
     const shownAt = diaryAtForMeal(meal);
@@ -896,6 +1019,101 @@ export function NewsPage({
     const previousDiaryAt = diaryAtById;
     const next = new Set(completedIds);
     const willComplete = !isRationPlanDone(meal, completedIds);
+    const historySourceId = rationDiaryLogSourceId(meal.assumptions);
+    if (!willComplete && historySourceId) {
+      if (planDoneInFlightRef.current.has(historySourceId)) {
+        planDoneInFlightRef.current.delete(id);
+        return;
+      }
+      planDoneInFlightRef.current.add(historySourceId);
+      const epoch = (occurrenceEpochRef.current.get(historySourceId) ?? 0) + 1;
+      occurrenceEpochRef.current.set(historySourceId, epoch);
+      const previousMeals = queryClient.getQueryData<{ items: Array<{ id: string }> }>(
+        mealsQueryKeys.forSubject(subjectId),
+      );
+      queryClient.setQueryData<{ items: Array<{ id: string }> }>(
+        mealsQueryKeys.forSubject(subjectId),
+        (current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            items: current.items.filter((item) => item.id !== meal.id),
+          };
+        },
+      );
+      setHiddenOpenCardIds((current) => {
+        const nextHidden = new Set(
+          [...current].filter((cardId) => openPlanDiarySourceId(cardId) !== historySourceId),
+        );
+        return nextHidden;
+      });
+      const template = userMeals.find((item) => item.id === historySourceId);
+      const reopenId =
+        template && isRationPlanDone(template, completedIds)
+          ? openPlanDiaryCardId(historySourceId, localDayKey(shownAt))
+          : historySourceId;
+      if (openId === meal.id) setOpenId(reopenId);
+      planDoneInFlightRef.current.delete(id);
+      toast("Приём снова в плане");
+      void deleteMyMeal(auth.transport, meal.id)
+        .catch(() => {
+          if (occurrenceEpochRef.current.get(historySourceId) !== epoch) return;
+          if (previousMeals) {
+            queryClient.setQueryData(mealsQueryKeys.forSubject(subjectId), previousMeals);
+          }
+          if (openId === reopenId) setOpenId(meal.id);
+          toast.error("Не удалось вернуть приём в план");
+        })
+        .finally(() => {
+          planDoneInFlightRef.current.delete(historySourceId);
+        });
+      return;
+    }
+    if (willComplete && isRationImportedMeal(meal) && !isRationDiaryLog(meal)) {
+      planDoneInFlightRef.current.delete(id);
+      const templateId = meal.id;
+      if (planDoneInFlightRef.current.has(templateId)) return;
+      planDoneInFlightRef.current.add(templateId);
+      const dayKey = localDayKey(shownAt);
+      const planId = diaryPlanIdForMeal(meal, selectedPlanIds);
+      if (!planId) {
+        planDoneInFlightRef.current.delete(templateId);
+        return;
+      }
+      const epoch = (occurrenceEpochRef.current.get(templateId) ?? 0) + 1;
+      occurrenceEpochRef.current.set(templateId, epoch);
+      const draft = diaryMealCreatePlanDraft(meal, planId, new Date(shownAt));
+      draft.recordedAt = shownAt;
+      draft.clientKey = `occ:${templateId}:${dayKey}`.slice(0, 64);
+      draft.assumptions = [
+        ...draft.assumptions.filter((item) => item !== RATION_DIARY_DONE_MARK),
+        RATION_DIARY_DONE_MARK,
+        rationDiaryLogAssumption(templateId),
+      ];
+      toast.success("Приём отмечен как выполненный");
+      void attachOccurrencePhoto(meal, draft)
+        .then((ready) => createMyMeal(auth.transport, ready))
+        .then((result) => {
+          if (occurrenceEpochRef.current.get(templateId) !== epoch) return;
+          queryClient.setQueryData<{ items: Array<{ id: string }> }>(
+            mealsQueryKeys.forSubject(subjectId),
+            (current) => {
+              if (!current) return { items: [result.meal] };
+              if (current.items.some((item) => item.id === result.meal.id)) return current;
+              return { ...current, items: [result.meal, ...current.items] };
+            },
+          );
+          if (openId === id) setOpenId(result.meal.id);
+        })
+        .catch(() => {
+          if (occurrenceEpochRef.current.get(templateId) !== epoch) return;
+          toast.error("Не удалось сохранить выполнение");
+        })
+        .finally(() => {
+          planDoneInFlightRef.current.delete(templateId);
+        });
+      return;
+    }
     if (willComplete) next.add(id);
     else next.delete(id);
     const stayAt = shownAt;
@@ -1160,7 +1378,7 @@ export function NewsPage({
           selected.flatMap((meal) =>
             diaryPlanCopiesOnDay(
               userMeals,
-              diaryPlanSourceId(meal),
+              diaryPlanCopySourceId(meal),
               day.date,
               planId,
               weekPlanFallbackId,
@@ -1217,7 +1435,7 @@ export function NewsPage({
         if (
           diaryMealOnPlanDay(
             stamps,
-            diaryPlanSourceId(meal),
+            diaryPlanCopySourceId(meal),
             day.date,
             planId,
             weekPlanFallbackId,
@@ -1292,6 +1510,35 @@ export function NewsPage({
             showWholePlan && selectedIds.size > 0,
           ),
         );
+        const coveredDays = new Set(
+          userMeals
+            .filter(
+              (meal) => isRationDiaryLog(meal) && isRationPlanDone(meal, completedIds),
+            )
+            .map(
+              (meal) =>
+                `${rationDiaryLogSourceId(meal.assumptions)}:${localDayKey(meal.at)}`,
+            ),
+        );
+        list = list.filter((meal) => {
+          if (isRationDiaryLog(meal) || !isRationPlanPending(meal, completedIds)) return true;
+          return !coveredDays.has(`${meal.id}:${localDayKey(meal.at)}`);
+        });
+        const seen = new Set(list.map((meal) => meal.id));
+        for (const card of openPlanCards) {
+          if (seen.has(card.id)) continue;
+          if (
+            filterDiaryMeals([card], {
+              tab: "Все",
+              savedIds: saved,
+              query,
+              completedIds,
+            }).length === 0
+          ) {
+            continue;
+          }
+          list.push(card);
+        }
       }
     }
     if (periodFilter) {
@@ -1299,7 +1546,11 @@ export function NewsPage({
         isMealInLocalDayRange(meal.at, periodFilter.from, periodFilter.to),
       );
     }
-    list.sort((a, b) => b.at.localeCompare(a.at));
+    if (tab === "Избранное") {
+      list = orderByLatestBookmark(list, saved);
+    } else {
+      list.sort((a, b) => b.at.localeCompare(a.at));
+    }
     return list;
   }, [
     userMeals,
@@ -1311,6 +1562,7 @@ export function NewsPage({
     completedIds,
     diaryAtById,
     skippedIds,
+    openPlanCards,
     seesSubjectDiary,
     subjectPlan,
     savedScope.userId,
@@ -1903,6 +2155,8 @@ export function NewsPage({
                     ? undefined
                     : () => toggleRationMealDone(openMeal.id)
                 }
+                diaryLocksRationTemplate
+                onDiaryOccurrence={setOpenId}
                 onMacrosRevealChange={setOpenMacrosReveal}
                 readOnly={readOnly}
                 subjectUserId={subjectId}
@@ -1912,6 +2166,7 @@ export function NewsPage({
                   toVersionId,
                   toIndex,
                   extraSrc,
+                  replaceGallery,
                 }) => {
                   setMealGalleries((current) =>
                     commitMealVersionExtras(
@@ -1921,6 +2176,7 @@ export function NewsPage({
                       toVersionId,
                       extraSrc,
                       toIndex,
+                      replaceGallery,
                     ),
                   );
                 }}
@@ -1960,6 +2216,7 @@ export function NewsPage({
           toVersionId,
           toIndex,
           extraSrc,
+          replaceGallery,
         }) => {
           setMealGalleries((current) =>
             commitMealVersionExtras(
@@ -1969,6 +2226,7 @@ export function NewsPage({
               toVersionId,
               extraSrc,
               toIndex,
+              replaceGallery,
             ),
           );
         }}

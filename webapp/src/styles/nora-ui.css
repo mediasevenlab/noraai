@@ -923,8 +923,7 @@ html[data-android] .ios-glass-glare-soft {
 }
 
 [data-settings-well] .border-t:not(.border-t-0),
-[data-settings-well] [data-slot="table-row"],
-[data-catalog-frame] [data-slot="table-row"],
+[data-settings-well] [data-slot="table-row"]:not([data-catalog-frame] [data-slot="table-row"]),
 [data-catalog-frame] [data-catalog-band="bottom"],
 [data-questionnaire-preview] .border-t:not(.border-t-0) {
   box-shadow: inset 0 1px 0 var(--settings-divider-glint, transparent);
@@ -972,9 +971,30 @@ html[data-android] .ios-glass-glare-soft {
 }
 
 /* Block subtitles stay quiet in light and a step brighter on the dark canvas. */
+.scheme-editor-light [data-settings-subtitle],
+[data-scheme="editor-light"] [data-settings-subtitle] {
+  color: #737373;
+}
+
 .scheme-editor-dark [data-settings-subtitle],
 [data-scheme="editor-dark"] [data-settings-subtitle] {
   color: #b3b3b3;
+}
+
+/* Recess sits a step under the tariff card. Inner radius is 8px with 2px of padding, so the track is 10px. */
+[data-period-track] {
+  --period-track: color-mix(in srgb, black 6%, var(--settings-field-bg, var(--nora-panel)));
+}
+
+.scheme-editor-dark [data-period-track],
+[data-scheme="editor-dark"] [data-period-track] {
+  --period-track: #1f1f1f;
+}
+
+/* The selected half is the card surface. A drop shadow would muddy it on the dark recess. */
+.scheme-editor-dark [data-period-choice][data-active],
+[data-scheme="editor-dark"] [data-period-choice][data-active] {
+  box-shadow: none;
 }
 
 /* Wells: a hairline that catches light on top and fades out below. */

@@ -5,6 +5,10 @@ export const RATION_PLAN_ID_PREFIX = 'Рацион:'
 export const WEEK_PLAN_ID_PREFIX = 'План:'
 /** Hidden stamp after the user marks a planned meal as eaten. */
 export const RATION_DIARY_DONE_MARK = 'Выполнено по плану'
+/** Diary history row copied from a ration card. The ration card stays untouched. */
+export const RATION_DIARY_LOG_PREFIX = 'Выполнение:'
+/** Hidden stamp that keeps the source meal id after a copy is added to a plan. */
+export const DIARY_PLAN_SOURCE_PREFIX = 'Дневник:'
 /** Hidden stamp on diary meals copied from the public feed. */
 export const FEED_DIARY_SOURCE_MARK = 'Добавлено из ленты'
 export const FEED_SOURCE_ID_PREFIX = 'Лента:'
@@ -48,6 +52,8 @@ export function isMealShareProvenanceStamp(line: string) {
     || value.startsWith(WEEK_PLAN_ID_PREFIX)
     || value.startsWith(FEED_SOURCE_ID_PREFIX)
     || value.startsWith(CATALOG_FAVORITE_ID_PREFIX)
+    || value.startsWith(RATION_DIARY_LOG_PREFIX)
+    || value.startsWith(DIARY_PLAN_SOURCE_PREFIX)
   )
 }
 
@@ -71,12 +77,12 @@ export function withAuthorPhotoMark(assumptions: readonly string[]): string[] {
   return [...assumptions, MEAL_AUTHOR_PHOTO_MARK]
 }
 
+/** Only a replaced cover uniquifies a derived card. Text edits and inherited photos do not. */
 export function mealHasAuthorPhoto(input: {
   assumptions?: readonly string[]
   extraImageKeys?: readonly string[]
 }): boolean {
-  if (input.assumptions?.includes(MEAL_AUTHOR_PHOTO_MARK)) return true
-  return (input.extraImageKeys ?? []).some((key) => key.trim().length > 0)
+  return Boolean(input.assumptions?.includes(MEAL_AUTHOR_PHOTO_MARK))
 }
 
 /** Derived copies need an owner photo; scratch meals can be published as-is. */
@@ -90,4 +96,31 @@ export function mealCanPublishToFeed(input: {
 
 export function mealAssumptionsBlockShare(assumptions: readonly string[]) {
   return !mealCanPublishToFeed({ assumptions })
+}
+
+/**
+ * Feed shows each publishable meal once.
+ * A card with a replaced cover stays its own entry. Copies that still use
+ * the same stored image collapse to one row.
+ */
+export function uniqueSharedFeedMeals<T extends {
+  id: string
+  title: string
+  imageKey?: string | null
+  assumptions: readonly string[]
+}>(meals: readonly T[]): T[] {
+  const seen = new Set<string>()
+  const unique: T[] = []
+  for (const meal of meals) {
+    if (!mealCanPublishToFeed({ assumptions: meal.assumptions })) continue
+    const imageKey = meal.imageKey?.trim() ?? ''
+    const ownPhoto = mealHasAuthorPhoto(meal)
+    const key = ownPhoto || !imageKey
+      ? `own:${meal.id}`
+      : `copy:${imageKey}|${meal.title.trim().toLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    unique.push(meal)
+  }
+  return unique
 }

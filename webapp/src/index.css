@@ -856,7 +856,7 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
 
   [data-settings-well] [data-slot='field-label']:not([data-table-head]),
   [data-settings-well] [data-slot='select-trigger'],
-  [data-settings-well] button,
+  [data-settings-well] button:not([data-text-button]),
   [data-settings-well] label,
   [data-settings-well] span:not([data-option-note]):not([data-nora-badge]):not([data-settings-meta]):not([data-payment-value]):not([data-settings-caption]):not([data-table-text]),
   [data-onboarding-form] [data-slot='field-label'],
@@ -1016,6 +1016,7 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
   }
 
   [data-settings-well] [data-settings-search] {
+    --ios-type-scale: 0.8125;
     position: absolute !important;
     top: 0;
     left: 0;
@@ -1031,15 +1032,20 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
 
   /* Catalog search stays in the header row. The well rule above lifts settings search into a slot. */
   [data-settings-well] [data-catalog-frame] [data-settings-search] {
+    --ios-type-scale: 0.8125;
     position: relative !important;
     top: auto;
     left: auto;
-    width: auto !important;
+    width: calc(100% / var(--ios-type-scale)) !important;
     max-width: none !important;
-    height: 2rem !important;
-    min-height: 2rem !important;
-    margin: 0 !important;
-    transform: none;
+    height: calc(2rem / var(--ios-type-scale)) !important;
+    min-height: 0 !important;
+    margin-top: 0 !important;
+    margin-right: calc(100% * (var(--ios-type-scale) - 1) / var(--ios-type-scale)) !important;
+    margin-bottom: calc(2rem * (var(--ios-type-scale) - 1) / var(--ios-type-scale)) !important;
+    margin-left: 0 !important;
+    transform: scale(var(--ios-type-scale));
+    transform-origin: top left;
   }
 }
 
@@ -1049,10 +1055,85 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
  * the earlier base layer win over those utilities.
  */
 @layer base {
+  /*
+   * Important utilities beat an unlayered font-size, and iOS zooms any
+   * focused control under 16px. This earlier layer wins over those utilities.
+   */
+  @media (max-width: 767px) {
+    input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image']):not([type='hidden']),
+    textarea,
+    select,
+    [data-slot='input'],
+    [data-slot='textarea'],
+    [contenteditable='true'] {
+      font-size: 16px !important;
+    }
+
+    /*
+     * 13px on screen. The slot stays the field's old size; the control is
+     * drawn at 16px and scaled by 13/16, so iOS does not zoom.
+     */
+    input[data-payout-field] {
+      --ios-13: 0.8125;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      box-sizing: border-box !important;
+      width: calc(100% / var(--ios-13)) !important;
+      height: calc(2rem / var(--ios-13)) !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      margin: 0 !important;
+      padding: 0 calc(0.75rem / var(--ios-13)) !important;
+      font-size: 16px !important;
+      line-height: calc(2rem / var(--ios-13)) !important;
+      border-radius: calc(var(--nora-radius-md, 8px) / var(--ios-13)) !important;
+      transform: scale(var(--ios-13));
+      transform-origin: top left;
+    }
+
+    [data-ios-13-slot] > input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']) {
+      --ios-13: 0.8125;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      box-sizing: border-box !important;
+      width: calc(100% / var(--ios-13)) !important;
+      height: calc(2rem / var(--ios-13)) !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      margin: 0 !important;
+      padding: 0 calc(0.75rem / var(--ios-13)) !important;
+      font-size: 16px !important;
+      line-height: calc(2rem / var(--ios-13)) !important;
+      transform: scale(var(--ios-13));
+      transform-origin: top left;
+    }
+
+    [data-ios-13-slot='area'] > textarea {
+      --ios-13: 0.8125;
+      position: relative !important;
+      box-sizing: border-box !important;
+      display: block !important;
+      width: calc(100% / var(--ios-13)) !important;
+      height: auto !important;
+      min-height: calc(var(--ios-min, 6rem) / var(--ios-13)) !important;
+      max-height: none !important;
+      margin-top: 0 !important;
+      margin-right: calc(100% * (var(--ios-13) - 1) / var(--ios-13)) !important;
+      margin-bottom: calc(var(--ios-min, 6rem) * (var(--ios-13) - 1) / var(--ios-13)) !important;
+      padding: calc(0.625rem / var(--ios-13)) calc(0.75rem / var(--ios-13)) !important;
+      font-size: 16px !important;
+      line-height: calc(1.25rem / var(--ios-13)) !important;
+      transform: scale(var(--ios-13));
+      transform-origin: top left;
+    }
+  }
+
   @media (max-width: 767px) {
     html [data-settings-well] [data-settings-search] input {
       font-family: var(--nora-font) !important;
-      font-size: calc(13px / var(--ios-type-scale, 0.875)) !important;
+      font-size: 16px !important;
       font-weight: 250 !important;
       line-height: calc(1.25rem / var(--ios-type-scale, 0.875)) !important;
       color: var(--nora-text-secondary) !important;

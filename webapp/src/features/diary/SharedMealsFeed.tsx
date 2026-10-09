@@ -12,20 +12,13 @@ import {
 import { NoraButton } from "@/components/nora/primitives";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAuth } from "@/features/auth";
-import { putUserFavorites } from "@/platform/account-favorites";
 import { snapshotFromPlanLibrary } from "@/platform/account-plan-library";
 import {
   readAssignedPlans,
 } from "@/platform/authored-plans";
-import { notifyHybridFavoriteAdded } from "@/platform/hybrid-notifications";
 import { readPlanLibrarySnapshot, withAuthoredPlan } from "@/platform/plan-library-local";
-import { mergeFavoriteIds } from "@/platform/saved-ids";
 
 import { createMyMeal, deleteMyMeal, likeSharedMeal, shareMyMeal } from "./api";
-import {
-  apiMealIdForCatalogPreview,
-  catalogFavoriteCreateDraft,
-} from "./catalog-favorite";
 import { DiaryPlanDayPicker } from "./DiaryPlanDayPicker";
 import { type DiaryPeriodFilter } from "./DiaryPeriodPicker";
 import {
@@ -40,6 +33,7 @@ import {
 } from "./diary-plan-import";
 import {
   filterSharedMeals,
+  orderByLikedAt,
   type FeedGoal,
 } from "./feed-filters";
 import type { FeedPlanWeekDay } from "./feed-import";
@@ -52,19 +46,12 @@ import { mealImageFromUrl } from "./meal-image-pick";
 import { preferredMealPhotoSrc } from "./meal-cover";
 import type { MealEntry } from "./meals-catalog";
 import { mealDtoToEntry } from "./merge-meals";
-import { readSavedMealIds, writeSavedMealIds } from "./diary-assignments";
-import {
-  favoriteMealIdsForSync,
-  reconcileLocalFavoriteIds,
-} from "./diary-feed";
 import { currentWeekPlanStampId, mealCardOrigin } from "./ration-import";
 import {
-  favoritesQueryKeys,
   mealsQueryKeys,
   useMealsQuery,
   usePlanLibraryQuery,
   useSharedMealsQuery,
-  useUserFavoritesQuery,
 } from "./queries";
 import { useSyncedPlanLibrary } from "./use-plan-library";
 import {
@@ -97,7 +84,12 @@ function patchSharedLike(
       let likeCount = item.likeCount;
       if (liked && !item.liked) likeCount += 1;
       if (!liked && item.liked) likeCount = Math.max(0, likeCount - 1);
-      return { ...item, liked, likeCount };
+      return {
+        ...item,
+        liked,
+        likeCount,
+        ...(liked ? { likedAt: new Date().toISOString() } : { likedAt: undefined }),
+      };
     }),
   };
 }
@@ -150,15 +142,13 @@ export function SharedMealsFeed({
     () => (diaryQuery.data?.items ?? []).map(mealDtoToEntry),
     [diaryQuery.data?.items],
   );
-  const favoritesQuery = useUserFavoritesQuery(Boolean(subjectId && auth.user));
   const planLibraryQuery = usePlanLibraryQuery(auth.user?.role === "user");
   const { persist: persistPlanLibrary, snapshot: ownPlanLibrary } =
     useSyncedPlanLibrary(auth.user?.role === "user");
-  const [saved, setSaved] = React.useState(() => new Set<string>());
-  const visible = React.useMemo(
-    () => filterSharedMeals(meals, { likedOnly, goal, query, period }),
-    [meals, likedOnly, goal, query, period],
-  );
+  const visible = React.useMemo(() => {
+    const filtered = filterSharedMeals(meals, { likedOnly, goal, query, period });
+    return likedOnly ? orderByLikedAt(filtered) : filtered;
+  }, [meals, likedOnly, goal, query, period]);
   const filtersActive = likedOnly || Boolean(query.trim()) || goal != null || period != null;
   const openMeal = openId
     ? (meals.find((meal) => meal.id === openId) ?? null)
@@ -211,113 +201,6 @@ export function SharedMealsFeed({
         error instanceof Error
           ? error.message
           : "Не удалось изменить публикацию",
-      );
-    }
-  }
-
-  React.useEffect(() => {
-    if (!subjectId || !auth.user) {
-      setSaved(new Set());
-      return;
-    }
-    const scope = { userId: subjectId, email: auth.user.email };
-    if (!favoritesQuery.data) {
-      setSaved(readSavedMealIds(scope));
-      return;
-    }
-    const local = readSavedMealIds(scope);
-    const merged = mergeFavoriteIds(favoritesQuery.data.mealIds, local);
-    const next = new Set(merged);
-    setSaved(next);
-    writeSavedMealIds(scope, next);
-    const remoteSet = new Set(favoritesQuery.data.mealIds);
-    const localApi = favoriteMealIdsForSync(merged);
-    if (localApi.some((id) => !remoteSet.has(id))) {
-      void putUserFavorites(auth.transport, { mealIds: localApi })
-        .then((remote) => {
-          queryClient.setQueryData(
-            favoritesQueryKeys.forUser(subjectId),
-            remote,
-          );
-          const reconciled = reconcileLocalFavoriteIds(merged, remote.mealIds);
-          setSaved(reconciled);
-          writeSavedMealIds(scope, reconciled);
-        })
-        .catch(() => {
-          // Keep local bookmarks; a later visit retries quietly.
-        });
-    }
-  }, [auth.transport, auth.user, favoritesQuery.data, queryClient, subjectId]);
-
-  function feedMealSaved(meal: MealEntry) {
-    if (saved.has(meal.id)) return true;
-    const copyId = apiMealIdForCatalogPreview(meal.id, diaryMeals);
-    return Boolean(copyId && saved.has(copyId));
-  }
-
-  async function persistFavoriteIds(next: Set<string>) {
-    if (!subjectId || !auth.user) return false;
-    const scope = { userId: subjectId, email: auth.user.email };
-    setSaved(next);
-    writeSavedMealIds(scope, next);
-    try {
-      const remote = await putUserFavorites(auth.transport, {
-        mealIds: favoriteMealIdsForSync(next),
-      });
-      queryClient.setQueryData(favoritesQueryKeys.forUser(subjectId), remote);
-      const reconciled = reconcileLocalFavoriteIds(next, remote.mealIds);
-      setSaved(reconciled);
-      writeSavedMealIds(scope, reconciled);
-      return true;
-    } catch {
-      toast.error("Не удалось сохранить избранное", {
-        id: "favorites-save-failed",
-      });
-      return false;
-    }
-  }
-
-  async function toggleSave(meal: MealEntry) {
-    if (!subjectId || !auth.user) {
-      toast("Сохранить приём можно из своего аккаунта");
-      return;
-    }
-    const copyId = apiMealIdForCatalogPreview(meal.id, diaryMeals);
-    if (feedMealSaved(meal)) {
-      const next = new Set(saved);
-      next.delete(meal.id);
-      if (copyId) next.delete(copyId);
-      const ok = await persistFavoriteIds(next);
-      if (ok) toast("Убрано из избранного", { id: "favorite-removed" });
-      return;
-    }
-    try {
-      let ownedId = copyId;
-      if (!ownedId) {
-        const photoSrc = preferredMealPhotoSrc(meal);
-        const image = photoSrc ? await mealImageFromUrl(photoSrc) : null;
-        const created = await createMyMeal(auth.transport, {
-          ...catalogFavoriteCreateDraft(meal),
-          ...(image
-            ? { imageBase64: image.base64, imageMime: image.mime }
-            : {}),
-        });
-        ownedId = created.meal.id;
-        await queryClient.invalidateQueries({
-          queryKey: mealsQueryKeys.forSubject(subjectId),
-        });
-      }
-      const next = new Set(saved);
-      next.add(ownedId);
-      const ok = await persistFavoriteIds(next);
-      if (!ok) return;
-      toast.success("Добавлено в избранное", { id: "favorite-added" });
-      void notifyHybridFavoriteAdded(meal.title);
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Не удалось добавить в избранное",
       );
     }
   }
@@ -561,6 +444,7 @@ export function SharedMealsFeed({
           <MealCard
             completedIds={EMPTY_COMPLETED_IDS}
             images={imagesForDiaryMeal(meal, EMPTY_GALLERIES)}
+            saved={false}
             key={meal.id}
             layout={layout}
             meal={meal}
@@ -571,14 +455,11 @@ export function SharedMealsFeed({
               void toggleShare(meal);
             }}
             onToggleLike={() => toggleLike(meal)}
-            onToggleSave={() => {
-              void toggleSave(meal);
-            }}
+            onToggleSave={() => undefined}
             onAddToPlan={canAddToPlan ? () => openPlanPicker(meal) : undefined}
             addingToPlan={Boolean(addingDayKey) && planMeal?.id === meal.id}
             readOnly
-            saved={feedMealSaved(meal)}
-            showSave={!isMentor}
+            showSave={false}
             showPlanState={false}
             variant="feed"
           />
