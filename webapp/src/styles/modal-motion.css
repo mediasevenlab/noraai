@@ -222,6 +222,12 @@ html[data-android] * {
     height: calc(100dvh - var(--modal-sheet-inset)) !important;
   }
 
+  [data-slot='dialog-content'][data-phone-fit] {
+    top: auto !important;
+    height: auto !important;
+    max-height: calc(100dvh - var(--modal-sheet-inset)) !important;
+  }
+
   /* Meal window fills the phone: no grabber, top radius, or gap. */
   [data-slot='dialog-content'][data-phone-full] {
     top: 0 !important;

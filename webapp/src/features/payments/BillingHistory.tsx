@@ -86,9 +86,9 @@ export function PayoutHistory({
   const visible = rows.slice(range.from - 1, range.to)
   return (
     <div className="overflow-hidden rounded-[12px] bg-[var(--nora-panel)]">
-      <Table columns className="grid w-full grid-cols-[max-content_max-content_max-content_max-content_max-content] justify-between">
+      <Table columns className="grid w-max min-w-full grid-cols-[max-content_max-content_max-content_max-content_max-content] justify-between">
         <TableHeader>
-          <TableRow className={cn(ledgerRowClass, 'hover:bg-transparent')}>
+          <TableRow className="hover:bg-transparent">
             <TableHead className={payoutHeadClass}>Дата</TableHead>
             <TableHead className={payoutHeadClass}>Накоплено</TableHead>
             <TableHead className={payoutHeadClass}>Налог</TableHead>
@@ -102,7 +102,7 @@ export function PayoutHistory({
             const net = mentorPayoutNet(row.gross)
             return (
               <TableRow
-                className={cn(ledgerRowClass, 'even:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:!bg-[var(--nora-row-hover)]')}
+                className="even:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:!bg-[var(--nora-row-hover)]"
                 key={row.id}
               >
                 <TableCell className={payoutCellClass}>{row.at}</TableCell>
@@ -143,17 +143,16 @@ function PayoutStatusBadge({ status }: { status: 'paid' | 'waiting' | 'needs-dat
   )
 }
 
-const ledgerRowClass = 'col-span-full grid grid-cols-subgrid'
 const payoutHeadClass =
-  '!h-auto px-0.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] first:pl-4 last:pr-4'
+  '!h-auto px-0.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] first:pl-3.5 last:pr-3.5'
 const payoutCellClass =
-  'h-auto px-0.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-4 last:pr-4'
-const payoutStatusClass = 'h-auto px-0.5 py-3 text-left whitespace-nowrap first:pl-4 last:pr-4'
+  'h-auto px-0.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-3.5 last:pr-3.5'
+const payoutStatusClass = 'h-auto px-0.5 py-3 text-left whitespace-nowrap first:pl-3.5 last:pr-3.5'
 const headClass =
-  '!h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] first:pl-4 last:pr-4'
+  '!h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] first:pl-3.5 last:pr-3.5'
 const cellClass =
-  'h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-4 last:pr-4'
-const statusClass = 'h-auto px-2.5 py-3 text-left whitespace-nowrap first:pl-4 last:pr-4'
+  'h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-3.5 last:pr-3.5'
+const statusClass = 'h-auto px-2.5 py-3 text-left whitespace-nowrap first:pl-3.5 last:pr-3.5'
 
 function LedgerTable({
   available,
@@ -197,9 +196,9 @@ function LedgerTable({
           </p>
         </div>
       ) : null}
-      <Table columns className="grid w-full grid-cols-[max-content_max-content_max-content_max-content] justify-between">
+      <Table columns className="grid w-max min-w-full grid-cols-[max-content_max-content_max-content_max-content] justify-between">
         <TableHeader>
-          <TableRow className={cn(ledgerRowClass, 'hover:bg-transparent')}>
+          <TableRow className="hover:bg-transparent">
             <TableHead className={headClass}>Дата</TableHead>
             <TableHead className={headClass}>Операция</TableHead>
             <TableHead className={headClass}>Сумма</TableHead>
@@ -209,7 +208,7 @@ function LedgerTable({
         <TableBody>
           {visible.map((entry) => (
             <TableRow
-              className={cn(ledgerRowClass, 'even:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:!bg-[var(--nora-row-hover)]')}
+              className="even:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:!bg-[var(--nora-row-hover)]"
               key={entry.id}
             >
               <TableCell className={cellClass}>{formatWhen(entry.at)}</TableCell>

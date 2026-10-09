@@ -292,22 +292,12 @@ export function usePlanMealDrag({
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate(12)
   }
 
-  function onPointerUp(event: React.PointerEvent<HTMLElement>, _mealId: string, onOpen: () => void) {
+  function onPointerUp(event: React.PointerEvent<HTMLElement>, _mealId: string) {
     const wasDragging = didDragRef.current || Boolean(dragRef.current)
     if (wasDragging) {
       didDragRef.current = false
       event.preventDefault()
-      return
     }
-    if (
-      event.target instanceof Element &&
-      event.target.closest(
-        '[data-slot="plan-meal-drag"], [data-slot="meal-card-footer"]',
-      )
-    ) {
-      return
-    }
-    onOpen()
   }
 
   return { drag, startDrag, onPointerUp }
@@ -321,7 +311,6 @@ export function PlanMealGrid({
   pickedIds,
   renderMeal,
   onPointerUp,
-  onOpenMeal,
   onTogglePick,
 }: {
   day: WeekPlanDay
@@ -330,8 +319,7 @@ export function PlanMealGrid({
   picking?: boolean
   pickedIds?: ReadonlySet<string>
   renderMeal: (meal: MealEntry) => React.ReactNode
-  onPointerUp: (event: React.PointerEvent<HTMLElement>, mealId: string, onOpen: () => void) => void
-  onOpenMeal: (mealId: string) => void
+  onPointerUp: (event: React.PointerEvent<HTMLElement>, mealId: string) => void
   onTogglePick?: (mealId: string) => void
 }) {
   return (
@@ -378,7 +366,7 @@ export function PlanMealGrid({
                 event.preventDefault()
                 return
               }
-              onPointerUp(event, meal.id, () => onOpenMeal(meal.id))
+              onPointerUp(event, meal.id)
             }}
             style={draggingThis && drag ? { minHeight: drag.height } : undefined}
           >

@@ -2,7 +2,11 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-/** Safari ignores display:grid and display:contents on table, thead, tbody, and tr, so column padding collapses there. */
+/**
+ * Column tables are one div grid. Header and body use display:contents so
+ * each row can span every track; the row itself stays a box, so its rule
+ * crosses the space between columns. Native table tags stay for the rest.
+ */
 const TableFrameContext = React.createContext(false)
 
 /** Nora data table — 30px rows, soft zebra, tertiary heads, row-hover */
@@ -24,7 +28,7 @@ function Table({
             data-slot="table"
             role="table"
             className={cn(
-              "w-full font-[family-name:var(--nora-font)] text-xs text-[var(--nora-text)]",
+              "grid w-max min-w-full font-[family-name:var(--nora-font)] text-xs text-[var(--nora-text)]",
               className
             )}
             {...(props as React.ComponentProps<"div">)}
@@ -75,7 +79,7 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
   const classes = cn(
     // лёгкая зебра — even rows; hover/selected перекрывают
     "[&_tr:nth-child(even)]:bg-[color-mix(in_srgb,var(--nora-text)_1.2%,transparent)] [&_tr:last-child]:border-0",
-    columns && "contents",
+    columns && "contents [&_[data-slot=table-row]:last-child]:border-b-0",
     className
   )
   if (columns) {
@@ -114,6 +118,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   const columns = React.useContext(TableFrameContext)
   const classes = cn(
     "border-b border-[var(--nora-divider)] transition-colors duration-[var(--nora-duration,0.15s)] hover:bg-[var(--nora-row-hover)] has-aria-expanded:bg-[var(--nora-row-hover)] data-[state=selected]:bg-[color-mix(in_srgb,var(--nora-tint)_12%,transparent)]",
+    columns && "col-span-full grid grid-cols-subgrid",
     className
   )
   if (columns) {

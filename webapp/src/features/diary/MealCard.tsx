@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils'
 import { usePressWithoutScroll } from '@/platform/press-without-scroll'
 
 import { formatMealStamp } from './diary-feed'
+import { displayMealCover } from './meal-cover'
 import { MealFeedPhoto } from './meal-feed-photo'
 import { prefetchMealPhoto } from './media-display'
 import {
@@ -450,7 +451,7 @@ export function Cover({
   images?: string[]
   onActivate?: () => void
 }) {
-  const slides = images && images.length > 0 ? images : [meal.image]
+  const slides = images && images.length > 0 ? images : [displayMealCover(meal.image)]
   const multiple = slides.length > 1
   const press = usePressWithoutScroll(onActivate)
 

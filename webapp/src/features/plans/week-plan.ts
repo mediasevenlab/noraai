@@ -404,6 +404,11 @@ export function buildWeekPlan(input: {
     const done =
       dayMeals.length > 0 &&
       dayMeals.every((meal) => isRationPlanDone(meal, input.completedIds))
+    const spansDays = Boolean(ration?.meals.some((meal) => (meal.dayIndex ?? 0) > 0))
+    const kcal =
+      dayMeals.length > 0 && spansDays
+        ? dayMeals.reduce((sum, meal) => sum + meal.kcal, 0)
+        : ration?.kcal ?? 0
     slots.push({
       dayKey: day.dayKey,
       short: day.short,
@@ -413,7 +418,7 @@ export function buildWeekPlan(input: {
       ration,
       meals: dayMeals,
       mealsCount,
-      kcal: ration?.kcal ?? 0,
+      kcal,
       done,
     })
   }
@@ -442,6 +447,23 @@ export function buildWeekPlan(input: {
 
 function rationHasLaterDays(meals: readonly RationEntry['meals'][number][]) {
   return meals.some((meal) => (meal.dayIndex ?? 0) > 0)
+}
+
+/** One ration entry per stored day, so stamping does not pile every meal onto day 1. */
+export function rationStampDays(ration: RationEntry): RationEntry[] {
+  const last = ration.meals.reduce((max, meal) => Math.max(max, meal.dayIndex ?? 0), 0)
+  if (last === 0) return [ration]
+  const days: RationEntry[] = []
+  for (let dayIndex = 0; dayIndex <= last; dayIndex += 1) {
+    const meals = ration.meals.filter((meal) => (meal.dayIndex ?? 0) === dayIndex)
+    days.push({
+      ...ration,
+      meals,
+      days: 1,
+      mealsPerDay: meals.length,
+    })
+  }
+  return days
 }
 
 function rationForPlanDay(ration: RationEntry, dayIndex: number): RationEntry | null {

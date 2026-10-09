@@ -2,7 +2,7 @@ import * as React from 'react'
 
 import { cn } from '@/lib/utils'
 
-import { MEAL_COVER_PLACEHOLDER_SRC } from './meal-cover'
+import { MEAL_COVER_PLACEHOLDER_SRC, MEAL_COVER_STUB_SRC } from './meal-cover'
 import {
   applyMealPhotoFallback,
   displayMediaSrc,
@@ -20,11 +20,12 @@ export function MealFeedPhoto({
   sizes: 'sm' | 'md' | 'lg'
   priority?: boolean
 }) {
+  const resolved = src.trim() || MEAL_COVER_STUB_SRC
   const displaySize = mealPhotoDisplaySize(sizes)
-  const displaySrc = displayMediaSrc(src, displaySize)
-  const previewSrc = displayMediaSrc(src, 'card')
-  const originalSrc = mealPhotoOriginalSrc(src, displaySize)
-  const showPreview = mealPhotoNeedsPreview(src, displaySize)
+  const displaySrc = displayMediaSrc(resolved, displaySize)
+  const previewSrc = displayMediaSrc(resolved, 'card')
+  const originalSrc = mealPhotoOriginalSrc(resolved, displaySize)
+  const showPreview = mealPhotoNeedsPreview(resolved, displaySize)
   const [loadedSrc, setLoadedSrc] = React.useState<string | null>(null)
   const fullReady = !showPreview || loadedSrc === displaySrc
 

@@ -105,7 +105,7 @@ import { useSyncedPlanLibrary } from './use-plan-library'
 import { PlanToolbar, visiblePlanCards, partitionPlanCards, PlanGroupHeading, PLAN_GROUP_ICONS, planToolbarPillClass, type PlanFeedTab, type PlanLibrary } from './PlanToolbar'
 import { useCurrentWeekPlan } from './use-current-week-plan'
 import { WeekPlanCard } from './WeekPlanCard'
-import { buildWeekPlan, buildWeekPlanFromCatalog, buildWeekPlanFromRation, buildWeekPlanFromSharedRation, formatPlanActiveRange, nextPlanDayCount, padPlanDaysForEditor, planOccupancyMarks, rationDaysFromSharedRation, removeEmptyPlanDay, sharedRationSnapshotFromWeekPlan, type WeekPlan } from './week-plan'
+import { buildWeekPlan, buildWeekPlanFromCatalog, buildWeekPlanFromRation, buildWeekPlanFromSharedRation, formatPlanActiveRange, nextPlanDayCount, padPlanDaysForEditor, planOccupancyMarks, rationDaysFromSharedRation, rationStampDays, removeEmptyPlanDay, sharedRationSnapshotFromWeekPlan, type WeekPlan } from './week-plan'
 
 export function PlanPage({
   heading,
@@ -298,7 +298,7 @@ export function PlanPage({
   }
 
   async function stampRationOntoPlan(ration: RationEntry, planId: string) {
-    await stampDaysOntoPlan([ration], planId)
+    await stampDaysOntoPlan(rationStampDays(ration), planId)
   }
 
   async function addCatalogToMine(catalogId: string) {

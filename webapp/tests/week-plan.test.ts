@@ -41,6 +41,7 @@ import {
   planDayTabParts,
   rationDaysFromSharedRation,
   buildWeekPlanFromSharedRation,
+  rationStampDays,
   sharedRationSnapshotFromWeekPlan,
   WEEK_PLAN_CARD_SLOTS,
   type WeekPlan,
@@ -856,6 +857,34 @@ test('a mentor plan with day indexes keeps each day', () => {
   expect(plan.days.map((day) => day.kcal)).toEqual([300, 400])
   expect(plan.kcal).toBe(350)
   expect(plan.mealsCount).toBe(2)
+})
+
+test('stamping a mentor plan keeps each day instead of piling meals onto day 1', () => {
+  const ration = {
+    ...SAMPLE_RATIONS[0]!,
+    meals: [
+      { ...SAMPLE_RATIONS[0]!.meals[0]!, title: 'Овсянка', dayIndex: 0 },
+      { ...SAMPLE_RATIONS[0]!.meals[0]!, title: 'Омлет', dayIndex: 0 },
+      { ...SAMPLE_RATIONS[0]!.meals[0]!, title: 'Суп', dayIndex: 1 },
+      { ...SAMPLE_RATIONS[0]!.meals[0]!, title: 'Рыба', dayIndex: 1 },
+    ],
+  }
+  const days = rationStampDays(ration)
+  expect(days).toHaveLength(2)
+  expect(days.map((day) => day.meals.map((meal) => meal.title))).toEqual([
+    ['Овсянка', 'Омлет'],
+    ['Суп', 'Рыба'],
+  ])
+  const gapped = rationStampDays({
+    ...ration,
+    meals: [
+      { ...SAMPLE_RATIONS[0]!.meals[0]!, title: 'Завтрак', dayIndex: 0 },
+      { ...SAMPLE_RATIONS[0]!.meals[0]!, title: 'Ужин', dayIndex: 2 },
+    ],
+  })
+  expect(gapped).toHaveLength(3)
+  expect(gapped[1]?.meals).toEqual([])
+  expect(gapped[2]?.meals.map((meal) => meal.title)).toEqual(['Ужин'])
 })
 
 test('plan day kcal follows the diary calorie balance tones', () => {

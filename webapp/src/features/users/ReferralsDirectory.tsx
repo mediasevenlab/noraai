@@ -23,11 +23,10 @@ import { useUserReferralsQuery, usePayoutAccrualQuery } from './queries'
 const REFERRALS_PAGE_SIZE = 8
 
 const headClass =
-  '!h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] first:pl-4 last:pr-4'
+  '!h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] first:pl-3.5 last:pr-3.5'
 const cellClass =
-  'h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-4 last:pr-4'
-const statusClass = 'h-auto px-2.5 py-3 text-left whitespace-nowrap first:pl-4 last:pr-4'
-const referralRowClass = 'col-span-full grid grid-cols-subgrid'
+  'h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-3.5 last:pr-3.5'
+const statusClass = 'h-auto px-2.5 py-3 text-left whitespace-nowrap first:pl-3.5 last:pr-3.5'
 
 export function ReferralsDirectory({
   layout = 'card',
@@ -104,9 +103,9 @@ export function ReferralsDirectory({
         )
       )}
       {referrals.data && referrals.data.items.length > 0 && (
-        <Table columns className="grid w-full grid-cols-[max-content_max-content_max-content_max-content] justify-between">
+        <Table columns className="grid w-max min-w-full grid-cols-[max-content_max-content_max-content_max-content] justify-between">
           <TableHeader>
-            <TableRow className={cn(referralRowClass, 'hover:bg-transparent')}>
+            <TableRow className="hover:bg-transparent">
               <TableHead className={headClass}>Аккаунт</TableHead>
               <TableHead className={headClass}>Никнейм</TableHead>
               <TableHead className={headClass}>ID</TableHead>
@@ -118,7 +117,7 @@ export function ReferralsDirectory({
               const bonus = bonusById.get(user.id)
               return (
                 <TableRow
-                  className={cn(referralRowClass, 'even:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:!bg-[var(--nora-row-hover)]')}
+                  className="even:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:!bg-[var(--nora-row-hover)]"
                   key={user.id}
                 >
                   <TableCell className={cellClass}>

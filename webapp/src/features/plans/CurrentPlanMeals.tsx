@@ -808,7 +808,6 @@ export function CurrentPlanMeals({
               canReorder={allowReorder}
               day={selectedDay}
               drag={dragging}
-              onOpenMeal={setOpenId}
               onPointerUp={drag.onPointerUp}
               onTogglePick={togglePick}
               pickedIds={pickedIds}
@@ -826,7 +825,6 @@ export function CurrentPlanMeals({
               canReorder={allowReorder}
               day={day}
               drag={dragging}
-              onOpenMeal={setOpenId}
               onPointerUp={drag.onPointerUp}
               renderMeal={mealCard}
             />
@@ -870,6 +868,7 @@ export function CurrentPlanMeals({
         <DialogContent
           className={MEAL_DIALOG_FRAME_CLASS}
           data-modal-frame="meal"
+          data-phone-full=""
           showCloseButton={false}
         >
           {openMeal ? (

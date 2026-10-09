@@ -301,6 +301,7 @@ export function RationUserPicker({
       <DialogContent
         className={USER_PICKER_FRAME_CLASS}
         data-modal-frame="meal"
+        data-phone-fit=""
         data-ration-user-picker=""
         showCloseButton={false}
       >

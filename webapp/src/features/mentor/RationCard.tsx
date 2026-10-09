@@ -16,6 +16,7 @@ import {
   productSheetOverlayChipClass,
 } from '@/components/nora/product-sheet'
 import { cn } from '@/lib/utils'
+import { usePressWithoutScroll } from '@/platform/press-without-scroll'
 import { MealFeedPhoto, prefetchMealPhoto } from '@/features/diary'
 import type { SavedAccountScope } from '@/platform/saved-ids'
 import { rationCardOrigin } from './authored-rations'
@@ -105,6 +106,7 @@ function RationPhotoSlides({
   }
   const active = Math.max(0, Math.min(selectedIndex ?? uncontrolled, maxIndex))
   const aligned = thumbs.length === slides.length
+  const press = usePressWithoutScroll(onActivate)
 
   function goTo(index: number) {
     const next = Math.max(0, Math.min(maxIndex, index))
@@ -123,17 +125,20 @@ function RationPhotoSlides({
             event.stopPropagation()
             return
           }
-          onActivate?.()
+          press.onClick(event)
         }}
         onPointerCancel={() => {
           pointerRef.current = null
+          press.onPointerCancel()
         }}
         onPointerDown={(event) => {
+          press.onPointerDown(event)
           if (!multiple || event.button !== 0) return
           draggedRef.current = false
           pointerRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY }
         }}
         onPointerMove={(event) => {
+          press.onPointerMove(event)
           const start = pointerRef.current
           if (!start || start.id !== event.pointerId) return
           const dx = event.clientX - start.x
@@ -259,6 +264,7 @@ export function RationCover({
   const slides = rationMealImages(ration)
   const thumbs = rationCardThumbSrcs(ration)
   const multiple = slides.length > 1
+  const press = usePressWithoutScroll(onActivate)
 
   return (
     <div
@@ -272,14 +278,18 @@ export function RationCover({
         className,
       )}
       data-haptic={onActivate && sizes === 'md' ? 'card' : undefined}
-      onClick={multiple ? undefined : onActivate}
+      onClick={multiple ? undefined : press.onClick}
+      onPointerCancel={onActivate ? press.onPointerCancel : undefined}
       onPointerDown={
-        onActivate && sizes !== 'lg'
-          ? () => {
-              prefetchMealPhoto(slides[0] ?? '')
+        onActivate
+          ? (event) => {
+              press.onPointerDown(event)
+              if (sizes !== 'lg') prefetchMealPhoto(slides[0] ?? '')
             }
           : undefined
       }
+      onPointerMove={onActivate ? press.onPointerMove : undefined}
+      onPointerUp={onActivate ? press.onPointerUp : undefined}
       onKeyDown={
         onActivate && !multiple
           ? (event) => {
@@ -335,6 +345,7 @@ export function RationCard({
   shoppingScope?: SavedAccountScope
 }) {
   const origin = rationCardOrigin(ration)
+  const titlePress = usePressWithoutScroll(onOpen)
   const [shoppingOpen, setShoppingOpen] = React.useState(false)
   const resolvedShoppingScope = shoppingScope ?? { userId: 'guest' }
   return (
@@ -410,7 +421,11 @@ export function RationCard({
         <button
           className="min-w-0 cursor-pointer text-left outline-none focus-visible:rounded focus-visible:shadow-[var(--nora-shadow-focus)]"
           data-haptic="card"
-          onClick={onOpen}
+          onClick={titlePress.onClick}
+          onPointerCancel={titlePress.onPointerCancel}
+          onPointerDown={titlePress.onPointerDown}
+          onPointerMove={titlePress.onPointerMove}
+          onPointerUp={titlePress.onPointerUp}
           type="button"
         >
           <h3 className="truncate shrink-0 font-[family-name:var(--nora-font)] text-[15px] font-medium leading-6 tracking-normal text-[var(--nora-text)]">
