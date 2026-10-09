@@ -10,7 +10,6 @@ import { toast } from '@/components/ui/toast'
 import { NoraButton } from '@/components/nora/primitives'
 import { DeleteCardDialog } from '@/features/diary/DeleteCardDialog'
 import { planCardDeletePrompt } from '@/features/diary/delete-card-prompt'
-import { cn } from '@/lib/utils'
 import {
   ProductFeedEmpty,
   SectionLoading,
@@ -26,7 +25,6 @@ import {
   isAuthoredPlanId,
   mentorRationToEntry,
   rationPlanDaySlots,
-  rationPlanWeekDays,
   RationEditorDialog,
   useCreateMentorPlanMutation,
   useMentorPlansQuery,
