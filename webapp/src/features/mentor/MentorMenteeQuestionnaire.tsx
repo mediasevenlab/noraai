@@ -6,6 +6,7 @@ import { ProductFeedEmpty, SectionLoading } from '@/components/nora/product-shee
 import { SettingsCanvas, SettingsEntry, SettingsReadRows } from '@/components/settings-canvas'
 import {
   ClientProfileCard,
+  canonicalGoalPace,
   goalUsesPace,
   profileCalorieValue,
   questionnaireDailyCalorieTarget,
@@ -45,7 +46,7 @@ function MenteeCalorieEntry({
               ? [
                   { icon: TargetIcon, label: 'Цель', value: values.goal || '—' },
                   ...(paceApplies
-                    ? [{ icon: ZapIcon, label: 'Темп', value: values.goalPace || 'Умеренно' }]
+                    ? [{ icon: ZapIcon, label: 'Темп', value: canonicalGoalPace(values.goalPace) }]
                     : []),
                 ]
               : []),

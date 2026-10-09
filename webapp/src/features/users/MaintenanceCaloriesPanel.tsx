@@ -16,6 +16,7 @@ import {
 import { useQuestionnaireEditor } from './ClientProfileCard'
 import { QuestionnaireFieldControl } from './QuestionnaireFieldControl'
 import {
+  canonicalGoalPace,
   goalUsesPace,
   questionnaireDailyCalorieTarget,
   questionnaireMaintenanceCalories,
@@ -167,7 +168,7 @@ export function MaintenanceCaloriesPanel({
               ? [
                   { icon: TargetIcon, label: 'Цель', value: answers.goal || '—' },
                   ...(paceApplies
-                    ? [{ icon: ZapIcon, label: 'Темп', value: answers.goalPace || 'Умеренно' }]
+                    ? [{ icon: ZapIcon, label: 'Темп', value: canonicalGoalPace(answers.goalPace) }]
                     : []),
                 ]
               : []),

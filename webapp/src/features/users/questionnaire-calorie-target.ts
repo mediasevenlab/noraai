@@ -35,23 +35,26 @@ export function goalUsesPace(goal: string): boolean {
   return key.startsWith('похуд') || key.startsWith('набор')
 }
 
+/** Known paces only. A stored «Экстремально» counts as moderate. */
+export function canonicalGoalPace(pace: string | undefined): 'Медленно' | 'Умеренно' | 'Быстро' {
+  const level = (pace ?? '').trim().toLowerCase()
+  if (level.startsWith('медл')) return 'Медленно'
+  if (level.startsWith('быстр')) return 'Быстро'
+  return 'Умеренно'
+}
+
 function goalCalorieDelta(goal: string, pace: string | undefined): number {
   if (!goalUsesPace(goal)) return 0
   const key = goal.trim().toLowerCase()
-  const level = pace?.trim().toLowerCase() ?? ''
-  const slow = level.startsWith('медл')
-  const extreme = level.startsWith('экстрем')
-  const fast = level.startsWith('быстр')
+  const level = canonicalGoalPace(pace)
   if (key.startsWith('похуд')) {
-    if (slow) return -250
-    if (extreme) return -1000
-    if (fast) return -750
+    if (level === 'Медленно') return -250
+    if (level === 'Быстро') return -750
     return -500
   }
   if (key.startsWith('набор')) {
-    if (slow) return 200
-    if (extreme) return 750
-    if (fast) return 500
+    if (level === 'Медленно') return 200
+    if (level === 'Быстро') return 500
     return 300
   }
   return 0

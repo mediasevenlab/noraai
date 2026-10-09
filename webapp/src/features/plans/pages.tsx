@@ -15,6 +15,7 @@ import {
   ProductFeedEmpty,
   SectionLoading,
   productFeedToolbarRowClass,
+  productFeedToolbarStickyClass,
 } from '@/components/nora/product-sheet'
 import { useAuth } from '@/features/auth'
 import { userGeneralSearch } from '@/features/navigation'
@@ -306,9 +307,19 @@ export function PlanPage({
     if (!catalog) return null
     const existing = authoredCloneOfCatalog(authored, catalog.id)
     if (existing) {
-      changeLibrary('mine')
-      toast('План уже в «Мои»')
-      return existing.id
+      if (!auth.user || auth.user.role !== 'user') return null
+      setCreating(true)
+      try {
+        await forgetMyRation(auth.transport, existing.id)
+        persist(withoutAuthoredPlan(snapshot, existing.id))
+        await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.all })
+        toast('Рацион убран из «Мои»')
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Не удалось убрать рацион')
+      } finally {
+        setCreating(false)
+      }
+      return null
     }
     if (!auth.user || auth.user.role !== 'user') {
       toast.error('Войдите, чтобы добавить план')
@@ -334,7 +345,6 @@ export function PlanPage({
       )
       await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.forSubject(auth.user.id) })
       persist(withAuthoredPlan(snapshot, created))
-      changeLibrary('mine')
       toast.success('План добавлен в «Мои»')
       return created.id
     } catch (error) {
@@ -426,6 +436,7 @@ export function PlanPage({
   }
 
   async function deletePlan(planId: string) {
+    if (isCatalogPlanId(planId)) return
     const userId = savedScope.userId
     if (rationCardNeedsLocalHide(planId)) {
       hideRation(userId, planId)
@@ -546,7 +557,18 @@ export function PlanPage({
     const selected = catalog ? cloned : selectedPlanIds.has(plan.id)
     return (
       <WeekPlanCard
-        actionLabel={catalog ? (cloned ? 'Уже в «Мои»' : 'Добавить в мои') : undefined}
+        actionLabel={
+          catalog ? (
+            cloned ? (
+              <>
+                <span className="md:hidden">В рационах</span>
+                <span className="hidden md:inline">Уже в рационах</span>
+              </>
+            ) : (
+              'Добавить'
+            )
+          ) : undefined
+        }
         activeRange={
           catalog || !selectedPlanIds.has(plan.id)
             ? undefined
@@ -579,7 +601,9 @@ export function PlanPage({
         onToggleSave={() => toggleSave(plan.id, plan.title)}
         copying={copyingPlanId === plan.id}
         onCopy={rationCanCopyForEdit(plan.id) ? () => void copyPlan(plan) : undefined}
-        onDelete={() => setDeletePlanTarget({ id: plan.id, title: plan.title })}
+        onDelete={
+          catalog ? undefined : () => setDeletePlanTarget({ id: plan.id, title: plan.title })
+        }
         onShare={() => void toggleShare(plan)}
         canShare={
           isAuthoredPlanId(plan.id) &&
@@ -979,12 +1003,22 @@ export function CurrentPlanPage({
 
   async function addCatalogToMine() {
     if (!catalog || adding) return
-    if (cloned) {
-      openPlan(cloned.id)
-      return
-    }
     if (!auth.user || auth.user.role !== 'user') {
       toast.error('Войдите, чтобы добавить план')
+      return
+    }
+    if (cloned) {
+      setAdding(true)
+      try {
+        await forgetMyRation(auth.transport, cloned.id)
+        persist(withoutAuthoredPlan(snapshot, cloned.id))
+        await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.all })
+        toast('Рацион убран из «Мои»')
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Не удалось убрать рацион')
+      } finally {
+        setAdding(false)
+      }
       return
     }
     const created = createAuthoredPlan({
@@ -1008,7 +1042,6 @@ export function CurrentPlanPage({
       await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.forSubject(auth.user.id) })
       persist(withAuthoredPlan(snapshot, created))
       toast.success('План добавлен в «Мои»')
-      openPlan(created.id)
     } catch (error) {
       toast.error(catalogCloneErrorMessage(error))
     } finally {
@@ -1117,7 +1150,13 @@ export function CurrentPlanPage({
       onClick={() => void addToMine()}
       type="button"
     >
-      {alreadyInMine ? 'Открыть в «Мои»' : 'Добавить'}
+      {catalogView
+        ? alreadyInMine
+          ? 'В рационах'
+          : 'Добавить'
+        : alreadyInMine
+          ? 'Открыть в «Мои»'
+          : 'Добавить'}
     </button>
   ) : null
 
@@ -1318,7 +1357,7 @@ export function CurrentPlanPage({
         />
       ) : (
         <>
-          <section className="flex max-md:hidden flex-col">
+          <section className={`${productFeedToolbarStickyClass} max-md:hidden`}>
             <div className="flex w-full min-w-0 items-center pt-1">
               <div className={productFeedToolbarRowClass}>
                 <button
@@ -1337,7 +1376,13 @@ export function CurrentPlanPage({
                     onClick={() => void addToMine()}
                     type="button"
                   >
-                    {alreadyInMine ? 'Открыть в «Мои»' : 'Добавить'}
+                    {catalogView
+                      ? alreadyInMine
+                        ? 'Уже в рационах'
+                        : 'Добавить'
+                      : alreadyInMine
+                        ? 'Открыть в «Мои»'
+                        : 'Добавить'}
                   </button>
                 ) : null}
               </div>

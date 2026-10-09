@@ -61,7 +61,7 @@ const directoryHeadClass =
 const directoryCellClass =
   `flex items-center h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-4 last:pr-4 ${directoryRuleClass} ${directoryStickyClass}`
 const directoryTableClass =
-  'grid w-max min-w-full grid-cols-[11rem_max-content_max-content_max-content_max-content_max-content_max-content] max-md:grid-cols-[7.5rem_max-content_max-content_max-content_max-content_max-content_max-content] justify-between max-md:justify-start [&_tbody]:contents [&_thead]:contents'
+  'grid w-max min-w-full grid-cols-[11rem_max-content_max-content_max-content_max-content_max-content_max-content] max-md:grid-cols-[7.5rem_max-content_max-content_max-content_max-content_max-content_max-content] justify-between max-md:justify-start'
 
 type PendingRoleChange = {
   role: UserRole
@@ -198,7 +198,7 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
           )}
           {viewState === 'empty' && <DirectoryEmpty hasQuery={query.length > 0} />}
           {viewState === 'ready' && usersQuery.data && (
-            <Table className={directoryTableClass}>
+            <Table columns className={directoryTableClass}>
               <TableHeader>
                 <TableRow className={cn(directoryRowClass, 'hover:bg-transparent')}>
                   <TableHead className={directoryHeadClass}>Пользователь</TableHead>

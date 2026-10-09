@@ -86,7 +86,7 @@ export function PayoutHistory({
   const visible = rows.slice(range.from - 1, range.to)
   return (
     <div className="overflow-hidden rounded-[12px] bg-[var(--nora-panel)]">
-      <Table className="grid w-full grid-cols-[max-content_max-content_max-content_max-content_max-content] justify-between [&_tbody]:contents [&_thead]:contents">
+      <Table columns className="grid w-full grid-cols-[max-content_max-content_max-content_max-content_max-content] justify-between">
         <TableHeader>
           <TableRow className={cn(ledgerRowClass, 'hover:bg-transparent')}>
             <TableHead className={payoutHeadClass}>Дата</TableHead>
@@ -197,7 +197,7 @@ function LedgerTable({
           </p>
         </div>
       ) : null}
-      <Table className="grid w-full grid-cols-[max-content_max-content_max-content_max-content] justify-between [&_tbody]:contents [&_thead]:contents">
+      <Table columns className="grid w-full grid-cols-[max-content_max-content_max-content_max-content] justify-between">
         <TableHeader>
           <TableRow className={cn(ledgerRowClass, 'hover:bg-transparent')}>
             <TableHead className={headClass}>Дата</TableHead>

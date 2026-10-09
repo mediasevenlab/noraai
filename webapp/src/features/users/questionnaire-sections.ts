@@ -138,7 +138,6 @@ export const fieldGoalPace: ProfileField = {
     { value: 'Медленно', label: 'Медленно', description: 'Небольшой сдвиг' },
     { value: 'Умеренно', label: 'Умеренно', description: 'Обычный темп' },
     { value: 'Быстро', label: 'Быстро', description: 'Заметный сдвиг' },
-    { value: 'Экстремально', label: 'Экстремально', description: 'Максимальный сдвиг' },
   ],
 }
 

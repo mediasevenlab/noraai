@@ -49,7 +49,7 @@ export function sharedRationAddLabel(
   authored: readonly AuthoredPlan[],
 ) {
   if (ration.own) return 'Это ваш рацион'
-  if (authoredCloneOfSharedRation(authored, ration.id)) return 'Уже в «Мои»'
+  if (authoredCloneOfSharedRation(authored, ration.id)) return 'Уже в рационах'
   return 'В мои'
 }
 

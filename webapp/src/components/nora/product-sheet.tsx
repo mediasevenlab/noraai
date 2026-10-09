@@ -121,6 +121,10 @@ export function ProductSheetTabFade() {
 export const productFeedPageClass =
   'flex w-full min-w-0 contain-inline-size flex-col gap-3 px-3 py-3 sm:gap-4 sm:px-6 sm:py-4 md:gap-5 md:px-10 md:py-5 lg:px-12 lg:py-6'
 
+/** Desktop feed toolbars stay under the shell header while the page scrolls. */
+export const productFeedToolbarStickyClass =
+  'relative z-10 flex flex-col md:sticky md:top-0 md:z-20 md:bg-background'
+
 /** Horizontal scroller. `py-8 -my-8` unclips the mobile 8/20 pill shadow without changing layout. */
 export const productFeedToolbarRowClass =
   'pointer-events-none flex w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain py-8 -my-8 no-scrollbar max-md:-mx-3 max-md:w-[calc(100%+1.5rem)] max-md:px-3 md:overflow-visible [&>*]:pointer-events-auto'

@@ -4,6 +4,7 @@ import type { LucideIcon } from '@/components/icons'
 
 import {
   productFeedToolbarRowClass,
+  productFeedToolbarStickyClass,
   productToolbarSearchCollapseClass,
 } from '@/components/nora/product-sheet'
 import { ProductToolbarSearch } from '@/components/nora/toolbar-search'
@@ -136,7 +137,7 @@ export function PlanToolbar({
   onTabChange: (tab: PlanFeedTab) => void
 }) {
   return (
-    <section className="flex flex-col">
+    <section className={productFeedToolbarStickyClass}>
       <div className="flex w-full min-w-0 items-center pt-1">
         <div className={productFeedToolbarRowClass}>
           {toolbarStart}

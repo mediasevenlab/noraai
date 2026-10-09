@@ -2,7 +2,7 @@ import * as React from 'react'
 import { CalendarDaysIcon, LayoutGridIcon, Rows2Icon, HeartIcon, UtensilsIcon } from '@/components/icons'
 
 import { noraPageDescriptionClass, noraPageTitleClass } from '@/components/PageLayout'
-import { productFeedPageClass, productFeedToolbarRowClass, productToolbarSearchCollapseClass } from '@/components/nora/product-sheet'
+import { productFeedPageClass, productFeedToolbarRowClass, productFeedToolbarStickyClass, productToolbarSearchCollapseClass } from '@/components/nora/product-sheet'
 import { ProductToolbarSearch } from '@/components/nora/toolbar-search'
 import { useAuth } from '@/features/auth'
 import { cn } from '@/lib/utils'
@@ -87,7 +87,7 @@ export function SharedMealsFeedPage({
           </p>
         </header>
         <div className="flex flex-col gap-5 max-md:mb-2.5">
-          <section className="flex flex-col">
+          <section className={productFeedToolbarStickyClass}>
             <div className="flex w-full min-w-0 items-center pt-1">
               <div className={productFeedToolbarRowClass}>
                 <div

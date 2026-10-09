@@ -133,7 +133,7 @@ export function WeekPlanCard({
   copying = false,
   canShare = true,
 }: {
-  actionLabel?: string
+  actionLabel?: React.ReactNode
   /** Cover badge for the live selected plan, e.g. `07.09 - 15.09`. */
   activeRange?: string
   fromMentor?: boolean

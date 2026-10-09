@@ -40,9 +40,9 @@ const quietActionClass =
 const fieldButtonClass =
   'w-full !h-10 !max-h-10 !min-h-10 min-[768px]:!h-[37px] min-[768px]:!max-h-[37px] min-[768px]:!min-h-[37px]'
 
-/** Same fill as the tariff card, so on the gray well it reads as a plate, not a faint outline. */
-const tariffButtonClass =
-  '!bg-[var(--settings-field-bg,var(--nora-panel))] !text-[var(--nora-text)] !shadow-none hover:!bg-[color-mix(in_srgb,var(--nora-text)_4%,var(--settings-field-bg,var(--nora-panel)))] disabled:!opacity-45'
+/** Dark plate in the light theme; the tokens flip it light on a dark theme. */
+const cancelActionClass =
+  '!bg-[var(--nora-text)] !text-[var(--nora-panel)] !shadow-none hover:!opacity-90 disabled:!bg-[var(--nora-text)] disabled:!text-[var(--nora-panel)] disabled:!opacity-45'
 
 const TARIFF_POINTS = [
   'Дневник питания',
@@ -301,6 +301,7 @@ export function SubscriptionPayPanel({
 }) {
   const auth = useAuth()
   const [busy, setBusy] = useState(false)
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null)
   const [period, setPeriod] = useState<'month' | 'year'>('month')
   const [actionError, setActionError] = useState<string | null>(null)
   const failed = actionError ?? error
@@ -316,11 +317,14 @@ export function SubscriptionPayPanel({
     if (!auth.user || busy || !overview) return
     setBusy(true)
     setActionError(null)
+    setCheckoutUrl(null)
     try {
       const payment = await startSubscriptionPayment(auth.transport, period)
+      setCheckoutUrl(payment.confirmationUrl)
       window.location.assign(payment.confirmationUrl)
     } catch (caught) {
       setActionError(caught instanceof ApiRequestError ? caught.message : 'Не удалось открыть оплату.')
+    } finally {
       setBusy(false)
     }
   }
@@ -357,8 +361,8 @@ export function SubscriptionPayPanel({
           data-period-track=""
           role="group"
         >
-          <PeriodChoice active={period === 'month'} label="Месяц" onClick={() => setPeriod('month')} />
-          <PeriodChoice active={period === 'year'} label="Год" onClick={() => setPeriod('year')} />
+          <PeriodChoice active={period === 'month'} label="Месяц" onClick={() => { setCheckoutUrl(null); setPeriod('month') }} />
+          <PeriodChoice active={period === 'year'} label="Год" onClick={() => { setCheckoutUrl(null); setPeriod('year') }} />
         </div>
         <ul className="grid gap-1.5 pl-4">
           {TARIFF_POINTS.map((point) => (
@@ -374,19 +378,28 @@ export function SubscriptionPayPanel({
       {showPay || showCancel ? (
         <div className="grid gap-3">
           {showPay ? (
-            <Button
-              className={cn(primaryActionClass, fieldButtonClass)}
-              data-field-height=""
-              disabled={busy || !overview}
-              onClick={() => void pay()}
-              type="button"
-            >
-              {busy ? 'Переходим к оплате' : continuing ? 'Продолжить оплату' : 'Оплатить'}
-            </Button>
+            checkoutUrl ? (
+              <a
+                className={cn(primaryActionClass, fieldButtonClass, 'inline-flex items-center justify-center')}
+                href={checkoutUrl}
+              >
+                Открыть страницу оплаты
+              </a>
+            ) : (
+              <Button
+                className={cn(primaryActionClass, fieldButtonClass)}
+                data-field-height=""
+                disabled={busy || !overview}
+                onClick={() => void pay()}
+                type="button"
+              >
+                {busy ? 'Переходим к оплате' : continuing ? 'Продолжить оплату' : 'Оплатить'}
+              </Button>
+            )
           ) : null}
           {showCancel ? (
             <Button
-              className={cn(fieldButtonClass, tariffButtonClass)}
+              className={cn(fieldButtonClass, cancelActionClass)}
               data-field-height=""
               disabled={busy}
               onClick={() => void cancel()}
@@ -463,7 +476,7 @@ export function SubscriptionAutopayControl({
   }
 
   return (
-    <div className="grid justify-items-start gap-1">
+    <div className="grid justify-items-end gap-1 text-right">
       <button
         className="font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[color-mix(in_srgb,var(--nora-text-secondary)_45%,var(--nora-text-tertiary))] underline-offset-2 hover:underline disabled:opacity-45"
         data-text-button=""
@@ -484,7 +497,7 @@ export function SubscriptionStatusLine({ overview }: { overview: SubscriptionOve
   const status = subscriptionStatus(overview)
   if (!status) return null
   return (
-    <p className="font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-secondary)]">
+    <p className="text-right font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-secondary)]">
       {status}
     </p>
   )

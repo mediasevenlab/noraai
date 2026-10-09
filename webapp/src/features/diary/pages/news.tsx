@@ -29,6 +29,7 @@ import {
   SectionLoading,
   productFeedPageClass,
   productFeedToolbarRowClass,
+  productFeedToolbarStickyClass,
   productToolbarSearchCollapseClass,
 } from "@/components/nora/product-sheet";
 import { ProductToolbarSearch } from "@/components/nora/toolbar-search";
@@ -419,17 +420,6 @@ function FeedDayStats({
           readOnly={readOnly}
           savedScope={savedScope}
         />
-        <div className={cn(DAY_STAT_CHIP_CLASS, "max-md:order-4")}>
-          <span className="inline-flex items-center gap-1 tabular-nums">
-            <FlameIcon aria-hidden className="size-[13px]" strokeWidth={1.75} />
-            {formatCount(totals.kcal)}
-          </span>
-          <span aria-hidden>/</span>
-          <span className="inline-flex items-center gap-1 tabular-nums">
-            <FlameIcon aria-hidden className="size-[13px]" strokeWidth={1.75} />
-            {formatCount(dailyCalories)} ккал
-          </span>
-        </div>
         <div
           className={cn(
             DAY_STAT_CHIP_CLASS,
@@ -445,8 +435,6 @@ function FeedDayStats({
           <ZapIcon aria-hidden className="size-[13px]" strokeWidth={1.75} />
           {balanceLabel}
         </div>
-      </div>
-      <div className="ml-auto flex w-max shrink-0 items-center gap-2 max-md:contents">
         <div className={cn(DAY_STAT_CHIP_CLASS, "gap-2 px-3 max-md:order-3")}>
           <span
             aria-label={`Белки ${formatCount(totals.protein)}`}
@@ -468,6 +456,19 @@ function FeedDayStats({
           >
             <span aria-hidden>У:</span>
             {formatCount(totals.carbs)}
+          </span>
+        </div>
+      </div>
+      <div className="ml-auto flex w-max shrink-0 items-center gap-2 max-md:contents">
+        <div className={cn(DAY_STAT_CHIP_CLASS, "max-md:order-4")}>
+          <span className="inline-flex items-center gap-1 tabular-nums">
+            <FlameIcon aria-hidden className="size-[13px]" strokeWidth={1.75} />
+            {formatCount(totals.kcal)}
+          </span>
+          <span aria-hidden>/</span>
+          <span className="inline-flex items-center gap-1 tabular-nums">
+            <FlameIcon aria-hidden className="size-[13px]" strokeWidth={1.75} />
+            {formatCount(dailyCalories)} ккал
           </span>
         </div>
         <div className={cn(DAY_STAT_CHIP_CLASS, "px-3 max-md:hidden")}>
@@ -1735,7 +1736,7 @@ export function NewsPage({
         </header>
 
         <div className="flex flex-col gap-5 max-md:mb-2.5">
-          <section className="relative z-10 flex flex-col md:sticky md:top-0 md:z-20 md:bg-background">
+          <section className={productFeedToolbarStickyClass}>
             <div className="flex w-full min-w-0 items-center py-1">
               <div className={productFeedToolbarRowClass}>
                 {toolbarStart}

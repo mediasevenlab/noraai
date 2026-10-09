@@ -104,7 +104,7 @@ export function ReferralsDirectory({
         )
       )}
       {referrals.data && referrals.data.items.length > 0 && (
-        <Table className="grid w-full grid-cols-[max-content_max-content_max-content_max-content] justify-between [&_tbody]:contents [&_thead]:contents">
+        <Table columns className="grid w-full grid-cols-[max-content_max-content_max-content_max-content] justify-between">
           <TableHeader>
             <TableRow className={cn(referralRowClass, 'hover:bg-transparent')}>
               <TableHead className={headClass}>Аккаунт</TableHead>

@@ -95,7 +95,7 @@ test('daily calorie target follows Mifflin–St Jeor from questionnaire answers'
   )).toBe(2500)
   expect(questionnaireDailyCalorieTarget(
     questionnaireAnswersSchema.parse({ ...current, goalPace: 'Экстремально' }),
-  )).toBe(2750)
+  )).toBe(2300)
   expect(questionnaireDailyCalorieTarget(
     questionnaireAnswersSchema.parse({ ...base, goalPace: 'Быстро' }),
   )).toBe(1300)
@@ -104,10 +104,10 @@ test('daily calorie target follows Mifflin–St Jeor from questionnaire answers'
   )).toBe(2050)
   expect(questionnaireDailyCalorieTarget(
     questionnaireAnswersSchema.parse({ ...base, goalPace: 'Экстремально' }),
-  )).toBe(1200)
+  )).toBe(1550)
   expect(questionnaireDailyCalorieTarget(
     questionnaireAnswersSchema.parse({ ...base, activity: 'Спортсмен', goalPace: 'Экстремально' }),
-  )).toBe(1500)
+  )).toBe(2000)
   expect(questionnaireMaintenanceCalories(null)).toBeNull()
   expect(questionnaireDailyCalorieTarget(null)).toBeNull()
   expect(

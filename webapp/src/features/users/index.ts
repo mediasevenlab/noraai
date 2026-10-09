@@ -22,6 +22,7 @@ export { UserAppNavigation } from './UserAppNavigation'
 export { UserReferrals } from './pages'
 export { useCurrentUserMentorQuery, usePayoutAccrualQuery, useQuestionnaireQuery } from './queries'
 export {
+  canonicalGoalPace,
   goalUsesPace,
   questionnaireDailyCalorieTarget,
   questionnaireMaintenanceCalories,

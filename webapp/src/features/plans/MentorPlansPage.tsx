@@ -9,6 +9,7 @@ import {
   ProductFeedEmpty,
   SectionLoading,
   productFeedToolbarRowClass,
+  productFeedToolbarStickyClass,
 } from '@/components/nora/product-sheet'
 import { useAuth } from '@/features/auth'
 import { DeleteCardDialog } from '@/features/diary/DeleteCardDialog'
@@ -419,7 +420,7 @@ export function MentorPlanDetailPage({ planId }: { planId: string }) {
           />
         ) : (
           <>
-            <section className="flex max-md:hidden flex-col">
+            <section className={`${productFeedToolbarStickyClass} max-md:hidden`}>
               <div className="flex w-full min-w-0 items-center pt-1">
                 <div className={productFeedToolbarRowClass}>
                   <button

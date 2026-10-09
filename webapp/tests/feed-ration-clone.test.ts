@@ -70,7 +70,7 @@ test('own or already copied feed rations cannot be added to mine', () => {
   expect(cloned?.sourceSharedRationId).toBe(rationId)
   expect(authoredCloneOfSharedRation(cloned ? [cloned] : [], rationId)?.id).toBe(cloned?.id)
   expect(canAddSharedRationToMine(ration(), cloned ? [cloned] : [])).toBe(false)
-  expect(sharedRationAddLabel(ration(), cloned ? [cloned] : [])).toBe('Уже в «Мои»')
+  expect(sharedRationAddLabel(ration(), cloned ? [cloned] : [])).toBe('Уже в рационах')
   expect(canAddSharedRationToMine(ration(), [])).toBe(true)
   expect(sharedRationAddLabel(ration(), [])).toBe('В мои')
 })

@@ -8,7 +8,7 @@ import { useEffect, useRef, useState, createContext, useContext, type ReactNode 
 import { SettingsEntry, SettingsFieldMark, useSettingsDraft, useSettingsMode } from '@/components/settings-canvas'
 import { cn } from '@/lib/utils'
 import { QuestionnaireEditStack, QuestionnaireFieldBlock } from './QuestionnaireFieldControl'
-import { goalUsesPace } from './questionnaire-calorie-target'
+import { canonicalGoalPace, goalUsesPace } from './questionnaire-calorie-target'
 import {
   fieldsForAnswers,
   PROFILE_SECTIONS,
@@ -34,7 +34,7 @@ function presentAnswers(answers: Record<FieldKey, string>): Record<FieldKey, str
   return {
     ...answers,
     goal: canonicalGoal(answers.goal),
-    goalPace: answers.goalPace || 'Умеренно',
+    goalPace: canonicalGoalPace(answers.goalPace),
   }
 }
 

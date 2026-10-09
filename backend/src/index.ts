@@ -13,6 +13,8 @@ const app = createApp({
 
 const server = Bun.serve({
   port: runtime.env.PORT,
+  // Two YooKassa attempts can take about 30s. The default 10s cuts the payment off first.
+  idleTimeout: 40,
   fetch: app.fetch,
 })
 

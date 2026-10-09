@@ -92,6 +92,19 @@ async function requestPayment(
   return toPayment(json)
 }
 
+const YOOKASSA_ATTEMPTS = 2
+const YOOKASSA_RETRY_DELAY_MS = 400
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** A dropped connection or 5xx can be sent again. The same Idempotence-Key returns the original payment. */
+function canRetryYooKassa(error: unknown, status: number | null) {
+  if (status != null) return status >= 500
+  return !(error instanceof PaymentsFailure)
+}
+
 async function requestJson<TSchema extends z.ZodType>(
   authorization: string,
   input: {
@@ -102,38 +115,47 @@ async function requestJson<TSchema extends z.ZodType>(
   },
   schema: TSchema,
 ): Promise<z.infer<TSchema>> {
-  let response: Response
-  try {
-    response = await fetch(`${YOOKASSA_PAYMENTS_URL}${input.path ?? ''}`, {
-      method: input.method,
-      headers: {
-        Authorization: authorization,
-        ...(input.body === undefined ? {} : { 'Content-Type': 'application/json' }),
-        ...(input.idempotenceKey ? { 'Idempotence-Key': input.idempotenceKey } : {}),
-      },
-      body: input.body === undefined ? undefined : JSON.stringify(input.body),
-      signal: AbortSignal.timeout(15_000),
-    })
-  } catch {
-    throw new PaymentsFailure('provider', 'ЮKassa не ответила.')
-  }
+  for (let attempt = 0; attempt < YOOKASSA_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(`${YOOKASSA_PAYMENTS_URL}${input.path ?? ''}`, {
+        method: input.method,
+        headers: {
+          Authorization: authorization,
+          ...(input.body === undefined ? {} : { 'Content-Type': 'application/json' }),
+          ...(input.idempotenceKey ? { 'Idempotence-Key': input.idempotenceKey } : {}),
+        },
+        body: input.body === undefined ? undefined : JSON.stringify(input.body),
+        signal: AbortSignal.timeout(15_000),
+      })
+      if (!response.ok) {
+        if (attempt + 1 < YOOKASSA_ATTEMPTS && canRetryYooKassa(null, response.status)) {
+          await wait(YOOKASSA_RETRY_DELAY_MS)
+          continue
+        }
+        throw new PaymentsFailure('provider', 'ЮKassa не приняла платёж.')
+      }
 
-  if (!response.ok) {
-    throw new PaymentsFailure('provider', 'ЮKassa не приняла платёж.')
-  }
+      let json: unknown
+      try {
+        json = await response.json()
+      } catch {
+        throw new PaymentsFailure('provider', 'ЮKassa вернула непонятный ответ.')
+      }
 
-  let json: unknown
-  try {
-    json = await response.json()
-  } catch {
-    throw new PaymentsFailure('provider', 'ЮKassa вернула непонятный ответ.')
+      const parsed = schema.safeParse(json)
+      if (!parsed.success) {
+        throw new PaymentsFailure('provider', 'ЮKassa вернула непонятный ответ.')
+      }
+      return parsed.data
+    } catch (error) {
+      if (error instanceof PaymentsFailure) throw error
+      if (attempt + 1 < YOOKASSA_ATTEMPTS && canRetryYooKassa(error, null)) {
+        await wait(YOOKASSA_RETRY_DELAY_MS)
+        continue
+      }
+    }
   }
-
-  const parsed = schema.safeParse(json)
-  if (!parsed.success) {
-    throw new PaymentsFailure('provider', 'ЮKassa вернула непонятный ответ.')
-  }
-  return parsed.data
+  throw new PaymentsFailure('provider', 'ЮKassa не ответила.')
 }
 
 function toPayment(data: z.infer<typeof paymentSchema>): YooKassaPayment {
