@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 
 import { ApiRequestError } from '../src/platform/api'
 import { PLAN_COVER_PLACEHOLDER_SRC } from '../src/features/diary/meal-cover'
-import { catalogCloneErrorMessage, firstDurablePlanCover, mealCreateImageFields } from '../src/features/plans/plan-create'
+import { catalogCloneErrorMessage, firstDurablePlanCover, mealCreateImageFields, rationDayStampDate } from '../src/features/plans/plan-create'
 
 test('plan create reuses the ration editor and stamps meals on chosen days', () => {
   const page = readFileSync(new URL('../src/features/plans/pages.tsx', import.meta.url), 'utf8')
@@ -23,7 +23,8 @@ test('plan create reuses the ration editor and stamps meals on chosen days', () 
   expect(page).toContain('stampDaysOntoPlan(days, created.id)')
   expect(page).toContain('stampRationDaysOntoPlan(auth.transport, days, planId)')
   expect(create).toContain('rationMealCreateDrafts(')
-  expect(create).toContain('rationPlanWeekDays(')
+  expect(create).toContain('rationPlanDaySlots(')
+  expect(create).toContain('rationDayStampDate(')
   expect(create).toContain('createMyMeal(')
   expect(create).toContain('preferredMealPhotoSrc(')
   expect(create).toContain('firstDurablePlanCover(')
@@ -79,4 +80,13 @@ test('catalog clone maps rate-limit failures to a Russian retry', () => {
   ).toBe('Слишком много запросов. Подождите минуту и попробуйте снова.')
   expect(catalogCloneErrorMessage(new Error('disk full'))).toBe('disk full')
   expect(catalogCloneErrorMessage('nope')).toBe('Не удалось добавить план')
+})
+
+test('day 8 is stamped a week after day 1', () => {
+  const now = new Date(2026, 9, 12)
+  const first = rationDayStampDate(0, 8, now)
+  const eighth = rationDayStampDate(7, 8, now)
+  expect(first?.getDate()).toBe(12)
+  expect(eighth?.getDate()).toBe(19)
+  expect(eighth?.getTime()).not.toBe(first?.getTime())
 })

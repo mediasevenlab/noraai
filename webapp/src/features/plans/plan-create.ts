@@ -5,7 +5,7 @@ import {
   durablePlanCoverSrc,
   preferredMealPhotoSrc,
 } from '@/features/diary'
-import { rationMealCreateDrafts, rationPlanWeekDays, type RationEntry } from '@/features/mentor'
+import { rationMealCreateDrafts, rationPlanDaySlots, type RationEntry } from '@/features/mentor'
 import { ApiRequestError, type AuthenticatedTransport } from '@/platform/api'
 
 const DATA_IMAGE = /^data:(image\/(?:jpeg|png|webp));base64,([a-z0-9+/=\s]+)$/i
@@ -56,15 +56,23 @@ export function firstDurablePlanCover(
   return meals.map((meal) => durablePlanCoverSrc(meal.imageUrl)).find(Boolean) ?? PLAN_COVER_PLACEHOLDER_SRC
 }
 
+/** Calendar date for plan day N. Day 8 is the next week, never day 1 again. */
+export function rationDayStampDate(dayIndex: number, dayCount: number, now = new Date()) {
+  if (!Number.isFinite(dayIndex) || dayIndex < 0) return null
+  const count = Number.isFinite(dayCount) ? Math.max(0, Math.trunc(dayCount)) : 0
+  return rationPlanDaySlots(count, now)[dayIndex]?.date ?? null
+}
+
 export async function stampRationDaysOntoPlan(
   transport: AuthenticatedTransport,
   days: readonly RationEntry[],
   planId: string,
 ) {
-  const weekDays = rationPlanWeekDays()
+  const now = new Date()
   return Promise.all(
     days.flatMap((ration, dayIndex) => {
-      const date = weekDays[dayIndex]?.date ?? weekDays[0]?.date ?? new Date()
+      const date = rationDayStampDate(dayIndex, days.length, now)
+      if (!date) return []
       return rationMealCreateDrafts(ration, date, planId).map(async (body, mealIndex) => {
         const meal = ration.meals[mealIndex]
         const photo = preferredMealPhotoSrc({ image: meal?.image })

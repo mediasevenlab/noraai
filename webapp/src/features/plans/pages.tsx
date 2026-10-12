@@ -863,6 +863,7 @@ export function CurrentPlanPage({
         description: authoredPlan.description,
         detachedIds,
         goal: authoredPlan.goal,
+        dayCount: authoredPlan.dayCount,
         meals,
         planId: authoredPlan.id,
         rations,
@@ -1107,22 +1108,21 @@ export function CurrentPlanPage({
           ? addSharedRationToMine
           : null
 
-  const catalogMineButton = addToMine ? (
-    <button
-      className={MOBILE_DOCK_PILL_CLASS}
-      disabled={adding}
-      onClick={() => void addToMine()}
-      type="button"
-    >
-      {catalogView
-        ? alreadyInMine
-          ? 'В рационах'
-          : 'Добавить'
-        : alreadyInMine
-          ? 'Открыть в «Мои»'
-          : 'Добавить'}
-    </button>
-  ) : null
+  const catalogMineButton =
+    addToMine && !(catalogView && alreadyInMine) ? (
+      <button
+        className={MOBILE_DOCK_PILL_CLASS}
+        disabled={adding}
+        onClick={() => void addToMine()}
+        type="button"
+      >
+        {catalogView
+          ? 'Добавить'
+          : alreadyInMine
+            ? 'Открыть в «Мои»'
+            : 'Добавить'}
+      </button>
+    ) : null
 
   function openEditor() {
     setLayoutRevision((current) => current + 1)
@@ -1321,20 +1321,14 @@ export function CurrentPlanPage({
                   <ArrowLeftIcon aria-hidden />
                 </button>
                 {desktopEditButton}
-                {addToMine ? (
+                {addToMine && !(catalogView && alreadyInMine) ? (
                   <button
                     className={`${planToolbarPillClass} nora-press-grow inline-flex shrink-0 flex-row items-center justify-center gap-1.5 whitespace-nowrap px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] disabled:pointer-events-none disabled:opacity-50`}
                     disabled={adding}
                     onClick={() => void addToMine()}
                     type="button"
                   >
-                    {catalogView
-                      ? alreadyInMine
-                        ? 'Уже в рационах'
-                        : 'Добавить'
-                      : alreadyInMine
-                        ? 'Открыть в «Мои»'
-                        : 'Добавить'}
+                    {catalogView ? 'Добавить' : alreadyInMine ? 'Открыть в «Мои»' : 'Добавить'}
                   </button>
                 ) : null}
               </div>
@@ -1350,6 +1344,7 @@ export function CurrentPlanPage({
             onDetachPlanMeal={detachPlanMeal}
             onRemoveEmptyDay={canMutateDays ? removeEmptyDay : undefined}
             planId={plan.id}
+            planTitle={plan.title}
             pickIntoMentorPlans={auth.user?.role === 'mentor' && feedPreview}
             readOnly={catalogView || feedPreview || isAssignedPlanId(plan.id)}
           />

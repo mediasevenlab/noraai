@@ -104,12 +104,19 @@ export function groupMealsByDay(meals: readonly MealEntry[]) {
   }
   return [...groups.entries()]
     .sort(([left], [right]) => (left < right ? 1 : left > right ? -1 : 0))
-    .map(([dayKey, dayMeals]) => ({
-      dayKey,
-      dayIso: dayMeals[0]!.at,
-      meals: dayMeals,
-      totals: sumMeals(dayMeals),
-    }))
+    .map(([dayKey, dayMeals]) => {
+      // Rations stamp later meals later in the day. The feed arrives newest-first,
+      // which mirrors that order. Read a day the same way as the ration: earliest first.
+      const meals = [...dayMeals].sort((left, right) =>
+        left.at < right.at ? -1 : left.at > right.at ? 1 : 0,
+      )
+      return {
+        dayKey,
+        dayIso: meals[0]!.at,
+        meals,
+        totals: sumMeals(meals),
+      }
+    })
 }
 
 export function formatMealStamp(iso: string) {

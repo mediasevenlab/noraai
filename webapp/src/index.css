@@ -1116,7 +1116,6 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
       box-sizing: border-box !important;
       display: block !important;
       width: calc(100% / var(--ios-13)) !important;
-      height: auto !important;
       min-height: calc(var(--ios-min, 6rem) / var(--ios-13)) !important;
       max-height: none !important;
       margin-top: 0 !important;
@@ -1127,6 +1126,15 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
       line-height: calc(1.25rem / var(--ios-13)) !important;
       transform: scale(var(--ios-13));
       transform-origin: top left;
+    }
+
+    /*
+     * Scale shrinks the painted radius. Divide it back so the field keeps
+     * the same 10px corner as on desktop.
+     */
+    [data-ration-field-plaque] [data-ios-13-slot] > input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']),
+    [data-ration-field-plaque] [data-ios-13-slot='area'] > textarea {
+      border-radius: calc(10px / var(--ios-13)) !important;
     }
   }
 

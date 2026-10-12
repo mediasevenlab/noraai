@@ -16,7 +16,6 @@ import {
   assignedRationOnDay,
   localDayKey,
   rationPlanDaySlots,
-  rationPlanWeekDays,
   weekPlanOptions,
   type RationEntry,
 } from '@/features/mentor'
@@ -390,14 +389,17 @@ export function buildWeekPlan(input: {
   rations: readonly RationEntry[]
   completedIds?: ReadonlySet<string>
   detachedIds?: ReadonlySet<string>
+  dayCount?: number
   now?: Date
 }): WeekPlan {
   const now = input.now ?? new Date()
+  const requested = Number.isFinite(input.dayCount) ? Math.trunc(input.dayCount ?? 0) : 0
+  const span = Math.min(AUTHORED_PLAN_DAY_COUNT_MAX, Math.max(7, requested))
   const weekId = currentWeekPlanId(now)
   const meals = mealsForWeekPlan(input.meals, input.planId, weekId).filter(
     (meal) => !input.detachedIds?.has(meal.id),
   )
-  const weekDays = rationPlanWeekDays(now)
+  const weekDays = rationPlanDaySlots(span, now)
   const slots: WeekPlanDay[] = []
   for (const day of weekDays) {
     const dayMeals = plannedMealsOnDay(meals, day.date, input.completedIds)

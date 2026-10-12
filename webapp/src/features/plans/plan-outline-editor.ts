@@ -1,7 +1,7 @@
 import { mealCompositionLines, type MealEntry } from '@/features/diary'
 import {
   emptyPlanDayMeals,
-  rationPlanWeekDays,
+  rationPlanDaySlots,
   titledDraftMeals,
   type RationDraft,
   type RationEntry,
@@ -50,7 +50,7 @@ export function applyPlanDayDrafts(
   for (const day of days) {
     for (const meal of day.meals) byId.set(meal.id, meal)
   }
-  const weekDays = rationPlanWeekDays(now)
+  const weekDays = rationPlanDaySlots(drafts.length, now)
   return drafts.map((dayDrafts, index) => {
     const slot = days[index] ?? (weekDays[index] ? emptyPlanEditorDay(weekDays[index]!) : null)
     const meals = dayDrafts

@@ -858,9 +858,21 @@ html[data-android] [data-slot="sheet-content"].ios-glass-sheet {
 
 html[data-android] .ios-glass-glare,
 html[data-android] .ios-glass-glare-soft {
-  background: var(--nora-panel);
+  /* Blur paints a solid slab on Chrome Android and hides the icon or label. */
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+/*
+  Frosted controls need an opaque fill once blur is off. This stays under
+  Tailwind utilities: a dark send button or a green «Выполнено» badge keeps
+  its own color. An unlayered white fill here made that label white on white.
+*/
+@layer base {
+  html[data-android] .ios-glass-glare,
+  html[data-android] .ios-glass-glare-soft {
+    background-color: var(--nora-panel);
+  }
 }
 
 /* Dark plaques are the same gray as an empty ring, so the disc steps lighter. */

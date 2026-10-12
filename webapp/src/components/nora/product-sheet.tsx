@@ -26,11 +26,11 @@ export const productSheetCardFrameClass = cn(
   'md:inset-auto md:top-1/2 md:left-1/2 md:h-[min(860px,calc(100vh-2rem))] md:max-h-[min(860px,calc(100vh-2rem))] md:w-[min(100%-2rem,460px)] md:max-w-[460px] md:rounded-[22px]',
 )
 
-/** Ration editor — same width as meal/ration cards, taller. */
+/** Ration create and edit sheet. Desktop frame is 497px wide and taller than the meal card. */
 export const productSheetEditorFrameClass = cn(
   '!flex flex-col gap-0 overflow-hidden p-0',
   SHEET_MOBILE_CLASS,
-  'md:inset-auto md:top-1/2 md:left-1/2 md:h-[min(920px,calc(100vh-2rem))] md:max-h-[min(920px,calc(100vh-2rem))] md:w-[min(100%-2rem,460px)] md:max-w-[460px] md:rounded-[22px]',
+  'md:inset-auto md:top-1/2 md:left-1/2 md:h-[min(920px,calc(100vh-2rem))] md:max-h-[min(920px,calc(100vh-2rem))] md:w-[min(100%-2rem,497px)] md:max-w-[497px] md:rounded-[22px]',
 )
 
 export const productSheetTabTriggerClass = cn(

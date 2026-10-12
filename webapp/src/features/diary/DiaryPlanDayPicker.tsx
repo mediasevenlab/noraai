@@ -164,6 +164,9 @@ export function DiaryPlanDayPicker({
   const bulk = selected.length > 1;
   const busy = Boolean(addingDayKey) || creating;
   const description = planPickerDescription(selected, meal, bulk, creatingNew, lockedPlan);
+  const lockedTitle =
+    plans.find((plan) => plan.id === planId)?.title ?? plans[0]?.title ?? "";
+  const placedLabel = lockedPlan ? "уже в дне" : "уже в рационе";
   const occupancyPlanId = creatingNew ? DIARY_NEW_PLAN_ID : planId;
 
   React.useLayoutEffect(() => {
@@ -275,13 +278,17 @@ export function DiaryPlanDayPicker({
                     </span>
                     <div className="min-w-0 flex-1">
                       <DialogTitle className="flex min-w-0 items-baseline gap-1.5 font-[family-name:var(--nora-font)] !text-[15px] !font-medium !leading-6 tracking-normal text-[var(--nora-text)]">
-                        <span className="truncate">Добавить рацион</span>
-                        <span
-                          className="shrink-0 font-light text-[#707070]"
-                          data-diary-plan-count=""
-                        >
-                          ({rationsCountLabel(plans.length)})
+                        <span className="truncate">
+                          {lockedPlan ? lockedTitle : "Добавить рацион"}
                         </span>
+                        {lockedPlan ? null : (
+                          <span
+                            className="shrink-0 font-light text-[#707070]"
+                            data-diary-plan-count=""
+                          >
+                            ({rationsCountLabel(plans.length)})
+                          </span>
+                        )}
                       </DialogTitle>
                       <DialogDescription className="sr-only">
                         {description}
@@ -501,9 +508,9 @@ export function DiaryPlanDayPicker({
                   const dayBusy = addingDayKey === day.dayKey;
                   const marked = already || mixed;
                   const status = already
-                    ? "уже в рационе"
+                    ? placedLabel
                     : mixed
-                      ? `${occupancy.already} уже в рационе`
+                      ? `${occupancy.already} ${placedLabel}`
                       : "свободен";
                   return (
                     <button

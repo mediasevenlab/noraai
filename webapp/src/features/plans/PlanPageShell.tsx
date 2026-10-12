@@ -33,11 +33,9 @@ const INFO_FRAME_CLASS = cn(
 )
 
 const INFO_BODY_CLASS =
-  'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text)]'
-const INFO_LABEL_CLASS =
-  'mb-1.5 pl-4 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
-const INFO_COPY_CLASS =
-  'font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 text-[var(--nora-text-secondary)] dark:text-[color-mix(in_srgb,var(--nora-text)_42%,var(--nora-text-secondary))]'
+  'font-[family-name:var(--nora-font)] text-[13px] font-[300] leading-5 text-[var(--nora-text)]'
+const INFO_CAPTION_CLASS =
+  'pl-4 font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)]'
 const FACT_ROW_CLASS =
   'flex min-h-[3.25rem] items-center justify-between gap-3 rounded-[14px] bg-[var(--nora-inset)] pl-2.5 pr-4'
 const FACT_ICON_WRAP_CLASS = cn(
@@ -160,18 +158,21 @@ export function PlanPageShell({
                 </div>
               ) : null}
               {description.trim() ? (
-                <div className="flex flex-col gap-1.5">
-                  <p className={INFO_LABEL_CLASS}>Описание:</p>
-                  <DialogDescription className={cn(INFO_COPY_CLASS, 'whitespace-pre-line rounded-[14px] bg-[var(--nora-inset)] px-4 py-3')}>
-                    {description}
-                  </DialogDescription>
-                </div>
+                <section className="flex flex-col gap-4">
+                  <p className={INFO_CAPTION_CLASS} data-settings-subtitle="">Описание</p>
+                  <div className="rounded-[14px] bg-[var(--nora-inset)] px-4 py-3.5">
+                    <DialogDescription className={cn(INFO_BODY_CLASS, 'whitespace-pre-line')}>
+                      {description}
+                    </DialogDescription>
+                  </div>
+                </section>
               ) : (
                 <DialogDescription className="sr-only">{title}</DialogDescription>
               )}
               {visibleFacts.length > 0 ? (
-                <section className="flex flex-col gap-1.5" data-plan-info-summary="">
-                  <p className={INFO_LABEL_CLASS}>Показатели:</p>
+                <section className="flex flex-col gap-4" data-plan-info-summary="">
+                  <p className={INFO_CAPTION_CLASS} data-settings-subtitle="">Показатели</p>
+                  <div className="flex flex-col gap-1.5">
                   {visibleFacts.map((fact) => {
                     const Icon = FACT_ICONS[fact.label]
                     return (
@@ -188,6 +189,7 @@ export function PlanPageShell({
                       </div>
                     )
                   })}
+                  </div>
                 </section>
               ) : null}
             </div>

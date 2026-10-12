@@ -97,9 +97,16 @@ const PLAN_DAY_BADGE_CLASS =
 const PLAN_DAY_TAB_CLASS =
   'nora-press-grow relative flex h-[4.75rem] flex-col items-center justify-between rounded-full bg-[var(--nora-inset)] px-1 pb-2 pt-2.5 outline-none focus-visible:shadow-[var(--nora-shadow-focus)]'
 const PLAN_DAY_TAB_SELECTED_CLASS = 'bg-[#2C2C2E]'
-/** Capsule center lines up with the header info button: bar padding plus the 32px mark. */
+/** Capsule center lines up with the header info button when seven of them fit at 3.25rem. */
 const PLAN_DAY_TAB_SIZE_CLASS =
-  'w-[3.25rem] min-w-[3.25rem] max-w-[3.25rem] shrink-0 grow-0'
+  'w-[var(--day-size,3.25rem)] min-w-[var(--day-size,3.25rem)] max-w-[var(--day-size,3.25rem)] shrink-0 grow-0'
+/**
+ * Seven capsules span the row: leftover width becomes the gap between them.
+ * On a narrow phone the capsule shrinks just enough that seven still fit.
+ * Later days keep that size and scroll.
+ */
+const PLAN_DAY_TAB_ROW_CLASS =
+  'no-scrollbar flex w-full overflow-x-auto overscroll-x-contain [--day-tab:3.25rem] [--day-gap:max(0px,calc((100%-7*var(--day-tab))/6))] [--day-size:min(var(--day-tab),calc((100%-6*var(--day-gap))/7))] [column-gap:var(--day-gap)]'
 
 function pickerDaysFromPlan(days: readonly WeekPlanDay[], dayCount = 0): FeedPlanWeekDay[] {
   return padPlanDaysForEditor(days, new Date(), dayCount).map((day, index) => {
@@ -126,6 +133,7 @@ export function CurrentPlanMeals({
   onPickingChange,
   onRemoveEmptyDay,
   planId,
+  planTitle,
   pickIntoMentorPlans = false,
   readOnly = false,
   canReorder,
@@ -140,6 +148,7 @@ export function CurrentPlanMeals({
   onPickingChange?: (picking: boolean) => void
   onRemoveEmptyDay?: (dayKey: string) => void
   planId?: string
+  planTitle?: string
   /** Shared ration opened by a mentor: meals can be copied into the mentor's own plans. */
   pickIntoMentorPlans?: boolean
   readOnly?: boolean
@@ -735,7 +744,7 @@ export function CurrentPlanMeals({
       <div className="flex flex-col gap-3 md:hidden">
         <div
           aria-label="Дни плана"
-          className="no-scrollbar flex w-full gap-1.5 overflow-x-auto overscroll-x-contain"
+          className={PLAN_DAY_TAB_ROW_CLASS}
           ref={dayTabListRef}
           role="tablist"
         >
@@ -862,9 +871,9 @@ export function CurrentPlanMeals({
       {dockMove && allowReorder
         ? createPortal(
             <button
-              aria-label={picking ? 'Отмена' : 'Переместить'}
+              aria-label={picking ? 'Отмена' : 'Перенос'}
               aria-pressed={picking}
-              className={MOBILE_DOCK_PILL_CLASS}
+              className={cn(MOBILE_DOCK_PILL_CLASS, 'pr-5')}
               data-active={picking || undefined}
               onClick={togglePicking}
               type="button"
@@ -878,7 +887,7 @@ export function CurrentPlanMeals({
                   strokeWidth={1.75}
                 />
               )}
-              {picking ? 'Отмена' : 'Переместить'}
+              {picking ? 'Отмена' : 'Перенос'}
             </button>,
             dockMove,
           )
@@ -966,7 +975,7 @@ export function CurrentPlanMeals({
           open={Boolean(planMeal)}
           planDays={pickerDays}
           planId={planId}
-          plans={[{ id: planId, title: 'Этот план' }]}
+          plans={[{ id: planId, title: planTitle?.trim() || 'Рацион' }]}
         />
       ) : null}
       <DeleteCardDialog

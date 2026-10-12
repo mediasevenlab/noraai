@@ -4,8 +4,10 @@ import { readFileSync } from 'node:fs'
 import {
   formatDailyCalorieChip,
   formatDailyCalories,
+  groupMealsByDay,
   rationsCountLabel,
 } from '../src/features/diary/diary-feed'
+import type { MealEntry } from '../src/features/diary/meals-catalog'
 import {
   periodPickerActions,
   visibleMonthsForBounds,
@@ -36,6 +38,26 @@ const news = readJoined([
 test('calorie chip shows the same kcal unit as the menu', () => {
   expect(formatDailyCalorieChip(2200)).toBe(formatDailyCalories(2200))
   expect(formatDailyCalorieChip(2200)).toMatch(/ккал$/)
+})
+
+test('a diary day lists meals copied from a ration in ration order', () => {
+  const at = (day: number, hours: number, minutes: number) =>
+    new Date(2026, 9, day, hours, minutes).toISOString()
+  const meal = (id: string, stamp: string) => ({ id, at: stamp }) as MealEntry
+  const groups = groupMealsByDay([
+    meal('shawarma', at(17, 19, 30)),
+    meal('waffle', at(17, 16, 30)),
+    meal('buckwheat', at(17, 13, 0)),
+    meal('eggs', at(17, 8, 30)),
+    meal('sunday', at(18, 8, 30)),
+  ])
+  expect(groups.map((group) => group.dayKey)).toEqual(['2026-10-18', '2026-10-17'])
+  expect(groups[1]!.meals.map((item) => item.id)).toEqual([
+    'eggs',
+    'buckwheat',
+    'waffle',
+    'shawarma',
+  ])
 })
 
 test('ration count in the plan picker uses the Russian plural', () => {
@@ -188,7 +210,8 @@ test('mobile search grows up to the first remaining toolbar capsule', () => {
     'utf8',
   )
   expect(feed).toContain("aria-label=\"Лента\"")
-  expect(feed).toContain('searchOpen && productToolbarSearchCollapseClass')
+  expect(feed).not.toContain('productToolbarSearchCollapseClass')
+  expect(feed).toContain("searchOpen && 'max-md:min-w-0 max-md:flex-1'")
   const kindGroup = feed.slice(
     feed.indexOf('aria-label="Лента"'),
     feed.indexOf('FEED_KINDS.map'),
@@ -863,6 +886,17 @@ test('meal dialog buttons share frost and top glare', () => {
   expect(voice).toContain('bg-[var(--nora-text)]/72')
 })
 
+test('android chrome keeps colored badge and send-button fills', () => {
+  const noraCss = readFileSync(new URL('../src/styles/nora-ui.css', import.meta.url), 'utf8')
+  const androidGlare = noraCss.slice(
+    noraCss.indexOf('html[data-android] .ios-glass-glare,'),
+    noraCss.indexOf('/* Dark plaques'),
+  )
+  expect(androidGlare).toContain('backdrop-filter: none !important')
+  expect(androidGlare).toContain('@layer base')
+  expect(androidGlare).not.toContain('background: var(--nora-panel)')
+})
+
 test('meal dialog close, preview expand, and card actions grow on press', () => {
   expect(news).toContain("'nora-press-grow absolute bottom-3.5 right-3.5")
   expect(news).toContain("'nora-press-grow absolute top-4 right-4 z-[2] hidden size-7 sm:inline-flex'")
@@ -1463,6 +1497,8 @@ test('own diary meals can be copied into a chosen weekly plan day', () => {
   expect(picker).not.toContain('line-clamp-2')
   expect(picker).toContain('Можно поставить в выбранный план, в один или несколько дней.')
   expect(picker).toContain('уже в рационе')
+  expect(picker).toContain('lockedPlan ? "уже в дне" : "уже в рационе"')
+  expect(picker).toContain('lockedPlan ? lockedTitle : "Добавить рацион"')
   expect(picker).not.toContain('уже в плане')
   expect(picker).toContain('size-2 rounded-full bg-[var(--nora-success)]')
   expect(picker).not.toContain('border-[var(--nora-success)] bg-[var(--nora-success)] text-white')

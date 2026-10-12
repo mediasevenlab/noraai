@@ -180,6 +180,14 @@ export function parseMacroField(value: string) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
 }
 
+/** Digits and one decimal separator. Letters and a leading minus never stay in the field. */
+export function macroDraftInput(value: string) {
+  const cleaned = value.replace(/[^\d.,]/g, '')
+  const separator = cleaned.search(/[.,]/)
+  if (separator < 0) return cleaned
+  return cleaned.slice(0, separator + 1) + cleaned.slice(separator + 1).replace(/[.,]/g, '')
+}
+
 export function splitIngredientLines(value: string) {
   return value
     .split(/[\n;,]+/)
@@ -417,6 +425,21 @@ export function finalizePlanDaysDraft(
     })
   }
   return { ok: true, days: entries }
+}
+
+/**
+ * Day 1 of the editor is the first stored day.
+ * A full-ration draft still lists every meal; those must not replace day 1.
+ */
+export function seedPlanEditorDays(
+  draft: Pick<RationDraft, 'meals'>,
+  initialDays?: readonly RationMealDraft[][],
+): { meals: RationMealDraft[]; days: RationMealDraft[][] } {
+  const days =
+    initialDays && initialDays.length > 0
+      ? initialDays.map((day) => (day.length > 0 ? day.slice() : emptyPlanDayMeals()))
+      : [draft.meals.length > 0 ? draft.meals.slice() : emptyPlanDayMeals()]
+  return { meals: days[0]!.slice(), days }
 }
 
 /** One draft day per stored dayIndex. Meals without a later day stay on day 1. */

@@ -21,6 +21,7 @@ import {
   rationCardOrigin,
   parseAuthoredRations,
   parseMacroField,
+  macroDraftInput,
   addDraftLine,
   addPlanDraftDay,
   draftLineItems,
@@ -33,6 +34,8 @@ import {
   previewRationFromDraft,
   rationPlanDayDrafts,
   rationToDraft,
+  seedPlanEditorDays,
+  mentorPlanUpsertFromDays,
   readAssignedAuthoredRations,
   removeDraftLine,
   removePlanDraftDay,
@@ -266,6 +269,10 @@ describe('mentor authored rations', () => {
     expect(splitStepLines('1. Взбейте яйца\n\n2) Обжарьте\n')).toEqual(['Взбейте яйца', 'Обжарьте'])
     expect(parseMacroField('12,5')).toBe(12.5)
     expect(parseMacroField('-3')).toBe(0)
+    expect(macroDraftInput('Сырные')).toBe('')
+    expect(macroDraftInput('39abc')).toBe('39')
+    expect(macroDraftInput('12,5.6')).toBe('12,56')
+    expect(macroDraftInput('-3')).toBe('3')
   })
 
   test('preview and finalize ignore unnamed meals and sum macros', () => {
@@ -318,6 +325,36 @@ describe('mentor authored rations', () => {
     })
     expect(days).toHaveLength(2)
     expect(days.map((day) => day.map((meal) => meal.title))).toEqual([['Овсянка'], ['Омлет']])
+  })
+
+  test('opening a saved plan does not pour later days into day 1', () => {
+    const ration: RationEntry = {
+      ...sample,
+      meals: [
+        { ...sample.meals[0]!, title: 'Овсянка', dayIndex: 0 },
+        { ...sample.meals[1]!, title: 'Суп', dayIndex: 0 },
+        { ...sample.meals[0]!, title: 'Рыба', dayIndex: 1 },
+      ],
+    }
+    const draft = rationToDraft(ration)
+    const seeded = seedPlanEditorDays(draft, rationPlanDayDrafts(ration))
+    expect(seeded.meals.map((meal) => meal.title)).toEqual(['Овсянка', 'Суп'])
+    expect(seeded.days.map((day) => day.map((meal) => meal.title))).toEqual([
+      ['Овсянка', 'Суп'],
+      ['Рыба'],
+    ])
+    const saved = finalizePlanDaysDraft(
+      { id: ration.id, title: ration.title, description: ration.description, goal: ration.goal },
+      seeded.days.map((day, index) => (index === 0 ? seeded.meals : day)),
+      'mentor-1',
+    )
+    expect(saved.ok).toBe(true)
+    if (!saved.ok) return
+    expect(mentorPlanUpsertFromDays(saved.days)?.meals.map((meal) => `${meal.dayIndex}:${meal.title}`)).toEqual([
+      '0:Овсянка',
+      '0:Суп',
+      '1:Рыба',
+    ])
   })
 
   test('round-trips a saved card and drops broken storage rows', () => {

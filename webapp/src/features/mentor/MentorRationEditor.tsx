@@ -6,6 +6,7 @@ import {
   ChevronDownIcon,
   ImagePlusIcon,
   ChevronLeftIcon,
+  ChevronRightIcon,
   ChevronUpIcon,
   CoffeeIcon,
   CookieIcon,
@@ -22,7 +23,7 @@ import {
 } from '@/components/icons'
 import { toast } from '@/components/ui/toast'
 
-import { NoraInput, NoraSelect, NoraTextarea } from '@/components/nora/primitives'
+import { NoraHoverTip, NoraInput, NoraSelect, NoraTextarea } from '@/components/nora/primitives'
 import {
   Dialog,
   DialogClose,
@@ -32,6 +33,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DeleteCardDialog } from '@/features/diary/DeleteCardDialog'
 import {
   applyMealPhotoFallback,
   displayMealCover,
@@ -67,9 +69,11 @@ import {
   finalizePlanDaysDraft,
   finalizeRationDraft,
   joinDraftLines,
+  macroDraftInput,
   nextUnusedMealSlot,
   PLAN_DRAFT_MAX_DAYS,
   previewRationFromDraft,
+  seedPlanEditorDays,
   removeDraftLine,
   removePlanDraftDay,
   setDraftLine,
@@ -112,23 +116,25 @@ const EDITOR_COPY = {
 
 const FIELD_TYPE_CLASS = cn(
   'font-[family-name:var(--nora-font)] !text-[13px] !font-normal !leading-5',
-  'text-[var(--nora-text)] placeholder:font-light placeholder:font-[300] placeholder:text-[var(--nora-input-placeholder)]',
-)
-const FIELD_COPY_CLASS = cn(
-  'font-[family-name:var(--nora-font)] !text-[13px] !font-light !leading-5',
-  'text-[var(--nora-text-secondary)] dark:text-[color-mix(in_srgb,var(--nora-text)_42%,var(--nora-text-secondary))]',
+  'text-[var(--nora-text)] [.scheme-editor-light_&]:!text-[color-mix(in_srgb,var(--nora-text)_70%,black)]',
   'placeholder:font-light placeholder:font-[300] placeholder:text-[var(--nora-input-placeholder)]',
 )
 const FIELD_CHIP_CLASS = 'rounded-[14px] !bg-[var(--nora-inset)]'
+/** Две трети прежних 10px, одинаково со всех сторон подложки. */
+const FIELD_INSET_CLASS = '!p-[calc(0.625rem*2/3)]'
+/** Между острым вложенным углом и капсулой подложки. */
+const FIELD_FACE_RADIUS_CLASS = '!rounded-[10px]'
 const FIELD_FACE_CLASS = '!bg-[var(--nora-panel)]'
 const SINGLE_LINE_FIELD_CLASS =
-  '!bg-[var(--nora-inset)] w-full px-4 !py-0 !h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem] !rounded-[var(--nora-radius-md,8px)]'
+  '!bg-[var(--nora-inset)] w-full px-4 !py-0 !h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem]'
 const PLAQUE_INPUT_CLASS = cn(FIELD_TYPE_CLASS, SINGLE_LINE_FIELD_CLASS)
 const TITLE_FIELD_CLASS = PLAQUE_INPUT_CLASS
 const LINE_INPUT_CLASS = cn(
   FIELD_TYPE_CLASS,
+  '!font-[300]',
   FIELD_FACE_CLASS,
-  '!h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem] min-w-0 flex-1 !rounded-full !px-2.5',
+  '!h-auto !min-h-[2.42rem] !max-h-none min-w-0 flex-1 resize-none overflow-hidden !px-3 !py-2 [field-sizing:content]',
+  FIELD_FACE_RADIUS_CLASS,
 )
 const GOAL_FIELD_CLASS = cn(
   FIELD_TYPE_CLASS,
@@ -153,9 +159,9 @@ const COVER_CHANGE_CHIP_CLASS = cn(
   'group-active:bg-[var(--nora-text)]',
 )
 
-function CoverChangeChip() {
+function CoverChangeChip({ className }: { className?: string }) {
   return (
-    <span className={COVER_CHANGE_CHIP_CLASS}>
+    <span className={cn(COVER_CHANGE_CHIP_CLASS, className)}>
       <ImagePlusIcon aria-hidden className="size-4" strokeWidth={1.75} />
     </span>
   )
@@ -199,6 +205,11 @@ const MEAL_INDEX_CLASS = cn(
   'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-none',
   'text-[var(--nora-text-secondary)]',
 )
+const LINE_INDEX_CLASS = cn(MEAL_INDEX_CLASS, 'font-medium')
+const DAY_MEAL_COUNT_CLASS = cn(
+  'inline-flex h-8 shrink-0 items-center rounded-full bg-[var(--nora-panel)] px-2.5',
+  'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-none whitespace-nowrap text-[var(--nora-text-secondary)]',
+)
 const FIELD_LABEL_CLASS =
   'mb-1.5 pl-4 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
 const SECTION_HEADING_CLASS =
@@ -222,7 +233,7 @@ const MEAL_TRASH_CLASS = cn(
   'disabled:pointer-events-none disabled:opacity-30',
 )
 const LINE_ADD_CLASS = cn(
-  'nora-press-grow ios-glass-glare-soft inline-flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-[var(--nora-inset)] text-[var(--nora-text-secondary)]',
+  'nora-press-grow ios-glass-glare-soft inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--nora-inset)] text-[var(--nora-text-secondary)]',
   'hover:bg-[var(--nora-tint-dimmed)] hover:text-[var(--nora-tint)]',
   'active:bg-[var(--nora-tint)] active:text-[var(--nora-on-accent)]',
   'outline-none focus-visible:shadow-[var(--nora-shadow-focus)]',
@@ -244,12 +255,169 @@ const MEAL_TAB_CLASS = productSheetTabTriggerDarkClass
 const DESCRIPTION_TAB_CLASS = productSheetTabTriggerDarkClass
 const SECTION_DIVIDER_CLASS = 'border-t border-[var(--nora-divider)]'
 const TITLE_GOAL_ROW_CLASS = 'grid grid-cols-[minmax(0,1fr)_10.5rem] items-start gap-3'
-const HEADER_TITLE_FIELD_CLASS = cn(FIELD_COPY_CLASS, SINGLE_LINE_FIELD_CLASS)
+const HEADER_TITLE_FIELD_CLASS = cn(FIELD_TYPE_CLASS, SINGLE_LINE_FIELD_CLASS, '!font-[300]')
 const HEADER_DESC_FIELD_CLASS = cn(
-  FIELD_COPY_CLASS,
-  FIELD_CHIP_CLASS,
-  '!min-h-0 w-full resize-none px-4 py-3 [field-sizing:content] !h-auto !max-h-none',
+  FIELD_TYPE_CLASS,
+  '!font-[300]',
+  FIELD_FACE_CLASS,
+  'w-full resize-none overflow-hidden px-4 py-3 !pb-5 !h-auto !max-h-none !min-h-[4.25rem] [field-sizing:content]',
+  FIELD_FACE_RADIUS_CLASS,
 )
+/** Как подпись раздела в настройках над полем. */
+const EDITOR_CAPTION_CLASS =
+  'pl-4 font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)]'
+
+function DescriptionResizeGrip() {
+  return (
+    <button
+      aria-label="Изменить высоту описания"
+      className="absolute right-[calc(0.625rem*2/3+4px)] bottom-[calc(0.625rem*2/3+2px)] z-[2] inline-flex size-4 cursor-ns-resize touch-none items-end justify-end text-[var(--nora-text-tertiary)]"
+      onPointerDown={(event) => {
+        const area = event.currentTarget.parentElement?.querySelector('textarea')
+        if (!area) return
+        event.preventDefault()
+        const handle = event.currentTarget
+        try {
+          handle.setPointerCapture(event.pointerId)
+        } catch {
+          /* The grip still follows pointermove on the button. */
+        }
+        const startY = event.clientY
+        const start = area.getBoundingClientRect().height
+        const scaled =
+          window.matchMedia('(max-width: 767px)').matches && area.closest('[data-ios-13-slot]')
+        const scale = scaled ? 13 / 16 : 1
+        const floor = 4.25 * 16
+        const move = (ev: PointerEvent) => {
+          const next = Math.max(floor, start + ev.clientY - startY)
+          const height = `${next / scale}px`
+          area.style.setProperty('field-sizing', 'fixed', 'important')
+          area.style.setProperty('height', height, 'important')
+        }
+        const end = () => {
+          handle.removeEventListener('pointermove', move)
+          handle.removeEventListener('pointerup', end)
+          handle.removeEventListener('pointercancel', end)
+        }
+        handle.addEventListener('pointermove', move)
+        handle.addEventListener('pointerup', end)
+        handle.addEventListener('pointercancel', end)
+      }}
+      type="button"
+    >
+      <svg aria-hidden className="size-3" viewBox="0 0 12 12">
+        <path
+          d="M10 4 L4 10 M10 7.5 L7.5 10"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.25"
+        />
+      </svg>
+    </button>
+  )
+}
+
+function FieldPlaque({
+  multiline = false,
+  className,
+  children,
+}: {
+  multiline?: boolean
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={cn(FIELD_CHIP_CLASS, 'relative', FIELD_INSET_CLASS, className)} data-ration-field-plaque="">
+      <div
+        className={
+          multiline
+            ? '[--ios-min:4.25rem] [--ios-px:1rem] [--ios-py:0.75rem] max-md:block max-md:w-full md:contents'
+            : '[--ios-px:1rem] max-md:relative max-md:h-[2.42rem] max-md:w-full md:contents'
+        }
+        data-ios-13-slot={multiline ? 'area' : ''}
+      >
+        {children}
+      </div>
+      {multiline ? <DescriptionResizeGrip /> : null}
+    </div>
+  )
+}
+
+const TAB_NUDGE_CLASS = cn(
+  'absolute top-1/2 z-[2] hidden size-8 -translate-y-1/2 items-center justify-center rounded-full border-0',
+  'bg-[var(--nora-panel)] text-[var(--nora-text-secondary)]',
+  'shadow-[0_1px_2px_color-mix(in_srgb,var(--nora-text)_18%,transparent)]',
+  'md:inline-flex',
+)
+
+function EditorTabScroller({ children }: { children: React.ReactNode }) {
+  const scrollerRef = React.useRef<HTMLDivElement>(null)
+  const [canLeft, setCanLeft] = React.useState(false)
+  const [canRight, setCanRight] = React.useState(false)
+
+  const measure = React.useCallback(() => {
+    const node = scrollerRef.current
+    if (!node || !window.matchMedia('(min-width: 768px)').matches) {
+      setCanLeft(false)
+      setCanRight(false)
+      return
+    }
+    setCanLeft(node.scrollLeft > 1)
+    setCanRight(node.scrollWidth - node.clientWidth - node.scrollLeft > 1)
+  }, [])
+
+  React.useLayoutEffect(() => {
+    measure()
+    const node = scrollerRef.current
+    if (!node) return
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    if (node.firstElementChild instanceof Element) observer.observe(node.firstElementChild)
+    node.addEventListener('scroll', measure, { passive: true })
+    const media = window.matchMedia('(min-width: 768px)')
+    media.addEventListener('change', measure)
+    return () => {
+      observer.disconnect()
+      node.removeEventListener('scroll', measure)
+      media.removeEventListener('change', measure)
+    }
+  }, [measure, children])
+
+  function nudge(direction: -1 | 1) {
+    const node = scrollerRef.current
+    if (!node) return
+    node.scrollBy({ left: direction * Math.max(160, node.clientWidth * 0.72), behavior: 'smooth' })
+  }
+
+  return (
+    <div className="relative min-w-0 flex-1">
+      <div className="min-w-0 overflow-x-auto overscroll-x-contain no-scrollbar" ref={scrollerRef}>
+        {children}
+      </div>
+      {canLeft ? (
+        <button
+          aria-label="Листать вкладки назад"
+          className={cn(TAB_NUDGE_CLASS, 'left-0')}
+          onClick={() => nudge(-1)}
+          type="button"
+        >
+          <ChevronLeftIcon aria-hidden className="size-4" strokeWidth={1.75} />
+        </button>
+      ) : null}
+      {canRight ? (
+        <button
+          aria-label="Листать вкладки вперёд"
+          className={cn(TAB_NUDGE_CLASS, 'right-0')}
+          onClick={() => nudge(1)}
+          type="button"
+        >
+          <ChevronRightIcon aria-hidden className="size-4" strokeWidth={1.75} />
+        </button>
+      ) : null}
+    </div>
+  )
+}
 const EDITOR_TABS_DOCK_CLASS = productSheetTabDockClass
 const MACRO_ICON_CLASS = 'size-[13px] shrink-0'
 const DESCRIPTION_TAB = 'description'
@@ -258,7 +426,14 @@ const SLOT_ITEMS = RATION_MEAL_SLOTS.map((slot) => ({ value: slot, label: slot }
 const SLOT_SELECT_CLASS = cn(
   FIELD_TYPE_CLASS,
   FIELD_FACE_CLASS,
-  '!h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem] w-[8.5rem] !rounded-full !px-2.5',
+  '!h-8 !min-h-8 !max-h-8 w-fit shrink-0 !rounded-full !px-3',
+)
+const HEADER_SLOT_SELECT_CLASS = cn(
+  FIELD_TYPE_CLASS,
+  FIELD_FACE_CLASS,
+  FIELD_FACE_RADIUS_CLASS,
+  '!font-[300] !w-full min-w-0 !px-0 !pl-3 !pr-2 !gap-1 !py-0',
+  '!h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem]',
 )
 const GOAL_ITEMS = RATION_GOALS.map((goal) => ({ value: goal, label: goal }))
 const SLOT_TAB_ICONS = {
@@ -321,12 +496,12 @@ export function RationEditorDialog({
   const saveInFooter = mode === 'plan'
   const showGoal = mode === 'ration'
   const planDaysEnabled = mode === 'plan' && Boolean(onSaveDays || onSaveDayDrafts)
-  const [form, setForm] = React.useState<RationDraft>(draft ?? emptyRationDraft())
-  const [dayDrafts, setDayDrafts] = React.useState<RationMealDraft[][]>(() =>
-    initialDays && initialDays.length > 0
-      ? initialDays.map((day) => (day.length > 0 ? day.slice() : emptyPlanDayMeals()))
-      : [draft?.meals ?? emptyPlanDayMeals()],
-  )
+  const seededDays = seedPlanEditorDays(draft ?? emptyRationDraft(), initialDays)
+  const [form, setForm] = React.useState<RationDraft>({
+    ...(draft ?? emptyRationDraft()),
+    meals: seededDays.meals,
+  })
+  const [dayDrafts, setDayDrafts] = React.useState<RationMealDraft[][]>(seededDays.days)
   const [activeDay, setActiveDay] = React.useState(0)
   const [viewingDay, setViewingDay] = React.useState<number | null>(null)
   const [activeTab, setActiveTab] = React.useState(DESCRIPTION_TAB)
@@ -338,13 +513,10 @@ export function RationEditorDialog({
   const draftKey = `${open ? 'open' : 'closed'}:${draft?.id ?? 'new'}:${initialDays?.length ?? 0}`
   const [loadedDraftKey, setLoadedDraftKey] = React.useState(draftKey)
   if (open && draft && loadedDraftKey !== draftKey) {
+    const nextSeed = seedPlanEditorDays(draft, initialDays)
     setLoadedDraftKey(draftKey)
-    setForm(draft)
-    setDayDrafts(
-      initialDays && initialDays.length > 0
-        ? initialDays.map((day) => (day.length > 0 ? day.slice() : emptyPlanDayMeals()))
-        : [draft.meals.length > 0 ? draft.meals : emptyPlanDayMeals()],
-    )
+    setForm({ ...draft, meals: nextSeed.meals })
+    setDayDrafts(nextSeed.days)
     setActiveDay(0)
     setViewingDay(null)
     setActiveTab(DESCRIPTION_TAB)
@@ -381,7 +553,6 @@ export function RationEditorDialog({
   const editing = Boolean(form.id)
   const saveLabel = editing ? 'Сохранить' : copy.saveNew
   const activeMealIndex = form.meals.findIndex((meal) => meal.key === activeTab)
-  const activeMeal = activeMealIndex >= 0 ? form.meals[activeMealIndex] : undefined
   const headerTitle =
     viewingDay === null
       ? editing
@@ -591,7 +762,7 @@ export function RationEditorDialog({
 
   const showMealTabs = !planDaysEnabled || inPlanDay
   const mealTabsBar = showMealTabs ? (
-    <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain no-scrollbar">
+    <EditorTabScroller>
       <TabsList className="h-8 gap-1.5 bg-transparent p-0">
         {!planDaysEnabled ? (
           <TabsTrigger className={DESCRIPTION_TAB_CLASS} value={DESCRIPTION_TAB}>
@@ -609,7 +780,7 @@ export function RationEditorDialog({
           )
         })}
       </TabsList>
-    </div>
+    </EditorTabScroller>
   ) : null
   const dayFooterActions = inPlanDay ? (
     <>
@@ -629,15 +800,17 @@ export function RationEditorDialog({
       >
         {saveLabel}
       </button>
-      <button
-        aria-label={copy.addMeal}
-        className={cn(PLAN_DAY_BACK_CLASS, 'size-10')}
-        data-plan-editor-add-meal=""
-        onClick={addMeal}
-        type="button"
-      >
-        <PlusIcon aria-hidden className="size-4" strokeWidth={1.7} />
-      </button>
+      <NoraHoverTip label="Добавить приём">
+        <button
+          aria-label={copy.addMeal}
+          className={cn(PLAN_DAY_BACK_CLASS, 'size-10')}
+          data-plan-editor-add-meal=""
+          onClick={addMeal}
+          type="button"
+        >
+          <PlusIcon aria-hidden className="size-4" strokeWidth={1.7} />
+        </button>
+      </NoraHoverTip>
     </>
   ) : null
 
@@ -668,21 +841,6 @@ export function RationEditorDialog({
                   </DialogTitle>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
-                  {inPlanDay && activeMeal ? (
-                    <div className="shrink-0" data-plan-editor-header-slot="">
-                      <NoraSelect
-                        className={SLOT_SELECT_CLASS}
-                        contentClassName={productToolbarSelectContentClass}
-                        itemClassName={productToolbarSelectItemClass}
-                        items={[...SLOT_ITEMS]}
-                        modal
-                        onValueChange={(value) => {
-                          if (value && isSlot(value)) patchMeal(activeMeal.key, { slot: value })
-                        }}
-                        value={activeMeal.slot}
-                      />
-                    </div>
-                  ) : null}
                   {!inPlanDay && onDelete && form.id ? (
                     <button
                       className="nora-press-grow inline-flex h-8 items-center rounded-full px-2.5 font-[family-name:var(--nora-font)] text-[13px] font-normal text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]"
@@ -694,32 +852,16 @@ export function RationEditorDialog({
                       Удалить
                     </button>
                   ) : null}
-                  {inPlanDay && activeMeal ? (
-                    <button
-                      aria-label="Удалить приём"
-                      className={cn(
-                        productSheetOverlayChipClass,
-                        MEAL_TRASH_CLASS,
-                        'nora-press-grow size-8 shrink-0 bg-[var(--nora-panel)] sm:size-8',
-                      )}
-                      data-plan-editor-header-remove=""
-                      onClick={() => removeMeal(activeMeal.key)}
-                      type="button"
-                    >
-                      <Trash2Icon aria-hidden className="size-3.5" />
-                    </button>
-                  ) : (
-                    <DialogClose
-                      aria-label="Закрыть"
-                      className={cn(
-                        productSheetOverlayChipClass,
-                        'nora-press-grow size-8 shrink-0 bg-[var(--nora-panel)] sm:size-8',
-                        'hover:text-[var(--nora-text)] focus-visible:shadow-[var(--nora-shadow-focus)]',
-                      )}
-                    >
-                      <XIcon aria-hidden className="size-3.5" strokeWidth={1.75} />
-                    </DialogClose>
-                  )}
+                  <DialogClose
+                    aria-label="Закрыть"
+                    className={cn(
+                      productSheetOverlayChipClass,
+                      'nora-press-grow size-8 shrink-0 bg-[var(--nora-panel)] sm:size-8',
+                      'hover:text-[var(--nora-text)] focus-visible:shadow-[var(--nora-shadow-focus)]',
+                    )}
+                  >
+                    <XIcon aria-hidden className="size-3.5" strokeWidth={1.75} />
+                  </DialogClose>
                 </div>
               </div>
               <DialogDescription className="sr-only">{headerDescription}</DialogDescription>
@@ -767,8 +909,9 @@ export function RationEditorDialog({
               <TabsContent className="mt-0" data-ration-tab="description" value={DESCRIPTION_TAB}>
                 <div className="flex flex-col gap-3">
                   {mode === 'plan' ? (
-                    <div className="flex flex-col gap-3" data-plan-editor-identity="">
+                    <div className="flex flex-col gap-4" data-plan-editor-identity="">
                       <label className="grid min-w-0">
+                        <NoraHoverTip align="end" className="block w-full" label="Сменить обложку">
                         <button
                           aria-label="Сменить обложку"
                           className={cn(
@@ -811,6 +954,7 @@ export function RationEditorDialog({
                             </span>
                           )}
                         </button>
+                        </NoraHoverTip>
                         <input
                           accept="image/*"
                           className="hidden"
@@ -823,28 +967,24 @@ export function RationEditorDialog({
                           type="file"
                         />
                       </label>
-                      <label className="flex min-w-0 flex-col gap-1.5">
-                        <span className={FIELD_LABEL_CLASS}>Название</span>
-                        <div className="[--ios-px:1rem] md:contents max-md:relative max-md:h-[2.42rem] max-md:w-full" data-ios-13-slot="">
-                          <NoraInput
-                            className={HEADER_TITLE_FIELD_CLASS}
-                            onChange={(event) => patch({ title: event.target.value })}
-                            placeholder={copy.titlePlaceholder}
-                            value={form.title}
-                          />
-                        </div>
-                      </label>
-                      <label className="flex min-w-0 flex-col gap-1.5">
-                        <span className={FIELD_LABEL_CLASS}>{copy.descriptionLabel}</span>
-                        <div className="[--ios-min:0px] [--ios-px:1rem] [--ios-py:0.75rem] md:contents max-md:block max-md:w-full" data-ios-13-slot="area">
-                          <NoraTextarea
-                            className={HEADER_DESC_FIELD_CLASS}
-                            onChange={(event) => patch({ description: event.target.value })}
-                            placeholder={copy.descriptionPlaceholder}
-                            value={form.description}
-                          />
-                        </div>
-                      </label>
+                      <FieldPlaque>
+                        <NoraInput
+                          aria-label="Название"
+                          className={cn(HEADER_TITLE_FIELD_CLASS, FIELD_FACE_CLASS, FIELD_FACE_RADIUS_CLASS)}
+                          onChange={(event) => patch({ title: event.target.value })}
+                          placeholder={copy.titlePlaceholder}
+                          value={form.title}
+                        />
+                      </FieldPlaque>
+                      <FieldPlaque multiline>
+                        <NoraTextarea
+                          aria-label={copy.descriptionLabel}
+                          className={HEADER_DESC_FIELD_CLASS}
+                          onChange={(event) => patch({ description: event.target.value })}
+                          placeholder={copy.descriptionPlaceholder}
+                          value={form.description}
+                        />
+                      </FieldPlaque>
                     </div>
                   ) : null}
                   {mode === 'ration' ? (
@@ -860,17 +1000,15 @@ export function RationEditorDialog({
                   ) : null}
                   {showGoal ? (
                     <div className={TITLE_GOAL_ROW_CLASS}>
-                      <label className="flex min-w-0 flex-col gap-1.5">
-                        <span className={FIELD_LABEL_CLASS}>Название</span>
-                        <div className="[--ios-px:1rem] md:contents max-md:relative max-md:h-[2.42rem] max-md:w-full" data-ios-13-slot="">
-                          <NoraInput
-                            className={HEADER_TITLE_FIELD_CLASS}
-                            onChange={(event) => patch({ title: event.target.value })}
-                            placeholder={copy.titlePlaceholder}
-                            value={form.title}
-                          />
-                        </div>
-                      </label>
+                      <FieldPlaque>
+                        <NoraInput
+                          aria-label="Название"
+                          className={cn(HEADER_TITLE_FIELD_CLASS, FIELD_FACE_CLASS, FIELD_FACE_RADIUS_CLASS)}
+                          onChange={(event) => patch({ title: event.target.value })}
+                          placeholder={copy.titlePlaceholder}
+                          value={form.title}
+                        />
+                      </FieldPlaque>
                       <label className="flex min-w-0 flex-col gap-1.5">
                         <span className={FIELD_LABEL_CLASS}>Цель</span>
                         <NoraSelect
@@ -888,17 +1026,15 @@ export function RationEditorDialog({
                     </div>
                   ) : null}
                   {mode === 'ration' ? (
-                    <label className="flex flex-col gap-1.5">
-                      <span className={FIELD_LABEL_CLASS}>{copy.descriptionLabel}</span>
-                      <div className="[--ios-min:0px] [--ios-px:1rem] [--ios-py:0.75rem] md:contents max-md:block max-md:w-full" data-ios-13-slot="area">
-                        <NoraTextarea
-                          className={cn(FIELD_COPY_CLASS, FIELD_CHIP_CLASS, 'min-h-0 w-full px-4 py-3 [field-sizing:content]')}
-                          onChange={(event) => patch({ description: event.target.value })}
-                          placeholder={copy.descriptionPlaceholder}
-                          value={form.description}
-                        />
-                      </div>
-                    </label>
+                    <FieldPlaque multiline>
+                      <NoraTextarea
+                        aria-label={copy.descriptionLabel}
+                        className={HEADER_DESC_FIELD_CLASS}
+                        onChange={(event) => patch({ description: event.target.value })}
+                        placeholder={copy.descriptionPlaceholder}
+                        value={form.description}
+                      />
+                    </FieldPlaque>
                   ) : null}
                   {mode === 'ration' ? <div aria-hidden className={SECTION_DIVIDER_CLASS} /> : null}
                   {planDaysEnabled ? (
@@ -954,10 +1090,11 @@ export function RationEditorDialog({
                       meal={meal}
                       onPatch={(next) => patchMeal(meal.key, next)}
                       onRemove={
-                        !inPlanDay && form.meals.length > 1
+                        inPlanDay || form.meals.length > 1
                           ? () => removeMeal(meal.key)
                           : undefined
                       }
+                      removesDay={inPlanDay && form.meals.length <= 1}
                       slotChrome={!inPlanDay}
                     />
                   </div>
@@ -1078,22 +1215,24 @@ function PlanDayPlaqueFace({
         </span>
         <span
           aria-hidden
-          className={MEAL_INDEX_CLASS}
+          className={DAY_MEAL_COUNT_CLASS}
           data-plan-editor-day-meals={String(mealCount)}
         >
-          {mealCount}
+          {planDayMealsLabel(mealCount)}
         </span>
       </button>
-      <button
-        aria-label={`Удалить день ${index + 1}`}
-        className={MEAL_TRASH_CLASS}
-        data-plan-editor-day-remove={String(index)}
-        onClick={onRemove ? () => onRemove(index) : undefined}
-        tabIndex={onRemove ? undefined : -1}
-        type="button"
-      >
-        <Trash2Icon aria-hidden className="size-4" />
-      </button>
+      <NoraHoverTip label={`Удалить день ${index + 1}`}>
+        <button
+          aria-label={`Удалить день ${index + 1}`}
+          className={MEAL_TRASH_CLASS}
+          data-plan-editor-day-remove={String(index)}
+          onClick={onRemove ? () => onRemove(index) : undefined}
+          tabIndex={onRemove ? undefined : -1}
+          type="button"
+        >
+          <Trash2Icon aria-hidden className="size-4" />
+        </button>
+      </NoraHoverTip>
     </>
   )
 }
@@ -1179,8 +1318,9 @@ function PlanDayPlaqueList({
   const draggingMeals = draggingDay ? titledDraftMeals(draggingDay).length : 0
 
   return (
-    <div className="flex flex-col gap-1.5" data-plan-editor-days="">
-      <p className={SECTION_HEADING_CLASS}>Добавленные дни</p>
+    <div className="flex flex-col gap-4" data-plan-editor-days="">
+      <p className={EDITOR_CAPTION_CLASS} data-settings-subtitle="">Добавленные дни</p>
+      <div className="flex flex-col gap-1.5">
       {days.map((day, index) => {
         const mealCount = titledDraftMeals(day).length
         const empty = mealCount === 0
@@ -1282,6 +1422,7 @@ function PlanDayPlaqueList({
           </span>
         </button>
       ) : null}
+      </div>
     </div>
   )
 }
@@ -1378,15 +1519,17 @@ function MealSlotToolbar({
             </button>
           </>
         ) : null}
-        <button
-          aria-label="Удалить приём"
-          className={MEAL_TRASH_CLASS}
-          disabled={!onRemove}
-          onClick={onRemove}
-          type="button"
-        >
-          <Trash2Icon className="size-4" />
-        </button>
+        <NoraHoverTip label="Удалить приём" side="bottom">
+          <button
+            aria-label="Удалить приём"
+            className={MEAL_TRASH_CLASS}
+            disabled={!onRemove}
+            onClick={onRemove}
+            type="button"
+          >
+            <Trash2Icon className="size-4" />
+          </button>
+        </NoraHoverTip>
       </div>
     </div>
   )
@@ -1459,22 +1602,44 @@ function MealOrderList({
   )
 }
 
+function mealRemovePrompt(title: string, removesDay: boolean) {
+  const name = title.trim()
+  const named = name.length > 0 ? `«${name}»` : 'Этот приём'
+  if (removesDay) {
+    return {
+      title: 'Удалить приём?',
+      description: `${named} — последний приём дня. День тоже будет убран.`,
+      confirmLabel: 'Удалить',
+    }
+  }
+  return {
+    title: 'Удалить приём?',
+    description: `${named} исчезнет из этого дня.`,
+    confirmLabel: 'Удалить',
+  }
+}
+
 function MealDraftCard({
   meal,
   index,
   onPatch,
   onRemove,
+  removesDay = false,
   slotChrome = true,
 }: {
   meal: RationMealDraft
   index: number
   onPatch: (next: Partial<RationMealDraft>) => void
   onRemove?: () => void
+  removesDay?: boolean
   slotChrome?: boolean
 }) {
   const fileRef = React.useRef<HTMLInputElement>(null)
   const [busyPhoto, setBusyPhoto] = React.useState(false)
   const [photoFailed, setPhotoFailed] = React.useState(false)
+  const [confirmRemove, setConfirmRemove] = React.useState(false)
+  const showCoverRemove = !slotChrome && Boolean(onRemove)
+  const removePrompt = mealRemovePrompt(meal.title, removesDay)
   const mealCoverSrc = displayMealCover(meal.image)
   React.useEffect(() => {
     setPhotoFailed(false)
@@ -1512,6 +1677,8 @@ function MealDraftCard({
           onRemove={onRemove}
         />
       ) : null}
+      <div className="flex flex-col gap-4">
+      <div className="relative w-full">
       <button
         aria-label="Сменить фото"
         className={cn(MEAL_COVER_BUTTON_CLASS, 'group nora-press-grow !bg-[var(--nora-panel)]')}
@@ -1536,13 +1703,34 @@ function MealDraftCard({
           }}
           src={mealCoverDisplaySrc}
         />
-        <CoverChangeChip />
+        <CoverChangeChip className={showCoverRemove ? 'right-12' : undefined} />
         {busyPhoto ? (
           <span className="absolute inset-0 flex items-center justify-center font-[family-name:var(--nora-font)] text-[12px] font-light text-[var(--nora-text-tertiary)]">
             Фото…
           </span>
         ) : null}
       </button>
+      {showCoverRemove ? (
+        <NoraHoverTip className="absolute top-2 right-2 z-[2]" label="Удалить приём" side="bottom">
+          <button
+            aria-label="Удалить приём"
+            className={cn(
+              'inline-flex size-8 shrink-0 items-center justify-center rounded-full border-0',
+              'bg-[var(--nora-panel)] text-[var(--nora-text-secondary)]',
+              'shadow-[0_1px_2px_color-mix(in_srgb,var(--nora-text)_18%,transparent)]',
+              'hover:bg-[var(--nora-error-soft-bg)] hover:text-[var(--nora-error)]',
+              'active:bg-[var(--nora-error)] active:text-[var(--nora-on-accent)]',
+              'outline-none focus-visible:shadow-[var(--nora-shadow-focus)]',
+            )}
+            data-plan-editor-cover-remove=""
+            onClick={() => setConfirmRemove(true)}
+            type="button"
+          >
+            <Trash2Icon aria-hidden className="size-4" strokeWidth={1.75} />
+          </button>
+        </NoraHoverTip>
+      ) : null}
+      </div>
       <input
         accept="image/*"
         className="hidden"
@@ -1554,19 +1742,34 @@ function MealDraftCard({
         ref={fileRef}
         type="file"
       />
-      <div className="flex flex-col gap-1.5">
-        <p className={FIELD_LABEL_CLASS}>Название</p>
-        <div className="[--ios-px:1rem] md:contents max-md:relative max-md:h-[2.42rem] max-md:w-full" data-ios-13-slot="">
-          <NoraInput
-            className={TITLE_FIELD_CLASS}
-            onChange={(event) => onPatch({ title: event.target.value })}
-            placeholder="Название блюда"
-            value={meal.title}
-          />
+        <div className={cn('flex min-w-0 items-stretch', !slotChrome && 'gap-1.5')}>
+          <FieldPlaque className="min-w-0 flex-1">
+            <NoraInput
+              aria-label="Название"
+              className={cn(TITLE_FIELD_CLASS, '!font-[300]', FIELD_FACE_CLASS, FIELD_FACE_RADIUS_CLASS)}
+              onChange={(event) => onPatch({ title: event.target.value })}
+              placeholder="Название блюда"
+              value={meal.title}
+            />
+          </FieldPlaque>
+          {!slotChrome ? (
+            <div className="w-[calc((100%-3*0.375rem)/4)] shrink-0" data-plan-editor-meal-slot="">
+              <FieldPlaque>
+                <NoraSelect
+                  className={HEADER_SLOT_SELECT_CLASS}
+                  contentClassName={productToolbarSelectContentClass}
+                  itemClassName={productToolbarSelectItemClass}
+                  items={[...SLOT_ITEMS]}
+                  modal
+                  onValueChange={(value) => {
+                    if (value && isSlot(value)) onPatch({ slot: value })
+                  }}
+                  value={meal.slot}
+                />
+              </FieldPlaque>
+            </div>
+          ) : null}
         </div>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <p className={FIELD_LABEL_CLASS}>Ценность</p>
         <div className="grid grid-cols-4 gap-1.5">
           {MACRO_FIELDS.map((field) => (
             <MacroField
@@ -1598,6 +1801,19 @@ function MealDraftCard({
           removeAriaLabel="Удалить шаг"
         />
       </div>
+      {onRemove ? (
+        <DeleteCardDialog
+          confirmLabel={removePrompt.confirmLabel}
+          description={removePrompt.description}
+          onConfirm={() => {
+            setConfirmRemove(false)
+            onRemove()
+          }}
+          onOpenChange={setConfirmRemove}
+          open={confirmRemove}
+          title={removePrompt.title}
+        />
+      ) : null}
     </section>
   )
 }
@@ -1618,17 +1834,30 @@ function DraftLineList({
   onChange: (items: string[]) => void
 }) {
   return (
-    <div className="flex flex-col gap-1.5" data-draft-line-list={label}>
-      <p className={SECTION_HEADING_CLASS}>{label}</p>
+    <div className="flex flex-col gap-4" data-draft-line-list={label}>
+      <p className={EDITOR_CAPTION_CLASS} data-settings-subtitle="">{label}</p>
+      <div className="flex flex-col gap-1.5">
       {items.map((item, index) => (
         <div className="flex items-center gap-2" key={`${label}-${index}`}>
-          <div className={cn(SLOT_ROW_CLASS, 'min-w-0 flex-1')}>
-            <span className={MEAL_INDEX_CLASS}>{index + 1}</span>
-            <div className="md:contents max-md:relative max-md:h-[2.42rem] max-md:min-w-0 max-md:flex-1" data-ios-13-slot="">
-              <NoraInput
+          <div
+            className={cn(SLOT_ROW_CLASS, 'min-w-0 flex-1', FIELD_INSET_CLASS, '!gap-[calc(0.625rem*2/3)]')}
+            data-ration-field-plaque=""
+          >
+            <span className={LINE_INDEX_CLASS}>{index + 1}</span>
+            <div
+              className="[--ios-min:2.42rem] [--ios-px:0.75rem] [--ios-py:0.5rem] max-md:block max-md:min-w-0 max-md:flex-1 md:contents"
+              data-ios-13-slot="area"
+            >
+              <NoraTextarea
                 className={LINE_INPUT_CLASS}
-                onChange={(event) => onChange(setDraftLine(items, index, event.target.value))}
+                onChange={(event) =>
+                  onChange(setDraftLine(items, index, event.target.value.replace(/\r?\n+/g, ' ')))
+                }
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.preventDefault()
+                }}
                 placeholder={placeholder}
+                rows={1}
                 value={item}
               />
             </div>
@@ -1653,6 +1882,7 @@ function DraftLineList({
           </button>
         </div>
       ))}
+      </div>
     </div>
   )
 }
@@ -1671,7 +1901,7 @@ function MacroField({
   onChange?: (value: string) => void
 }) {
   return (
-    <label className={cn('grid gap-1', FIELD_CHIP_CLASS, 'px-2.5 py-2.5')}>
+    <label className={cn('grid !gap-[calc(0.625rem*2/3)]', FIELD_CHIP_CLASS, FIELD_INSET_CLASS)} data-ration-field-plaque="">
       <span className="inline-flex items-center justify-center gap-1 font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)]">
         <Icon aria-hidden className={MACRO_ICON_CLASS} strokeWidth={1.75} />
         {label}
@@ -1681,12 +1911,14 @@ function MacroField({
           aria-label={ariaLabel ?? label}
           className={cn(
             FIELD_TYPE_CLASS,
+            '!font-[300]',
             FIELD_FACE_CLASS,
-            '!h-[2.42rem] !rounded-[10px] px-1 text-center tabular-nums',
+            '!h-[2.42rem] px-1 text-center tabular-nums',
+            FIELD_FACE_RADIUS_CLASS,
           )}
           inputMode="decimal"
-          onChange={(event) => onChange?.(event.target.value)}
-          value={value}
+          onChange={(event) => onChange?.(macroDraftInput(event.target.value))}
+          value={macroDraftInput(value)}
         />
       </div>
     </label>

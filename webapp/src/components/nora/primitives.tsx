@@ -141,16 +141,22 @@ type NoraIconButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 
 /** Desktop hover label for an icon-only control. Hidden on the phone. */
 export function NoraHoverTip({
+  align = "center",
+  className,
   label,
+  side = "top",
   children,
 }: {
+  align?: "start" | "center" | "end"
+  className?: string
   label: string
+  side?: "top" | "bottom" | "left" | "right"
   children: React.ReactNode
 }) {
   return (
     <Tooltip>
-      <TooltipTrigger render={<span className="inline-flex" />}>{children}</TooltipTrigger>
-      <TooltipContent className="max-md:hidden" side="top" sideOffset={8}>
+      <TooltipTrigger render={<span className={cn("inline-flex", className)} />}>{children}</TooltipTrigger>
+      <TooltipContent align={align} className="z-[80] max-md:hidden" side={side} sideOffset={8}>
         {label}
       </TooltipContent>
     </Tooltip>

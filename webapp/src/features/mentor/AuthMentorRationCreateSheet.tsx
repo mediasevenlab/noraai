@@ -60,26 +60,49 @@ import {
 
 const FIELD_TYPE_CLASS = cn(
   'font-[family-name:var(--nora-font)] !text-[13px] !font-normal !leading-5',
-  'text-[var(--nora-text)] placeholder:font-light placeholder:font-[300] placeholder:text-[var(--nora-input-placeholder)]',
-)
-const FIELD_COPY_CLASS = cn(
-  'font-[family-name:var(--nora-font)] !text-[13px] !font-light !leading-5',
-  'text-[var(--nora-text-secondary)] dark:text-[color-mix(in_srgb,var(--nora-text)_42%,var(--nora-text-secondary))]',
+  'text-[var(--nora-text)] [.scheme-editor-light_&]:!text-[color-mix(in_srgb,var(--nora-text)_70%,black)]',
   'placeholder:font-light placeholder:font-[300] placeholder:text-[var(--nora-input-placeholder)]',
 )
 const FIELD_CHIP_CLASS = 'rounded-[14px] !bg-[var(--nora-inset)]'
+const FIELD_INSET_CLASS = '!p-[calc(0.625rem*2/3)]'
+const FIELD_FACE_RADIUS_CLASS = '!rounded-[calc(14px-0.625rem*2/3)]'
 const TITLE_FIELD_CLASS = cn(
   FIELD_TYPE_CLASS,
+  '!font-[300]',
   '!bg-[var(--nora-inset)] w-full px-4 !py-0 !h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem] !rounded-[var(--nora-radius-md,8px)]',
 )
 const RATION_TITLE_FIELD_CLASS = cn(
-  FIELD_COPY_CLASS,
+  FIELD_TYPE_CLASS,
+  '!font-[300]',
   '!bg-[var(--nora-inset)] w-full px-4 !py-0 !h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem] !rounded-[var(--nora-radius-md,8px)]',
 )
-const FIELD_LABEL_CLASS =
-  'mb-1.5 pl-4 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
-const SECTION_HEADING_CLASS =
-  'mb-1.5 pl-4 font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]'
+const EDITOR_CAPTION_CLASS =
+  'pl-4 font-[family-name:var(--nora-font)] text-[13px] font-[250] leading-5 text-[var(--nora-text-tertiary)]'
+
+function DemoFieldPlaque({
+  multiline = false,
+  focus,
+  children,
+}: {
+  multiline?: boolean
+  focus?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <div className={cn(FIELD_CHIP_CLASS, FIELD_INSET_CLASS)} data-mentor-create-focus={focus ? '' : undefined} data-ration-field-plaque="">
+      <div
+        className={
+          multiline
+            ? '[--ios-min:4.25rem] [--ios-px:1rem] [--ios-py:0.75rem] max-md:block max-md:w-full md:contents'
+            : '[--ios-px:1rem] max-md:relative max-md:h-[2.42rem] max-md:w-full md:contents'
+        }
+        data-ios-13-slot={multiline ? 'area' : ''}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
 const SAVE_BUTTON_CLASS = cn(
   'nora-press-grow inline-flex h-10 min-h-10 max-h-10 w-full items-center justify-center rounded-[14px] border-0 px-4',
   'font-[family-name:var(--nora-font)] text-[13px] font-medium leading-none',
@@ -87,7 +110,9 @@ const SAVE_BUTTON_CLASS = cn(
 )
 const LINE_INPUT_CLASS = cn(
   FIELD_TYPE_CLASS,
-  '!bg-[var(--nora-panel)] !h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem] min-w-0 flex-1 !rounded-full !px-2.5',
+  '!font-[300]',
+  '!bg-[var(--nora-panel)] !h-[2.42rem] !min-h-[2.42rem] !max-h-[2.42rem] min-w-0 flex-1 !px-2.5',
+  FIELD_FACE_RADIUS_CLASS,
 )
 const COVER_CLASS = cn(
   'relative aspect-[16/9] min-h-[7.5rem] w-full overflow-hidden rounded-[16px] bg-[var(--nora-inset)]',
@@ -319,7 +344,7 @@ export function AuthMentorRationCreateSheet({
               </div>
               <NoraSelect
                 aria-label="Приём пищи"
-                className="!h-8 !min-h-8 !max-h-8 w-[8.5rem] shrink-0 !rounded-full bg-[var(--nora-panel)] !px-2.5 text-[13px]"
+                className="!h-8 !min-h-8 !max-h-8 w-fit shrink-0 !rounded-full bg-[var(--nora-panel)] !px-3 text-[13px]"
                 items={SLOT_ITEMS}
                 onValueChange={() => undefined}
                 value={dayMeal.slot}
@@ -375,32 +400,29 @@ export function AuthMentorRationCreateSheet({
                     <ImagePlusIcon aria-hidden className="size-4" strokeWidth={1.75} />
                   </span>
                 </div>
-                <label className="flex min-w-0 flex-col gap-1.5" data-mentor-create-focus={state.focus === 'title' ? '' : undefined}>
-                  <span className={FIELD_LABEL_CLASS}>Название</span>
-                  <div className="[--ios-px:1rem] md:contents max-md:relative max-md:h-[2.42rem] max-md:w-full" data-ios-13-slot="">
-                    <NoraInput
-                      className={RATION_TITLE_FIELD_CLASS}
-                      onChange={() => undefined}
-                      placeholder="Например, Офис без срывов"
-                      readOnly
-                      value={state.title}
-                    />
-                  </div>
-                </label>
-                <label className="flex flex-col gap-1.5" data-mentor-create-focus={state.focus === 'description' ? '' : undefined}>
-                  <span className={FIELD_LABEL_CLASS}>Описание</span>
-                  <div className="[--ios-min:0px] [--ios-px:1rem] [--ios-py:0.75rem] md:contents max-md:block max-md:w-full" data-ios-13-slot="area">
-                    <NoraTextarea
-                      className={cn(FIELD_COPY_CLASS, FIELD_CHIP_CLASS, 'min-h-0 w-full resize-none px-4 py-3 [field-sizing:content]')}
-                      onChange={() => undefined}
-                      placeholder="Коротко, что в плане"
-                      readOnly
-                      value={state.description}
-                    />
-                  </div>
-                </label>
-                <div className="flex flex-col gap-1.5">
-                  <p className={SECTION_HEADING_CLASS}>Добавленные дни</p>
+                <DemoFieldPlaque focus={state.focus === 'title'}>
+                  <NoraInput
+                    aria-label="Название"
+                    className={cn(RATION_TITLE_FIELD_CLASS, '!bg-[var(--nora-panel)]', FIELD_FACE_RADIUS_CLASS)}
+                    onChange={() => undefined}
+                    placeholder="Например, Офис без срывов"
+                    readOnly
+                    value={state.title}
+                  />
+                </DemoFieldPlaque>
+                <DemoFieldPlaque focus={state.focus === 'description'} multiline>
+                  <NoraTextarea
+                    aria-label="Описание"
+                    className={cn(FIELD_TYPE_CLASS, '!font-[300]', '!bg-[var(--nora-panel)]', FIELD_FACE_RADIUS_CLASS, 'w-full resize-none overflow-hidden px-4 py-3 !pb-5 !h-auto !max-h-none !min-h-[4.25rem] [field-sizing:content]')}
+                    onChange={() => undefined}
+                    placeholder="Коротко, что в плане"
+                    readOnly
+                    value={state.description}
+                  />
+                </DemoFieldPlaque>
+                <div className="flex flex-col gap-4">
+                  <p className={EDITOR_CAPTION_CLASS} data-settings-subtitle="">Добавленные дни</p>
+                  <div className="flex flex-col gap-1.5">
                   {DEMO_PLAN_DAYS.map((day) => {
                     const count = day === 0 ? titledMealCount : 0
                     return (
@@ -435,6 +457,7 @@ export function AuthMentorRationCreateSheet({
                     <span className="min-w-0 flex-1 truncate font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text)]">
                       Добавить день
                     </span>
+                  </div>
                   </div>
                 </div>
               </div>
@@ -534,10 +557,11 @@ function DraftLine({
   return (
     <div className="flex items-center gap-2">
       <div
-        className={cn(SLOT_ROW_CLASS, 'min-w-0 flex-1')}
+        className={cn(SLOT_ROW_CLASS, 'min-w-0 flex-1', FIELD_INSET_CLASS, '!gap-[calc(0.625rem*2/3)]')}
+        data-ration-field-plaque=""
         data-mentor-create-focus={focused ? '' : undefined}
       >
-        <span className={MEAL_INDEX_CLASS}>{index + 1}</span>
+        <span className={cn(MEAL_INDEX_CLASS, 'font-medium')}>{index + 1}</span>
         <div className="md:contents max-md:relative max-md:h-[2.42rem] max-md:min-w-0 max-md:flex-1" data-ios-13-slot="">
           <NoraInput
             className={LINE_INPUT_CLASS}
@@ -567,6 +591,7 @@ function MealDraftFields({
 }) {
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
       <div className={COVER_CLASS}>
         {meal.image ? (
           <img alt="" className="absolute inset-0 size-full object-cover" src={meal.image} />
@@ -580,30 +605,32 @@ function MealDraftFields({
           <ImagePlusIcon aria-hidden className="size-4" strokeWidth={1.75} />
         </span>
       </div>
-      <div className="flex flex-col gap-1.5" data-mentor-create-focus={focus === 'meal-title' ? '' : undefined}>
-        <p className={FIELD_LABEL_CLASS}>Название</p>
-        <div className="[--ios-px:1rem] md:contents max-md:relative max-md:h-[2.42rem] max-md:w-full" data-ios-13-slot="">
-          <NoraInput
-            className={TITLE_FIELD_CLASS}
-            onChange={() => undefined}
-            placeholder="Название блюда"
-            readOnly
-            value={meal.title}
-          />
+        <div
+          className={cn(FIELD_CHIP_CLASS, FIELD_INSET_CLASS)}
+          data-ration-field-plaque=""
+          data-mentor-create-focus={focus === 'meal-title' ? '' : undefined}
+        >
+          <div className="[--ios-px:1rem] max-md:relative max-md:h-[2.42rem] max-md:w-full md:contents" data-ios-13-slot="">
+            <NoraInput
+              aria-label="Название"
+              className={cn(TITLE_FIELD_CLASS, '!bg-[var(--nora-panel)]', FIELD_FACE_RADIUS_CLASS)}
+              onChange={() => undefined}
+              placeholder="Название блюда"
+              readOnly
+              value={meal.title}
+            />
+          </div>
         </div>
-      </div>
-      <div className="flex flex-col gap-1.5" data-mentor-create-focus={focus === 'macros' ? '' : undefined}>
-        <p className={FIELD_LABEL_CLASS}>Ценность</p>
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-4 gap-1.5" data-mentor-create-focus={focus === 'macros' ? '' : undefined}>
           {MACRO_FIELDS.map((field) => (
-            <label className={cn('grid gap-1', FIELD_CHIP_CLASS, 'px-2.5 py-2.5')} key={field.key}>
+            <label className={cn('grid !gap-[calc(0.625rem*2/3)]', FIELD_CHIP_CLASS, FIELD_INSET_CLASS)} data-ration-field-plaque="" key={field.key}>
               <span className="inline-flex items-center justify-center gap-1 font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text-secondary)]">
                 <field.icon className="size-[13px] shrink-0" strokeWidth={1.75} />
                 {field.label}
               </span>
               <div className="md:contents max-md:relative max-md:h-[2.42rem] max-md:w-full" data-ios-13-slot="">
                 <NoraInput
-                  className={cn(FIELD_TYPE_CLASS, '!h-[2.42rem] !rounded-[10px] bg-[var(--nora-panel)] px-1 text-center tabular-nums')}
+                  className={cn(FIELD_TYPE_CLASS, '!font-[300]', '!h-[2.42rem] bg-[var(--nora-panel)] px-1 text-center tabular-nums', FIELD_FACE_RADIUS_CLASS)}
                   onChange={() => undefined}
                   readOnly
                   value={meal.macros[field.key]}
@@ -614,8 +641,9 @@ function MealDraftFields({
         </div>
       </div>
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1.5" data-draft-line-list="Ингредиенты">
-          <p className={SECTION_HEADING_CLASS}>Ингредиенты</p>
+        <div className="flex flex-col gap-4" data-draft-line-list="Ингредиенты">
+          <p className={EDITOR_CAPTION_CLASS} data-settings-subtitle="">Ингредиенты</p>
+          <div className="flex flex-col gap-1.5">
           {(meal.ingredients.length > 0 ? meal.ingredients : ['']).map((item, lineIndex) => (
             <DraftLine
               focused={focus === 'ingredient' && lineIndex === Math.max(0, meal.ingredients.length - 1)}
@@ -625,9 +653,11 @@ function MealDraftFields({
               value={item}
             />
           ))}
+          </div>
         </div>
-        <div className="flex flex-col gap-1.5" data-draft-line-list="Шаги">
-          <p className={SECTION_HEADING_CLASS}>Шаги</p>
+        <div className="flex flex-col gap-4" data-draft-line-list="Шаги">
+          <p className={EDITOR_CAPTION_CLASS} data-settings-subtitle="">Шаги</p>
+          <div className="flex flex-col gap-1.5">
           {(meal.steps.length > 0 ? meal.steps : ['']).map((item, lineIndex) => (
             <DraftLine
               focused={focus === 'step' && lineIndex === Math.max(0, meal.steps.length - 1)}
@@ -637,6 +667,7 @@ function MealDraftFields({
               value={item}
             />
           ))}
+          </div>
         </div>
       </div>
     </div>

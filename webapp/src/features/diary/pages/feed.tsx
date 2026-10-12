@@ -2,7 +2,7 @@ import * as React from 'react'
 import { CalendarDaysIcon, LayoutGridIcon, Rows2Icon, HeartIcon, UtensilsIcon } from '@/components/icons'
 
 import { noraPageDescriptionClass, noraPageTitleClass } from '@/components/PageLayout'
-import { productFeedPageClass, productFeedToolbarRowClass, productFeedToolbarStickyClass, productToolbarSearchCollapseClass } from '@/components/nora/product-sheet'
+import { productFeedPageClass, productFeedToolbarRowClass, productFeedToolbarStickyClass } from '@/components/nora/product-sheet'
 import { ProductToolbarSearch } from '@/components/nora/toolbar-search'
 import { useAuth } from '@/features/auth'
 import { cn } from '@/lib/utils'
@@ -117,7 +117,6 @@ export function SharedMealsFeedPage({
                   className={cn(
                     diaryToolbarPillClass,
                     'nora-press-grow shrink-0 gap-1 px-3 text-[13px] font-normal leading-none text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)] data-active:text-[var(--nora-text)] [&>svg]:size-3.5',
-                    searchOpen && productToolbarSearchCollapseClass,
                   )}
                   data-active={likedOnly || undefined}
                   onClick={() => setLikedOnly((current) => !current)}
