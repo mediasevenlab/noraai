@@ -70,6 +70,28 @@ describe('diary vs weekly plan occurrences', () => {
     ).toBe(true)
   })
 
+  test('day 8 stays a week after the start instead of joining day 1', () => {
+    const start = new Date(2026, 9, 12, 9, 0, 0)
+    const day1At = new Date(2026, 9, 12, 8, 30, 0).toISOString()
+    const day8At = new Date(2026, 9, 19, 8, 30, 0).toISOString()
+    const day1 = { ...pendingPlanMeal, id: 'day-1', title: 'Первый прием', at: day1At }
+    const day8 = { ...pendingPlanMeal, id: 'day-8', title: '8', at: day8At }
+    const planMeals = [day1, day8]
+    const first = planOccurrenceDiaryAtWithLayout(day1, {
+      now: start,
+      planStart: start,
+      planMeals,
+    })
+    const last = planOccurrenceDiaryAtWithLayout(day8, {
+      now: start,
+      planStart: start,
+      planMeals,
+    })
+    expect(new Date(first).getDate()).toBe(12)
+    expect(new Date(last).getDate()).toBe(19)
+    expect(new Date(last).getMonth()).toBe(9)
+  })
+
   test('completed plan meals keep stored day only when no plan start is set', () => {
     const eaten = {
       ...pendingPlanMeal,

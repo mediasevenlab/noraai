@@ -86,6 +86,33 @@ export function keepsWeeklyPlanOnDiaryDelete(
  * not a consumed ration slot. `openPlanDiaryCards` opens the slot again when
  * the ration is assigned to a different day.
  */
+/**
+ * Day offset inside a ration that may run longer than a week.
+ * Stored meals begin on a Monday template: day 8 is the next Monday, not day 1.
+ * Without sibling meals, fall back to the weekday slot.
+ */
+export function planTemplateDayOffset(
+  stamp: Date,
+  planMeals: ReadonlyArray<{ at: string }>,
+) {
+  let earliest: Date | null = null
+  for (const meal of planMeals) {
+    const parsed = new Date(meal.at)
+    if (Number.isNaN(parsed.getTime())) continue
+    const day = startOfLocalDay(parsed)
+    if (!earliest || day < earliest) earliest = day
+  }
+  if (!earliest) return planSlotIndex(stamp)
+  const origin = startOfLocalDay(earliest)
+  const back = origin.getDay() === 0 ? 6 : origin.getDay() - 1
+  origin.setDate(origin.getDate() - back)
+  const from = Date.UTC(origin.getFullYear(), origin.getMonth(), origin.getDate())
+  const toDay = startOfLocalDay(stamp)
+  const to = Date.UTC(toDay.getFullYear(), toDay.getMonth(), toDay.getDate())
+  const offset = Math.round((to - from) / 86_400_000)
+  return offset >= 0 ? offset : planSlotIndex(stamp)
+}
+
 export function planOccurrenceDiaryAt(
   meal: Pick<MealEntry, 'at'> & {
     id?: string
@@ -96,13 +123,18 @@ export function planOccurrenceDiaryAt(
   completedIds?: ReadonlySet<string>,
   now = new Date(),
   planStart: Date | null = null,
+  planMeals?: ReadonlyArray<{ at: string }>,
 ) {
   if (!isRationImportedMeal(meal)) return meal.at
   if (isRationPlanDone(meal, completedIds)) return meal.at
   if (planStart == null && !isRationPlanPending(meal, completedIds)) return meal.at
   const stamp = new Date(meal.at)
   const start = startOfLocalDay(planStart ?? now)
-  const target = addLocalDays(start, planSlotIndex(stamp))
+  const offset =
+    planMeals && planMeals.length > 0
+      ? planTemplateDayOffset(stamp, planMeals)
+      : planSlotIndex(stamp)
+  const target = addLocalDays(start, offset)
   return feedMealStampOnDay(target, stamp).toISOString()
 }
 
@@ -196,7 +228,11 @@ function pendingPlanLayoutDiaryAt(
   const index = ordered.findIndex((item) => item.id === meal.id)
   if (index < 0) return null
   const start = startOfLocalDay(planStart ?? now)
-  const target = addLocalDays(start, planSlotIndex(templateDay))
+  const offset =
+    planMeals.length > 0
+      ? planTemplateDayOffset(templateDay, planMeals)
+      : planSlotIndex(templateDay)
+  const target = addLocalDays(start, offset)
   const slotTimes = planSlotTimesForCount(
     originalMealsOnLayoutDay(planMeals, templateDay).map((item) => item.at),
     ordered.length,
@@ -238,7 +274,7 @@ export function planOccurrenceDiaryAtWithLayout(
     planStart,
   )
   if (layoutAt) return layoutAt
-  return planOccurrenceDiaryAt(meal, input.completedIds, now, planStart)
+  return planOccurrenceDiaryAt(meal, input.completedIds, now, planStart, input.planMeals)
 }
 
 const OPEN_PLAN_CARD_PREFIX = 'open:'

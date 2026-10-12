@@ -897,11 +897,12 @@ export function CurrentPlanPage({
   const planStart = plan ? readPlanStartDate(savedScope, plan.id) : null
   const scheduledDays = React.useMemo(() => {
     if (!plan) return []
+    const planMeals = plan.days.flatMap((day) => day.meals)
     return plan.days.map((day) => ({
       ...day,
       meals: day.meals.map((meal) => ({
         ...meal,
-        at: planOccurrenceDiaryAt(meal, completedIds, new Date(), planStart),
+        at: planOccurrenceDiaryAt(meal, completedIds, new Date(), planStart, planMeals),
       })),
     }))
   }, [completedIds, plan, planStart])
