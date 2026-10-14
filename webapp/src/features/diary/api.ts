@@ -5,6 +5,7 @@ import {
   listMealsResponseSchema,
   listSharedRationsResponseSchema,
   mealComposerTurnResponseSchema,
+  mealEngineResponseSchema,
   mealMutationResponseSchema,
   mealsTranscribeResponseSchema,
   setMealPlanDoneRequestSchema,
@@ -32,6 +33,10 @@ import {
 } from '@web-app-demo/contracts'
 
 import type { AuthenticatedTransport } from '@/platform/api'
+
+export function getDiaryMealEngine(transport: AuthenticatedTransport) {
+  return transport.request('/api/users/me/meal-engine', mealEngineResponseSchema)
+}
 
 export function listMyMeals(transport: AuthenticatedTransport): Promise<ListMealsResponse> {
   return transport.request('/api/users/me/meals', listMealsResponseSchema)

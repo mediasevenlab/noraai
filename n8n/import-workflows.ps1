@@ -22,6 +22,7 @@ $files = @(
   "lab-interpret-webhook.json",
   "meal-diary-webhook.json",
   "meal-app-analyze.json",
+  "meal-nora-analyze.json",
   "meal-voice-transcribe.json",
   "mentor-meal-notify.json",
   "telegram-polling-pcc-inbox.json"

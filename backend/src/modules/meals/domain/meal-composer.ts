@@ -90,6 +90,10 @@ export function composerNoteAnalyzing() {
   return '📝 Пояснение к фото принято. Считаю КБЖУ…'
 }
 
+export function composerTextAnalyzingMessage() {
+  return '⏳ Разбираю описание и считаю КБЖУ…'
+}
+
 export function composerAnalyzingMessage(input: {
   photoCount: number
   fromTimeout: boolean
@@ -170,6 +174,9 @@ export function composerAnalyzeErrorMessage(error: unknown) {
   if (/Unsupported MIME type/i.test(message)) {
     return 'Не удалось прочитать фото. Пришлите снимок ещё раз как обычное изображение.'
   }
+  if (error instanceof MealsFailure && /^(Своя модель|Не удалось разобрать (фото|описание))/.test(message)) {
+    return message
+  }
   if (
     error instanceof MealsFailure && error.kind === 'upstream'
     || /ECONNRESET|socket connection was closed|fetch failed|ETIMEDOUT/i.test(message)
@@ -185,6 +192,7 @@ export function applyComposerTurn(
   userId: string,
   event: ComposerEvent,
   channel: ComposerChannel = 'app',
+  options: { allowTextOnly?: boolean } = {},
 ): ComposerTurn {
   if (event.type === 'open') {
     return emptyTurn(createEmptySession(userId), {
@@ -220,6 +228,12 @@ export function applyComposerTurn(
       return emptyTurn(session)
     }
     if (!session.photos.length) {
+      if (options.allowTextOnly && (session.note?.trim() || session.audioBase64)) {
+        return emptyTurn(session, {
+          messages: assistant(composerTextAnalyzingMessage()),
+          finalize: true,
+        })
+      }
       return emptyTurn(session, { clear: Boolean(event.fromTimeout) })
     }
     return emptyTurn(session, {
@@ -266,6 +280,12 @@ export function applyComposerTurn(
   if (event.type === 'voice') {
     setSessionAudio(session, event.audioBase64, event.audioMime)
     if (!session.photos.length) {
+      if (options.allowTextOnly) {
+        return emptyTurn(session, {
+          messages: assistant(composerTextAnalyzingMessage()),
+          finalize: true,
+        })
+      }
       return emptyTurn(session, {
         messages: assistant(composerVoiceNeedsPhoto()),
         scheduleFlush: channel === 'telegram',
@@ -281,17 +301,23 @@ export function applyComposerTurn(
   const text = event.text.trim()
   if (!text) {
     if (session.photos.length) {
-      return applyComposerTurn(session, userId, { type: 'flush' }, channel)
+      return applyComposerTurn(session, userId, { type: 'flush' }, channel, options)
     }
     return emptyTurn(session, {
       messages: assistant(composerWelcomeMessage(channel)),
     })
   }
   if (isCancelText(text)) {
-    return applyComposerTurn(session, userId, { type: 'cancel' }, channel)
+    return applyComposerTurn(session, userId, { type: 'cancel' }, channel, options)
   }
   appendNote(session, text)
   if (!session.photos.length) {
+    if (options.allowTextOnly) {
+      return emptyTurn(session, {
+        messages: assistant(composerTextAnalyzingMessage()),
+        finalize: true,
+      })
+    }
     return emptyTurn(session, {
       messages: assistant(composerNoteNeedsPhoto()),
       scheduleFlush: channel === 'telegram',

@@ -25,6 +25,7 @@ import { ProfileMobileMasthead, type ProfileMobileTab } from './ProfileMobileMas
 import { ProfilePanel } from './ProfilePanel'
 import { QuestionnaireOnboarding } from './QuestionnaireOnboarding'
 import { GenerationTokenUsagePanel } from './GenerationTokenUsagePanel'
+import { MealEnginePanel } from './MealEnginePanel'
 import { MaintenanceCaloriesPanel } from './MaintenanceCaloriesPanel'
 import { TelegramUsernamePanel } from './TelegramUsernamePanel'
 import { ReferralLinkPanel } from './ReferralLinkPanel'
@@ -155,6 +156,7 @@ export function UserSettings({
     >
       <TelegramUsernamePanel user={user} />
       <MentorConnectionPanel />
+      <MealEnginePanel />
       <GenerationTokenUsagePanel />
     </SettingsCanvas>
   )

@@ -1,0 +1,160 @@
+{
+  "updatedAt": "2026-10-13T15:00:00.000Z",
+  "createdAt": "2026-10-13T15:00:00.000Z",
+  "id": "MealNoraAnalyze001",
+  "name": "Дневник питания: Nora → карточка",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Дневник питания (Nora)\nТот же JSON карточки, что у Gemini, но разбор идёт на офисные модели.\n\n**Путь:** webapp → `POST /api/users/me/meals/composer` → этот webhook → `POST /api/internal/meals-nora`.\n\nНа хосте: есть фото → `qwen2.5vl:3b`, только текст → `qwen2.5:7b`. Одновременно модели не вызываются: на GPU одна очередь.\n\nКлюч модели живёт в backend `.env`, не в этом workflow.",
+        "height": 280,
+        "width": 460,
+        "color": 5
+      },
+      "id": "nora-meal-note-overview",
+      "name": "Note: обзор",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-420, -60]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meal-nora-analyze",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "nora-meal-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "meal-nora-analyze",
+      "notes": "JSON: images[{base64,mime}] или imageBase64; note?; audioBase64?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = items[0].json || {};\nconst body = j.body || j;\nlet images = Array.isArray(body.images) ? body.images.filter((x) => x && x.base64) : [];\nif (!images.length && body.imageBase64) {\n  images = [{ base64: body.imageBase64, mime: body.imageMime || 'image/jpeg' }];\n}\nconst note = body.note || '';\nconst audioBase64 = body.audioBase64 || '';\nif (!images.length && !String(note).trim() && !audioBase64) {\n  throw new Error('images, note, or audioBase64 required');\n}\nreturn [{\n  json: {\n    images,\n    imageBase64: images[0] ? images[0].base64 : '',\n    imageMime: images[0] ? (images[0].mime || 'image/jpeg') : 'image/jpeg',\n    note,\n    audioBase64,\n    audioMime: body.audioMime || 'audio/webm',\n    host: 'http://host.docker.internal:3000',\n    serviceToken: $env.INTERNAL_SERVICE_TOKEN || $env.GEMINI_PROXY_TOKEN || '',\n  }\n}];"
+      },
+      "id": "nora-meal-prepare",
+      "name": "Подготовить вход",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.host }}/api/internal/meals-nora",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.serviceToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ images: $json.images, imageBase64: $json.imageBase64 || undefined, imageMime: $json.imageBase64 ? $json.imageMime : undefined, note: $json.note || undefined, audioBase64: $json.audioBase64 || undefined, audioMime: $json.audioBase64 ? $json.audioMime : undefined }) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "nora-meal-host",
+      "name": "Nora meal на хосте",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const res = items[0].json;\nif (res.ok && res.meal) {\n  return [{ json: { ok: true, meal: res.meal, model: res.model, usage: res.usage, via: 'n8n->host-app-meal-nora' } }];\n}\nreturn [{ json: { ok: false, error: res.error || JSON.stringify(res).slice(0,400) } }];"
+      },
+      "id": "nora-meal-assemble",
+      "name": "Собрать ответ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "nora-meal-respond",
+      "name": "Ответ",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1020, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Подготовить вход",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Подготовить вход": {
+      "main": [
+        [
+          {
+            "node": "Nora meal на хосте",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nora meal на хосте": {
+      "main": [
+        [
+          {
+            "node": "Собрать ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Собрать ответ": {
+      "main": [
+        [
+          {
+            "node": "Ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "c8f3d2b1-5e29-4d9f-a022-mealnora001",
+  "activeVersionId": "c8f3d2b1-5e29-4d9f-a022-mealnora001",
+  "versionCounter": 1,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": []
+}

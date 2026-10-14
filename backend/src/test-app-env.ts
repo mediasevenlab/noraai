@@ -23,6 +23,8 @@ export function testAppEnv(overrides: Partial<AppEnv> & Pick<AppEnv, 'DATABASE_U
     SPACES_DOWNLOAD_URL_TTL_SECONDS: 300,
     SPACES_PUBLIC_CACHE_CONTROL: 'public, max-age=31536000, immutable',
     GEMINI_MODEL: 'gemini-2.5-flash',
+    LLM_TEXT_MODEL: 'qwen2.5:7b',
+    LLM_VISION_MODEL: 'qwen2.5vl:3b',
     GEMINI_API_HOST: 'generativelanguage.googleapis.com',
     GEMINI_API_PORT: 443,
     ...overrides,

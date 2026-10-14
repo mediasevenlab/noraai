@@ -35,6 +35,7 @@ Committed workflow exports live in `n8n/workflows/` (legacy nutrition-nora stack
 - `lab-interpret-webhook.json` — lab interpretation webhook
 - `meal-diary-webhook.json` — meal diary analyze webhook (Telegram bot path)
 - `meal-app-analyze.json` — meal diary analyze webhook (in-app Add modal)
+- `meal-nora-analyze.json` — same card, office models (photo → vision, text → text model)
 - `meal-voice-transcribe.json` — meal composer voice → text webhook
 - `telegram-polling-pcc-inbox.json` — Telegram polling → inbox (unrelated PCC/Obsidian product; do not use for meals)
 - `mentor-meal-notify.json` — mentor notification when a mentee saves a meal (Telegram now; extra messengers later)
@@ -59,7 +60,7 @@ Interactive Telegram UX (same as production `@nutrition_meals_bot`, with app use
 4. Poller calls `N8N_MEAL_WEBHOOK_URL` (default `http://127.0.0.1:5679/webhook/meal-diary-analyze`).
 5. n8n posts to `http://host.docker.internal:3000/api/internal/meals-gemini` with `Authorization: Bearer <INTERNAL_SERVICE_TOKEN>`.
 6. Backend persists the meal for the linked user; diary/mentor UI merges API meals with demo catalog cards.
-7. In the diary meal modal, the owner (or assigned mentor) can refine a card via Gemini (`POST .../meals/:id/refine`): text and/or composition photo, up to 5 edits after the original. Versions appear in the dropdown (`vers. 1.0`, `vers. 2.0`, …); switching calls `.../select-version` and restores that snapshot’s title, macros, portion (each item with its own КБЖУ), comment, micronutrients, and assumptions.
+7. In the diary meal modal, the owner (or assigned mentor) can refine a card with the model that user chose in Settings (`POST .../meals/:id/refine`): text and/or composition photo, up to 5 edits after the original. Versions appear in the dropdown (`vers. 1.0`, `vers. 2.0`, …); switching calls `.../select-version` and restores that snapshot’s title, macros, portion (each item with its own КБЖУ), comment, micronutrients, and assumptions.
 
 Required backend env (see `backend/.env.example`):
 
@@ -69,6 +70,8 @@ Required backend env (see `backend/.env.example`):
 - `TELEGRAM_MEALS_BOT_TOKEN`
 - `N8N_MEAL_WEBHOOK_URL`
 - `N8N_APP_MEAL_WEBHOOK_URL` (default `http://127.0.0.1:5679/webhook/meal-app-analyze`)
+- `N8N_NORA_MEAL_WEBHOOK_URL` (default `http://127.0.0.1:5679/webhook/meal-nora-analyze`) — used only when the user picks Nora in Settings
+- `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_TEXT_MODEL`, `LLM_VISION_MODEL` — office OpenAI-compatible API. The key stays in backend env. Photo uses the vision model, text-only uses the text model, and the backend queues them so the single GPU loads one model at a time. Ollama on `127.0.0.1:18005` answers 403 when nginx forwards `Host: llm.25nutrition.site`. The llm site must proxy with `proxy_set_header Host 127.0.0.1:18005;` and keep `proxy_read_timeout 300s`. `/healthz` stays on nginx and does not need the key.
 - `N8N_TRANSCRIBE_WEBHOOK_URL` (default `http://127.0.0.1:5679/webhook/meal-voice-transcribe`)
 - `N8N_MENTOR_NOTIFY_WEBHOOK_URL` (default `http://127.0.0.1:5679/webhook/mentor-meal-notify`)
 - `TELEGRAM_NOTIFY_BOT_TOKEN`

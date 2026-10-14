@@ -1,16 +1,21 @@
-import type { MealsGeminiRequest, MealsGeminiResponse } from '@web-app-demo/contracts'
+import type { MealsGeminiResponse } from '@web-app-demo/contracts'
 
 import { isHollowMealAnalysis } from '../domain/mapping'
 import { generationLedgerTokens, parseGenerationLedger } from '../domain/generation-spend'
 import { markN8nFallback, reportN8nFallback } from './n8n-fallback'
 import { generationRequestKey, takeGenerationUsage } from '../application/generation-usage-bridge'
 
-type AnalyzeDirect = (input: MealsGeminiRequest) => Promise<MealsGeminiResponse>
+type AnalyzeInput = {
+  images?: Array<{ base64?: string }>
+  imageBase64?: string
+  note?: string
+  audioBase64?: string
+}
 
-export async function analyzeMealWithWebhook(
+export async function analyzeMealWithWebhook<T extends AnalyzeInput>(
   webhookUrl: string | undefined,
-  analyzeDirect: AnalyzeDirect,
-  input: MealsGeminiRequest,
+  analyzeDirect: (input: T) => Promise<MealsGeminiResponse>,
+  input: T,
 ): Promise<MealsGeminiResponse> {
   if (webhookUrl) {
     try {

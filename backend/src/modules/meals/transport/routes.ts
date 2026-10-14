@@ -11,6 +11,9 @@ import {
   mealMutationResponseSchema,
   mealsGeminiRequestSchema,
   mealsGeminiResponseSchema,
+  mealsNoraRequestSchema,
+  mealEngineResponseSchema,
+  updateMealEngineRequestSchema,
   mealsTranscribeRequestSchema,
   mealsTranscribeResponseSchema,
   mealComposerTurnRequestSchema,
@@ -25,6 +28,9 @@ import {
   markMentorMealsViewedResponseSchema,
   telegramUserLookupResponseSchema,
   telegramUsernameSchema,
+  type MealEngine,
+  type MealsGeminiResponse,
+  type MealsNoraRequest,
   type MealsTranscribeRequest,
   type MealsTranscribeResponse,
 } from '@web-app-demo/contracts'
@@ -33,7 +39,10 @@ import type { MiddlewareHandler } from 'hono'
 import { validationErrorHook } from '../../../http/errors'
 import type { AuthHttpEnv } from '../../auth'
 import type { MealsService } from '../application/meals-service'
+import { MealsFailure } from '../domain/errors'
+
 import type { AppMealComposer } from '../application/app-meal-composer'
+import type { createMealEngineStore } from '../infrastructure/meal-engine-store'
 import { executeMeals } from './errors'
 import { createRequireServiceToken } from './service-token'
 import { generationRequestKey, rememberGenerationUsage } from '../application/generation-usage-bridge'
@@ -48,6 +57,30 @@ const errorContent = {
   },
 }
 
+const mealsNoraRoute = createRoute({
+  method: 'post',
+  path: '/meals-nora',
+  tags: ['Internal'],
+  security: [{ BearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: mealsNoraRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: mealsGeminiResponseSchema } },
+      description: 'Nora meal card. Photo uses the vision model, text uses the text model.',
+    },
+    401: { content: errorContent, description: 'Service token required' },
+    502: { content: errorContent, description: 'Upstream model failure' },
+    503: { content: errorContent, description: 'Nora model is not configured' },
+  },
+})
 const mealsGeminiRoute = createRoute({
   method: 'post',
   path: '/meals-gemini',
@@ -349,6 +382,42 @@ const deleteMyMealRoute = createRoute({
     404: { content: errorContent, description: 'Meal not found' },
   },
 })
+const mealEngineRoute = createRoute({
+  method: 'get',
+  path: '/me/meal-engine',
+  tags: ['Meals'],
+  security: [{ BearerAuth: [] }],
+  responses: {
+    200: {
+      content: { 'application/json': { schema: mealEngineResponseSchema } },
+      description: 'Diary model chosen by the current user',
+    },
+    401: { content: errorContent, description: 'Authentication required' },
+  },
+})
+const updateMealEngineRoute = createRoute({
+  method: 'put',
+  path: '/me/meal-engine',
+  tags: ['Meals'],
+  security: [{ BearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: updateMealEngineRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: mealEngineResponseSchema } },
+      description: 'Saved diary model',
+    },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Only a user can choose the diary model' },
+  },
+})
 const generationPricingRoute = createRoute({
   method: 'get',
   path: '/me/generation-pricing',
@@ -556,6 +625,8 @@ const selectMentorMealVersionRoute = createRoute({
 })
 type CreateMealsRoutesOptions = {
   composer: AppMealComposer
+  mealEngine: ReturnType<typeof createMealEngineStore>
+  analyzeNora: (input: MealsNoraRequest) => Promise<MealsGeminiResponse>
   internalServiceToken: string | undefined
   requireAuth: MiddlewareHandler<AuthHttpEnv>
   requireMentor: MiddlewareHandler<AuthHttpEnv>
@@ -576,6 +647,8 @@ type CreateMealsRoutesOptions = {
 
 export function createMealsRoutes({
   composer,
+  mealEngine,
+  analyzeNora,
   internalServiceToken,
   requireAuth,
   requireMentor,
@@ -587,6 +660,12 @@ export function createMealsRoutes({
   const requireServiceToken = createRequireServiceToken(internalServiceToken)
   const internalRoutes = new OpenAPIHono({ defaultHook: validationErrorHook })
   internalRoutes.use('*', requireServiceToken)
+  internalRoutes.openapi(mealsNoraRoute, async (c) => {
+    const input = c.req.valid('json')
+    const result = await executeMeals(() => analyzeNora(input))
+    rememberGenerationUsage(generationRequestKey(input), result.usage)
+    return c.json(result, 200)
+  })
   internalRoutes.openapi(mealsGeminiRoute, async (c) => {
     const input = c.req.valid('json')
     const result = await executeMeals(() => service.analyzeMeal(input))
@@ -678,6 +757,20 @@ export function createMealsRoutes({
       service.deleteMeal(c.var.user, c.req.valid('param').mealId),
     )
     return c.json(result, 200)
+  })
+  userMealsRoutes.openapi(mealEngineRoute, async (c) => {
+    const engine = await executeMeals(() => mealEngine.get(c.var.user.id))
+    return c.json({ engine }, 200)
+  })
+  userMealsRoutes.openapi(updateMealEngineRoute, async (c) => {
+    const engine: MealEngine = c.req.valid('json').engine
+    const saved = await executeMeals(async () => {
+      if (c.var.user.role !== 'user') {
+        throw new MealsFailure('forbidden', 'Модель дневника выбирает пользователь')
+      }
+      return mealEngine.set(c.var.user.id, engine)
+    })
+    return c.json({ engine: saved }, 200)
   })
   userMealsRoutes.openapi(generationPricingRoute, async (c) => {
     const result = await executeMeals(() => service.generationPricing())

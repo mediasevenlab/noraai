@@ -7,6 +7,9 @@ import {
   putQuestionnaireRequestSchema,
   payoutAccrualResponseSchema,
   generationPricingResponseSchema,
+  mealEngineResponseSchema,
+  updateMealEngineRequestSchema,
+  type MealEngine,
   questionnaireResponseSchema,
   resetGenerationSpendResponseSchema,
   telegramLinkRequestSchema,
@@ -107,6 +110,17 @@ export function startTelegramLink(
       body: telegramLinkRequestSchema.parse(input),
     },
   )
+}
+
+export function getMealEngine(transport: AuthenticatedTransport) {
+  return transport.request('/api/users/me/meal-engine', mealEngineResponseSchema)
+}
+
+export function putMealEngine(transport: AuthenticatedTransport, engine: MealEngine) {
+  return transport.request('/api/users/me/meal-engine', mealEngineResponseSchema, {
+    method: 'PUT',
+    body: updateMealEngineRequestSchema.parse({ engine }),
+  })
 }
 
 export function getGenerationPricing(transport: AuthenticatedTransport) {

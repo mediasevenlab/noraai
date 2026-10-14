@@ -3,8 +3,10 @@ import { randomUUID } from 'node:crypto'
 import type {
   MealComposerTurnRequest,
   MealComposerTurnResponse,
+  MealEngine,
   MealsGeminiRequest,
   MealsGeminiResponse,
+  MealsNoraRequest,
 } from '@web-app-demo/contracts'
 
 import { MealsFailure } from '../domain/errors'
@@ -34,6 +36,8 @@ export class AppMealComposer {
   constructor(
     private readonly options: {
       analyze: (input: MealsGeminiRequest) => Promise<MealsGeminiResponse>
+      analyzeNora?: (input: MealsNoraRequest) => Promise<MealsGeminiResponse>
+      engineFor?: (userId: string) => Promise<MealEngine>
       persist: MealsService['createMealFromGeminiCard']
     },
   ) {}
@@ -69,7 +73,10 @@ export class AppMealComposer {
   ): Promise<MealComposerTurnResponse> {
     const current = this.entries.get(userId)
     const event = toComposerEvent(input)
-    const turn = applyComposerTurn(current?.session, userId, event, 'app')
+    const engine = await this.options.engineFor?.(userId) ?? 'gemini'
+    const turn = applyComposerTurn(current?.session, userId, event, 'app', {
+      allowTextOnly: engine === 'nora',
+    })
     const entry: ComposerEntry = {
       session: turn.session,
       messages:
@@ -86,15 +93,16 @@ export class AppMealComposer {
       return this.toResponse(entry)
     }
 
-    return this.finalize(userId)
+    return this.finalize(userId, engine)
   }
 
-  private async finalize(userId: string): Promise<MealComposerTurnResponse> {
+  private async finalize(userId: string, engine: MealEngine): Promise<MealComposerTurnResponse> {
     const entry = this.entries.get(userId)
     if (!entry) return this.toResponse(undefined)
     if (entry.session.busy) return this.toResponse(entry)
     const photos = entry.session.photos
-    if (!photos.length) {
+    const hasText = Boolean(entry.session.note?.trim() || entry.session.audioBase64)
+    if (!photos.length && !hasText) {
       entry.status = 'idle'
       return this.toResponse(entry)
     }
@@ -103,15 +111,23 @@ export class AppMealComposer {
     entry.status = 'busy'
 
     try {
-      const primary = photos[0]!
-      const analyzed = await this.options.analyze({
-        images: photos.map((image) => ({ base64: image.base64, mime: image.mime })),
-        imageBase64: primary.base64,
-        imageMime: primary.mime,
+      const primary = photos[0]
+      const payload = {
+        ...(photos.length
+          ? {
+              images: photos.map((image) => ({ base64: image.base64, mime: image.mime })),
+              imageBase64: primary!.base64,
+              imageMime: primary!.mime,
+            }
+          : {}),
         note: entry.session.note,
         audioBase64: entry.session.audioBase64,
         audioMime: entry.session.audioMime,
-      })
+      }
+      const analyzed =
+        engine === 'nora'
+          ? await this.requireNora()(payload)
+          : await this.options.analyze(payload)
       if (isHollowMealAnalysis(analyzed.meal)) {
         throw new MealsFailure('upstream', 'empty meal analysis')
       }
@@ -121,8 +137,8 @@ export class AppMealComposer {
       const persisted = await this.options.persist({
         userId,
         clientKey: entry.session.clientKey,
-        imageBase64: primary.base64,
-        imageMime: primary.mime,
+        imageBase64: primary?.base64,
+        imageMime: primary?.mime,
         extraImages: photos.slice(1).map((image) => ({
           imageBase64: image.base64,
           imageMime: image.mime,
@@ -162,6 +178,14 @@ export class AppMealComposer {
       ]
       return this.toResponse(entry)
     }
+  }
+
+  private requireNora() {
+    const analyzeNora = this.options.analyzeNora
+    if (!analyzeNora) {
+      throw new MealsFailure('misconfigured', 'Своя модель пока не настроена. Выберите Gemini или попробуйте позже.')
+    }
+    return analyzeNora
   }
 
   private toResponse(entry: ComposerEntry | undefined): MealComposerTurnResponse {

@@ -361,6 +361,7 @@ describe('ration-imported diary meals', () => {
     expect(visibleMealAssumptions([RATION_DIARY_SOURCE_MARK, MEAL_AUTHOR_PHOTO_MARK, 'Вес по фото'])).toEqual([
       'Вес по фото',
     ])
+    expect(visibleMealAssumptions(['На пару', 'Оценка, не весы'])).toEqual(['На пару'])
   })
 
   test('deleting a ration drops only pending unmodified copies', () => {

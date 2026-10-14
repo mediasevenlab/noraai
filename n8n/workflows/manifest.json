@@ -45,6 +45,15 @@
     "gemini_keys_redacted": 0
   },
   {
+    "name": "Дневник питания: Nora → карточка",
+    "id": "MealNoraAnalyze001",
+    "active": true,
+    "file": "meal-nora-analyze.json",
+    "nodes": 6,
+    "telegram_tokens_redacted": 0,
+    "gemini_keys_redacted": 0
+  },
+  {
     "name": "Дневник питания: голос → текст",
     "id": "MealVoiceTranscribe001",
     "active": true,

@@ -11,11 +11,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useQuery } from '@tanstack/react-query'
+
 import { useAuth } from '@/features/auth'
 import { useLatest } from '@/lib/use-latest'
 import { cn } from '@/lib/utils'
 
-import { postMealComposerTurn } from './api'
+import { getDiaryMealEngine, postMealComposerTurn } from './api'
 import { appendAssistantMessage, composerAppPhotoAcceptedMessage, mergeComposerChat, type ComposerChatMessage } from './composer-chat'
 import { ComposerPressSurface } from './ComposerPressSurface'
 import {
@@ -90,6 +92,12 @@ export function MealAddDraftDialog({
   }) => void
 }) {
   const auth = useAuth()
+  const mealEngine = useQuery({
+    queryKey: ['session', 'meal-engine'],
+    queryFn: () => getDiaryMealEngine(auth.transport),
+    enabled: open,
+  })
+  const noraEngine = mealEngine.data?.engine === 'nora'
   const dismissLocked = useMealDialogDismissLocked()
   const [note, setNote] = React.useState('')
   const [attaches, setAttaches] = React.useState<
@@ -354,7 +362,10 @@ export function MealAddDraftDialog({
   async function sendNote() {
     if (!canSend) return
     const text = note.trim()
-    const willForm = photoCount > 0 || attaches.some((item) => item.base64)
+    const willForm =
+      photoCount > 0
+      || attaches.some((item) => item.base64)
+      || (noraEngine && text.length > 0)
     if (willForm) {
       formingForRevealRef.current = true
       setForming(true)

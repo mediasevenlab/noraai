@@ -10,11 +10,29 @@ import {
   composerWelcomeMessage,
   MEAL_MAX_PHOTOS,
 } from './meal-composer'
+import { MealsFailure } from './errors'
 import { createEmptySession } from './telegram-meal-session'
 
 const photo = { base64: 'img', mime: 'image/jpeg' as const }
 
 describe('in-app meal composer turns', () => {
+  test('nora accepts a description without a photo and gemini still asks for one', () => {
+    const gemini = applyComposerTurn(undefined, 'user-1', { type: 'note', text: 'овсянка с ягодами' })
+    expect(gemini.finalize).toBe(false)
+    expect(gemini.messages[0]?.text).toContain('Пришлите фото')
+
+    const nora = applyComposerTurn(
+      undefined,
+      'user-1',
+      { type: 'note', text: 'овсянка с ягодами' },
+      'app',
+      { allowTextOnly: true },
+    )
+    expect(nora.finalize).toBe(true)
+    expect(nora.session.photos).toHaveLength(0)
+    expect(nora.session.note).toContain('овсянка')
+  })
+
   test('open starts a chat with the same photo prompt as Telegram, without bot commands', () => {
     const turn = applyComposerTurn(undefined, 'user-1', { type: 'open' })
     expect(turn.messages[0]?.text).toBe(composerWelcomeMessage('app'))
@@ -209,5 +227,13 @@ describe('composer analyze errors', () => {
     expect(
       composerAnalyzeErrorMessage(new Error('The socket connection was closed unexpectedly.')),
     ).toBe('Не удалось разобрать приём. Попробуйте ещё раз через минуту.')
+  })
+
+  test('shows a photo-read failure instead of hiding it as a short outage', () => {
+    expect(
+      composerAnalyzeErrorMessage(
+        new MealsFailure('upstream', 'Не удалось разобрать фото. Опишите приём текстом или попробуйте ещё снимок.'),
+      ),
+    ).toBe('Не удалось разобрать фото. Опишите приём текстом или попробуйте ещё снимок.')
   })
 })

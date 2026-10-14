@@ -133,7 +133,8 @@ export function visibleMealAssumptions(assumptions: string[] | undefined): strin
         && !item.startsWith(FEED_SOURCE_ID_PREFIX)
         && !item.startsWith(CATALOG_FAVORITE_ID_PREFIX)
         && !item.startsWith(DIARY_PLAN_SOURCE_PREFIX)
-        && !item.startsWith(RATION_DIARY_LOG_PREFIX),
+        && !item.startsWith(RATION_DIARY_LOG_PREFIX)
+        && !/не весы/i.test(item),
     ) ?? []
   )
 }

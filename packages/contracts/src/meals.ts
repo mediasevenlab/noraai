@@ -480,6 +480,42 @@ export const mealsGeminiRequestSchema = z
       || (Array.isArray(value.images) && value.images.some((image) => image.base64)),
     { message: 'images or imageBase64 required' },
   )
+export const mealEngineSchema = z.enum(['gemini', 'nora'])
+export const mealEngineResponseSchema = z
+  .object({
+    engine: mealEngineSchema,
+  })
+  .strict()
+export const updateMealEngineRequestSchema = mealEngineResponseSchema
+/** Same card request as Gemini, plus a text-only description when there is no photo. */
+export const mealsNoraRequestSchema = z
+  .object({
+    images: z
+      .array(
+        z
+          .object({
+            base64: z.string().min(1),
+            mime: z.string().trim().min(3).max(100).optional(),
+          })
+          .strict(),
+      )
+      .max(8)
+      .optional(),
+    imageBase64: mealImageBase64Schema.optional(),
+    imageMime: mealImageMimeSchema.optional(),
+    note: z.string().max(4000).optional(),
+    audioBase64: z.string().min(1).optional(),
+    audioMime: z.string().trim().min(3).max(100).optional(),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      Boolean(value.imageBase64)
+      || (Array.isArray(value.images) && value.images.some((image) => image.base64))
+      || Boolean(value.note?.trim())
+      || Boolean(value.audioBase64),
+    { message: 'images, note, or audioBase64 required' },
+  )
 export const mealsGeminiCardSchema = z
   .object({
     title: z.string(),
@@ -604,6 +640,8 @@ export const mealComposerTurnResponseSchema = z
   .strict()
 export type MealsGeminiRequest = z.infer<typeof mealsGeminiRequestSchema>
 export type MealsGeminiResponse = z.infer<typeof mealsGeminiResponseSchema>
+export type MealsNoraRequest = z.infer<typeof mealsNoraRequestSchema>
+export type MealEngine = z.infer<typeof mealEngineSchema>
 export type MealsTranscribeRequest = z.infer<typeof mealsTranscribeRequestSchema>
 export type MealsTranscribeResponse = z.infer<typeof mealsTranscribeResponseSchema>
 export type MealComposerTurnRequest = z.infer<typeof mealComposerTurnRequestSchema>

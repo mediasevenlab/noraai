@@ -10,6 +10,8 @@ import type { AuthHttpEnv } from '../auth'
 import { AppMealComposer } from './application/app-meal-composer'
 import { MealsService } from './application/meals-service'
 import { extractMealWithGemini, refineMealWithGemini, transcribeAudioWithGemini } from './infrastructure/gemini-client'
+import { createMealEngineStore } from './infrastructure/meal-engine-store'
+import { extractMealWithNora, refineMealWithNora } from './infrastructure/nora-llm-client'
 import { analyzeMealWithWebhook } from './infrastructure/meal-analyze-webhook'
 import { notifyMentorMealViaWebhook } from './infrastructure/meal-mentor-notify-webhook'
 import { createLocalMealImageStore } from './infrastructure/meal-image-store'
@@ -51,6 +53,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
     options.env.MEALS_UPLOAD_DIR
     ?? path.join(process.cwd(), 'uploads', 'meals')
   const repository = createPrismaMealsRepository(options.db)
+  const mealEngine = createMealEngineStore(options.db)
   const storage = createStorageServiceFromEnv(options.env)
   const imageStore = storage
     ? createSpacesMealImageStore(storage, sharpMealImageProcessor)
@@ -71,6 +74,8 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
       notify: (payload) =>
         notifyMentorMealViaWebhook(options.env.N8N_MENTOR_NOTIFY_WEBHOOK_URL, payload),
     },
+    mealEngine: (userId) => mealEngine.get(userId),
+    noraRefine: (input) => refineMealWithNora(options.env, input),
   })
 
   const composer = new AppMealComposer({
@@ -80,11 +85,24 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
         (payload) => service.analyzeMeal(payload),
         input,
       ),
+    analyzeNora: (input) =>
+      analyzeMealWithWebhook(
+        options.env.N8N_NORA_MEAL_WEBHOOK_URL,
+        (payload) =>
+          extractMealWithNora(options.env, payload, (audio) =>
+            transcribeAudioWithGemini(options.env, audio),
+          ),
+        input,
+      ),
+    engineFor: (userId) => mealEngine.get(userId),
     persist: (input) => service.createMealFromGeminiCard(input),
   })
 
   const routes = createMealsRoutes({
     composer,
+    mealEngine,
+    analyzeNora: (input) =>
+      extractMealWithNora(options.env, input, (audio) => transcribeAudioWithGemini(options.env, audio)),
     internalServiceToken: options.env.INTERNAL_SERVICE_TOKEN,
     requireAuth: options.requireAuth,
     requireMentor: options.requireMentor,

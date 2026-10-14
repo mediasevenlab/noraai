@@ -90,6 +90,8 @@ export type MealsServiceDependencies = {
   backgroundTasks?: MentorNotifyTaskDeferrer
   onNotifyError?: (error: unknown) => void
   generationModel?: string
+  mealEngine?: (userId: string) => Promise<'gemini' | 'nora'>
+  noraRefine?: MealAnalyzer['refine']
 }
 
 type MealCreateInput = Omit<CreateMealFromBotRequest, 'telegramUpdateId'> & {
@@ -793,7 +795,14 @@ export class MealsService {
         coverMime = ensured.imageMime ?? 'image/jpeg'
       }
     }
-    const result = await this.dependencies.analyzer.refine({
+    const engine = this.dependencies.mealEngine
+      ? await this.dependencies.mealEngine(ensured.userId)
+      : 'gemini'
+    const refine =
+      engine === 'nora' && this.dependencies.noraRefine
+        ? this.dependencies.noraRefine
+        : this.dependencies.analyzer.refine
+    const result = await refine({
       card: this.toGeminiCard(ensured),
       message,
       coverBase64,
