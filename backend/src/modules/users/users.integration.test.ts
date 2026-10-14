@@ -124,9 +124,17 @@ maybeDescribe('users and admin API integration', () => {
     expect(setPhone.status).toBe(400)
   })
 
-  test('starts a Telegram username challenge instead of trusting profile PATCH', async () => {
-    const first = await register('telegram-first@example.com')
-    const second = await register('telegram-second@example.com')
+  test('starts a Telegram username challenge for a mentor', async () => {
+    const user = await register('telegram-user@example.com')
+    const denied = await app.request('/api/users/me/telegram-link', {
+      method: 'POST',
+      headers: authenticatedJsonHeaders(user.accessToken),
+      body: JSON.stringify({ telegramUsername: '@food_user' }),
+    })
+    expect(denied.status).toBe(403)
+
+    const first = await register('telegram-first@example.com', 'Mentor', 'mentor')
+    const second = await register('telegram-second@example.com', 'Mentor Two', 'mentor')
     const links = createTelegramLinkStore(prisma)
 
     const start = await app.request('/api/users/me/telegram-link', {
@@ -181,8 +189,8 @@ maybeDescribe('users and admin API integration', () => {
   })
 
   test('starts a Telegram phone challenge instead of trusting profile PATCH', async () => {
-    const first = await register('telegram-phone-first@example.com')
-    const second = await register('telegram-phone-second@example.com')
+    const first = await register('telegram-phone-first@example.com', 'Mentor', 'mentor')
+    const second = await register('telegram-phone-second@example.com', 'Mentor Two', 'mentor')
     const links = createTelegramLinkStore(prisma)
 
     const startPhone = await app.request('/api/users/me/telegram-link', {

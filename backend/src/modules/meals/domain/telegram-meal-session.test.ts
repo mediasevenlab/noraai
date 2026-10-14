@@ -92,9 +92,10 @@ describe('telegram meal session helpers', () => {
       webappOrigin: 'https://25nutrition.site/',
       username: 'dmitry_7r',
     })
-    expect(message).toContain('@dmitry_7r')
+    expect(message).toContain('приложении')
     expect(message).toContain('https://25nutrition.site/signup')
-    expect(message).not.toContain('Пришлите ваш ник')
+    expect(message).not.toContain('@dmitry_7r')
+    expect(message).not.toContain('Настройках')
   })
 
   test('normalizes telegram phones for linking', () => {
@@ -107,8 +108,9 @@ describe('telegram meal session helpers', () => {
       webappOrigin: 'https://25nutrition.site/',
       phone: '79001234567',
     })
-    expect(message).toContain('+7 (900) 123-45-67')
-    expect(message).toContain('ник или телефон')
+    expect(message).toContain('https://25nutrition.site/signup')
+    expect(message).not.toContain('+7 (900) 123-45-67')
+    expect(message).not.toContain('Настройках')
   })
 
   test('only the sender’s own Telegram contact counts as phone proof', () => {
@@ -143,8 +145,8 @@ describe('telegram meal session helpers', () => {
       webappOrigin: 'https://24nutrition.site/',
       hasMealPayload: true,
     })
-    expect(help).toContain('6-значный код')
-    expect(help).not.toContain('Пришлите ник')
-    expect(help).toContain('Чужой ник или номер')
+    expect(help).toContain('приложении')
+    expect(help).not.toContain('6-значный код')
+    expect(help).not.toContain('Настройки')
   })
 })

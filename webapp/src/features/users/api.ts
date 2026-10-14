@@ -116,10 +116,13 @@ export function getMealEngine(transport: AuthenticatedTransport) {
   return transport.request('/api/users/me/meal-engine', mealEngineResponseSchema)
 }
 
-export function putMealEngine(transport: AuthenticatedTransport, engine: MealEngine) {
+export function putMealEngine(
+  transport: AuthenticatedTransport,
+  input: { engine: MealEngine; thinking?: boolean },
+) {
   return transport.request('/api/users/me/meal-engine', mealEngineResponseSchema, {
     method: 'PUT',
-    body: updateMealEngineRequestSchema.parse({ engine }),
+    body: updateMealEngineRequestSchema.parse(input),
   })
 }
 

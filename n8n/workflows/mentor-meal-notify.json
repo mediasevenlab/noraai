@@ -37,7 +37,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const j = items[0].json || {};\nconst body = j.body || j;\nconst chatId = String(body.chatId || '').trim();\nconst text = String(body.text || '').trim();\nif (!chatId) throw new Error('chatId required');\nif (!text) throw new Error('text required');\nconst botToken = $env.TELEGRAM_NOTIFY_BOT_TOKEN || '';\nif (!botToken) throw new Error('TELEGRAM_NOTIFY_BOT_TOKEN is not set');\nreturn [{\n  json: {\n    chatId,\n    text,\n    botToken,\n    menteeLabel: body.menteeLabel || '',\n    title: body.title || '',\n  }\n}];"
+        "jsCode": "const j = items[0].json || {};\nconst body = j.body || j;\nconst chatId = String(body.chatId || '').trim();\nconst text = String(body.text || '').trim();\nif (!chatId) throw new Error('chatId required');\nif (!text) throw new Error('text required');\nconst botToken = $env.TELEGRAM_NOTIFY_BOT_TOKEN || '';\nif (!botToken) throw new Error('TELEGRAM_NOTIFY_BOT_TOKEN is not set');\nconst base = String($env.TELEGRAM_API_BASE || 'https://api.telegram.org').replace(/\\/$/, '');\nconst proxyToken = base.includes('api.telegram.org') ? '' : String($env.GEMINI_PROXY_TOKEN || '');\nreturn [{\n  json: {\n    chatId,\n    text,\n    url: base + '/bot' + botToken + '/sendMessage',\n    proxyToken,\n    menteeLabel: body.menteeLabel || '',\n    title: body.title || '',\n  }\n}];"
       },
       "id": "mentor-notify-prepare",
       "name": "Подготовить вход",
@@ -48,7 +48,16 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://api.telegram.org/bot{{ $json.botToken }}/sendMessage",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Gemini-Proxy-Token",
+              "value": "={{ $json.proxyToken }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ chat_id: $json.chatId, text: $json.text, disable_web_page_preview: true }) }}",

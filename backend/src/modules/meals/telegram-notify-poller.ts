@@ -9,8 +9,13 @@ import {
   shareTelegramPhonePrompt,
 } from './domain/telegram-meal-session'
 import { createTelegramPollerLock } from './infrastructure/telegram-poller-lock'
+import {
+  telegramApiHeaders,
+  telegramBotMethodUrl,
+  type TelegramApiEnv,
+} from './infrastructure/telegram-api'
 
-type TelegramNotifyPollerEnv = {
+type TelegramNotifyPollerEnv = TelegramApiEnv & {
   TELEGRAM_NOTIFY_BOT_TOKEN?: string
   DATABASE_URL?: string
 }
@@ -32,6 +37,7 @@ type TelegramUpdate = {
 }
 
 type NotifyPollerContext = {
+  env: TelegramNotifyPollerEnv
   token: string
   service: MealsService
   completeTelegramLink?: TelegramLinkComplete
@@ -85,17 +91,18 @@ export function startTelegramNotifyPoller(options: {
       report(error)
     }
     try {
-      await tg(token, 'deleteWebhook', { drop_pending_updates: false })
+      await tg(options.env, token, 'deleteWebhook', { drop_pending_updates: false })
     } catch (error) {
       report(error)
     }
 
     while (!stopped) {
       try {
-        const updates = await getUpdates(token, offset)
+        const updates = await getUpdates(options.env, token, offset)
         for (const update of updates) {
           try {
             await handleUpdate(update, {
+              env: options.env,
               token,
               service: options.service,
               completeTelegramLink: options.completeTelegramLink,
@@ -146,12 +153,12 @@ async function handleUpdate(
     : null
 
   if (!text && !ownPhone && !msg.contact) {
-    await send(context.token, chatId, notifyBotHelpMessage())
+    await send(context.env, context.token, chatId, notifyBotHelpMessage())
     return
   }
 
   if (text === '/help' || text === '/start') {
-    await send(context.token, chatId, notifyBotHelpMessage())
+    await send(context.env, context.token, chatId, notifyBotHelpMessage())
     return
   }
 
@@ -168,14 +175,14 @@ async function handleUpdate(
       if (result.ok) {
         context.pendingPhoneCodes.delete(chatId)
         await context.service.setTelegramChatId(result.userId, chatIdValue)
-        await send(context.token, chatId, notifyBotLinkedMessage(), {
+        await send(context.env, context.token, chatId, notifyBotLinkedMessage(), {
           reply_markup: { remove_keyboard: true },
         })
         return
       }
       if (result.reason === 'phone_proof_required') {
         context.pendingPhoneCodes.set(chatId, linkCode)
-        await send(context.token, chatId, shareTelegramPhonePrompt(), {
+        await send(context.env, context.token, chatId, shareTelegramPhonePrompt(), {
           reply_markup: identityRequestKeyboard(),
         })
         return
@@ -183,6 +190,7 @@ async function handleUpdate(
       if (result.reason === 'mismatch') {
         context.pendingPhoneCodes.delete(chatId)
         await send(
+          context.env,
           context.token,
           chatId,
           ownPhone
@@ -194,6 +202,7 @@ async function handleUpdate(
     } catch (error) {
       context.report(error)
       await send(
+        context.env,
         context.token,
         chatId,
         'Не удалось привязать Telegram. Этот ник или телефон уже занят, либо произошла ошибка.',
@@ -204,6 +213,7 @@ async function handleUpdate(
 
   if (msg.contact && !ownPhone) {
     await send(
+      context.env,
       context.token,
       chatId,
       'Нужен ваш собственный контакт Telegram, не чужая карточка.',
@@ -221,7 +231,7 @@ async function handleUpdate(
     const lookup = await context.service.lookupTelegramUser(proof.username)
     if (lookup.user) {
       await context.service.setTelegramChatId(lookup.user.id, chatIdValue)
-      await send(context.token, chatId, notifyBotLinkedMessage(), {
+      await send(context.env, context.token, chatId, notifyBotLinkedMessage(), {
         reply_markup: { remove_keyboard: true },
       })
       return
@@ -232,18 +242,22 @@ async function handleUpdate(
     const lookup = await context.service.lookupTelegramPhone(proof.phone)
     if (lookup.user) {
       await context.service.setTelegramChatId(lookup.user.id, chatIdValue)
-      await send(context.token, chatId, notifyBotLinkedMessage(), {
+      await send(context.env, context.token, chatId, notifyBotLinkedMessage(), {
         reply_markup: { remove_keyboard: true },
       })
       return
     }
   }
 
-  await send(context.token, chatId, notifyBotHelpMessage())
+  await send(context.env, context.token, chatId, notifyBotHelpMessage())
 }
 
-async function getUpdates(token: string, offset: number): Promise<TelegramUpdate[]> {
-  const payload = await tg(token, 'getUpdates', {
+async function getUpdates(
+  env: TelegramApiEnv,
+  token: string,
+  offset: number,
+): Promise<TelegramUpdate[]> {
+  const payload = await tg(env, token, 'getUpdates', {
     offset,
     timeout: 25,
     allowed_updates: ['message'],
@@ -255,12 +269,13 @@ async function getUpdates(token: string, offset: number): Promise<TelegramUpdate
 }
 
 async function send(
+  env: TelegramApiEnv,
   token: string,
   chatId: number,
   text: string,
   extra: Record<string, unknown> = {},
 ) {
-  const payload = await tg(token, 'sendMessage', {
+  const payload = await tg(env, token, 'sendMessage', {
     chat_id: chatId,
     text,
     disable_web_page_preview: true,
@@ -271,12 +286,17 @@ async function send(
   }
 }
 
-async function tg(token: string, method: string, body?: Record<string, unknown>) {
-  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+async function tg(
+  env: TelegramApiEnv,
+  token: string,
+  method: string,
+  body?: Record<string, unknown>,
+) {
+  const response = await fetch(telegramBotMethodUrl(env, token, method), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: telegramApiHeaders(env),
     body: JSON.stringify(body ?? {}),
-    signal: AbortSignal.timeout(35_000),
+    signal: AbortSignal.timeout(50_000),
   })
   return (await response.json()) as {
     ok?: boolean

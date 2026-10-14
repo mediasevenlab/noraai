@@ -91,6 +91,7 @@ export type MealsServiceDependencies = {
   onNotifyError?: (error: unknown) => void
   generationModel?: string
   mealEngine?: (userId: string) => Promise<'gemini' | 'nora'>
+  geminiThinking?: (userId: string) => Promise<boolean>
   noraRefine?: MealAnalyzer['refine']
 }
 
@@ -126,6 +127,11 @@ export class MealsService {
   }
   async analyzeMeal(input: MealsGeminiRequest) {
     return this.dependencies.analyzer.analyze(input)
+  }
+
+  async geminiThinkingEnabled(userId: string) {
+    if (!this.dependencies.geminiThinking) return true
+    return this.dependencies.geminiThinking(userId)
   }
 
   async transcribeAudio(input: { audioBase64: string; audioMime?: string }) {
@@ -798,6 +804,11 @@ export class MealsService {
     const engine = this.dependencies.mealEngine
       ? await this.dependencies.mealEngine(ensured.userId)
       : 'gemini'
+    // Text-only edits already have the card, so they skip the draft.
+    // A new photo still reasons when the user left the switch on.
+    const thinking =
+      engine !== 'gemini' ||
+      (images.length > 0 && (await this.geminiThinkingEnabled(ensured.userId)))
     const refine =
       engine === 'nora' && this.dependencies.noraRefine
         ? this.dependencies.noraRefine
@@ -814,6 +825,7 @@ export class MealsService {
         mime: image.imageMime,
       })),
       photoMode: replacePhotos ? 'replace' : keepCurrentMeal ? 'augment' : undefined,
+      ...(thinking ? {} : { thinking: false as const }),
     })
     const analyzed = mapGeminiCardToMealFields(result.meal)
     const current = this.toVersioned(ensured)

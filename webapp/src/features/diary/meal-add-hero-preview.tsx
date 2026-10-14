@@ -48,16 +48,14 @@ export function MealAddHeroPreview({ slides }: { slides: string[] }) {
     }
 
     if (next.length > previous.length && toSrc) {
+      setSettledSlides(next)
+      commitIndex(nextIndex)
       setOverlaySrc(toSrc)
       setOverlayOn(false)
       let inner = 0
       const outer = window.requestAnimationFrame(() => {
         inner = window.requestAnimationFrame(() => setOverlayOn(true))
       })
-      const doneId = window.setTimeout(() => {
-        setSettledSlides(next)
-        commitIndex(nextIndex)
-      }, MEAL_ADD_PREVIEW_FADE_MS)
       const clearId = window.setTimeout(() => {
         setOverlaySrc(null)
         setOverlayOn(false)
@@ -65,7 +63,6 @@ export function MealAddHeroPreview({ slides }: { slides: string[] }) {
       return () => {
         window.cancelAnimationFrame(outer)
         window.cancelAnimationFrame(inner)
-        window.clearTimeout(doneId)
         window.clearTimeout(clearId)
       }
     }

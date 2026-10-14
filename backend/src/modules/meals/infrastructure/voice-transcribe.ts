@@ -13,6 +13,7 @@ export async function transcribeMealVoice(
   input: MealsTranscribeRequest,
 ): Promise<MealsTranscribeResponse> {
   const webhook = env.N8N_TRANSCRIBE_WEBHOOK_URL
+  if (input.thinking === false) return transcribeDirect(input)
   if (webhook) {
     try {
       const response = await fetch(webhook, {

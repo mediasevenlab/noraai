@@ -103,6 +103,9 @@ export class UsersService {
   }
 
   async startTelegramLink(principal: AuthenticatedPrincipal, input: TelegramLinkRequest) {
+    if (principal.role !== 'mentor') {
+      throw new UsersFailure('forbidden', 'Привязка Telegram доступна только наставнику')
+    }
     const store = this.dependencies.telegramLinks
     if (!store) throw new UsersFailure('not_found', 'Telegram linking is unavailable')
     const started = await store.start(principal.id, input)

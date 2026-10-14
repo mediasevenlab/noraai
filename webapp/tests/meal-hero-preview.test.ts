@@ -1,6 +1,33 @@
 import { expect, test } from 'bun:test'
 
-import { nextComposerHeroIndex } from '../src/features/diary/meal-hero-preview'
+import { mealAddDialogHeroSlides, nextComposerHeroIndex } from '../src/features/diary/meal-hero-preview'
+
+test('the open meal shows its gallery once another photo is saved', () => {
+  const preview = ['blob:goulash']
+  const cover = '/api/meals/1/image?sig=cover'
+  const carrot = '/api/meals/1/extras/0?sig=carrot'
+  expect(
+    mealAddDialogHeroSlides({
+      previewSlides: preview,
+      formedImages: [cover],
+      versionCount: 1,
+    }),
+  ).toEqual(preview)
+  expect(
+    mealAddDialogHeroSlides({
+      previewSlides: preview,
+      formedImages: [cover, carrot],
+      versionCount: 2,
+    }),
+  ).toEqual([cover, carrot])
+  expect(
+    mealAddDialogHeroSlides({
+      previewSlides: preview,
+      formedImages: [carrot],
+      versionCount: 2,
+    }),
+  ).toEqual([carrot])
+})
 
 test('added photos land on the newest slide', () => {
   expect(

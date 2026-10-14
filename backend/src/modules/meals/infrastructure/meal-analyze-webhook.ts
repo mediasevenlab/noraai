@@ -10,6 +10,7 @@ type AnalyzeInput = {
   imageBase64?: string
   note?: string
   audioBase64?: string
+  thinking?: boolean
 }
 
 export async function analyzeMealWithWebhook<T extends AnalyzeInput>(
@@ -17,6 +18,8 @@ export async function analyzeMealWithWebhook<T extends AnalyzeInput>(
   analyzeDirect: (input: T) => Promise<MealsGeminiResponse>,
   input: T,
 ): Promise<MealsGeminiResponse> {
+  // A stale n8n workflow drops unknown fields and would turn reasoning back on.
+  if (input.thinking === false) return analyzeDirect(input)
   if (webhookUrl) {
     try {
       const response = await fetch(webhookUrl, {

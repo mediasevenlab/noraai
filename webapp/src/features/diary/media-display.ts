@@ -6,6 +6,23 @@ export function mealPhotoDisplaySize(sizes: 'sm' | 'md' | 'lg'): MediaDisplaySiz
   return sizes === 'lg' ? 'full' : 'card'
 }
 
+/**
+ * Signed meal URLs and jpeg data URLs share a long common prefix.
+ * The version query and the payload tail are what make one photo another.
+ */
+export function mealPhotoSlideKey(src: string, index: number) {
+  return `${index}:${src.length}:${src.slice(-64)}`
+}
+
+export function mealDialogCoverKey(
+  mealId: string,
+  versionId: string | undefined,
+  images: readonly string[],
+) {
+  const cover = images[0] ?? ''
+  return `${mealId}:${versionId ?? ''}:${images.length}:${mealPhotoSlideKey(cover, 0)}`
+}
+
 export function displayMediaSrc(src: string, size: MediaDisplaySize): string {
   const trimmed = src.trim()
   if (!trimmed || trimmed.startsWith('blob:') || trimmed.startsWith('data:')) return trimmed

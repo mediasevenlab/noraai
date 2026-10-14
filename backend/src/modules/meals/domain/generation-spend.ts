@@ -5,8 +5,10 @@ export type GenerationTokenBucket = GenerationUsageLedger[string]
 /**
  * Paid-tier list prices, USD per 1M tokens.
  * Live numbers come from Google's Gemini pricing page (standard tier only).
- * Gemini 2.5 Flash fallback, checked 2026-10-05: $0.30 text/image/video input,
+ * Gemini 2.5 Flash fallback, checked 2026-10-14: $0.30 text/image/video input,
  * $1.00 audio input, $2.50 output including thinking.
+ * Gemini 2.5 Flash-Lite, used for voice: $0.10 text/image/video, $0.30 audio,
+ * $0.40 output. Thinking on that model stays off.
  * A pasted link is ordinary prompt text. The URL-context tool is not enabled.
  * Unknown models are not priced. Batch, flex, and priority tiers are not used.
  */
@@ -24,6 +26,14 @@ const FLASH_USD_PER_MILLION: UsdPerMillion = {
   link: 0.3,
   audio: 1,
   output: 2.5,
+}
+
+const FLASH_LITE_USD_PER_MILLION: UsdPerMillion = {
+  text: 0.1,
+  image: 0.1,
+  link: 0.1,
+  audio: 0.3,
+  output: 0.4,
 }
 
 const GEMINI_PRICING_URL = 'https://ai.google.dev/gemini-api/docs/pricing.md.txt'
@@ -49,8 +59,10 @@ export function resetGenerationPriceCacheForTests() {
 }
 
 function fallbackPrices(model: string): UsdPerMillion | null {
-  if (normalizeGenerationModel(model) !== 'gemini-2.5-flash') return null
-  return { ...FLASH_USD_PER_MILLION }
+  const normalized = normalizeGenerationModel(model)
+  if (normalized === 'gemini-2.5-flash') return { ...FLASH_USD_PER_MILLION }
+  if (normalized === 'gemini-2.5-flash-lite') return { ...FLASH_LITE_USD_PER_MILLION }
+  return null
 }
 
 function pricesForModel(model: string): UsdPerMillion | null {

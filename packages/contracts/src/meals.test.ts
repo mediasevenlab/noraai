@@ -224,8 +224,9 @@ describe('meal contracts', () => {
       mealsGeminiRequestSchema.parse({
         imageBase64: 'abc',
         imageMime: 'image/jpeg',
+        thinking: false,
       }),
-    ).toMatchObject({ imageBase64: 'abc' })
+    ).toMatchObject({ imageBase64: 'abc', thinking: false })
   })
 
   test('validates voice transcribe payloads', () => {

@@ -2,10 +2,12 @@ import { describe, expect, test } from 'bun:test'
 
 import {
   displayMediaSrc,
+  mealDialogCoverKey,
   mealPhotoDisplaySize,
   mealPhotoFallbackSrc,
   mealPhotoNeedsPreview,
   mealPhotoOriginalSrc,
+  mealPhotoSlideKey,
 } from '../src/features/diary/media-display'
 
 describe('media display src', () => {
@@ -79,5 +81,24 @@ describe('media display src', () => {
     expect(mealPhotoNeedsPreview('blob:https://app/1', 'full')).toBe(false)
     const src = '/api/meals/11111111-1111-4111-8111-111111111111/image?exp=1&sig=abc'
     expect(mealPhotoNeedsPreview(src, 'full')).toBe(true)
+  })
+
+  test('a new meal version is a different slide even when the url prefix matches', () => {
+    const mealId = '11111111-1111-4111-8111-111111111111'
+    const older = `/api/meals/${mealId}/image?exp=1710000000&sig=abc&v=version-old`
+    const newer = `/api/meals/${mealId}/image?exp=1710000000&sig=abc&v=version-new`
+    expect(older.slice(0, 64)).toBe(newer.slice(0, 64))
+    expect(mealPhotoSlideKey(older, 0)).not.toBe(mealPhotoSlideKey(newer, 0))
+    expect(mealDialogCoverKey(mealId, 'version-old', [older])).not.toBe(
+      mealDialogCoverKey(mealId, 'version-new', [newer]),
+    )
+  })
+
+  test('jpeg data urls with the same header stay distinct slides', () => {
+    const header = `data:image/jpeg;base64,${'A'.repeat(80)}`
+    const carrot = `${header}CARROT`
+    const goulash = `${header}GOULASH`
+    expect(carrot.slice(0, 64)).toBe(goulash.slice(0, 64))
+    expect(mealPhotoSlideKey(carrot, 0)).not.toBe(mealPhotoSlideKey(goulash, 0))
   })
 })

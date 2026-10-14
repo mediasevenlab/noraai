@@ -75,6 +75,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
         notifyMentorMealViaWebhook(options.env.N8N_MENTOR_NOTIFY_WEBHOOK_URL, payload),
     },
     mealEngine: (userId) => mealEngine.get(userId),
+    geminiThinking: (userId) => mealEngine.thinking(userId),
     noraRefine: (input) => refineMealWithNora(options.env, input),
   })
 
@@ -95,6 +96,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
         input,
       ),
     engineFor: (userId) => mealEngine.get(userId),
+    thinkingFor: (userId) => mealEngine.thinking(userId),
     persist: (input) => service.createMealFromGeminiCard(input),
   })
 

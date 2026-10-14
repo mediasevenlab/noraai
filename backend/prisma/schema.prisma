@@ -18,7 +18,8 @@ model User {
   telegramPhone    String?   @unique(map: "users_telegram_phone_key") @map("telegram_phone")
   telegramChatId   String?   @unique(map: "users_telegram_chat_id_key") @map("telegram_chat_id")
   role         UserRole      @default(user)
-  mealEngine   String        @default("gemini") @map("meal_engine")
+  mealEngine      String        @default("gemini") @map("meal_engine")
+  geminiThinking  Boolean       @default(true) @map("gemini_thinking")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   referredByUserId    String?            @map("referred_by_user_id") @db.Uuid

@@ -1335,7 +1335,7 @@ test('forming meal rolls KBJU and spins the active step instead of tab skeletons
 })
 
 test('formed meal keeps the same hero and reveals title after KBJU settle', () => {
-  expect(news).toContain('previewSlides.length > 0 ? previewSlides : formedImages')
+  expect(news).toContain('mealAddDialogHeroSlides')
   expect(news).toContain("setRevealPhase('title')")
   expect(news).toContain("setRevealPhase('composition')")
   expect(news).toContain('enter={reveal !== \'off\'}')

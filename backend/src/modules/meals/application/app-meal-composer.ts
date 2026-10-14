@@ -38,6 +38,7 @@ export class AppMealComposer {
       analyze: (input: MealsGeminiRequest) => Promise<MealsGeminiResponse>
       analyzeNora?: (input: MealsNoraRequest) => Promise<MealsGeminiResponse>
       engineFor?: (userId: string) => Promise<MealEngine>
+      thinkingFor?: (userId: string) => Promise<boolean>
       persist: MealsService['createMealFromGeminiCard']
     },
   ) {}
@@ -124,10 +125,16 @@ export class AppMealComposer {
         audioBase64: entry.session.audioBase64,
         audioMime: entry.session.audioMime,
       }
+      const thinking = engine === 'gemini' && this.options.thinkingFor
+        ? await this.options.thinkingFor(userId)
+        : true
       const analyzed =
         engine === 'nora'
           ? await this.requireNora()(payload)
-          : await this.options.analyze(payload)
+          : await this.options.analyze({
+              ...payload,
+              ...(thinking ? {} : { thinking: false }),
+            })
       if (isHollowMealAnalysis(analyzed.meal)) {
         throw new MealsFailure('upstream', 'empty meal analysis')
       }

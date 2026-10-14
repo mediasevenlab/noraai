@@ -2,10 +2,15 @@ import { describe, expect, test } from 'bun:test'
 
 import {
   mealNumbersMissing,
+  noraExtractPrompt,
   noraModelKind,
+  noraRefineImages,
+  noraRefinePrompt,
+  noraRefineSource,
   normalizeGeneratedMealCard,
   portionLabelsNeedWeight,
   readMealCardJson,
+  withCompositionNutrition,
   withEstimatedPortionWeights,
   withRolledUpNutrition,
 } from './nora-meal'
@@ -78,6 +83,69 @@ describe('nora meal routing', () => {
       'Чай ~200 мл',
       'Рис ~150 г',
     ])
+  })
+
+  test('a correction total follows the new lines instead of the old header', () => {
+    const meal = withCompositionNutrition({
+      nutrition: { kcal: 500, protein: 30, fat: 20, carbs: 40 },
+      composition: [
+        { label: 'Рис ~180 г', kcal: 230, protein: 5, fat: 1, carbs: 48 },
+        { label: 'Курица ~120 г', kcal: 200, protein: 30, fat: 8, carbs: 0 },
+        { label: 'Хлеб ~30 г', kcal: 80, protein: 3, fat: 1, carbs: 14 },
+      ],
+    })
+    expect(meal.nutrition).toEqual({ kcal: 510, protein: 38, fat: 10, carbs: 62 })
+  })
+
+  test('adding a photo to the current meal does not send the saved cover', () => {
+    const images = noraRefineImages({
+      photoMode: 'augment',
+      coverBase64: 'cover',
+      coverMime: 'image/webp',
+      attached: [{ base64: 'carrot', mime: 'image/jpeg' }],
+    })
+    expect(images).toEqual([{ base64: 'carrot', mime: 'image/jpeg' }])
+    expect(noraRefinePrompt('augment')).toContain('Состав сейчас')
+    expect(noraRefinePrompt('augment')).not.toContain('vitaminB12')
+    expect(noraRefinePrompt('augment').length).toBeLessThan(900)
+  })
+
+  test('several photos share one short card prompt', () => {
+    const prompt = noraExtractPrompt(2)
+    expect(prompt).toContain('2 кадра')
+    expect(prompt).not.toContain('vitaminB12')
+    expect(prompt.length).toBeLessThan(900)
+  })
+
+  test('a replacement photo is the only frame Nora sees', () => {
+    expect(
+      noraRefineImages({
+        photoMode: 'replace',
+        coverBase64: 'cover',
+        attached: [{ base64: 'plate', mime: 'image/jpeg' }],
+      }),
+    ).toEqual([{ base64: 'plate', mime: 'image/jpeg' }])
+    expect(noraRefinePrompt('replace')).toContain('новый приём')
+  })
+
+  test('a correction sent to Nora keeps names and drops the old calories', () => {
+    expect(noraRefineSource({
+      title: 'Рис с курицей',
+      mealType: 'Обед',
+      nutrition: { kcal: 500, protein: 30, fat: 20, carbs: 40 },
+      composition: [
+        { label: 'Рис ~180 г', kcal: 230, protein: 5, fat: 1, carbs: 48 },
+        { label: 'Курица ~120 г', kcal: 200, protein: 30, fat: 8, carbs: 0 },
+      ],
+    })).toEqual({
+      title: 'Рис с курицей',
+      mealType: 'Обед',
+      composition: [{ label: 'Рис ~180 г' }, { label: 'Курица ~120 г' }],
+    })
+    expect(noraRefineSource({ title: 'Рис', mealType: 'Обед', nutrition: { kcal: 500 } }, 'replace')).toEqual({
+      title: 'Рис',
+      mealType: 'Обед',
+    })
   })
 
   test('a card with no numbers is empty', () => {

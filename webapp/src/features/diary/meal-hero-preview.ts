@@ -1,3 +1,19 @@
+/**
+ * Draft attaches stay on the hero until the saved meal has another photo.
+ * After that the open card shows the meal gallery, including a new slide.
+ */
+export function mealAddDialogHeroSlides(input: {
+  previewSlides: readonly string[]
+  formedImages: readonly string[]
+  versionCount: number
+}) {
+  const formed = input.formedImages
+  const preview = input.previewSlides
+  if (formed.length > 1 || input.versionCount > 1) return [...formed]
+  if (preview.length > 0) return [...preview]
+  return [...formed]
+}
+
 export function nextComposerHeroIndex(input: {
   previous: readonly string[]
   next: readonly string[]

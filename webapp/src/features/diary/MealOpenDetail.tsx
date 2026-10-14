@@ -553,14 +553,21 @@ export function MealOpenDetail({
         ? await refineMyMeal(auth.transport, mealId, body)
         : await refineMentorUserMeal(auth.transport, subjectUserId, mealId, body)
       const keepCurrentPhotos = ready.length > 0 && photoAttachKeepsCurrentMeal(text)
-      const shownMeal =
-        ready.length > 0 && !keepCurrentPhotos
+      const attachedSrcs = ready.map((image) => `data:${image.mime};base64,${image.base64}`)
+      const serverExtras = result.meal.extraImageUrls ?? []
+      const shownMeal = !keepCurrentPhotos && attachedSrcs.length > 0
+        ? {
+            ...result.meal,
+            imageUrl: attachedSrcs[0]!,
+            extraImageUrls: attachedSrcs.slice(1),
+          }
+        : keepCurrentPhotos
           ? {
               ...result.meal,
-              imageUrl: `data:${ready[0]!.mime};base64,${ready[0]!.base64}`,
-              extraImageUrls: ready.slice(1).map(
-                (image) => `data:${image.mime};base64,${image.base64}`,
-              ),
+              extraImageUrls:
+                serverExtras.length > (meal.extraImages?.length ?? 0)
+                  ? serverExtras
+                  : [...serverExtras, ...attachedSrcs],
             }
           : result.meal
       queryClient.setQueryData<{ items: Array<(typeof result)['meal']> }>(

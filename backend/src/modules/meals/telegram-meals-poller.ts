@@ -20,6 +20,12 @@ import {
 import { analyzeMealWithWebhook } from './infrastructure/meal-analyze-webhook'
 import { createTelegramPollerLock } from './infrastructure/telegram-poller-lock'
 import {
+  telegramApiHeaders,
+  telegramBotMethodUrl,
+  telegramFileUrl,
+  type TelegramApiEnv,
+} from './infrastructure/telegram-api'
+import {
   addPhotoToSession,
   appendNote,
   canCancelSession,
@@ -45,12 +51,14 @@ import {
   type MealSessionPhoto,
 } from './domain/telegram-meal-session'
 
-type TelegramPollerEnv = {
+type TelegramPollerEnv = TelegramApiEnv & {
   TELEGRAM_MEALS_BOT_TOKEN?: string
   N8N_MEAL_WEBHOOK_URL?: string
   WEBAPP_ORIGIN?: string
   DATABASE_URL?: string
 }
+
+let telegramApiEnv: TelegramApiEnv = {}
 
 type LinkedAppUser = {
   id: string
@@ -157,6 +165,7 @@ export function startTelegramMealsPoller(options: {
   onError?: (error: unknown) => void
 }): TelegramMealsPoller {
   const token = options.env.TELEGRAM_MEALS_BOT_TOKEN
+  telegramApiEnv = options.env
   if (!token) {
     return { stop() {} }
   }
@@ -690,6 +699,7 @@ async function finalizeMeal(chatId: number, context: PollerContext, fromTimeout:
   )
 
   try {
+    const thinking = await context.service.geminiThinkingEnabled(session.userId)
     const analyzed = await analyzeMealCard({
       env: context.env,
       service: context.service,
@@ -697,6 +707,7 @@ async function finalizeMeal(chatId: number, context: PollerContext, fromTimeout:
       note: session.note,
       audioBase64: session.audioBase64,
       audioMime: session.audioMime,
+      thinking,
     })
 
     const persisted = await context.service.createMealFromGeminiCard({
@@ -749,6 +760,7 @@ async function analyzeMealCard(input: {
   note?: string
   audioBase64?: string
   audioMime?: string
+  thinking?: boolean
 }): Promise<MealsGeminiResponse> {
   const primary = input.images[0]
   if (!primary) {
@@ -764,6 +776,7 @@ async function analyzeMealCard(input: {
     note: input.note,
     audioBase64: input.audioBase64,
     audioMime: input.audioMime,
+    ...(input.thinking === false ? { thinking: false as const } : {}),
   })
 }
 
@@ -797,10 +810,10 @@ async function downloadTelegramFile(token: string, fileId: string) {
     throw new Error(meta.description || 'Telegram getFile failed')
   }
   const filePath = String(meta.result.file_path)
-  const fileResponse = await fetch(
-    `https://api.telegram.org/file/bot${token}/${filePath}`,
-    { signal: AbortSignal.timeout(60_000) },
-  )
+  const fileResponse = await fetch(telegramFileUrl(telegramApiEnv, token, filePath), {
+    headers: telegramApiHeaders(telegramApiEnv, false),
+    signal: AbortSignal.timeout(60_000),
+  })
   if (!fileResponse.ok) {
     throw new Error(`Telegram file download failed (${fileResponse.status})`)
   }
@@ -834,11 +847,11 @@ async function answerCallback(token: string, callbackQueryId: string, text?: str
 }
 
 async function tg(token: string, method: string, body?: Record<string, unknown>) {
-  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+  const response = await fetch(telegramBotMethodUrl(telegramApiEnv, token, method), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: telegramApiHeaders(telegramApiEnv),
     body: JSON.stringify(body ?? {}),
-    signal: AbortSignal.timeout(35_000),
+    signal: AbortSignal.timeout(50_000),
   })
   return (await response.json()) as {
     ok?: boolean

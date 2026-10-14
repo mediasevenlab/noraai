@@ -1033,6 +1033,69 @@ describe('MealsService', () => {
     ).rejects.toMatchObject({ kind: 'forbidden' })
   })
 
+  test('refineMeal skips reasoning on a text edit and keeps it for a new photo', async () => {
+    const card = {
+      ok: true as const,
+      model: 'gemini-test',
+      meal: {
+        title: 'Овсянка',
+        excerpt: 'Овсянка',
+        body: '',
+        category: 'Завтрак',
+        mealType: 'Завтрак',
+        tags: [] as string[],
+        nutrition: { kcal: 300, protein: 20, fat: 8, carbs: 40 },
+        clientNoteStructured: '',
+        composition: [{ label: 'Овсянка ~40 г', kcal: 180, protein: 8, fat: 3, carbs: 30 }],
+        assumptions: [] as string[],
+        micronutrients: [] as [],
+      },
+    }
+    async function refineOnce(
+      userThinking: boolean,
+      request: { message: string; imageBase64?: string; imageMime?: 'image/jpeg' },
+    ) {
+      const existing = mealRecord()
+      let thinking: boolean | undefined = true
+      const service = new MealsService({
+        geminiThinking: async () => userThinking,
+        analyzer: {
+          analyze: async () => {
+            throw new Error('unused')
+          },
+          refine: async (input) => {
+            thinking = input.thinking
+            return card
+          },
+        },
+        imageStore: {
+          saveImage: async () => ({ imageKey: 'a', imageMime: 'image/jpeg' }),
+          readImage: async () => null,
+        },
+        imageUrlBuilder: imageUrls(),
+        repository: repositoryStub({
+          findMealById: async () => existing,
+          updateMealContent: async (_id, content) =>
+            mealRecord({
+              ...content,
+              id: existing.id,
+              userId: existing.userId,
+            }),
+        }),
+      })
+      await service.refineMeal({ id: existing.userId, role: 'user' }, existing.id, request)
+      return thinking
+    }
+
+    expect(await refineOnce(true, { message: 'рис 150 г' })).toBe(false)
+    expect(
+      await refineOnce(true, { message: '', imageBase64: 'att', imageMime: 'image/jpeg' }),
+    ).toBeUndefined()
+    expect(
+      await refineOnce(false, { message: '', imageBase64: 'att', imageMime: 'image/jpeg' }),
+    ).toBe(false)
+  })
+
   test('refineMeal with a new photo does not send the old cover', async () => {
     const existing = mealRecord({ imageKey: 'cover.jpg', imageMime: 'image/jpeg' })
     let refineInput: { coverBase64?: string; attachBase64?: string; photoMode?: string } | undefined

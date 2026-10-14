@@ -188,6 +188,7 @@ import {
   commitMealVersionExtras,
   imagesForDiaryMeal,
 } from "../MealCard";
+import { mealDialogCoverKey } from "../media-display";
 import { MealAddDraftDialog } from "../MealAddDraftDialog";
 import { MealOpenDetail } from "../MealOpenDetail";
 import {
@@ -2134,7 +2135,7 @@ export function NewsPage({
                 origin={mealCardOrigin(openMeal)}
                 preview={
                   <Cover
-                    key={openMeal.id}
+                    key={mealDialogCoverKey(openMeal.id, openMeal.activeVersionId, openMealImages)}
                     meal={openMeal}
                     sizes="lg"
                     images={openMealImages}

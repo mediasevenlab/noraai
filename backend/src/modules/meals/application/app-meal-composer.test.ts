@@ -294,6 +294,41 @@ describe('AppMealComposer', () => {
     composer.dispose()
   })
 
+  test('asks Gemini to skip reasoning when the user turned it off', async () => {
+    let thinking: boolean | undefined = true
+    const composer = new AppMealComposer({
+      analyze: async (input) => {
+        thinking = input.thinking
+        return {
+          ok: true,
+          model: 'gemini',
+          meal: {
+            title: 'Овсянка',
+            excerpt: 'Овсянка',
+            body: '',
+            category: 'Завтрак',
+            mealType: 'Завтрак',
+            tags: [],
+            nutrition: { kcal: 420, protein: 28, fat: 10, carbs: 55 },
+            clientNoteStructured: '',
+            composition: [],
+            assumptions: [],
+            micronutrients: [],
+          },
+        }
+      },
+      engineFor: async () => 'gemini',
+      thinkingFor: async () => false,
+      persist: async () => ({ meal: mealDto(), created: true }),
+    })
+    const userId = '22222222-2222-4222-8222-222222222222'
+    await composer.applyTurn(userId, { action: 'open' })
+    await composer.applyTurn(userId, { action: 'photo', imageBase64: 'a', imageMime: 'image/jpeg' })
+    await composer.applyTurn(userId, { action: 'flush' })
+    expect(thinking).toBe(false)
+    composer.dispose()
+  })
+
   test('sends every attached dish photo to analyze and persist extras', async () => {
     let analyzedImages = 0
     let extraCount = 0

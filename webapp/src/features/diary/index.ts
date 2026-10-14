@@ -233,8 +233,10 @@ export { AUTH_DEMO_MEAL_CATALOG } from './auth-demo-meals'
 export {
   displayMediaSrc,
   applyMealPhotoFallback,
+  mealDialogCoverKey,
   mealPhotoDisplaySize,
   mealPhotoOriginalSrc,
+  mealPhotoSlideKey,
   prefetchMealPhoto,
 } from './media-display'
 export { SharedMealsFeed } from './SharedMealsFeed'

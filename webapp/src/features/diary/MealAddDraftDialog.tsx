@@ -35,6 +35,7 @@ import {
 import { isComposerAnalyzingPlaceholder } from './meal-forming-steps'
 import { MealAttachMenu, queueMealImageFile } from './meal-attach-menu'
 import { MealAddHeroPreview } from './meal-add-hero-preview'
+import { mealAddDialogHeroSlides } from './meal-hero-preview'
 import {
   MEAL_ATTACH_LIMIT,
   mealAttachLimitMessage,
@@ -526,7 +527,13 @@ export function MealAddDraftDialog({
                 MEAL_DIALOG_COVER_CLASS,
               )}
             >
-              <MealAddHeroPreview slides={previewSlides.length > 0 ? previewSlides : formedImages} />
+              <MealAddHeroPreview
+                slides={mealAddDialogHeroSlides({
+                  previewSlides,
+                  formedImages,
+                  versionCount: displayMeal?.versions?.length ?? 0,
+                })}
+              />
             </div>
           }
         />

@@ -27,6 +27,9 @@ export function MealFeedPhoto({
   const originalSrc = mealPhotoOriginalSrc(resolved, displaySize)
   const showPreview = mealPhotoNeedsPreview(resolved, displaySize)
   const [loadedSrc, setLoadedSrc] = React.useState<string | null>(null)
+  if (loadedSrc !== null && loadedSrc !== displaySrc) {
+    setLoadedSrc(null)
+  }
   const fullReady = !showPreview || loadedSrc === displaySrc
 
   return (
@@ -38,6 +41,7 @@ export function MealFeedPhoto({
           className="absolute inset-0 size-full object-cover select-none"
           decoding="async"
           draggable={false}
+          key={previewSrc}
           src={previewSrc}
         />
       ) : null}
@@ -53,6 +57,7 @@ export function MealFeedPhoto({
         decoding="async"
         draggable={false}
         fetchPriority={priority ? 'high' : 'auto'}
+        key={displaySrc}
         loading="eager"
         onError={(event) => {
           applyMealPhotoFallback(event.currentTarget, MEAL_COVER_PLACEHOLDER_SRC)

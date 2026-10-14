@@ -28,7 +28,6 @@ import {
   markMentorMealsViewedResponseSchema,
   telegramUserLookupResponseSchema,
   telegramUsernameSchema,
-  type MealEngine,
   type MealsGeminiResponse,
   type MealsNoraRequest,
   type MealsTranscribeRequest,
@@ -701,7 +700,13 @@ export function createMealsRoutes({
     return c.json(result, 200)
   })
   userMealsRoutes.openapi(transcribeMyVoiceRoute, async (c) => {
-    const result = await executeMeals(() => transcribeUserVoice(c.req.valid('json')))
+    const result = await executeMeals(async () => {
+      const thinking = await mealEngine.thinking(c.var.user.id)
+      return transcribeUserVoice({
+        ...c.req.valid('json'),
+        ...(thinking ? {} : { thinking: false }),
+      })
+    })
     await service.rememberVoiceUsage(c.var.user.id, result.usage)
     return c.json(result, 200)
   })
@@ -759,18 +764,18 @@ export function createMealsRoutes({
     return c.json(result, 200)
   })
   userMealsRoutes.openapi(mealEngineRoute, async (c) => {
-    const engine = await executeMeals(() => mealEngine.get(c.var.user.id))
-    return c.json({ engine }, 200)
+    const settings = await executeMeals(() => mealEngine.getSettings(c.var.user.id))
+    return c.json(settings, 200)
   })
   userMealsRoutes.openapi(updateMealEngineRoute, async (c) => {
-    const engine: MealEngine = c.req.valid('json').engine
+    const body = c.req.valid('json')
     const saved = await executeMeals(async () => {
       if (c.var.user.role !== 'user') {
         throw new MealsFailure('forbidden', 'Модель дневника выбирает пользователь')
       }
-      return mealEngine.set(c.var.user.id, engine)
+      return mealEngine.set(c.var.user.id, body.engine, body.thinking)
     })
-    return c.json({ engine: saved }, 200)
+    return c.json(saved, 200)
   })
   userMealsRoutes.openapi(generationPricingRoute, async (c) => {
     const result = await executeMeals(() => service.generationPricing())

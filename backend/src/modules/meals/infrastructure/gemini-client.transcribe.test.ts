@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
+  GEMINI_VOICE_MODEL,
+  geminiGenerationConfig,
   MEAL_ASSUMPTION_RULES,
   MEAL_COMPOSITION_LINE_RULES,
   MEAL_MULTI_PHOTO_RULES,
@@ -9,8 +11,76 @@ import {
   isTransientGeminiNetworkError,
   parseGeminiCandidateText,
   refineSystemPrompt,
+  transcribeAudioWithGemini,
 } from './gemini-client'
 import { MealsFailure } from '../domain/errors'
+
+describe('gemini thinking budget', () => {
+  test('leaves Flash thinking on unless the user turned it off', () => {
+    expect(geminiGenerationConfig({ temperature: 0.2, json: true })).toEqual({
+      temperature: 0.2,
+      responseMimeType: 'application/json',
+    })
+    expect(geminiGenerationConfig({ temperature: 0.2, json: true, thinking: true })).not.toHaveProperty(
+      'thinkingConfig',
+    )
+  })
+
+  test('sets a zero thinking budget when reasoning is off', () => {
+    expect(geminiGenerationConfig({ temperature: 0, thinking: false })).toEqual({
+      temperature: 0,
+      thinkingConfig: { thinkingBudget: 0 },
+    })
+  })
+})
+
+describe('voice transcription model', () => {
+  test('hears speech on Flash-Lite and does not draft, even if reasoning is on', async () => {
+    const original = globalThis.fetch
+    let url = ''
+    let body = ''
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      url = String(input)
+      body = String(init?.body ?? '')
+      return new Response(
+        JSON.stringify({
+          candidates: [{ content: { parts: [{ text: 'гречка 150 грамм' }] } }],
+          usageMetadata: {
+            promptTokenCount: 400,
+            candidatesTokenCount: 12,
+            thoughtsTokenCount: 0,
+            promptTokensDetails: [{ modality: 'AUDIO', tokenCount: 320 }],
+          },
+        }),
+        { status: 200 },
+      )
+    }) as typeof fetch
+    try {
+      const result = await transcribeAudioWithGemini(
+        {
+          GEMINI_API_KEY: 'test-key',
+          GEMINI_MODEL: 'gemini-2.5-flash',
+          GEMINI_MEAL_MODEL: 'gemini-2.5-flash',
+          GEMINI_API_HOST: 'generativelanguage.googleapis.com',
+          GEMINI_API_PORT: 443,
+        },
+        {
+          audioBase64: Buffer.from('hello').toString('base64'),
+          audioMime: 'audio/webm',
+          thinking: true,
+        },
+      )
+      expect(url).toContain(`/models/${GEMINI_VOICE_MODEL}:generateContent`)
+      expect(JSON.parse(body).generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 })
+      expect(result.model).toBe(GEMINI_VOICE_MODEL)
+      expect(result.text).toBe('гречка 150 грамм')
+      expect(result.usage?.[GEMINI_VOICE_MODEL]?.audioInputTokens).toBe(320)
+      expect(result.usage?.[GEMINI_VOICE_MODEL]?.outputTokens).toBe(12)
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+})
 
 describe('parseGeminiCandidateText', () => {
   test('joins candidate parts and strips wrapping quotes', () => {

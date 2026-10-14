@@ -34,6 +34,7 @@ import {
   favoriteMealIdsForSync,
   favoritesQueryKeys,
   imagesForDiaryMeal,
+  mealDialogCoverKey,
   isApiMealId,
   isPlanPreviewMealId,
   isRationPlanDone,
@@ -923,7 +924,7 @@ export function CurrentPlanMeals({
                   <Cover
                     className={MEAL_DIALOG_COVER_CLASS}
                     images={openMealImages}
-                    key={openMeal.id}
+                    key={mealDialogCoverKey(openMeal.id, openMeal.activeVersionId, openMealImages)}
                     meal={openMeal}
                     sizes="lg"
                   />

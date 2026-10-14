@@ -4,14 +4,20 @@ import type { AppEnv } from '../../../env'
 import { MealsFailure } from '../domain/errors'
 import {
   mealNumbersMissing,
+  noraExtractPrompt,
   noraModelKind,
+  noraRefineImages,
+  noraRefinePrompt,
+  noraRefineSource,
   normalizeGeneratedMealCard,
   portionLabelsNeedWeight,
   readMealCardJson,
+  withCompositionNutrition,
   withEstimatedPortionWeights,
   withRolledUpNutrition,
 } from '../domain/nora-meal'
-import { MEAL_CARD_PROMPT, refineSystemPrompt } from './gemini-client'
+import { MEAL_CARD_PROMPT } from './gemini-client'
+import { encodeJpeg } from './sharp-meal-image'
 
 type NoraEnv = Pick<
   AppEnv,
@@ -34,12 +40,24 @@ const BREVITY_RULE = [
 
 const WEIGHT_ASK = 'В composition у каждой строки свой ориентировочный вес в label. Оцени каждый продукт отдельно и не ставь всем одно и то же число. Форма строки: «Морковь ~40 г», «Курица ~150 г», «Чай ~200 мл».'
 
+const NORA_REFINE_RECALC = [
+  'Калорий и БЖУ в текущем составе нет. Посчитай их заново по весу каждой строки.',
+  'Вес уже названной строки не меняй, пока пользователь не назвал другой.',
+  'Добавленный продукт — новая строка со своим весом и своими КБЖУ. Калораж приёма от этого вырастет.',
+  'Убранный продукт удали. Калораж приёма от этого уменьшится.',
+  'Нельзя оставить прежний калораж, перераспределив его по строкам.',
+  'nutrition — сумма kcal, protein, fat и carbs по строкам composition. Целые числа.',
+].join('\n')
+
 const TEXT_RULE = [
   'Фото нет. Разбери только текст пользователя.',
   'Не добавляй продукты, которых нет в описании.',
 ].join('\n')
 
 const REQUEST_TIMEOUT_MS = 240_000
+/** Long edge that keeps one qwen2.5vl frame near 256 tokens instead of the 1280-token cap. */
+const NORA_VISION_EDGE = 448
+const NORA_REFINE_MAX_TOKENS = 1024
 
 let queue: Promise<unknown> = Promise.resolve()
 
@@ -115,6 +133,27 @@ function unfinishedCardMessage(kind: 'text' | 'vision') {
     : 'Не удалось разобрать описание. Напишите продукты и примерный вес ещё раз.'
 }
 
+async function shrinkNoraVisionImage(image: { base64: string; mime?: string }) {
+  try {
+    const bytes = Buffer.from(image.base64, 'base64')
+    if (bytes.length === 0) return image
+    const jpeg = await encodeJpeg(bytes, { maxEdge: NORA_VISION_EDGE, quality: 72 })
+    return { base64: jpeg.toString('base64'), mime: 'image/jpeg' }
+  } catch {
+    return image
+  }
+}
+
+function noraHttpFailure(status: number, body: string) {
+  if (/exceed_context_size|available context size/i.test(body)) {
+    return new MealsFailure(
+      'upstream',
+      'Своя модель не вмещает это фото вместе с карточкой. Оставьте одно фото или выберите Gemini.',
+    )
+  }
+  return new MealsFailure('upstream', `Модель ${status}: ${body.slice(0, 240)}`)
+}
+
 async function completeNora(
   env: NoraEnv,
   input: {
@@ -122,6 +161,8 @@ async function completeNora(
     text: string
     images: Array<{ base64: string; mime?: string }>
     system?: string
+    lineMacros?: boolean
+    maxTokens?: number
   },
 ): Promise<MealsGeminiResponse> {
   let card: MealsGeminiResponse
@@ -140,7 +181,7 @@ async function completeNora(
     )
   }
   let meal = withRolledUpNutrition(card.meal)
-  if (meal.composition.length === 0 || mealNumbersMissing(meal)) {
+  if (meal.composition.length === 0 || mealNumbersMissing(meal) || linesLackMacros(meal, input.lineMacros)) {
     card = await requestNoraCard(
       env,
       {
@@ -158,10 +199,18 @@ async function completeNora(
       composition: rewritten?.length ? rewritten : withEstimatedPortionWeights(meal.composition),
     })
   }
-  if (meal.composition.length === 0 || mealNumbersMissing(meal)) {
+  if (meal.composition.length === 0 || mealNumbersMissing(meal) || linesLackMacros(meal, input.lineMacros)) {
     throw new MealsFailure('upstream', unfinishedCardMessage(input.kind))
   }
   return { ...card, meal }
+}
+
+function linesLackMacros(
+  meal: { composition: Array<{ kcal: number; protein: number; fat: number; carbs: number }> },
+  required: boolean | undefined,
+) {
+  if (!required || meal.composition.length === 0) return false
+  return meal.composition.every((item) => item.kcal + item.protein + item.fat + item.carbs <= 0)
 }
 
 async function requestNoraCard(
@@ -171,6 +220,7 @@ async function requestNoraCard(
     text: string
     images: Array<{ base64: string; mime?: string }>
     system?: string
+    maxTokens?: number
   },
   penalty: number,
 ): Promise<MealsGeminiResponse> {
@@ -197,7 +247,7 @@ async function requestNoraCard(
     body: JSON.stringify({
       model,
       temperature: 0.2,
-      max_tokens: 4096,
+      max_tokens: input.maxTokens ?? 4096,
       // qwen2.5vl repeats the ingredient list on a real photo and hits the token cap with an unfinished JSON card.
       // A high penalty also drops the repeated «г» in composition lines, so the first pass stays mild.
       frequency_penalty: penalty,
@@ -216,7 +266,7 @@ async function requestNoraCard(
     throw new MealsFailure('upstream', 'Своя модель сейчас недоступна. Выберите Gemini или попробуйте позже.')
   }
   if (!response.ok) {
-    throw new MealsFailure('upstream', `Модель ${response.status}: ${body.slice(0, 240)}`)
+    throw noraHttpFailure(response.status, body)
   }
   let payload: {
     choices?: Array<{ finish_reason?: string; message?: { content?: unknown } }>
@@ -331,7 +381,7 @@ export async function extractMealWithNora(
     })
     note = [note, spoken.text.trim()].filter(Boolean).join('\n')
   }
-  const images = imagesOf(input)
+  const images = await Promise.all(imagesOf(input).map((image) => shrinkNoraVisionImage(image)))
   if (!images.length && !note) {
     throw new MealsFailure('bad_request', 'Нужно фото или описание приёма')
   }
@@ -345,7 +395,16 @@ export async function extractMealWithNora(
   ]
     .filter(Boolean)
     .join('\n')
-  return enqueue(() => completeNora(env, { kind, text, images: kind === 'vision' ? images : [] }))
+  return enqueue(() =>
+    completeNora(env, {
+      kind,
+      text,
+      images: kind === 'vision' ? images : [],
+      ...(kind === 'vision'
+        ? { system: noraExtractPrompt(images.length), maxTokens: NORA_REFINE_MAX_TOKENS }
+        : {}),
+    }),
+  )
 }
 
 export async function refineMealWithNora(
@@ -359,6 +418,7 @@ export async function refineMealWithNora(
     attachMime?: string
     attachImages?: Array<{ base64: string; mime?: string }>
     photoMode?: 'replace' | 'augment'
+    thinking?: boolean
   },
 ): Promise<MealsGeminiResponse> {
   const attached = input.attachImages?.length
@@ -366,28 +426,33 @@ export async function refineMealWithNora(
     : input.attachBase64
       ? [{ base64: input.attachBase64, mime: input.attachMime }]
       : []
-  const images = imagesOf({
-    images: [
-      ...(input.photoMode !== 'replace' && input.coverBase64
-        ? [{ base64: input.coverBase64, mime: input.coverMime }]
-        : []),
-      ...attached,
-    ],
+  const selected = noraRefineImages({
+    photoMode: input.photoMode,
+    coverBase64: input.coverBase64,
+    coverMime: input.coverMime,
+    attached,
   })
+  const images = await Promise.all(selected.map((image) => shrinkNoraVisionImage(image)))
   const kind = noraModelKind(images.length)
+  const source = noraRefineSource(input.card, input.photoMode)
   const text = [
-    `Текущая карточка:\n${JSON.stringify(input.card)}`,
-    input.message.trim() ? `Уточнение:\n${input.message.trim()}` : '',
-    WEIGHT_ASK,
+    input.message.trim() ? `Уточнение пользователя:\n${input.message.trim()}` : '',
+    input.photoMode === 'replace'
+      ? 'Старый состав не используй. Разбери только новые фото.'
+      : `Состав сейчас, без калорий:\n${JSON.stringify(source)}`,
+    NORA_REFINE_RECALC,
   ]
     .filter(Boolean)
     .join('\n\n')
-  return enqueue(() =>
+  const card = await enqueue(() =>
     completeNora(env, {
       kind,
       text,
       images: kind === 'vision' ? images : [],
-      system: refineSystemPrompt(input.photoMode),
+      lineMacros: true,
+      maxTokens: NORA_REFINE_MAX_TOKENS,
+      system: noraRefinePrompt(input.photoMode),
     }),
   )
+  return { ...card, meal: withCompositionNutrition(card.meal) }
 }

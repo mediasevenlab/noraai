@@ -65,21 +65,102 @@ export function mealNumbersMissing(meal: { nutrition: MacroTotals; composition: 
 
 export function withRolledUpNutrition<T extends { nutrition: MacroTotals; composition: MacroTotals[] }>(meal: T): T {
   if (macroSum([meal.nutrition]) > 0) return meal
-  const composition = macroSum(meal.composition)
-  if (composition <= 0) return meal
+  return withCompositionNutrition(meal)
+}
+
+/** A correction's total is the sum of the new lines, even when the header still says the old calories. */
+export function withCompositionNutrition<T extends { nutrition: MacroTotals; composition: MacroTotals[] }>(meal: T): T {
+  if (macroSum(meal.composition) <= 0) return meal
   return {
     ...meal,
     nutrition: {
-      kcal: sumMacro(meal.composition, 'kcal'),
-      protein: sumMacro(meal.composition, 'protein'),
-      fat: sumMacro(meal.composition, 'fat'),
-      carbs: sumMacro(meal.composition, 'carbs'),
+      kcal: roundedMacro(meal.composition, 'kcal'),
+      protein: roundedMacro(meal.composition, 'protein'),
+      fat: roundedMacro(meal.composition, 'fat'),
+      carbs: roundedMacro(meal.composition, 'carbs'),
     },
+  }
+}
+
+const NORA_REFINE_IMAGE_LIMIT = 5
+
+/**
+ * The office vision model fits 4096 tokens. The saved cover plus a new photo
+ * overflows that window. Current foods are already named in the prompt.
+ */
+export function noraRefineImages(input: {
+  photoMode?: 'replace' | 'augment'
+  coverBase64?: string
+  coverMime?: string
+  attached: Array<{ base64: string; mime?: string }>
+}) {
+  const attached = input.attached
+    .filter((image) => image.base64.length > 0)
+    .slice(0, NORA_REFINE_IMAGE_LIMIT)
+  if (attached.length > 0) return attached
+  if (input.coverBase64 && input.photoMode !== 'replace') {
+    return [{ base64: input.coverBase64, mime: input.coverMime }]
+  }
+  return []
+}
+
+/** Several photos share one 4096-token window, so the extract prompt stays short. */
+export function noraExtractPrompt(imageCount: number) {
+  const photo =
+    imageCount > 1
+      ? `На фото ${imageCount} кадра одного приёма. Собери продукты со всех кадров в одну карточку, без повторов.`
+      : 'На фото один приём. Продукты, которых нет на фото, не добавляй.'
+  return [
+    'Верни только JSON карточки приёма, без markdown.',
+    photo,
+    'composition: каждый продукт отдельно. В label вес, например «Морковь ~40 г». У строки свои kcal, protein, fat, carbs.',
+    'nutrition — сумма строк, целые числа. micronutrients — пустой список. assumptions — до 3 коротких фактов. body — пустая строка.',
+    'title короткий. excerpt — продукты через запятую, без весов.',
+    'category: Птица, Рыба, Мясо, Завтрак, Перекус или Каша. mealType: Завтрак, Обед, Ужин или Перекус.',
+  ].join('\n')
+}
+
+/** Short enough that one photo and the JSON answer both fit in 4096 tokens. */
+export function noraRefinePrompt(photoMode?: 'replace' | 'augment') {
+  const photo =
+    photoMode === 'replace'
+      ? 'На фото новый приём. Продукты, которых нет на фото, не переноси.'
+      : 'На фото добавка к уже собранному приёму. Сохрани строки из «Состав сейчас» и добавь продукты с фото отдельными строками.'
+  return [
+    'Верни только JSON карточки приёма, без markdown.',
+    photo,
+    'composition: каждый продукт отдельно. В label вес, например «Морковь ~40 г». У строки свои kcal, protein, fat, carbs.',
+    'nutrition — сумма строк, целые числа. micronutrients — пустой список. assumptions — до 3 коротких фактов. body — пустая строка.',
+    'title короткий. excerpt — продукты через запятую, без весов.',
+    'category: Птица, Рыба, Мясо, Завтрак, Перекус или Каша. mealType: Завтрак, Обед, Ужин или Перекус.',
+  ].join('\n')
+}
+
+/** Nora copies numbers it can see. A correction is sent as names and weights only. */
+export function noraRefineSource(
+  card: Record<string, unknown>,
+  photoMode?: 'replace' | 'augment',
+) {
+  const source = {
+    title: card.title,
+    mealType: card.mealType,
+  }
+  if (photoMode === 'replace' || !Array.isArray(card.composition)) return source
+  return {
+    ...source,
+    composition: card.composition.map((item) => {
+      if (!item || typeof item !== 'object') return { label: '' }
+      return { label: String((item as { label?: unknown }).label ?? '') }
+    }),
   }
 }
 
 function sumMacro(items: MacroTotals[], key: keyof MacroTotals) {
   return items.reduce((sum, item) => sum + finiteMacro(item[key]), 0)
+}
+
+function roundedMacro(items: MacroTotals[], key: keyof MacroTotals) {
+  return Math.max(0, Math.round(sumMacro(items, key)))
 }
 
 function macroSum(items: MacroTotals[]) {

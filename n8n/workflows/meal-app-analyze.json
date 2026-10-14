@@ -37,7 +37,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const j = items[0].json || {};\nconst body = j.body || j;\nlet images = Array.isArray(body.images) ? body.images.filter((x) => x && x.base64) : [];\nif (!images.length && body.imageBase64) {\n  images = [{ base64: body.imageBase64, mime: body.imageMime || 'image/jpeg' }];\n}\nif (!images.length) throw new Error('images or imageBase64 required');\nreturn [{\n  json: {\n    images,\n    imageBase64: images[0].base64,\n    imageMime: images[0].mime || 'image/jpeg',\n    note: body.note || '',\n    audioBase64: body.audioBase64 || '',\n    audioMime: body.audioMime || 'audio/webm',\n    host: 'http://host.docker.internal:3000',\n    serviceToken: $env.INTERNAL_SERVICE_TOKEN || $env.GEMINI_PROXY_TOKEN || '',\n  }\n}];"
+        "jsCode": "const j = items[0].json || {};\nconst body = j.body || j;\nlet images = Array.isArray(body.images) ? body.images.filter((x) => x && x.base64) : [];\nif (!images.length && body.imageBase64) {\n  images = [{ base64: body.imageBase64, mime: body.imageMime || 'image/jpeg' }];\n}\nif (!images.length) throw new Error('images or imageBase64 required');\nreturn [{\n  json: {\n    images,\n    imageBase64: images[0].base64,\n    imageMime: images[0].mime || 'image/jpeg',\n    note: body.note || '',\n    audioBase64: body.audioBase64 || '',\n    audioMime: body.audioMime || 'audio/webm',\n    thinking: body.thinking === false ? false : undefined,\n    host: 'http://host.docker.internal:3000',\n    serviceToken: $env.INTERNAL_SERVICE_TOKEN || $env.GEMINI_PROXY_TOKEN || '',\n  }\n}];"
       },
       "id": "app-meal-prepare",
       "name": "Подготовить вход",
@@ -60,7 +60,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ images: $json.images, imageBase64: $json.imageBase64, imageMime: $json.imageMime, note: $json.note, audioBase64: $json.audioBase64 || undefined, audioMime: $json.audioMime }) }}",
+        "jsonBody": "={{ JSON.stringify({ images: $json.images, imageBase64: $json.imageBase64, imageMime: $json.imageMime, note: $json.note, audioBase64: $json.audioBase64 || undefined, audioMime: $json.audioMime, thinking: $json.thinking === false ? false : undefined }) }}",
         "options": {
           "timeout": 300000
         }

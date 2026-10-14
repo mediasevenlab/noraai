@@ -472,6 +472,7 @@ export const mealsGeminiRequestSchema = z
     note: z.string().max(4000).optional(),
     audioBase64: z.string().min(1).optional(),
     audioMime: z.string().trim().min(3).max(100).optional(),
+    thinking: z.boolean().optional(),
   })
   .strict()
   .refine(
@@ -484,9 +485,15 @@ export const mealEngineSchema = z.enum(['gemini', 'nora'])
 export const mealEngineResponseSchema = z
   .object({
     engine: mealEngineSchema,
+    thinking: z.boolean(),
   })
   .strict()
-export const updateMealEngineRequestSchema = mealEngineResponseSchema
+export const updateMealEngineRequestSchema = z
+  .object({
+    engine: mealEngineSchema,
+    thinking: z.boolean().optional(),
+  })
+  .strict()
 /** Same card request as Gemini, plus a text-only description when there is no photo. */
 export const mealsNoraRequestSchema = z
   .object({
@@ -573,6 +580,7 @@ export const mealsTranscribeRequestSchema = z
   .object({
     audioBase64: z.string().min(1).max(maxMealAudioBase64Length),
     audioMime: z.string().trim().min(3).max(100).optional(),
+    thinking: z.boolean().optional(),
   })
   .strict()
 export const mealsTranscribeResponseSchema = z

@@ -28,6 +28,26 @@ afterEach(() => {
 })
 
 describe('analyzeMealWithWebhook', () => {
+  test('calls Gemini directly when the user turned reasoning off', async () => {
+    let fetched = false
+    globalThis.fetch = (async () => {
+      fetched = true
+      return new Response(JSON.stringify(card), { status: 200 })
+    }) as unknown as typeof fetch
+    let directThinking: boolean | undefined = true
+    const result = await analyzeMealWithWebhook(
+      'http://127.0.0.1:5679/webhook/meal-app-analyze',
+      async (input) => {
+        directThinking = input.thinking
+        return { ...card, model: 'direct' }
+      },
+      { imageBase64: 'abc', imageMime: 'image/jpeg', thinking: false },
+    )
+    expect(fetched).toBe(false)
+    expect(directThinking).toBe(false)
+    expect(result.model).toBe('direct')
+  })
+
   test('uses n8n when the webhook succeeds', async () => {
     globalThis.fetch = (async () =>
       new Response(JSON.stringify(card), { status: 200 })) as unknown as typeof fetch

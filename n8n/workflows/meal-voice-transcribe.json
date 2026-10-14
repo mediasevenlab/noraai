@@ -37,7 +37,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const j = items[0].json || {};\nconst body = j.body || j;\nconst audioBase64 = body.audioBase64 || '';\nif (!audioBase64) throw new Error('audioBase64 required');\nreturn [{\n  json: {\n    audioBase64,\n    audioMime: body.audioMime || 'audio/webm',\n    host: 'http://host.docker.internal:3000',\n    serviceToken: $env.INTERNAL_SERVICE_TOKEN || $env.GEMINI_PROXY_TOKEN || '',\n  }\n}];"
+        "jsCode": "const j = items[0].json || {};\nconst body = j.body || j;\nconst audioBase64 = body.audioBase64 || '';\nif (!audioBase64) throw new Error('audioBase64 required');\nreturn [{\n  json: {\n    audioBase64,\n    audioMime: body.audioMime || 'audio/webm',\n    thinking: body.thinking === false ? false : undefined,\n    host: 'http://host.docker.internal:3000',\n    serviceToken: $env.INTERNAL_SERVICE_TOKEN || $env.GEMINI_PROXY_TOKEN || '',\n  }\n}];"
       },
       "id": "voice-prepare",
       "name": "Подготовить вход",
@@ -60,7 +60,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ audioBase64: $json.audioBase64, audioMime: $json.audioMime }) }}",
+        "jsonBody": "={{ JSON.stringify({ audioBase64: $json.audioBase64, audioMime: $json.audioMime, thinking: $json.thinking === false ? false : undefined }) }}",
         "options": {
           "timeout": 120000
         }

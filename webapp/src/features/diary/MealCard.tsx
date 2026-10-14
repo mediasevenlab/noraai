@@ -40,7 +40,8 @@ import { usePressWithoutScroll } from '@/platform/press-without-scroll'
 import { formatMealStamp } from './diary-feed'
 import { displayMealCover } from './meal-cover'
 import { MealFeedPhoto } from './meal-feed-photo'
-import { prefetchMealPhoto } from './media-display'
+import { mealPhotoSlideKey, prefetchMealPhoto } from './media-display'
+import { openPlanDiarySourceId } from './plan-occurrence'
 import {
   diaryMealCanFavorite,
   isRationImportedMeal,
@@ -239,7 +240,7 @@ export function imagesForDiaryMeal(
     extraImages: meal.extraImages,
     galleryExtras: extrasForMealVersion(
       galleries,
-      meal.id,
+      openPlanDiarySourceId(meal.id) ?? meal.id,
       meal.activeVersionId,
       meal.versions,
     ),
@@ -363,7 +364,7 @@ export function MealPhotoSlides({
               index === active ? 'z-[1] opacity-100' : 'z-0 opacity-0',
             )}
             data-slot="meal-photo-slide"
-            key={`${index}:${src.slice(0, 64)}`}
+            key={mealPhotoSlideKey(src, index)}
             style={{ transitionDuration: `${MEAL_PHOTO_FADE_MS}ms` }}
           >
             {shouldLoad ? (

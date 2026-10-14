@@ -108,7 +108,9 @@ When a mentee saves a **new** meal they created themselves (diary **Добави
 
 The notifications bot is separate from the meals bot. Mentors bind it from `/mentor/settings` with the same 6-digit code flow. The backend poller on `TELEGRAM_NOTIFY_BOT_TOKEN` only completes the bind and stores `telegramChatId`; n8n owns delivery so later messengers can share the same webhook. Put the same token in `n8n/.env` as `TELEGRAM_NOTIFY_BOT_TOKEN`.
 
-Required extra backend env: `TELEGRAM_NOTIFY_BOT_TOKEN`, `TELEGRAM_NOTIFY_BOT_USERNAME`, `N8N_MENTOR_NOTIFY_WEBHOOK_URL`.
+On a host that cannot reach `api.telegram.org`, set `TELEGRAM_API_BASE` to the foreign proxy path (the same host as Gemini, with `/telegram`). The poller and this workflow then call that base and send `X-Gemini-Proxy-Token` from `GEMINI_PROXY_TOKEN`. Leave `TELEGRAM_API_BASE` empty to call Telegram directly.
+
+Required extra backend env: `TELEGRAM_NOTIFY_BOT_TOKEN`, `TELEGRAM_NOTIFY_BOT_USERNAME`, `N8N_MENTOR_NOTIFY_WEBHOOK_URL`. Optional: `TELEGRAM_API_BASE`.
 
 ## Operations
 

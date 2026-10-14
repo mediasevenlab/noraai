@@ -64,12 +64,10 @@ function serviceWithBots() {
   })
 }
 
-test('user Telegram link opens the meals bot', async () => {
-  const result = await serviceWithBots().startTelegramLink(principal('user'), {
-    telegramUsername: 'food_user',
-  })
-  expect(result.code).toBe('123456')
-  expect(result.botUrl).toBe('https://t.me/nutrition_meals_bot?start=123456')
+test('a user cannot start a Telegram link', async () => {
+  await expect(
+    serviceWithBots().startTelegramLink(principal('user'), { telegramUsername: 'food_user' }),
+  ).rejects.toMatchObject({ kind: 'forbidden' })
 })
 
 test('mentor Telegram link opens the notifications bot', async () => {

@@ -1,7 +1,6 @@
 import {
   formatTelegramPhoneDisplay,
   looksLikeTelegramPhone,
-  normalizeTelegramPhoneDigits,
   telegramPhoneSchema,
 } from '@web-app-demo/contracts'
 
@@ -139,7 +138,7 @@ export function helpMessage() {
     '• КБЖУ',
     '• Состав порции / комментарий / допущения',
     '',
-    'Нужен аккаунт в приложении с тем же ником Telegram в Настройках — либо код привязки, либо свой контакт кнопкой.',
+    'Нужен уже привязанный аккаунт. Новая привязка в настройках пользователя больше не открывается.',
     'Если аккаунта ещё нет — бот пришлёт ссылку на регистрацию.',
   ].join('\n')
 }
@@ -205,27 +204,14 @@ export function provenTelegramIdentity(input: {
   return phone ? { kind: 'phone', phone } : null
 }
 
-export function telegramBindHelpMessage(options: {
+export function telegramBindHelpMessage(_options: {
   webappOrigin: string
   profileUsername?: string | null
   hasMealPayload?: boolean
 }) {
-  const origin = options.webappOrigin.replace(/\/$/, '')
-  const signupUrl = `${origin}/signup`
-  const nick = options.profileUsername
-    ? normalizeTelegramUsernameInput(options.profileUsername)
-    : null
   return [
-    nick
-      ? `Ник @${nick} в приложении не найден.`
-      : 'Этот Telegram-аккаунт ещё не привязан к приложению.',
-    '',
-    'Откройте Настройки → Telegram и пришлите сюда 6-значный код или свой контакт кнопкой ниже.',
-    'Чужой ник или номер в сообщении аккаунт не привяжет.',
-    '',
-    options.hasMealPayload
-      ? `После привязки отправьте фото еды ещё раз. Если аккаунта нет — ${signupUrl}`
-      : `Если аккаунта нет — зарегистрируйтесь:\n${signupUrl}`,
+    'Приёмы добавляются в приложении.',
+    'Привязка Telegram в настройках пользователя закрыта.',
   ].join('\n')
 }
 
@@ -238,21 +224,10 @@ export function registrationLinkMessage(options: {
   username?: string
   phone?: string
 }) {
-  const origin = options.webappOrigin.replace(/\/$/, '')
-  const signupUrl = `${origin}/signup`
-  const nick = options.username ? `@${options.username}` : null
-  const phone = options.phone
-    ? formatTelegramPhoneDisplay(normalizeTelegramPhoneDigits(options.phone))
-    : null
-  const identity = nick || phone
+  const signupUrl = `${options.webappOrigin.replace(/\/$/, '')}/signup`
   return [
-    identity
-      ? `Аккаунт с контактом ${identity} в приложении не найден.`
-      : 'Этот Telegram-аккаунт ещё не привязан к приложению.',
-    '',
-    'Зарегистрируйтесь (или войдите) и укажите ник или телефон Telegram в Настройках:',
+    'Приёмы добавляются в приложении.',
+    'Привязка Telegram в настройках пользователя закрыта.',
     signupUrl,
-    '',
-    'После этого снова пришлите фото еды сюда — запись появится в дневнике.',
   ].join('\n')
 }

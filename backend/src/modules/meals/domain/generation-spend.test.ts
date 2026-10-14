@@ -68,6 +68,45 @@ describe('generation spend', () => {
     })
   })
 
+  test('prices only the visible answer when Gemini reports no thinking tokens', () => {
+    const withZero = usageLedgerFromGemini('gemini-2.5-flash', {
+      promptTokenCount: 1_000_000,
+      candidatesTokenCount: 1_000_000,
+      thoughtsTokenCount: 0,
+    })
+    const withoutField = usageLedgerFromGemini('gemini-2.5-flash', {
+      promptTokenCount: 1_000_000,
+      candidatesTokenCount: 1_000_000,
+    })
+    // 1M input * $0.30 + 1M answer * $2.50 = $2.80. Thinking is not added.
+    expect(withZero['gemini-2.5-flash']?.outputTokens).toBe(1_000_000)
+    expect(withoutField['gemini-2.5-flash']?.outputTokens).toBe(1_000_000)
+    expect(generationSpend(withZero, 100)).toEqual({ tokens: 2_000_000, dollars: 2.8, rubles: 280 })
+    expect(generationSpend(withoutField, 100)).toEqual({ tokens: 2_000_000, dollars: 2.8, rubles: 280 })
+  })
+
+  test('prices flash-lite voice below a flash card', () => {
+    const audio = usageLedgerFromGemini(
+      'gemini-2.5-flash-lite',
+      { promptTokenCount: 1_000_000, candidatesTokenCount: 0, thoughtsTokenCount: 0 },
+      { audio: true },
+    )
+    const answer = usageLedgerFromGemini('gemini-2.5-flash-lite', {
+      promptTokenCount: 0,
+      candidatesTokenCount: 1_000_000,
+      thoughtsTokenCount: 0,
+    })
+    expect(generationSpend(audio, 100)).toEqual({ tokens: 1_000_000, dollars: 0.3, rubles: 30 })
+    expect(generationSpend(answer, 100)).toEqual({ tokens: 1_000_000, dollars: 0.4, rubles: 40 })
+    expect(generationModelPrices('gemini-2.5-flash-lite').usdPerMillion).toEqual({
+      text: 0.1,
+      image: 0.1,
+      link: 0.1,
+      audio: 0.3,
+      output: 0.4,
+    })
+  })
+
   test('publishes the same flash prices the spend math uses', () => {
     expect(generationModelPrices()).toEqual({
       model: 'gemini-2.5-flash',

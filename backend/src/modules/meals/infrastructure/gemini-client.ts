@@ -245,6 +245,19 @@ async function requestGeminiGenerateContent(
   throw new MealsFailure('upstream', 'Gemini network error')
 }
 
+/** Flash thinks unless the budget is 0. Omitting the field keeps the current default. */
+export function geminiGenerationConfig(options: {
+  temperature: number
+  json?: boolean
+  thinking?: boolean
+}): Record<string, unknown> {
+  return {
+    temperature: options.temperature,
+    ...(options.json ? { responseMimeType: 'application/json' } : {}),
+    ...(options.thinking === false ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+  }
+}
+
 export async function extractMealWithGemini(
   env: GeminiEnv,
   input: MealsGeminiRequest,
@@ -280,7 +293,7 @@ export async function extractMealWithGemini(
       },
     })
   }
-  return generateMealCard(env, parts)
+  return generateMealCard(env, parts, input.thinking)
 }
 
 export async function refineMealWithGemini(
@@ -294,6 +307,7 @@ export async function refineMealWithGemini(
     attachMime?: string
     attachImages?: Array<{ base64: string; mime?: string }>
     photoMode?: 'replace' | 'augment'
+    thinking?: boolean
   },
 ): Promise<MealsGeminiResponse> {
   const parts: Array<Record<string, unknown>> = [
@@ -346,8 +360,11 @@ export async function refineMealWithGemini(
           : 'Пользователь приложил фото без текста. Добавь к текущему составу продукты с фото, существующие позиции сохрани, пересчитай КБЖУ на объединённый приём.',
     })
   }
-  return generateMealCard(env, parts)
+  return generateMealCard(env, parts, input.thinking)
 }
+
+/** Voice is a short transcript. Flash-Lite hears it and does not draft a meal card. */
+export const GEMINI_VOICE_MODEL = 'gemini-2.5-flash-lite'
 
 const TRANSCRIBE_PROMPT = [
   'Транскрибируй голосовое сообщение пользователя дневника питания.',
@@ -375,7 +392,7 @@ export function parseGeminiCandidateText(envelope: string) {
 
 export async function transcribeAudioWithGemini(
   env: GeminiEnv,
-  input: { audioBase64: string; audioMime?: string },
+  input: { audioBase64: string; audioMime?: string; thinking?: boolean },
 ): Promise<{ ok: true; text: string; model: string }> {
   const apiKey = env.GEMINI_API_KEY
   if (!apiKey) {
@@ -388,7 +405,8 @@ export async function transcribeAudioWithGemini(
   if (!audioBytes.length || audioBytes.length > 4 * 1024 * 1024) {
     throw new MealsFailure('bad_request', 'Voice recording must be between 1 byte and 4 MB')
   }
-  const model = env.GEMINI_MEAL_MODEL ?? env.GEMINI_MODEL
+  // The diary switch does not turn a transcript draft back on.
+  const model = GEMINI_VOICE_MODEL
   const body = JSON.stringify({
     contents: [
       {
@@ -404,9 +422,7 @@ export async function transcribeAudioWithGemini(
         ],
       },
     ],
-    generationConfig: {
-      temperature: 0,
-    },
+    generationConfig: geminiGenerationConfig({ temperature: 0, thinking: false }),
   })
   const path = `/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`
   const response = await requestGeminiGenerateContent(env, {
@@ -436,6 +452,7 @@ export async function transcribeAudioWithGemini(
 async function generateMealCard(
   env: GeminiEnv,
   parts: Array<Record<string, unknown>>,
+  thinking?: boolean,
 ): Promise<MealsGeminiResponse> {
   const apiKey = env.GEMINI_API_KEY
   if (!apiKey) {
@@ -444,10 +461,11 @@ async function generateMealCard(
   const model = env.GEMINI_MEAL_MODEL ?? env.GEMINI_MODEL
   const body = JSON.stringify({
     contents: [{ role: 'user', parts }],
-    generationConfig: {
+    generationConfig: geminiGenerationConfig({
       temperature: 0.2,
-      responseMimeType: 'application/json',
-    },
+      json: true,
+      thinking,
+    }),
   })
   const path = `/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`
   const response = await requestGeminiGenerateContent(env, {

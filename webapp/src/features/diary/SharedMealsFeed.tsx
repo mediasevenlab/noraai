@@ -44,6 +44,7 @@ import {
 } from "./feed-ration-clone";
 import { mealImageFromUrl } from "./meal-image-pick";
 import { preferredMealPhotoSrc } from "./meal-cover";
+import { mealDialogCoverKey } from "./media-display";
 import type { MealEntry } from "./meals-catalog";
 import { mealDtoToEntry } from "./merge-meals";
 import { currentWeekPlanStampId, mealCardOrigin } from "./ration-import";
@@ -495,7 +496,7 @@ export function SharedMealsFeed({
                   <Cover
                     className={MEAL_DIALOG_COVER_CLASS}
                     images={openMealImages}
-                    key={openMeal.id}
+                    key={mealDialogCoverKey(openMeal.id, openMeal.activeVersionId, openMealImages)}
                     meal={openMeal}
                     sizes="lg"
                   />

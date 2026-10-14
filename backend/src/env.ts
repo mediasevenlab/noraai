@@ -83,6 +83,7 @@ const envSchema = z.object({
   TELEGRAM_MEALS_BOT_USERNAME: optionalStringSchema,
   TELEGRAM_NOTIFY_BOT_TOKEN: optionalStringSchema,
   TELEGRAM_NOTIFY_BOT_USERNAME: optionalStringSchema,
+  TELEGRAM_API_BASE: optionalUrlSchema,
   N8N_MEAL_WEBHOOK_URL: optionalUrlSchema,
   N8N_APP_MEAL_WEBHOOK_URL: optionalUrlSchema,
   N8N_NORA_MEAL_WEBHOOK_URL: optionalUrlSchema,

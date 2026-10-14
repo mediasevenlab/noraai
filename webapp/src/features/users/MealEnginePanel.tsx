@@ -3,6 +3,7 @@ import type { MealEngine } from '@web-app-demo/contracts'
 import { toast } from '@/components/ui/toast'
 
 import { SettingsEntry } from '@/components/settings-canvas'
+import { Switch } from '@/components/ui/switch'
 import { useAuth } from '@/features/auth'
 
 import { getMealEngine, putMealEngine } from './api'
@@ -20,7 +21,8 @@ export function MealEnginePanel() {
     queryFn: () => getMealEngine(auth.transport),
   })
   const save = useMutation({
-    mutationFn: (engine: MealEngine) => putMealEngine(auth.transport, engine),
+    mutationFn: (input: { engine: MealEngine; thinking?: boolean }) =>
+      putMealEngine(auth.transport, input),
     onSuccess: async (result) => {
       queryClient.setQueryData(['session', 'meal-engine'], result)
       await queryClient.invalidateQueries({ queryKey: ['session', 'meal-engine'] })
@@ -30,6 +32,7 @@ export function MealEnginePanel() {
     },
   })
   const engine = query.data?.engine ?? 'gemini'
+  const thinking = query.data?.thinking !== false
 
   return (
     <SettingsEntry
@@ -54,7 +57,7 @@ export function MealEnginePanel() {
               }
               onClick={() => {
                 if (selected || save.isPending) return
-                save.mutate(choice.id)
+                save.mutate({ engine: choice.id, thinking })
               }}
             >
               {choice.label}
@@ -65,6 +68,27 @@ export function MealEnginePanel() {
           )
         })}
       </div>
+      {engine === 'gemini' ? (
+        <div className="mt-3 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="font-[family-name:var(--nora-font)] text-[13px] font-medium text-[var(--nora-text)]">
+              Рассуждения
+            </p>
+            <p className="mt-0.5 font-[family-name:var(--nora-font)] text-[12px] font-[250] leading-snug text-[var(--nora-text-tertiary)]">
+              На фото и при замене снимка модель сначала прикидывает карточку. Правка текстом и голос считаются без этого, голос слышит более лёгкая модель. Выключите, чтобы черновика не было и на фото.
+            </p>
+          </div>
+          <Switch
+            aria-label="Рассуждения Gemini"
+            checked={thinking}
+            disabled={save.isPending || query.isPending}
+            onCheckedChange={(checked) => {
+              save.mutate({ engine: 'gemini', thinking: checked })
+            }}
+            size="lg"
+          />
+        </div>
+      ) : null}
     </SettingsEntry>
   )
 }

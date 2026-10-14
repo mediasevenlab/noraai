@@ -27,7 +27,6 @@ import { QuestionnaireOnboarding } from './QuestionnaireOnboarding'
 import { GenerationTokenUsagePanel } from './GenerationTokenUsagePanel'
 import { MealEnginePanel } from './MealEnginePanel'
 import { MaintenanceCaloriesPanel } from './MaintenanceCaloriesPanel'
-import { TelegramUsernamePanel } from './TelegramUsernamePanel'
 import { ReferralLinkPanel } from './ReferralLinkPanel'
 import { ReferralsDirectory } from './ReferralsDirectory'
 import { useUserReferralsQuery, usePayoutAccrualQuery } from './queries'
@@ -146,7 +145,7 @@ export function UserSettings({
 }) {
   return (
     <SettingsCanvas
-      description="Приёмы из Telegram через бота и подключение к наставнику."
+      description="Подключение к наставнику."
       editable
       eyebrow="Аккаунт"
       meta={user.email}
@@ -154,7 +153,6 @@ export function UserSettings({
       showMobileTitle
       title="Настройки"
     >
-      <TelegramUsernamePanel user={user} />
       <MentorConnectionPanel />
       <MealEnginePanel />
       <GenerationTokenUsagePanel />
