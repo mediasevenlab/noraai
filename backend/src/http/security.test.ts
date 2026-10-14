@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 import { Hono } from 'hono'
 
-import { createAuthSecurity, isAuthWriteBudgetExemptPath, isFavoritesPath, isMealWritePath, isMentorPlanBodyPath, isPlanLibraryPath, mealWriteRateLimitMax } from './security'
+import { createAuthSecurity, isAuthWriteBudgetExemptPath, isFavoritesPath, isMealWritePath, isMentorPlanBodyPath, isModelChatPath, isPlanLibraryPath, mealWriteRateLimitMax } from './security'
 
 test('meal write paths are distinct from account mutations', () => {
   expect(isMealWritePath('/api/users/me')).toBe(false)
@@ -14,6 +14,8 @@ test('meal write paths are distinct from account mutations', () => {
   expect(isMentorPlanBodyPath('/api/mentor/plans')).toBe(true)
   expect(isMentorPlanBodyPath('/api/mentor/plans/0196f6f8-6600-7000-8000-000000000001')).toBe(true)
   expect(isMentorPlanBodyPath('/api/mentor/users')).toBe(false)
+  expect(isModelChatPath('/api/users/me/model-chat')).toBe(true)
+  expect(isModelChatPath('/api/users/me/meals')).toBe(false)
   expect(isFavoritesPath('/api/users/me/favorites')).toBe(true)
   expect(isFavoritesPath('/api/users/me')).toBe(false)
   expect(isPlanLibraryPath('/api/users/me/plan-library')).toBe(true)
@@ -92,6 +94,29 @@ test('mentor plan writes accept a meal-sized photo that account routes reject', 
   expect((await app.request('/api/mentor/plans', { method: 'POST', body: photo })).status).toBe(200)
   expect((await app.request('/api/mentor/plans/plan-1', { method: 'PUT', body: photo })).status).toBe(200)
   const limited = await app.request('/api/mentor/settings', { method: 'POST', body: photo })
+  expect(limited.status).toBe(413)
+  expect(await limited.json()).toMatchObject({
+    error: { code: 'PAYLOAD_TOO_LARGE' },
+  })
+})
+
+test('model chat accepts a photo that account routes reject', async () => {
+  const app = new Hono()
+  for (const middleware of createAuthSecurity({
+    bodyLimitBytes: 32,
+    mealBodyLimitBytes: 200,
+    rateLimitMax: 10,
+    rateLimitWindowSeconds: 60,
+    trustProxy: false,
+  })) {
+    app.use('/api/users/*', middleware)
+  }
+  app.post('/api/users/me/model-chat', (c) => c.json({ ok: true }))
+  app.patch('/api/users/me', (c) => c.json({ ok: true }))
+
+  const photo = 'x'.repeat(80)
+  expect((await app.request('/api/users/me/model-chat', { method: 'POST', body: photo })).status).toBe(200)
+  const limited = await app.request('/api/users/me', { method: 'PATCH', body: photo })
   expect(limited.status).toBe(413)
   expect(await limited.json()).toMatchObject({
     error: { code: 'PAYLOAD_TOO_LARGE' },

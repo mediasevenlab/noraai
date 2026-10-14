@@ -39,6 +39,11 @@ export function isMentorPlanBodyPath(pathname: string): boolean {
   return /\/mentor\/plans(?:\/|$)/.test(pathname)
 }
 
+/** Settings model chat sends the same photo payloads as a meal. */
+export function isModelChatPath(pathname: string): boolean {
+  return /\/model-chat(?:\/|$)/.test(pathname)
+}
+
 export function isFavoritesPath(pathname: string): boolean {
   return /\/favorites(?:\/|$)/.test(pathname)
 }
@@ -73,7 +78,7 @@ export function createAuthSecurity(options: AuthSecurityOptions): MiddlewareHand
     async (c, next) => {
       if (
         options.mealBodyLimitBytes != null &&
-        (isMealWritePath(c.req.path) || isMentorPlanBodyPath(c.req.path))
+        (isMealWritePath(c.req.path) || isMentorPlanBodyPath(c.req.path) || isModelChatPath(c.req.path))
       ) {
         return mealBodyLimit(c, next)
       }

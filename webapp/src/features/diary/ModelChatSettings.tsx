@@ -14,6 +14,7 @@ import { ApiRequestError, type AuthenticatedTransport } from '@/platform/api'
 import { cn } from '@/lib/utils'
 
 import { chatWithNoraModel } from './api'
+import { parseChatMarkdown, type ChatInline } from './chat-markdown'
 import { ComposerAttachChips } from './composer-ui'
 import { ComposerTypedText } from './composer-typed-text'
 import { ComposerPressSurface } from './ComposerPressSurface'
@@ -353,7 +354,11 @@ function ChatBubble({ line, onTyped }: { line: ChatLine; onTyped?: () => void })
           </div>
         ) : null}
         {line.text && line.role === 'assistant' && !line.pending ? (
-          <ComposerTypedText live={line.typing === true} onComplete={onTyped} text={line.text} />
+          line.typing ? (
+            <ComposerTypedText live onComplete={onTyped} text={line.text} />
+          ) : (
+            <ChatFormattedText text={line.text} />
+          )
         ) : line.text ? (
           <p className="whitespace-pre-wrap">{line.text}</p>
         ) : null}
@@ -363,4 +368,67 @@ function ChatBubble({ line, onTyped }: { line: ChatLine; onTyped?: () => void })
       </div>
     </div>
   )
+}
+
+function ChatFormattedText({ text }: { text: string }) {
+  const blocks = parseChatMarkdown(text)
+  return (
+    <div className="flex min-w-0 flex-col gap-2">
+      {blocks.map((block, index) => {
+        if (block.kind === 'heading') {
+          return (
+            <p className="font-medium text-[var(--nora-text)]" key={index}>
+              <ChatInlines parts={block.inlines} />
+            </p>
+          )
+        }
+        if (block.kind === 'list') {
+          const Tag = block.ordered ? 'ol' : 'ul'
+          return (
+            <Tag
+              className={cn('flex flex-col gap-1 pl-4', block.ordered ? 'list-decimal' : 'list-disc')}
+              key={index}
+            >
+              {block.items.map((item, itemIndex) => (
+                <li key={itemIndex}>
+                  <ChatInlines parts={item} />
+                </li>
+              ))}
+            </Tag>
+          )
+        }
+        return (
+          <p key={index}>
+            {block.lines.map((line, lineIndex) => (
+              <span key={lineIndex}>
+                {lineIndex > 0 ? <br /> : null}
+                <ChatInlines parts={line} />
+              </span>
+            ))}
+          </p>
+        )
+      })}
+    </div>
+  )
+}
+
+function ChatInlines({ parts }: { parts: ChatInline[] }) {
+  return parts.map((part, index) => {
+    if (part.kind === 'strong') {
+      return (
+        <strong className="font-medium text-[var(--nora-text)]" key={index}>
+          {part.text}
+        </strong>
+      )
+    }
+    if (part.kind === 'em') return <em key={index}>{part.text}</em>
+    if (part.kind === 'code') {
+      return (
+        <code className="rounded bg-[var(--nora-inset)] px-1" key={index}>
+          {part.text}
+        </code>
+      )
+    }
+    return <span key={index}>{part.text}</span>
+  })
 }

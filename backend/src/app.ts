@@ -31,7 +31,8 @@ export function createApp({
   startMealsPoller = false,
   startPaymentRenewal = false,
 }: CreateAppOptions) {
-  const mealRequestBodyLimitBytes = 8 * 1024 * 1024
+  // Photos travel as Base64. Chat and a meal with several shots need more than the 64 KB account limit.
+  const mealRequestBodyLimitBytes = 32 * 1024 * 1024
   const auth = createAuthModule({
     backgroundTasks,
     db: prisma,

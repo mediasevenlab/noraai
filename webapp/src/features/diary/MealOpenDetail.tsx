@@ -541,8 +541,6 @@ export function MealOpenDetail({
         : await ensurePersistedMealId()
       const body = {
         message: text,
-        imageBase64: ready[0]?.base64,
-        imageMime: ready[0]?.mime,
         images: ready.map((item) => ({
           imageBase64: item.base64,
           imageMime: item.mime,
