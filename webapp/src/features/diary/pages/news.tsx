@@ -123,6 +123,7 @@ import {
   openPlanDiaryCards,
   openPlanDiarySourceId,
   orderDiaryDayByPlanLayout,
+  pendingDiarySlotKey,
   planLayoutSlotIndex,
   planOccurrenceDiaryAtWithLayout,
   readSkippedPlanMealIds,
@@ -135,6 +136,7 @@ import {
   isDiaryMealOnFutureDay,
   isRationDiaryLog,
   isRationImportedMeal,
+  isPlannedDiaryMeal,
   isRationPlanDone,
   isRationPlanPending,
   RATION_DIARY_DONE_MARK,
@@ -934,11 +936,24 @@ export function NewsPage({
     } else toast("Убрано из избранного", { id: "favorite-removed" });
   }
 
+  function rationAnchor(meal: MealEntry) {
+    const sourceId = rationDiaryLogSourceId(meal.assumptions);
+    if (!sourceId) return meal;
+    return userMeals.find((item) => item.id === sourceId) ?? meal;
+  }
+
   function diaryPlanSlotIndex(meal: MealEntry) {
-    if (!isRationPlanPending(meal, completedIds)) return null;
-    const planId = diaryPlanIdForMeal(meal, selectedPlanIds);
+    if (!isPlannedDiaryMeal(meal)) return null;
+    const anchor = rationAnchor(meal);
+    const planId =
+      diaryPlanIdForMeal(anchor, selectedPlanIds) ??
+      diaryPlanIdForMeal(meal, selectedPlanIds);
     if (!planId) return null;
-    return planLayoutSlotIndex(meal.id, readPlanMealLayout(savedScope, planId));
+    const orderAt = anchor === meal ? meal.at : diaryAtForMeal(anchor);
+    return pendingDiarySlotKey(
+      planLayoutSlotIndex(anchor.id, readPlanMealLayout(savedScope, planId)),
+      orderAt,
+    );
   }
 
   function diaryAtForMeal(meal: MealEntry, now = new Date()) {
@@ -1578,7 +1593,21 @@ export function NewsPage({
         ? []
         : groupMealsByDay(filtered).map((group) => ({
             ...group,
-            meals: orderDiaryDayByPlanLayout(group.meals, diaryPlanSlotIndex),
+            meals: orderDiaryDayByPlanLayout(
+              group.meals,
+              diaryPlanSlotIndex,
+              (meal) => !isPlannedDiaryMeal(meal),
+              (meal) => {
+                const anchor = rationAnchor(meal);
+                const planId =
+                  diaryPlanIdForMeal(anchor, selectedPlanIds) ??
+                  diaryPlanIdForMeal(meal, selectedPlanIds);
+                if (!planId) return 0;
+                const index = [...selectedPlanIds].indexOf(planId);
+                return index < 0 ? 0 : index;
+              },
+              (meal) => isRationPlanDone(meal, completedIds),
+            ),
             totals: sumDiaryDayStats(group.meals, completedIds),
           })),
     [

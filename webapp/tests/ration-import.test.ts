@@ -202,7 +202,7 @@ describe('ration-imported diary meals', () => {
     expect(mealBelongsToWeekPlan(meal, lastWeek, thisWeek)).toBe(true)
   })
 
-  test('shows pending plan meals only on today and hides future diary days', () => {
+  test('pending ration days after today stay hidden until the plan view is on', () => {
     const now = new Date(2026, 8, 1, 12)
     const weekId = currentWeekPlanStampId(now)
     const pendingToday = {

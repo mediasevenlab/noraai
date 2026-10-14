@@ -613,7 +613,7 @@ test('diary favorites tab can bulk-add meals to a plan like a diary day', () => 
   expect(page).toContain('diaryMealCard(meal, FAVORITES_PICK_KEY)')
   expect(page).toContain('pickingDayKey === FAVORITES_PICK_KEY')
   expect(page).toContain('pickingDayKey !== FAVORITES_PICK_KEY')
-  expect(page).toContain('orderDiaryDayByPlanLayout(group.meals, diaryPlanSlotIndex)')
+  expect(page).toContain('!isPlannedDiaryMeal(meal)')
   expect(page).not.toContain('{filtered.map((meal) => diaryMealCard(meal))}')
 })
 
@@ -623,7 +623,7 @@ test('diary feed stamps pending plan meals from the live plan layout', () => {
     'utf8',
   )
   expect(page).toContain('function diaryPlanSlotIndex(meal: MealEntry)')
-  expect(page).toContain('orderDiaryDayByPlanLayout(group.meals, diaryPlanSlotIndex)')
+  expect(page).toContain('!isPlannedDiaryMeal(meal)')
   expect(page).toContain('function diaryAtForMeal(meal: MealEntry, now = new Date())')
   expect(page).toContain('planOccurrenceDiaryAtWithLayout')
   expect(page).toContain('readPlanMealLayout')

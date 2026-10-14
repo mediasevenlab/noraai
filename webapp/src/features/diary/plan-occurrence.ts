@@ -24,6 +24,7 @@ import {
   isRationPlanPending,
   mealBelongsToWeekPlan,
   RATION_DIARY_DONE_MARK,
+  weekPlanIdFromAssumptions,
 } from './ration-import'
 import type { MealEntry } from './meals-catalog'
 
@@ -86,33 +87,6 @@ export function keepsWeeklyPlanOnDiaryDelete(
  * not a consumed ration slot. `openPlanDiaryCards` opens the slot again when
  * the ration is assigned to a different day.
  */
-/**
- * Day offset inside a ration that may run longer than a week.
- * Stored meals begin on a Monday template: day 8 is the next Monday, not day 1.
- * Without sibling meals, fall back to the weekday slot.
- */
-export function planTemplateDayOffset(
-  stamp: Date,
-  planMeals: ReadonlyArray<{ at: string }>,
-) {
-  let earliest: Date | null = null
-  for (const meal of planMeals) {
-    const parsed = new Date(meal.at)
-    if (Number.isNaN(parsed.getTime())) continue
-    const day = startOfLocalDay(parsed)
-    if (!earliest || day < earliest) earliest = day
-  }
-  if (!earliest) return planSlotIndex(stamp)
-  const origin = startOfLocalDay(earliest)
-  const back = origin.getDay() === 0 ? 6 : origin.getDay() - 1
-  origin.setDate(origin.getDate() - back)
-  const from = Date.UTC(origin.getFullYear(), origin.getMonth(), origin.getDate())
-  const toDay = startOfLocalDay(stamp)
-  const to = Date.UTC(toDay.getFullYear(), toDay.getMonth(), toDay.getDate())
-  const offset = Math.round((to - from) / 86_400_000)
-  return offset >= 0 ? offset : planSlotIndex(stamp)
-}
-
 export function planOccurrenceDiaryAt(
   meal: Pick<MealEntry, 'at'> & {
     id?: string
@@ -131,9 +105,8 @@ export function planOccurrenceDiaryAt(
   const stamp = new Date(meal.at)
   const start = startOfLocalDay(planStart ?? now)
   const offset =
-    planMeals && planMeals.length > 0
-      ? planTemplateDayOffset(stamp, planMeals)
-      : planSlotIndex(stamp)
+    planMeals && planMeals.length > 0 ? rationDayOffset(stamp, planMeals, now) : 0
+  if (offset < 0) return feedMealStampOnDay(addLocalDays(now, -1), stamp).toISOString()
   const target = addLocalDays(start, offset)
   return feedMealStampOnDay(target, stamp).toISOString()
 }
@@ -152,13 +125,24 @@ export function planOccurrenceStampWhilePending(
   return planOccurrenceDiaryAt(meal, undefined, now, planStart)
 }
 
-/** Selected plan id that owns this diary meal. */
+/**
+ * Selected plan id that owns this diary meal.
+ * The live week plan is one ration: its id changes every Monday, and older
+ * `week:` ids left selected are the same board. Meals stamped on those older
+ * weeks still follow the current plan's start date and layout.
+ */
 export function diaryPlanIdForMeal(
   meal: { assumptions?: readonly string[] },
   selectedPlanIds: ReadonlySet<string>,
   now = new Date(),
 ): string | null {
   const fallback = currentWeekPlanStampId(now)
+  if (
+    selectedPlanIds.has(fallback) &&
+    mealBelongsToWeekPlan(meal, fallback, fallback)
+  ) {
+    return fallback
+  }
   for (const planId of selectedPlanIds) {
     if (mealBelongsToWeekPlan(meal, planId, fallback)) return planId
   }
@@ -182,6 +166,68 @@ function mondayDayKey(date: Date) {
   return dayKeyFromDate(monday)
 }
 
+/**
+ * 0-based ration day of a pending card: day 1 of the plan is 0.
+ * The diary then puts that day on the chosen start date, and the next ration
+ * days on the following dates. An older copy that is no longer on the plan
+ * returns -1 and stays out of the current run.
+ */
+function rationDayOffset(
+  stamp: Date,
+  planMeals: ReadonlyArray<{ at: string }>,
+  now: Date,
+) {
+  const mealDay = startOfLocalDay(stamp).getTime()
+  if (Number.isNaN(mealDay)) return 0
+  const first = startOfLocalDay(now)
+  const weekday = first.getDay()
+  first.setDate(first.getDate() + (weekday === 0 ? -6 : 1 - weekday))
+  for (let index = 0; index < 30; index += 1) {
+    const slot = addLocalDays(first, index)
+    if (
+      mealsOnRationDay(planMeals, slot).some(
+        (meal) => startOfLocalDay(new Date(meal.at)).getTime() === mealDay,
+      )
+    ) {
+      return index
+    }
+  }
+  return -1
+}
+
+function isRationHistoryRow(meal: { assumptions?: readonly string[] }) {
+  const assumptions = meal.assumptions ?? []
+  if (assumptions.includes(RATION_DIARY_DONE_MARK)) return true
+  return assumptions.some((item) => item.startsWith(RATION_DIARY_LOG_PREFIX))
+}
+
+function isRationTemplateRow(meal: { assumptions?: readonly string[] }) {
+  if (isRationHistoryRow(meal)) return false
+  return Boolean(weekPlanIdFromAssumptions(meal.assumptions))
+}
+
+function mealsOnRationDay(
+  planMeals: ReadonlyArray<{ at: string; assumptions?: readonly string[] }>,
+  slot: Date,
+) {
+  const templates = planMeals.filter((meal) => isRationTemplateRow(meal))
+  const want = planSlotIndex(slot)
+  const weekKey = mondayDayKey(slot)
+  const matches = templates.filter((meal) => {
+    const parsed = new Date(meal.at)
+    return !Number.isNaN(parsed.getTime()) && planSlotIndex(parsed) === want
+  })
+  const thisWeek = matches.filter((meal) => mondayDayKey(new Date(meal.at)) === weekKey)
+  if (thisWeek.length > 0) return thisWeek
+  let latest = ''
+  for (const meal of matches) {
+    const key = mondayDayKey(new Date(meal.at))
+    if (key > latest) latest = key
+  }
+  if (!latest) return []
+  return matches.filter((meal) => mondayDayKey(new Date(meal.at)) === latest)
+}
+
 function originalMealsOnLayoutDay(
   meals: ReadonlyArray<{ id: string; at: string }>,
   layoutDay: Date,
@@ -194,6 +240,21 @@ function originalMealsOnLayoutDay(
     .sort((left, right) => left.at.localeCompare(right.at))
   const thisWeek = matches.filter((meal) => mondayDayKey(new Date(meal.at)) === weekKey)
   return thisWeek.length > 0 ? thisWeek : matches
+}
+
+/**
+ * Place of a layout day in the ration. Day 1 of the plan is 0, so the diary
+ * can start that day on the chosen date.
+ */
+function layoutBoardDayOffset(day: Date, now: Date): number | null {
+  const monday = startOfLocalDay(now)
+  const weekday = monday.getDay()
+  monday.setDate(monday.getDate() + (weekday === 0 ? -6 : 1 - weekday))
+  const from = Date.UTC(monday.getFullYear(), monday.getMonth(), monday.getDate())
+  const toDay = startOfLocalDay(day)
+  const to = Date.UTC(toDay.getFullYear(), toDay.getMonth(), toDay.getDate())
+  const offset = Math.round((to - from) / 86_400_000)
+  return offset >= 0 ? offset : null
 }
 
 function pendingPlanLayoutDiaryAt(
@@ -228,10 +289,8 @@ function pendingPlanLayoutDiaryAt(
   const index = ordered.findIndex((item) => item.id === meal.id)
   if (index < 0) return null
   const start = startOfLocalDay(planStart ?? now)
-  const offset =
-    planMeals.length > 0
-      ? planTemplateDayOffset(templateDay, planMeals)
-      : planSlotIndex(templateDay)
+  const offset = layoutBoardDayOffset(templateDay, now)
+  if (offset == null) return null
   const target = addLocalDays(start, offset)
   const slotTimes = planSlotTimesForCount(
     originalMealsOnLayoutDay(planMeals, templateDay).map((item) => item.at),
@@ -385,22 +444,57 @@ export function planLayoutSlotIndex(
 }
 
 /**
- * Keep pinned cards (completed / own diary) in place and line pending plan
- * meals up with the plan board: slot 1, then 2, then 3.
+ * Order key for a pending ration card.
+ * A saved layout wins. Otherwise the meal keeps the board's left-to-right
+ * order, which is the earlier stamp first.
+ */
+export function pendingDiarySlotKey(layoutSlot: number | null, at: string) {
+  if (layoutSlot != null) return layoutSlot
+  const stamp = Date.parse(at)
+  return Number.isNaN(stamp) ? 0 : stamp
+}
+
+/**
+ * Line pending ration meals up with the plan board: slot 1, then 2, then 3.
+ * When several selected plans share the day, each plan stays a block, in selection order.
+ * A completed ration card moves to the end of that row. Clearing the completion
+ * puts it back in its slot. Meals the user added stay after the ration.
  */
 export function orderDiaryDayByPlanLayout<T extends { id: string }>(
   meals: readonly T[],
   slotIndex: (meal: T) => number | null,
+  ownMeal?: (meal: T) => boolean,
+  planRank?: (meal: T) => number,
+  doneMeal?: (meal: T) => boolean,
 ): T[] {
+  const own: T[] = []
+  const done: T[] = []
+  const planned = meals.filter((meal) => {
+    if (ownMeal?.(meal)) {
+      own.push(meal)
+      return false
+    }
+    if (doneMeal?.(meal)) {
+      done.push(meal)
+      return false
+    }
+    return true
+  })
+  const compare = (left: T, right: T) => {
+    const plan = (planRank?.(left) ?? 0) - (planRank?.(right) ?? 0)
+    if (plan !== 0) return plan
+    return (slotIndex(left) ?? 0) - (slotIndex(right) ?? 0)
+  }
   const pending: T[] = []
-  const slots = meals.map((meal) => {
+  const slots = planned.map((meal) => {
     if (slotIndex(meal) == null) return meal
     pending.push(meal)
     return null
   })
-  pending.sort((left, right) => (slotIndex(left) ?? 0) - (slotIndex(right) ?? 0))
+  pending.sort(compare)
+  done.sort(compare)
   let next = 0
-  return slots.map((meal) => meal ?? pending[next++]!)
+  return [...slots.map((meal) => meal ?? pending[next++]!), ...done, ...own]
 }
 
 /** Optimistic list patch for «Выполнить»: never assume `assumptions` is present. */

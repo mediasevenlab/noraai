@@ -307,7 +307,7 @@ export function isPendingPlanMealShownInDiary(
   return false
 }
 
-/** Diary feed shows logged meals on past days and today, never future calendar days. */
+/** Own diary rows stay on today and earlier. A ration's later days are separate. */
 export function isDiaryMealInVisibleDay(meal: { at: string }, now = new Date()) {
   return localDayKey(meal.at) <= localCalendarDayKey(now)
 }

@@ -9,6 +9,7 @@ import {
   keepsWeeklyPlanOnDiaryDelete,
   mealListAfterPlanDone,
   orderDiaryDayByPlanLayout,
+  pendingDiarySlotKey,
   planLayoutSlotIndex,
   openPlanDiaryCards,
   openPlanDiarySourceId,
@@ -52,12 +53,12 @@ describe('diary vs weekly plan occurrences', () => {
     ).toBe(false)
   })
 
-  test('pending plan meals land on the selected start date plus their slot', () => {
+  test('day 1 of a ration lands on the selected start date', () => {
     const start = new Date(2026, 8, 3, 12, 0, 0)
     const at = planOccurrenceDiaryAt(pendingPlanMeal, undefined, TUESDAY_THIS_WEEK, start)
     expect(new Date(at).getFullYear()).toBe(2026)
     expect(new Date(at).getMonth()).toBe(8)
-    expect(new Date(at).getDate()).toBe(4)
+    expect(new Date(at).getDate()).toBe(3)
     expect(new Date(at).getHours()).toBe(8)
     expect(new Date(at).getMinutes()).toBe(30)
     expect(
@@ -65,7 +66,7 @@ describe('diary vs weekly plan occurrences', () => {
         { ...pendingPlanMeal, at },
         PLAN_ID,
         undefined,
-        new Date(2026, 8, 4, 12, 0, 0),
+        start,
       ),
     ).toBe(true)
   })
@@ -147,10 +148,7 @@ describe('diary vs weekly plan occurrences', () => {
       selectedPlanIds: new Set([PLAN_ID]),
       planStartFor: () => start,
     })
-    expect(opened).toHaveLength(1)
-    expect(new Date(opened[0]!.at).getDate()).toBe(8)
-    expect(opened[0]!.assumptions).not.toContain(RATION_DIARY_DONE_MARK)
-    expect(openPlanDiarySourceId(opened[0]!.id)).toBe(eaten.id)
+    expect(opened).toHaveLength(0)
   })
 
   test('a completion on the assigned day does not open a second card', () => {
@@ -374,14 +372,14 @@ describe('diary vs weekly plan occurrences', () => {
       planMeals: [turkey, apple],
     })
     expect(new Date(appleAt).getDate()).toBe(5)
-    expect(
+    expect(new Date(
       planOccurrenceDiaryAtWithLayout(turkey, {
         now: TUESDAY_THIS_WEEK,
         planStart: start,
         layout: { '2026-09-01': ['turkey'], '2026-09-02': ['apple'] },
         planMeals: [turkey, apple],
       }),
-    ).toBe(planOccurrenceDiaryAt(turkey, undefined, TUESDAY_THIS_WEEK, start))
+    ).getDate()).toBe(4)
   })
 
   test('completed plan meals ignore layout and keep their occurrence', () => {
@@ -427,9 +425,8 @@ describe('diary vs weekly plan occurrences', () => {
       planStart: start,
       planMeals: [pendingPlanMeal],
     })
-    expect(at).not.toBe(frozenAt)
-    expect(at).toBe(planOccurrenceDiaryAt(pendingPlanMeal, undefined, now, start))
     expect(new Date(at).getMonth()).toBe(9)
+    expect(new Date(at).getDate()).toBe(6)
   })
 
   test('completed meals keep the eaten day when the ration is started again', () => {
@@ -459,18 +456,43 @@ describe('diary vs weekly plan occurrences', () => {
 
   test('meals missing from the layout keep the occurrence stamp', () => {
     const start = new Date(2026, 8, 3, 12, 0, 0)
-    expect(
+    expect(new Date(
       planOccurrenceDiaryAtWithLayout(pendingPlanMeal, {
         now: TUESDAY_THIS_WEEK,
         planStart: start,
         layout: { '2026-09-01': ['other-meal'] },
         planMeals: [pendingPlanMeal],
       }),
-    ).toBe(planOccurrenceDiaryAt(pendingPlanMeal, undefined, TUESDAY_THIS_WEEK, start))
+    ).getDate()).toBe(4)
   })
 
   test('diary meal plan id follows the selected plan that owns it', () => {
     expect(diaryPlanIdForMeal(pendingPlanMeal, new Set([PLAN_ID, 'plan_office']))).toBe(PLAN_ID)
+  })
+
+  test('a meal stamped on an older week follows the current selected week plan', () => {
+    const now = new Date(2026, 9, 14, 12, 0, 0)
+    const croissant = {
+      ...pendingPlanMeal,
+      id: 'croissant',
+      title: 'Горячий круассан с ветчиной и сыром',
+      at: new Date(2026, 8, 13, 18, 30, 0).toISOString(),
+      assumptions: [RATION_DIARY_SOURCE_MARK, weekPlanAssumption('week:2026-09-07')],
+    }
+    const selected = new Set(['week:2026-09-07', 'week:2026-10-12'])
+    expect(diaryPlanIdForMeal(croissant, selected, now)).toBe('week:2026-10-12')
+    const shown = planOccurrenceDiaryAtWithLayout(croissant, {
+      now,
+      planStart: now,
+      layout: { '2026-10-12': ['croissant'] },
+      planMeals: [croissant],
+    })
+    expect(new Date(shown).getFullYear()).toBe(2026)
+    expect(new Date(shown).getMonth()).toBe(9)
+    expect(new Date(shown).getDate()).toBe(14)
+    expect(isDiaryFeedMealVisible({ ...croissant, at: shown }, 'week:2026-10-12', undefined, now)).toBe(
+      true,
+    )
   })
 
   test('a diary day shows pending plan meals in board order, not newest-first', () => {
@@ -496,5 +518,210 @@ describe('diary vs weekly plan occurrences', () => {
       (meal) => (meal.pinned ? null : planLayoutSlotIndex(meal.id, layout)),
     )
     expect(ordered.map((meal) => meal.id)).toEqual(['turkey', 'apple', 'fish'])
+  })
+
+  test('meals the user added stay after the plan even when their time falls in between', () => {
+    const done = { id: 'turkey', own: false }
+    const photo = { id: 'photo', own: true }
+    const later = { id: 'snack', own: true }
+    const apple = { id: 'apple', own: false }
+    const fish = { id: 'fish', own: false }
+    const layout = { '2026-09-01': ['apple', 'fish', 'turkey'] }
+    const ordered = orderDiaryDayByPlanLayout(
+      [done, photo, fish, apple, later],
+      (meal) =>
+        meal.own || meal.id === 'turkey' ? null : planLayoutSlotIndex(meal.id, layout),
+      (meal) => meal.own,
+    )
+    expect(ordered.map((meal) => meal.id)).toEqual(['turkey', 'apple', 'fish', 'photo', 'snack'])
+  })
+
+  test('board day 1 lands on the start date even when the meal was saved on an older weekday', () => {
+    const lunch = {
+      ...pendingPlanMeal,
+      id: 'lunch',
+      title: 'День один обед',
+      at: new Date(2026, 9, 4, 23, 0, 0).toISOString(),
+    }
+    const breakfast = {
+      ...pendingPlanMeal,
+      id: 'breakfast',
+      title: 'День один завтрак',
+      at: new Date(2026, 9, 4, 18, 30, 0).toISOString(),
+    }
+    const start = new Date(2026, 9, 14, 12, 0, 0)
+    const layout = {
+      '2026-09-07': ['older'],
+      '2026-10-12': ['lunch'],
+      '2026-10-13': ['breakfast'],
+    }
+    const planMeals = [lunch, breakfast]
+    const lunchAt = planOccurrenceDiaryAtWithLayout(lunch, {
+      now: start,
+      planStart: start,
+      layout,
+      planMeals,
+    })
+    const breakfastAt = planOccurrenceDiaryAtWithLayout(breakfast, {
+      now: start,
+      planStart: start,
+      layout,
+      planMeals,
+    })
+    expect(new Date(lunchAt).getFullYear()).toBe(2026)
+    expect(new Date(lunchAt).getMonth()).toBe(9)
+    expect(new Date(lunchAt).getDate()).toBe(14)
+    expect(new Date(breakfastAt).getDate()).toBe(15)
+  })
+
+  test('without a saved layout, plans stay in selection order and an added meal stays last', () => {
+    const own = { id: 'own', plan: -1, at: '2026-10-14T10:00:00.000Z' }
+    const ordered = orderDiaryDayByPlanLayout(
+      [
+        own,
+        { id: 'second-late', plan: 1, at: '2026-10-14T15:00:00.000Z' },
+        { id: 'first-late', plan: 0, at: '2026-10-14T12:00:00.000Z' },
+        { id: 'second-early', plan: 1, at: '2026-10-14T08:00:00.000Z' },
+        { id: 'first-early', plan: 0, at: '2026-10-14T07:00:00.000Z' },
+      ],
+      (meal) => (meal.id === 'own' ? null : pendingDiarySlotKey(null, meal.at)),
+      (meal) => meal.id === 'own',
+      (meal) => meal.plan,
+    )
+    expect(ordered.map((meal) => meal.id)).toEqual([
+      'first-early',
+      'first-late',
+      'second-early',
+      'second-late',
+      'own',
+    ])
+  })
+
+  test('a completed ration meal moves to the end and returns when cleared', () => {
+    const meals = [
+      { id: 'done-sticks', plan: 1, at: '2026-10-14T12:45:00.000Z', done: true },
+      { id: 'spaghetti', plan: 1, at: '2026-10-14T12:30:00.000Z', done: false },
+      { id: 'tuna', plan: 1, at: '2026-10-14T06:00:00.000Z', done: false },
+      { id: 'croissant', plan: 0, at: '2026-10-14T01:30:00.000Z', done: false },
+      { id: 'own', plan: -1, at: '2026-10-14T12:40:00.000Z', done: false },
+    ]
+    const slot = (meal: (typeof meals)[number]) =>
+      meal.id === 'own'
+        ? null
+        : pendingDiarySlotKey(
+            null,
+            meal.id === 'done-sticks' ? '2026-10-14T01:30:00.000Z' : meal.at,
+          )
+    const done = orderDiaryDayByPlanLayout(
+      meals,
+      slot,
+      (meal) => meal.id === 'own',
+      (meal) => meal.plan,
+      (meal) => meal.done,
+    )
+    expect(done.map((meal) => meal.id)).toEqual([
+      'croissant',
+      'tuna',
+      'spaghetti',
+      'done-sticks',
+      'own',
+    ])
+    const restored = orderDiaryDayByPlanLayout(
+      meals.map((meal) => ({ ...meal, done: false })),
+      slot,
+      (meal) => meal.id === 'own',
+      (meal) => meal.plan,
+      (meal) => meal.done,
+    )
+    expect(restored.map((meal) => meal.id)).toEqual([
+      'croissant',
+      'done-sticks',
+      'tuna',
+      'spaghetti',
+      'own',
+    ])
+  })
+
+  test('a saved layout slot stays ahead of the meal clock', () => {
+    expect(pendingDiarySlotKey(1, '2026-10-14T18:00:00.000Z')).toBe(1)
+  })
+
+  test('two selected plans on the same day stay one after another in selection order', () => {
+    const ordered = orderDiaryDayByPlanLayout(
+      [
+        { id: 'second-first', plan: 1 },
+        { id: 'first-second', plan: 0 },
+        { id: 'first-first', plan: 0 },
+        { id: 'second-second', plan: 1 },
+      ],
+      (meal) => (meal.id.endsWith('first') ? 0 : 1),
+      undefined,
+      (meal) => meal.plan,
+    )
+    expect(ordered.map((meal) => meal.id)).toEqual([
+      'first-first',
+      'first-second',
+      'second-first',
+      'second-second',
+    ])
+  })
+
+  test('the current board day lands on the plan start while older weeks stay history', () => {
+    const olderMonday = {
+      ...pendingPlanMeal,
+      id: 'older-monday',
+      title: 'Старый понедельник',
+      at: new Date(2026, 7, 31, 8, 30, 0).toISOString(),
+    }
+    const croissant = {
+      ...pendingPlanMeal,
+      id: 'croissant',
+      title: 'Горячий круассан с ветчиной и сыром',
+      at: new Date(2026, 9, 12, 8, 30, 0).toISOString(),
+    }
+    const turkey = {
+      ...pendingPlanMeal,
+      id: 'turkey',
+      title: 'Индейка, булгур и овощи',
+      at: new Date(2026, 9, 13, 13, 0, 0).toISOString(),
+    }
+    const start = new Date(2026, 9, 14, 12, 0, 0)
+    const planMeals = [olderMonday, croissant, turkey]
+    const today = planOccurrenceDiaryAt(croissant, undefined, start, start, planMeals)
+    const tomorrow = planOccurrenceDiaryAt(turkey, undefined, start, start, planMeals)
+    const history = planOccurrenceDiaryAt(olderMonday, undefined, start, start, planMeals)
+    expect(new Date(today).getFullYear()).toBe(2026)
+    expect(new Date(today).getMonth()).toBe(9)
+    expect(new Date(today).getDate()).toBe(14)
+    expect(new Date(tomorrow).getDate()).toBe(15)
+    expect(new Date(history).getTime()).toBeLessThan(start.getTime())
+    expect(
+      isDiaryFeedMealVisible(
+        { ...croissant, at: today },
+        PLAN_ID,
+        undefined,
+        start,
+      ),
+    ).toBe(true)
+  })
+
+  test('a meal the person already ate does not take the ration day', () => {
+    const start = new Date(2026, 9, 14, 12, 0, 0)
+    const croissant = {
+      ...pendingPlanMeal,
+      id: 'croissant',
+      title: 'Горячий круассан с ветчиной и сыром',
+      at: new Date(2026, 8, 14, 8, 30, 0).toISOString(),
+    }
+    const eaten = {
+      id: 'oatmeal',
+      title: 'Овсянка с ягодами',
+      at: new Date(2026, 9, 12, 9, 0, 0).toISOString(),
+      assumptions: ['Оценка, не весы'],
+      fromApi: true as const,
+    }
+    const shown = planOccurrenceDiaryAt(croissant, undefined, start, start, [croissant, eaten])
+    expect(new Date(shown).getDate()).toBe(14)
+    expect(planOccurrenceDiaryAt(eaten, undefined, start, start, [croissant, eaten])).toBe(eaten.at)
   })
 })

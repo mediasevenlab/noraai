@@ -1,0 +1,25 @@
+---
+description: How the diary shows selected rations. Follow this before changing diary order, plan days, or completion.
+alwaysApply: true
+---
+
+# Diary and ration display
+
+The product contract is [docs/DIARY_RATION_FEED.md](docs/DIARY_RATION_FEED.md). Diary and ration screens follow it. Do not replace it with a local exception.
+
+A ration is a count of days and the meals in those days. It has no weekdays. The board labels are «День 1», «День 2», and so on. The person picks a start date. Diary day 1 of that ration is that date, and the next ration days follow in order. Do not count the offset from the oldest saved Monday or from a weekday of a stored stamp.
+
+The diary «План» button controls future days:
+
+- off — today and past diary history only;
+- on — future days of the selected rations are added.
+
+Past days keep meals that were eaten that day. Pending ration cards do not appear in the past. A past completion does not occupy today's slot: the current day still shows the uncompleted card.
+
+Order inside one diary day:
+
+1. Pending meals of the selected rations. The first selected ration is one block, left to right as on that day's board, then the next selected ration, in selection order.
+2. Completed ration meals go to the end of that row, in the same ration order. «Выполнить» does not leave the card in its old place and does not move it to the start.
+3. Meals the person added with «Добавить» are last.
+
+Clearing a completion the same day puts the card back into its ration slot. Several rations may start on the same day; today's meals from each stay in selection order.
