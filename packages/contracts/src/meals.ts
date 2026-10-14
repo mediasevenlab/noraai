@@ -646,6 +646,43 @@ export const mealComposerTurnResponseSchema = z
     created: z.boolean().optional(),
   })
   .strict()
+export const noraModelChatMessageSchema = z
+  .object({
+    role: z.enum(['user', 'assistant']),
+    text: z.string().max(8000),
+    images: z
+      .array(
+        z
+          .object({
+            base64: mealImageBase64Schema,
+            mime: z.string().trim().min(3).max(100).optional(),
+          })
+          .strict(),
+      )
+      .max(8)
+      .optional(),
+  })
+  .strict()
+export const noraModelChatRequestSchema = z
+  .object({
+    messages: z.array(noraModelChatMessageSchema).min(1).max(30),
+  })
+  .strict()
+  .refine((value) => {
+    const last = value.messages.at(-1)
+    return Boolean(
+      last?.role === 'user' && (last.text.trim() || last.images?.some((image) => image.base64)),
+    )
+  }, 'Напишите сообщение или прикрепите фото')
+export const noraModelChatResponseSchema = z
+  .object({
+    reply: z.string().min(1),
+    model: z.string().min(1),
+  })
+  .strict()
+export type NoraModelChatMessage = z.infer<typeof noraModelChatMessageSchema>
+export type NoraModelChatRequest = z.infer<typeof noraModelChatRequestSchema>
+export type NoraModelChatResponse = z.infer<typeof noraModelChatResponseSchema>
 export type MealsGeminiRequest = z.infer<typeof mealsGeminiRequestSchema>
 export type MealsGeminiResponse = z.infer<typeof mealsGeminiResponseSchema>
 export type MealsNoraRequest = z.infer<typeof mealsNoraRequestSchema>

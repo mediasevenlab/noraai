@@ -239,5 +239,6 @@ export {
   mealPhotoSlideKey,
   prefetchMealPhoto,
 } from './media-display'
+export { ModelChatSettings } from './ModelChatSettings'
 export { SharedMealsFeed } from './SharedMealsFeed'
 export { SharedMealsFeedPage } from './pages/feed'

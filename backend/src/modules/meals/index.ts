@@ -11,6 +11,7 @@ import { AppMealComposer } from './application/app-meal-composer'
 import { MealsService } from './application/meals-service'
 import { extractMealWithGemini, refineMealWithGemini, transcribeAudioWithGemini } from './infrastructure/gemini-client'
 import { createMealEngineStore } from './infrastructure/meal-engine-store'
+import { completeNoraChat } from './infrastructure/nora-chat-client'
 import { extractMealWithNora, refineMealWithNora } from './infrastructure/nora-llm-client'
 import { analyzeMealWithWebhook } from './infrastructure/meal-analyze-webhook'
 import { notifyMentorMealViaWebhook } from './infrastructure/meal-mentor-notify-webhook'
@@ -105,6 +106,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
     mealEngine,
     analyzeNora: (input) =>
       extractMealWithNora(options.env, input, (audio) => transcribeAudioWithGemini(options.env, audio)),
+    chatWithNora: (input) => completeNoraChat(options.env, input.messages),
     internalServiceToken: options.env.INTERNAL_SERVICE_TOKEN,
     requireAuth: options.requireAuth,
     requireMentor: options.requireMentor,

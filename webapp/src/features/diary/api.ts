@@ -8,6 +8,7 @@ import {
   mealEngineResponseSchema,
   mealMutationResponseSchema,
   mealsTranscribeResponseSchema,
+  noraModelChatResponseSchema,
   setMealPlanDoneRequestSchema,
   shareRationRequestSchema,
   sharedRationMutationResponseSchema,
@@ -21,6 +22,8 @@ import {
   type MealComposerTurnResponse,
   type MealMutationResponse,
   type MealsTranscribeResponse,
+  type NoraModelChatMessage,
+  type NoraModelChatResponse,
   type RefineMealRequest,
   type SelectMealVersionRequest,
   type SetMealPlanDoneRequest,
@@ -107,6 +110,18 @@ export function refineMentorUserMeal(
     mealMutationResponseSchema,
     { method: 'POST', body },
   )
+}
+
+export function chatWithNoraModel(
+  transport: AuthenticatedTransport,
+  messages: NoraModelChatMessage[],
+  signal?: AbortSignal,
+): Promise<NoraModelChatResponse> {
+  return transport.request('/api/users/me/model-chat', noraModelChatResponseSchema, {
+    method: 'POST',
+    body: { messages },
+    signal,
+  })
 }
 
 export function transcribeMyVoice(

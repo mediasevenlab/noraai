@@ -2,6 +2,9 @@ import { Navigate } from '@tanstack/react-router'
 import type { UserDto } from '@web-app-demo/contracts'
 import { useState } from 'react'
 
+import { useAuth } from '@/features/auth'
+
+import { ModelChatSettings } from '@/features/diary'
 import { userGeneralSearch } from '@/features/navigation'
 import {
   clearReferralPayoutLedger,
@@ -143,6 +146,7 @@ export function UserSettings({
 }: {
   user: UserDto
 }) {
+  const auth = useAuth()
   return (
     <SettingsCanvas
       description="Подключение к наставнику."
@@ -155,6 +159,7 @@ export function UserSettings({
     >
       <MentorConnectionPanel />
       <MealEnginePanel />
+      <ModelChatSettings transport={auth.transport} />
       <GenerationTokenUsagePanel />
     </SettingsCanvas>
   )

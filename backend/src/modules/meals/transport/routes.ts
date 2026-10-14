@@ -16,6 +16,8 @@ import {
   updateMealEngineRequestSchema,
   mealsTranscribeRequestSchema,
   mealsTranscribeResponseSchema,
+  noraModelChatRequestSchema,
+  noraModelChatResponseSchema,
   mealComposerTurnRequestSchema,
   mealComposerTurnResponseSchema,
   refineMealRequestSchema,
@@ -32,6 +34,8 @@ import {
   type MealsNoraRequest,
   type MealsTranscribeRequest,
   type MealsTranscribeResponse,
+  type NoraModelChatRequest,
+  type NoraModelChatResponse,
 } from '@web-app-demo/contracts'
 
 import type { MiddlewareHandler } from 'hono'
@@ -222,6 +226,31 @@ const transcribeMyVoiceRoute = createRoute({
     401: { content: errorContent, description: 'Authentication required' },
     502: { content: errorContent, description: 'Upstream transcription failure' },
     503: { content: errorContent, description: 'Transcription is not configured' },
+  },
+})
+const modelChatRoute = createRoute({
+  method: 'post',
+  path: '/me/model-chat',
+  tags: ['Meals'],
+  security: [{ BearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: noraModelChatRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: noraModelChatResponseSchema } },
+      description: 'Plain reply from the configured text or vision model',
+    },
+    400: { content: errorContent, description: 'Empty chat turn' },
+    401: { content: errorContent, description: 'Authentication required' },
+    502: { content: errorContent, description: 'Upstream model failure' },
+    503: { content: errorContent, description: 'Nora model is not configured' },
   },
 })
 const composerTurnRoute = createRoute({
@@ -626,6 +655,7 @@ type CreateMealsRoutesOptions = {
   composer: AppMealComposer
   mealEngine: ReturnType<typeof createMealEngineStore>
   analyzeNora: (input: MealsNoraRequest) => Promise<MealsGeminiResponse>
+  chatWithNora: (input: NoraModelChatRequest) => Promise<NoraModelChatResponse>
   internalServiceToken: string | undefined
   requireAuth: MiddlewareHandler<AuthHttpEnv>
   requireMentor: MiddlewareHandler<AuthHttpEnv>
@@ -648,6 +678,7 @@ export function createMealsRoutes({
   composer,
   mealEngine,
   analyzeNora,
+  chatWithNora,
   internalServiceToken,
   requireAuth,
   requireMentor,
@@ -697,6 +728,10 @@ export function createMealsRoutes({
     const result = await executeMeals(() =>
       service.createUserMeal(c.var.user, c.req.valid('json')),
     )
+    return c.json(result, 200)
+  })
+  userMealsRoutes.openapi(modelChatRoute, async (c) => {
+    const result = await executeMeals(() => chatWithNora(c.req.valid('json')))
     return c.json(result, 200)
   })
   userMealsRoutes.openapi(transcribeMyVoiceRoute, async (c) => {
