@@ -23,6 +23,16 @@ test('a workout plan becomes headings, bold names, and a list', () => {
   expect(list.items[1]?.map((part) => part.text).join('')).toContain('повторений')
 })
 
+test('angle-bracket and bare addresses become links', () => {
+  const blocks = parseChatMarkdown('1. <https://www.tasty.co/>\n2. https://www.epicurious.com/')
+  const list = blocks[0]
+  if (list?.kind !== 'list') throw new Error('expected a list')
+  expect(list.items[0]).toEqual([{ kind: 'link', text: 'https://www.tasty.co/', href: 'https://www.tasty.co/' }])
+  expect(list.items[1]?.[0]).toMatchObject({ kind: 'link', href: 'https://www.epicurious.com/' })
+  const unsafe = parseChatMarkdown('[рецепты](javascript:alert(1))')
+  expect(JSON.stringify(unsafe)).not.toContain('"kind":"link"')
+})
+
 test('a blank line splits paragraphs and leaves ordinary text untouched', () => {
   const blocks = parseChatMarkdown('Да, ограничения есть.\n\nЯ не помогаю с вредом.')
   expect(blocks).toHaveLength(2)

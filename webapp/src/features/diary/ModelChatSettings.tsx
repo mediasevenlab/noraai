@@ -431,6 +431,19 @@ function ChatInlines({ parts }: { parts: ChatInline[] }) {
         </code>
       )
     }
+    if (part.kind === 'link') {
+      return (
+        <a
+          className="break-all text-[var(--nora-text)] underline underline-offset-2"
+          href={part.href}
+          key={index}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          {part.text}
+        </a>
+      )
+    }
     return <span key={index}>{part.text}</span>
   })
 }

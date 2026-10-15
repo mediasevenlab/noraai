@@ -3,6 +3,7 @@ export type ChatInline =
   | { kind: 'strong'; text: string }
   | { kind: 'em'; text: string }
   | { kind: 'code'; text: string }
+  | { kind: 'link'; text: string; href: string }
 
 export type ChatBlock =
   | { kind: 'paragraph'; lines: ChatInline[][] }
@@ -104,6 +105,36 @@ export function parseChatInlines(source: string): ChatInline[] {
         continue
       }
     }
+    const markdownLink = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/.exec(source.slice(index))
+    if (markdownLink) {
+      const href = safeChatUrl(markdownLink[2]!)
+      if (href) {
+        flush()
+        parts.push({ kind: 'link', text: markdownLink[1]!, href })
+        index += markdownLink[0].length
+        continue
+      }
+    }
+    if (source[index] === '<') {
+      const end = source.indexOf('>', index + 1)
+      const href = end > index ? safeChatUrl(source.slice(index + 1, end)) : null
+      if (href) {
+        flush()
+        parts.push({ kind: 'link', text: href, href })
+        index = end + 1
+        continue
+      }
+    }
+    if (source.startsWith('http://', index) || source.startsWith('https://', index)) {
+      const raw = /^https?:\/\/[^\s<>]+/.exec(source.slice(index))?.[0]?.replace(/[.,;:!?)]+$/, '')
+      const href = raw ? safeChatUrl(raw) : null
+      if (raw && href) {
+        flush()
+        parts.push({ kind: 'link', text: href, href })
+        index += raw.length
+        continue
+      }
+    }
     const marker = source[index]
     if ((marker === '*' || marker === '_') && source[index + 1] !== marker) {
       const end = source.indexOf(marker, index + 1)
@@ -119,4 +150,14 @@ export function parseChatInlines(source: string): ChatInline[] {
   }
   flush()
   return parts
+}
+
+export function safeChatUrl(raw: string) {
+  try {
+    const url = new URL(raw.trim())
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
+    return url.href
+  } catch {
+    return null
+  }
 }
