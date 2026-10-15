@@ -35,6 +35,7 @@ describe('Nora settings chat', () => {
     ])
     expect(request.messages[1]?.content).toBe('Что такое белок?')
     expect(request.messages[3]?.content).toBe('А жир?')
+    expect(String(request.messages[0]?.content)).toContain('Nora')
     expect(String(request.messages[0]?.content)).not.toContain('Только JSON')
   })
 
@@ -89,6 +90,14 @@ describe('Nora settings chat', () => {
     expect(photo.model).toBe('qwen2.5vl:3b')
     expect(photo.tools).toBe(false)
     expect(String(photo.messages[0]?.content)).not.toContain('web_search')
+  })
+
+  test('offline does not offer the web and says the internet is off', () => {
+    const request = buildNoraChatRequest([user('Что на официальном сайте?')], { ...models, search: false })
+    expect(request.tools).toBe(false)
+    const system = String(request.messages[0]?.content)
+    expect(system).not.toContain('web_search')
+    expect(system).toContain('интернета нет')
   })
 
   test('a search call keeps its query and findings stay short', () => {

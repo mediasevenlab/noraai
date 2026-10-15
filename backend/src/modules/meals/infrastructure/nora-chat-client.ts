@@ -67,7 +67,11 @@ async function prepareTurns(messages: readonly NoraModelChatMessage[]): Promise<
   )
 }
 
-export async function completeNoraChat(env: NoraEnv, messages: readonly NoraModelChatMessage[]) {
+export async function completeNoraChat(
+  env: NoraEnv,
+  messages: readonly NoraModelChatMessage[],
+  search?: boolean,
+) {
   const baseUrl = env.LLM_BASE_URL?.replace(/\/$/, '')
   if (!baseUrl || !env.LLM_API_KEY) {
     throw new MealsFailure(
@@ -79,7 +83,7 @@ export async function completeNoraChat(env: NoraEnv, messages: readonly NoraMode
   const request = buildNoraChatRequest(await prepareTurns(messages), {
     text: env.LLM_TEXT_MODEL,
     vision: env.LLM_VISION_MODEL,
-    search: Boolean(env.LLM_SEARCH_URL),
+    search: search !== false && Boolean(env.LLM_SEARCH_URL),
   })
   const thread: ChatMessage[] = request.messages.map((message) => ({
     role: message.role,
@@ -111,7 +115,7 @@ export async function completeNoraChat(env: NoraEnv, messages: readonly NoraMode
     for (const call of calls) {
       const query = webSearchQuery(call)
       const content = query
-        ? await searchOfficeWeb(env.LLM_SEARCH_URL!, query).catch(() => 'Поиск сейчас недоступен.')
+        ? await searchOfficeWeb(env.LLM_SEARCH_URL!, query, env.LLM_API_KEY).catch(() => 'Поиск сейчас недоступен.')
         : 'Этот инструмент недоступен.'
       thread.push({ role: 'tool', tool_call_id: call.id, content })
     }

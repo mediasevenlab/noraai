@@ -666,6 +666,7 @@ export const noraModelChatMessageSchema = z
 export const noraModelChatRequestSchema = z
   .object({
     messages: z.array(noraModelChatMessageSchema).min(1).max(30),
+    search: z.boolean().optional(),
   })
   .strict()
   .refine((value) => {

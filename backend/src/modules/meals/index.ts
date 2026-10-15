@@ -107,7 +107,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
     mealEngine,
     analyzeNora: (input) =>
       extractMealWithNora(options.env, input, (audio) => transcribeAudioWithGemini(options.env, audio)),
-    chatWithNora: (input) => completeNoraChat(options.env, input.messages),
+    chatWithNora: (input) => completeNoraChat(options.env, input.messages, input.search),
     transcribeChatVoice: (input) => transcribeOfficeSpeech(options.env, input),
     internalServiceToken: options.env.INTERNAL_SERVICE_TOKEN,
     requireAuth: options.requireAuth,

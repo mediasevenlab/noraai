@@ -132,4 +132,28 @@ describe('Nora settings chat request', () => {
     expect(calls.some((url) => url.startsWith('http://search.test/search?'))).toBe(true)
     expect(calls.filter((url) => url.endsWith('/chat/completions'))).toHaveLength(2)
   })
+
+  test('internet off answers without calling search', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push(String(input))
+      const body = JSON.parse(String(init?.body ?? '{}')) as { tools?: unknown }
+      expect(body.tools).toBeUndefined()
+      return new Response(JSON.stringify({ choices: [{ message: { content: 'Отвечаю по памяти.' } }] }), {
+        status: 200,
+      })
+    }) as typeof fetch
+    try {
+      const result = await completeNoraChat(
+        { ...env, LLM_SEARCH_URL: 'http://search.test' },
+        [{ role: 'user', text: 'Какая столица Австралии?' }],
+        false,
+      )
+      expect(result.reply).toBe('Отвечаю по памяти.')
+    } finally {
+      globalThis.fetch = original
+    }
+    expect(calls.some((url) => url.includes('/search'))).toBe(false)
+  })
 })

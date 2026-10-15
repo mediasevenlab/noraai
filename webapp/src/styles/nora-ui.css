@@ -673,6 +673,50 @@
   color: var(--nora-text-secondary);
 }
 
+/* Drawn Nora face: blinks, looks while thinking, bobs while speaking. */
+@keyframes nora-blink {
+  0%, 86%, 100% { transform: scaleY(1); }
+  92% { transform: scaleY(0.12); }
+}
+
+@keyframes nora-think {
+  0%, 100% { transform: translateX(0) scaleY(1); }
+  28% { transform: translateX(1.4px) scaleY(1); }
+  40% { transform: translateX(1.4px) scaleY(0.12); }
+  48% { transform: translateX(1.4px) scaleY(1); }
+  72% { transform: translateX(-1.4px) scaleY(1); }
+}
+
+@keyframes nora-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+
+.nora-face-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nora-blink 4.4s ease-in-out infinite;
+}
+
+.nora-face[data-mood='think'] .nora-face-eyes {
+  animation: nora-think 1.6s ease-in-out infinite;
+}
+
+.nora-face[data-mood='talk'] {
+  animation: nora-bob 0.55s ease-in-out infinite;
+}
+
+.nora-face[data-mood='talk'] .nora-face-eyes {
+  animation: nora-blink 1.15s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nora-face,
+  .nora-face-eyes {
+    animation: none;
+  }
+}
+
 .ios-float-seg[data-active] {
   background: color-mix(in srgb, var(--nora-text) 7%, transparent);
   color: var(--nora-text);

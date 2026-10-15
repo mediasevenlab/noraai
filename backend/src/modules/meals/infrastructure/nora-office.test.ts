@@ -26,6 +26,24 @@ describe('office speech', () => {
     expect(size).toBe(3)
   })
 
+  test('the public speech site receives the same key as the text model', async () => {
+    const original = globalThis.fetch
+    let authorization = ''
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      authorization = new Headers(init?.headers).get('authorization') ?? ''
+      return new Response(JSON.stringify({ text: '', model: 'gigaam-v3-e2e-rnnt' }), { status: 200 })
+    }) as typeof fetch
+    try {
+      await transcribeOfficeSpeech(
+        { LLM_STT_URL: 'https://llm.25nutrition.site', LLM_API_KEY: 'office-key' },
+        { audioBase64: Buffer.from('wav').toString('base64'), audioMime: 'audio/wav' },
+      )
+    } finally {
+      globalThis.fetch = original
+    }
+    expect(authorization).toBe('Bearer office-key')
+  })
+
   test('says when speech is not configured', async () => {
     await expect(transcribeOfficeSpeech({}, { audioBase64: 'YQ==' })).rejects.toBeInstanceOf(MealsFailure)
   })

@@ -383,7 +383,9 @@ html:is([data-hybrid], [data-android]) .animate-pulse {
   box-shadow: var(--nora-shadow-menu, var(--nora-shadow-popover));
 }
 
-[data-slot="dropdown-menu-content"].account-workspace-menu [data-slot="dropdown-menu-item"] {
+[data-slot="dropdown-menu-content"].account-workspace-menu [data-slot="dropdown-menu-item"],
+[data-slot="dropdown-menu-content"].account-workspace-menu [data-slot="dropdown-menu-radio-item"],
+[data-slot="dropdown-menu-content"].account-workspace-menu [data-slot="dropdown-menu-checkbox-item"] {
   min-height: var(--nora-control-h, 30px);
   border-radius: var(--nora-radius-menu-item, 12px);
   font-size: 13px;

@@ -53,6 +53,7 @@ import {
   GalleryVerticalEnd as LucideGalleryVerticalEnd,
   GalleryVerticalEndIcon as LucideGalleryVerticalEndIcon,
   GiftIcon as LucideGiftIcon,
+  Globe as LucideGlobeIcon,
   GitBranchIcon as LucideGitBranchIcon,
   GraduationCapIcon as LucideGraduationCapIcon,
   GripVerticalIcon as LucideGripVerticalIcon,
@@ -288,6 +289,7 @@ export const FootprintsIcon = packIcon(LucideFootprintsIcon, undefined, 'Footpri
 export const GalleryVerticalEnd = packIcon(LucideGalleryVerticalEnd, AnimatedGalleryVerticalEndIcon, 'GalleryVerticalEnd')
 export const GalleryVerticalEndIcon = packIcon(LucideGalleryVerticalEndIcon, AnimatedGalleryVerticalEndIcon, 'GalleryVerticalEndIcon')
 export const GiftIcon = packIcon(LucideGiftIcon, undefined, 'GiftIcon')
+export const GlobeIcon = packIcon(LucideGlobeIcon, undefined, 'GlobeIcon')
 export const GitBranchIcon = packIcon(LucideGitBranchIcon, AnimatedGitBranchIcon, 'GitBranchIcon')
 export const GraduationCapIcon = packIcon(LucideGraduationCapIcon, AnimatedGraduationCapIcon, 'GraduationCapIcon')
 export const GripVerticalIcon = packIcon(LucideGripVerticalIcon, AnimatedGripVerticalIcon, 'GripVerticalIcon')

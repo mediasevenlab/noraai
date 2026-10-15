@@ -5,6 +5,12 @@ import { formatWebSearchFindings } from '../domain/nora-chat'
 const SPEECH_TIMEOUT_MS = 60_000
 const SEARCH_TIMEOUT_MS = 20_000
 
+function officeHeaders(url: string, apiKey: string | undefined, extra?: Record<string, string>) {
+  const headers: Record<string, string> = { ...extra }
+  if (apiKey && url.startsWith('https://')) headers.Authorization = `Bearer ${apiKey}`
+  return headers
+}
+
 function speechMime(mime: string | undefined) {
   const base = (mime || '').split(';')[0]?.trim().toLowerCase()
   if (base === 'audio/x-wav') return 'audio/wav'
@@ -21,7 +27,7 @@ function speechMime(mime: string | undefined) {
 }
 
 export async function transcribeOfficeSpeech(
-  env: Pick<AppEnv, 'LLM_STT_URL'>,
+  env: Pick<AppEnv, 'LLM_STT_URL' | 'LLM_API_KEY'>,
   input: { audioBase64: string; audioMime?: string },
 ) {
   const baseUrl = env.LLM_STT_URL?.replace(/\/$/, '')
@@ -32,9 +38,10 @@ export async function transcribeOfficeSpeech(
   if (audio.length === 0) {
     throw new MealsFailure('bad_request', 'Запись пустая. Скажите ещё раз.')
   }
-  const response = await fetch(`${baseUrl}/v1/audio/transcriptions`, {
+  const endpoint = `${baseUrl}/v1/audio/transcriptions`
+  const response = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': speechMime(input.audioMime) },
+    headers: officeHeaders(endpoint, env.LLM_API_KEY, { 'Content-Type': speechMime(input.audioMime) }),
     body: audio,
     signal: AbortSignal.timeout(SPEECH_TIMEOUT_MS),
   })
@@ -55,11 +62,15 @@ export async function transcribeOfficeSpeech(
   }
 }
 
-export async function searchOfficeWeb(baseUrl: string, query: string) {
+export async function searchOfficeWeb(baseUrl: string, query: string, apiKey?: string) {
   const url = new URL('/search', baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`)
   url.searchParams.set('q', query)
   url.searchParams.set('format', 'json')
-  const response = await fetch(url, { signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) })
+  url.searchParams.set('language', 'ru')
+  const response = await fetch(url, {
+    headers: officeHeaders(url.toString(), apiKey),
+    signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
+  })
   if (!response.ok) return 'Поиск сейчас недоступен.'
   let payload: { results?: Array<{ title?: unknown; url?: unknown; content?: unknown }> }
   try {

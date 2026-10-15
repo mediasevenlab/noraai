@@ -116,10 +116,11 @@ export function chatWithNoraModel(
   transport: AuthenticatedTransport,
   messages: NoraModelChatMessage[],
   signal?: AbortSignal,
+  search = true,
 ): Promise<NoraModelChatResponse> {
   return transport.request('/api/users/me/model-chat', noraModelChatResponseSchema, {
     method: 'POST',
-    body: { messages },
+    body: { messages, search },
     signal,
   })
 }
