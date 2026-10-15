@@ -124,6 +124,16 @@ export function chatWithNoraModel(
   })
 }
 
+export function transcribeModelChat(
+  transport: AuthenticatedTransport,
+  body: { audioBase64: string; audioMime?: string },
+): Promise<MealsTranscribeResponse> {
+  return transport.request('/api/users/me/model-chat/transcribe', mealsTranscribeResponseSchema, {
+    method: 'POST',
+    body,
+  })
+}
+
 export function transcribeMyVoice(
   transport: AuthenticatedTransport,
   body: { audioBase64: string; audioMime?: string },

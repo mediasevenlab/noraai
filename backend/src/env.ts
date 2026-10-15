@@ -91,6 +91,8 @@ const envSchema = z.object({
   LLM_API_KEY: optionalStringSchema,
   LLM_TEXT_MODEL: stringWithDefault('qwen2.5:7b'),
   LLM_VISION_MODEL: stringWithDefault('qwen2.5vl:3b'),
+  LLM_STT_URL: optionalUrlSchema,
+  LLM_SEARCH_URL: optionalUrlSchema,
   N8N_TRANSCRIBE_WEBHOOK_URL: optionalUrlSchema,
   N8N_MENTOR_NOTIFY_WEBHOOK_URL: optionalUrlSchema,
   MEALS_UPLOAD_DIR: optionalStringSchema,

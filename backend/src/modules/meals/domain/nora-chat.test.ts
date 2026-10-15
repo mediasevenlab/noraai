@@ -1,7 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 
 import { MealsFailure } from './errors'
-import { buildNoraChatRequest, type NoraChatTurn } from './nora-chat'
+import {
+  buildNoraChatRequest,
+  formatWebSearchFindings,
+  readWebSearchCalls,
+  webSearchQuery,
+  type NoraChatTurn,
+} from './nora-chat'
 
 const models = { text: 'qwen2.5:7b', vision: 'qwen2.5vl:3b' }
 
@@ -69,5 +75,30 @@ describe('Nora settings chat', () => {
 
   test('an empty turn is rejected', () => {
     expect(() => buildNoraChatRequest([user('   ')], models)).toThrow(MealsFailure)
+  })
+
+  test('text with search may call the web, a photo stays on vision without that tool', () => {
+    const text = buildNoraChatRequest([user('Какая столица Австралии?')], { ...models, search: true })
+    expect(text.tools).toBe(true)
+    expect(String(text.messages[0]?.content)).toContain('web_search')
+
+    const photo = buildNoraChatRequest(
+      [user('Что на фото?', [{ base64: 'abc' }])],
+      { ...models, search: true },
+    )
+    expect(photo.model).toBe('qwen2.5vl:3b')
+    expect(photo.tools).toBe(false)
+    expect(String(photo.messages[0]?.content)).not.toContain('web_search')
+  })
+
+  test('a search call keeps its query and findings stay short', () => {
+    const calls = readWebSearchCalls([
+      { id: 'call_1', function: { name: 'web_search', arguments: '{"query":"столица Австралии"}' } },
+    ])
+    expect(webSearchQuery(calls[0]!)).toBe('столица Австралии')
+    expect(formatWebSearchFindings([])).toBe('Ничего не нашлось.')
+    expect(formatWebSearchFindings([{ title: 'Канберра', url: 'https://example.test', content: 'Столица.' }])).toContain(
+      'https://example.test',
+    )
   })
 })

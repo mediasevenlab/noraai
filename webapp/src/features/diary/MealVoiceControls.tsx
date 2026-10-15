@@ -6,6 +6,7 @@ import type { AuthenticatedTransport } from '@/platform/api'
 import { cn } from '@/lib/utils'
 
 import { transcribeMyVoice } from './api'
+import { blobToVoiceWavBase64 } from './voice-wav'
 import {
   createVoiceAudioContext,
   pickRecorderMime,
@@ -28,12 +29,17 @@ type VoiceSession = {
 
 export function MealVoiceControls({
   disabled,
+  encodeWav = false,
   transport,
+  transcribe,
   sendButton,
   onTranscript,
 }: {
   disabled: boolean
+  /** Settings chat sends 16 kHz wav to the office speech model. */
+  encodeWav?: boolean
   transport: AuthenticatedTransport
+  transcribe?: (input: { audioBase64: string; audioMime?: string }) => Promise<{ text: string }>
   sendButton: React.ReactNode
   onTranscript?: (text: string) => void
 }) {
@@ -86,12 +92,12 @@ export function MealVoiceControls({
       if (!commit || elapsed < MIN_RECORD_MS || blob.size < 256) return
       setTranscribing(true)
       try {
-        const audioBase64 = await blobToBase64(blob)
-        const audioMime = mime.split(';')[0] || 'audio/webm'
-        const result = await transcribeMyVoice(transport, {
-          audioBase64,
-          audioMime,
-        })
+        const wavBase64 = encodeWav ? await blobToVoiceWavBase64(blob) : null
+        const audioBase64 = wavBase64 ?? (await blobToBase64(blob))
+        const audioMime = wavBase64 ? 'audio/wav' : mime.split(';')[0] || 'audio/webm'
+        const result = transcribe
+          ? await transcribe({ audioBase64, audioMime })
+          : await transcribeMyVoice(transport, { audioBase64, audioMime })
         const text = result.text.trim()
         if (!text) {
           toast.error('Не удалось распознать речь')
@@ -104,7 +110,7 @@ export function MealVoiceControls({
         setTranscribing(false)
       }
     },
-    [onTranscript, stopMeters, transport],
+    [encodeWav, onTranscript, stopMeters, transcribe, transport],
   )
 
   const startRecording = React.useCallback(() => {

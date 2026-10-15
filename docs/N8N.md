@@ -72,6 +72,8 @@ Required backend env (see `backend/.env.example`):
 - `N8N_APP_MEAL_WEBHOOK_URL` (default `http://127.0.0.1:5679/webhook/meal-app-analyze`)
 - `N8N_NORA_MEAL_WEBHOOK_URL` (default `http://127.0.0.1:5679/webhook/meal-nora-analyze`) — used only when the user picks Nora in Settings
 - `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_TEXT_MODEL`, `LLM_VISION_MODEL` — office OpenAI-compatible API. The key stays in backend env. Photo uses the vision model, text-only uses the text model, and the backend queues them so the single GPU loads one model at a time. Ollama on `127.0.0.1:18005` answers 403 when nginx forwards `Host: llm.25nutrition.site`. The llm site must proxy with `proxy_set_header Host 127.0.0.1:18005;` and keep `proxy_read_timeout 300s`. `/healthz` stays on nginx and does not need the key.
+- `LLM_STT_URL` — office speech model (GigaAM) for the settings chat microphone. On Nora it listens on `127.0.0.1:18150`; the backend container reaches it as `http://host.docker.internal:18150`. Meal voice stays on the Gemini/n8n transcribe path.
+- `LLM_SEARCH_URL` — SearXNG for the settings chat. On Nora it listens on `127.0.0.1:18151`. The text model may call `web_search`; photo turns do not. Both host ports are loopback-only, so `scripts/office-localhost-proxy.py` forwards the docker bridge addresses to them, and the backend service has `extra_hosts: host.docker.internal:host-gateway`.
 - `N8N_TRANSCRIBE_WEBHOOK_URL` (default `http://127.0.0.1:5679/webhook/meal-voice-transcribe`)
 - `N8N_MENTOR_NOTIFY_WEBHOOK_URL` (default `http://127.0.0.1:5679/webhook/mentor-meal-notify`)
 - `TELEGRAM_NOTIFY_BOT_TOKEN`

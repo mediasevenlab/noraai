@@ -13,7 +13,7 @@ import { toast } from '@/components/ui/toast'
 import { ApiRequestError, type AuthenticatedTransport } from '@/platform/api'
 import { cn } from '@/lib/utils'
 
-import { chatWithNoraModel } from './api'
+import { chatWithNoraModel, transcribeModelChat } from './api'
 import { parseChatMarkdown, type ChatInline } from './chat-markdown'
 import { ComposerAttachChips } from './composer-ui'
 import { ComposerTypedText } from './composer-typed-text'
@@ -197,7 +197,7 @@ export function ModelChatSettings({ transport }: { transport: AuthenticatedTrans
 
   return (
     <SettingsEntry
-      description="Временный чат, чтобы проверить текстовую модель и модель с картинками. Голос, текст и фото. Сброс начинает разговор заново."
+      description="Временный чат с текстовой моделью и моделью с картинками. Голос распознаёт речевая модель, текстовый ответ может искать в интернете. Сброс начинает разговор заново."
       descriptionClassName="max-w-none line-clamp-none overflow-visible"
       title="Проверка моделей"
     >
@@ -231,7 +231,7 @@ export function ModelChatSettings({ transport }: { transport: AuthenticatedTrans
               </DialogClose>
             </div>
             <DialogDescription className="font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
-              Фото уходит в модель с картинками, текст — в текстовую.
+              Фото уходит в модель с картинками, текст — в текстовую. Голос распознаёт речевая модель.
             </DialogDescription>
             <div aria-hidden className="mt-1.5 border-t border-[var(--nora-divider)]" />
           </DialogHeader>
@@ -314,7 +314,9 @@ export function ModelChatSettings({ transport }: { transport: AuthenticatedTrans
                 <div className="flex-1" />
                 <MealVoiceControls
                   disabled={busy}
+                  encodeWav
                   onTranscript={(text) => setNote((current) => appendVoiceTranscript(current, text))}
+                  transcribe={(audio) => transcribeModelChat(transport, audio)}
                   sendButton={
                     <MealComposerSendButton
                       idleLabel="Отправить"

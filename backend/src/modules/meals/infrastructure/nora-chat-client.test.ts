@@ -80,4 +80,56 @@ describe('Nora settings chat request', () => {
     expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBeLessThanOrEqual(448)
     expect(url).not.toContain(photo.toString('base64'))
   })
+
+  test('a text question can search the web and answer from the findings', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      calls.push(url)
+      if (url.includes('/search')) {
+        return new Response(
+          JSON.stringify({
+            results: [{ title: 'Канберра', url: 'https://example.test/canberra', content: 'Столица Австралии.' }],
+          }),
+          { status: 200 },
+        )
+      }
+      const body = JSON.parse(String(init?.body ?? '{}')) as { messages?: Array<{ role?: string }> }
+      const searched = body.messages?.some((message) => message.role === 'tool')
+      return new Response(
+        JSON.stringify(
+          searched
+            ? { choices: [{ message: { content: 'Столица Австралии — Канберра.' } }] }
+            : {
+                choices: [
+                  {
+                    message: {
+                      content: '',
+                      tool_calls: [
+                        {
+                          id: 'call_1',
+                          function: { name: 'web_search', arguments: '{"query":"столица Австралии"}' },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+        ),
+        { status: 200 },
+      )
+    }) as typeof fetch
+    try {
+      const result = await completeNoraChat(
+        { ...env, LLM_SEARCH_URL: 'http://search.test' },
+        [{ role: 'user', text: 'Какая столица Австралии?' }],
+      )
+      expect(result.reply).toBe('Столица Австралии — Канберра.')
+    } finally {
+      globalThis.fetch = original
+    }
+    expect(calls.some((url) => url.startsWith('http://search.test/search?'))).toBe(true)
+    expect(calls.filter((url) => url.endsWith('/chat/completions'))).toHaveLength(2)
+  })
 })

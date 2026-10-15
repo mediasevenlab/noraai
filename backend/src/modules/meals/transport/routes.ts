@@ -253,6 +253,30 @@ const modelChatRoute = createRoute({
     503: { content: errorContent, description: 'Nora model is not configured' },
   },
 })
+const modelChatTranscribeRoute = createRoute({
+  method: 'post',
+  path: '/me/model-chat/transcribe',
+  tags: ['Meals'],
+  security: [{ BearerAuth: [] }],
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: mealsTranscribeRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: mealsTranscribeResponseSchema } },
+      description: 'Transcript from the office speech model',
+    },
+    401: { content: errorContent, description: 'Authentication required' },
+    502: { content: errorContent, description: 'Upstream speech failure' },
+    503: { content: errorContent, description: 'Speech model is not configured' },
+  },
+})
 const composerTurnRoute = createRoute({
   method: 'post',
   path: '/me/meals/composer',
@@ -656,6 +680,7 @@ type CreateMealsRoutesOptions = {
   mealEngine: ReturnType<typeof createMealEngineStore>
   analyzeNora: (input: MealsNoraRequest) => Promise<MealsGeminiResponse>
   chatWithNora: (input: NoraModelChatRequest) => Promise<NoraModelChatResponse>
+  transcribeChatVoice: (input: MealsTranscribeRequest) => Promise<MealsTranscribeResponse>
   internalServiceToken: string | undefined
   requireAuth: MiddlewareHandler<AuthHttpEnv>
   requireMentor: MiddlewareHandler<AuthHttpEnv>
@@ -679,6 +704,7 @@ export function createMealsRoutes({
   mealEngine,
   analyzeNora,
   chatWithNora,
+  transcribeChatVoice,
   internalServiceToken,
   requireAuth,
   requireMentor,
@@ -732,6 +758,10 @@ export function createMealsRoutes({
   })
   userMealsRoutes.openapi(modelChatRoute, async (c) => {
     const result = await executeMeals(() => chatWithNora(c.req.valid('json')))
+    return c.json(result, 200)
+  })
+  userMealsRoutes.openapi(modelChatTranscribeRoute, async (c) => {
+    const result = await executeMeals(() => transcribeChatVoice(c.req.valid('json')))
     return c.json(result, 200)
   })
   userMealsRoutes.openapi(transcribeMyVoiceRoute, async (c) => {

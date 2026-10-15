@@ -2,13 +2,27 @@ import type { NoraModelChatMessage } from '@web-app-demo/contracts'
 
 import type { AppEnv } from '../../../env'
 import { MealsFailure } from '../domain/errors'
-import { buildNoraChatRequest, type NoraChatTurn } from '../domain/nora-chat'
+import {
+  buildNoraChatRequest,
+  NORA_WEB_SEARCH_TOOL,
+  readWebSearchCalls,
+  webSearchQuery,
+  type NoraChatTurn,
+} from '../domain/nora-chat'
+import { searchOfficeWeb } from './nora-office'
 import { encodeJpeg } from './sharp-meal-image'
 
 type NoraEnv = Pick<
   AppEnv,
-  'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_TEXT_MODEL' | 'LLM_VISION_MODEL'
+  'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_TEXT_MODEL' | 'LLM_VISION_MODEL' | 'LLM_SEARCH_URL'
 >
+
+type ChatMessage = {
+  role: string
+  content?: unknown
+  tool_calls?: unknown
+  tool_call_id?: string
+}
 
 const REQUEST_TIMEOUT_MS = 240_000
 const VISION_EDGE = 448
@@ -65,35 +79,70 @@ export async function completeNoraChat(env: NoraEnv, messages: readonly NoraMode
   const request = buildNoraChatRequest(await prepareTurns(messages), {
     text: env.LLM_TEXT_MODEL,
     vision: env.LLM_VISION_MODEL,
+    search: Boolean(env.LLM_SEARCH_URL),
   })
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.LLM_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  const thread: ChatMessage[] = request.messages.map((message) => ({
+    role: message.role,
+    content: message.content,
+  }))
+  let reply = ''
+  for (let round = 0; round < 3; round += 1) {
+    const allowTools = request.tools && round < 2
+    const payload = await postNoraCompletion(baseUrl, env.LLM_API_KEY, {
       model: request.model,
       temperature: 0.4,
       max_tokens: 1024,
-      messages: request.messages,
-    }),
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  })
-  const body = await response.text()
-  if (!response.ok) {
-    throw new MealsFailure('upstream', `Модель ${response.status}: ${body.slice(0, 240)}`)
+      messages: thread,
+      ...(allowTools ? { tools: [NORA_WEB_SEARCH_TOOL] } : {}),
+    })
+    const message = payload.choices?.[0]?.message
+    const calls = allowTools ? readWebSearchCalls(message?.tool_calls) : []
+    reply = completionText({ choices: [{ message }] }).trim()
+    if (calls.length === 0) break
+    thread.push({
+      role: 'assistant',
+      content: reply || null,
+      tool_calls: calls.map((call) => ({
+        id: call.id,
+        type: 'function',
+        function: { name: call.name, arguments: call.arguments },
+      })),
+    })
+    for (const call of calls) {
+      const query = webSearchQuery(call)
+      const content = query
+        ? await searchOfficeWeb(env.LLM_SEARCH_URL!, query).catch(() => 'Поиск сейчас недоступен.')
+        : 'Этот инструмент недоступен.'
+      thread.push({ role: 'tool', tool_call_id: call.id, content })
+    }
   }
-
-  let payload: { choices?: Array<{ message?: { content?: unknown } }> }
-  try {
-    payload = JSON.parse(body) as typeof payload
-  } catch {
-    throw new MealsFailure('upstream', 'Модель вернула не ответ, а обрывок')
-  }
-  const reply = completionText(payload).trim()
   if (!reply) {
     throw new MealsFailure('upstream', 'Модель ничего не ответила. Попробуйте ещё раз.')
   }
   return { reply, model: request.model }
+}
+
+async function postNoraCompletion(
+  baseUrl: string,
+  apiKey: string,
+  body: Record<string, unknown>,
+) {
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  })
+  const raw = await response.text()
+  if (!response.ok) {
+    throw new MealsFailure('upstream', `Модель ${response.status}: ${raw.slice(0, 240)}`)
+  }
+  try {
+    return JSON.parse(raw) as { choices?: Array<{ message?: { content?: unknown; tool_calls?: unknown } }> }
+  } catch {
+    throw new MealsFailure('upstream', 'Модель вернула не ответ, а обрывок')
+  }
 }
