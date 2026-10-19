@@ -13,6 +13,7 @@ ENV PUBLIC_WEBSITE_URL=$PUBLIC_WEBSITE_URL
 ENV PUBLIC_WEBAPP_URL=$PUBLIC_WEBAPP_URL
 
 RUN bun run --cwd website build
+ENV VITE_API_URL=""
 RUN bun run --cwd webapp build
 
 FROM nginx:1.28-alpine
