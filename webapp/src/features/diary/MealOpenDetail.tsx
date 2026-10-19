@@ -33,7 +33,11 @@ import { useAuthDemoSeeking } from './auth-demo-playback'
 import { ComposerTypedText } from './composer-typed-text'
 import { formatMealStamp, isApiMealId, localDayKey } from './diary-feed'
 import { diaryMealCreatePlanDraft } from './diary-plan-import'
-import { openPlanDiarySourceId } from './plan-occurrence'
+import {
+  openPlanDiarySourceId,
+  rationAssignmentAssumption,
+  rationOccurrenceClientKey,
+} from './plan-occurrence'
 import { ComposerAttachChips, MealFormingStepList } from './composer-ui'
 import { photoAttachKeepsCurrentMeal } from './photo-attach'
 import { RationPlanDoneButton, MealAuthorByline } from './MealCard'
@@ -60,6 +64,7 @@ import {
   isRationImportedMeal,
   isRationPlanDone,
   isRationPlanPending,
+  rationTemplateVersionView,
   RATION_DIARY_DONE_MARK,
   RATION_DIARY_LOG_PREFIX,
   rationDiaryLogAssumption,
@@ -286,11 +291,13 @@ export function MealOpenDetail({
   demoPressedComplete = false,
   allowCompletePlan = false,
   previewOnly = false,
+  allowComposer = true,
   onTitleTyped,
   onCompositionTyped,
   onMacrosRevealChange,
   onCompletePlan,
   diaryLocksRationTemplate = false,
+  rationAssignmentGeneration = 0,
   onDiaryOccurrence,
   onAddToDiary,
   addingToDiary = false,
@@ -310,12 +317,16 @@ export function MealOpenDetail({
   demoPressedComplete?: boolean
   allowCompletePlan?: boolean
   previewOnly?: boolean
+  /** Ration board opens the plate only. Chat edits stay in the diary. */
+  allowComposer?: boolean
   onTitleTyped?: () => void
   onCompositionTyped?: () => void
   onMacrosRevealChange?: (state: MealMacrosRevealState) => void
   onCompletePlan?: () => void
   /** Diary edits of a ration card are written to a separate history row. */
   diaryLocksRationTemplate?: boolean
+  /** Current selection of this ration. The next selection gets its own completion. */
+  rationAssignmentGeneration?: number
   onDiaryOccurrence?: (mealId: string) => void
   onAddToDiary?: () => void
   addingToDiary?: boolean
@@ -362,18 +373,19 @@ export function MealOpenDetail({
     !previewOnly
     && !mealCardRevealLocksTabs(reveal)
     && (mentorView ? !pendingPlan : !readOnly)
-  const showComposer = !feedView && !previewOnly && !(mentorView && pendingPlan)
+  const showComposer = allowComposer && !feedView && !previewOnly && !(mentorView && pendingPlan)
   const isPersisted = Boolean(meal.fromApi || isApiMealId(meal.id))
+  const versionView = rationTemplateVersionView(meal)
   const versionItems =
-    meal.versions && meal.versions.length > 0
-      ? meal.versions.map((version) => ({ value: version.id, label: version.label }))
+    versionView.versions.length > 0
+      ? versionView.versions.map((version) => ({ value: version.id, label: version.label }))
       : [{ value: 'original', label: 'vers. 1.0' }]
   const activeVersion =
-    meal.activeVersionId && versionItems.some((item) => item.value === meal.activeVersionId)
-      ? meal.activeVersionId
+    versionView.activeVersionId && versionItems.some((item) => item.value === versionView.activeVersionId)
+      ? versionView.activeVersionId
       : versionItems[0]!.value
   const refineLimitReached = mealCorrectionLimitReached(
-    meal.versions,
+    versionView.versions,
     mentorView ? 'mentor' : 'user',
   )
   const sendTone = mealComposerSendTone({
@@ -450,13 +462,24 @@ export function MealOpenDetail({
       new Date(meal.at),
     )
     draft.recordedAt = meal.at
-    draft.clientKey = `occ:${templateId}:${localDayKey(meal.at)}`.slice(0, 64)
+    draft.clientKey = rationOccurrenceClientKey(
+      templateId,
+      localDayKey(meal.at),
+      0,
+      rationAssignmentGeneration,
+    )
     draft.assumptions = [
       ...draft.assumptions.filter(
-        (item) => item !== RATION_DIARY_DONE_MARK && !item.startsWith(RATION_DIARY_LOG_PREFIX),
+        (item) =>
+          item !== RATION_DIARY_DONE_MARK
+          && !item.startsWith(RATION_DIARY_LOG_PREFIX)
+          && !item.startsWith('Назначение:'),
       ),
       RATION_DIARY_DONE_MARK,
       rationDiaryLogAssumption(templateId),
+      ...(rationAssignmentGeneration > 0
+        ? [rationAssignmentAssumption(rationAssignmentGeneration)]
+        : []),
     ]
     const image = meal.image ? await mealImageFromUrl(meal.image) : null
     if (image) {

@@ -9,6 +9,8 @@ import {
   type MealVersion,
 } from '@web-app-demo/contracts'
 
+import { preserveMealShareAssumptions, RATION_DIARY_DONE_MARK } from './meal-share'
+
 export type MealVersionRecord = MealVersion & {
   extraImageKeys?: string[]
 }
@@ -206,6 +208,17 @@ export function applyMealSnapshot<T extends MealWithVersions>(
   }
 }
 
+/** Older snapshots keep food, not whether this plate is still on the ration. */
+function assumptionsAfterVersionSelect(
+  current: readonly string[],
+  snapshot: readonly string[],
+): string[] {
+  const merged = preserveMealShareAssumptions(current, snapshot)
+  const currentDone = current.some((line) => line.trim() === RATION_DIARY_DONE_MARK)
+  if (currentDone) return merged
+  return merged.filter((line) => line.trim() !== RATION_DIARY_DONE_MARK)
+}
+
 export function selectMealVersion<T extends MealWithVersions>(
   meal: T,
   versionId: string,
@@ -213,11 +226,51 @@ export function selectMealVersion<T extends MealWithVersions>(
   const ensured = ensureMealVersions(meal)
   const version = ensured.versions.find((item) => item.id === versionId)
   if (!version) return null
+  const applied = applyMealSnapshot(ensured, version.snapshot)
   return {
-    ...applyMealSnapshot(ensured, version.snapshot),
+    ...applied,
+    assumptions: assumptionsAfterVersionSelect(ensured.assumptions, version.snapshot.assumptions),
     extraImageKeys: extraImageKeysOf(version),
     versions: ensured.versions,
     activeVersionId: versionId,
+  }
+}
+
+/** Editor save replaces the plate and drops chat history. Plan stamps stay. */
+export function replaceMealPlate<T extends MealWithVersions>(
+  meal: T,
+  plate: Omit<MealVersionSnapshotFields, 'assumptions' | 'micronutrients'>,
+): T {
+  const ensured = ensureMealVersions(meal)
+  const id = randomUUID()
+  const extraImageKeys = extraImageKeysOf({ extraImageKeys: ensured.extraImageKeys })
+  return {
+    ...ensured,
+    title: plate.title,
+    ingredients: plate.ingredients,
+    category: plate.category,
+    mealSlot: plate.mealSlot,
+    kcal: plate.kcal,
+    protein: plate.protein,
+    fat: plate.fat,
+    carbs: plate.carbs,
+    portionItems: [...plate.portionItems],
+    clientComment: plate.clientComment,
+    extraImageKeys,
+    versions: [
+      {
+        id,
+        createdAt: new Date().toISOString(),
+        label: mealVersionLabel(1),
+        extraImageKeys,
+        snapshot: mealSnapshot({
+          ...plate,
+          assumptions: ensured.assumptions,
+          micronutrients: ensured.micronutrients,
+        }),
+      },
+    ],
+    activeVersionId: id,
   }
 }
 

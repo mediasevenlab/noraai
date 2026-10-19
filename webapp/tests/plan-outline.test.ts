@@ -13,6 +13,7 @@ import {
   applyPlanDayDrafts,
   mealEntryToRationDraft,
   newMealRationsFromPlanDrafts,
+  planMealRewriteRequest,
   weekPlanDaysToDraftDays,
 } from '../src/features/plans/plan-outline-editor'
 import { padPlanDaysForEditor, type WeekPlanDay } from '../src/features/plans/week-plan'
@@ -134,6 +135,16 @@ function day(ordinal: number, meals: MealEntry[]): WeekPlanDay {
     done: false,
   }
 }
+
+test('plan editor rewrite skips an unchanged plate and sends the edited one', () => {
+  const entry = meal('11111111-1111-4111-8111-111111111111', 'Круассан')
+  const draft = mealEntryToRationDraft(entry)
+  expect(planMealRewriteRequest(entry, draft)).toBeNull()
+  const edited = planMealRewriteRequest(entry, { ...draft, title: 'Круассан с маслом', kcal: '420' })
+  expect(edited?.title).toBe('Круассан с маслом')
+  expect(edited?.kcal).toBe(420)
+  expect(edited && 'versions' in edited).toBe(false)
+})
 
 test('padPlanDaysForEditor restores a leading empty day from ordinals', () => {
   const now = new Date(2026, 8, 1)

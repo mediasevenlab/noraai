@@ -4,8 +4,12 @@ import {
   PLAN_COVER_PLACEHOLDER_SRC,
   durablePlanCoverSrc,
   preferredMealPhotoSrc,
+  rewriteMyMeal,
+  type MealEntry,
 } from '@/features/diary'
-import { rationMealCreateDrafts, rationPlanDaySlots, type RationEntry } from '@/features/mentor'
+import { rationMealCreateDrafts, rationPlanDaySlots, type RationEntry, type RationMealDraft } from '@/features/mentor'
+
+import { planMealRewriteRequest } from './plan-outline-editor'
 import { ApiRequestError, type AuthenticatedTransport } from '@/platform/api'
 
 const DATA_IMAGE = /^data:(image\/(?:jpeg|png|webp));base64,([a-z0-9+/=\s]+)$/i
@@ -93,4 +97,37 @@ export async function stampRationDaysOntoPlan(
       })
     }),
   )
+}
+
+const MEAL_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+/** Writes editor changes onto existing ration meals. Chat history is not kept. */
+export async function rewriteEditedPlanMeals(
+  transport: AuthenticatedTransport,
+  days: readonly { meals: readonly MealEntry[] }[],
+  drafts: readonly (readonly RationMealDraft[])[],
+) {
+  const byId = new Map(days.flatMap((day) => day.meals).map((meal) => [meal.id, meal]))
+  const jobs = drafts.flat().flatMap((draft) => {
+    const meal = byId.get(draft.key)
+    if (!meal || !MEAL_ID.test(meal.id)) return []
+    const body = planMealRewriteRequest(meal, draft)
+    if (!body) return []
+    const image = draft.image.trim()
+    const imageChanged = image.length > 0 && image !== meal.image.trim()
+    return [
+      (async () => {
+        if (!imageChanged) return rewriteMyMeal(transport, meal.id, body)
+        const inline = mealCreateImageFields(image)
+        const fetched = inline ? null : await mealImageFromUrl(image)
+        const photo = inline
+          ? { imageBase64: inline.imageBase64, imageMime: inline.imageMime }
+          : fetched
+            ? { imageBase64: fetched.base64, imageMime: fetched.mime }
+            : null
+        return rewriteMyMeal(transport, meal.id, photo ? { ...body, ...photo } : body)
+      })(),
+    ]
+  })
+  return Promise.all(jobs)
 }

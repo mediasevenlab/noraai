@@ -353,6 +353,23 @@ export function openPlanDiarySourceId(cardId: string): string | null {
   return mealId
 }
 
+/** Hidden stamp of the ration assignment a completion belongs to. */
+export const RATION_ASSIGNMENT_PREFIX = 'Назначение:'
+
+export function rationAssignmentAssumption(generation: number) {
+  return `${RATION_ASSIGNMENT_PREFIX}${generation}`
+}
+
+export function rationAssignmentGenerationFromAssumptions(
+  assumptions: readonly string[] | undefined,
+): number | null {
+  const hit = assumptions?.find((item) => item.startsWith(RATION_ASSIGNMENT_PREFIX))
+  if (!hit) return null
+  const value = Number(hit.slice(RATION_ASSIGNMENT_PREFIX.length).trim())
+  if (!Number.isInteger(value) || value < 1) return null
+  return value
+}
+
 function diaryHistorySourceId(assumptions: readonly string[] | undefined) {
   const logged = assumptions?.find((item) => item.startsWith(RATION_DIARY_LOG_PREFIX))
   if (logged) {
@@ -371,40 +388,55 @@ type RationSlotMeal = {
   versions?: readonly unknown[]
 }
 
+function rationAssignmentMatches(meal: RationSlotMeal, assignment: number) {
+  const stamped = rationAssignmentGenerationFromAssumptions(meal.assumptions)
+  if (stamped == null) return assignment === 0
+  return stamped === assignment
+}
+
 /**
- * A plain completion fills the ration slot on the day it was recorded.
- * An edited completion is its own meal and leaves the slot open, so the
- * ration can be chosen again.
+ * A completion fills the ration slot of the assignment it was eaten in.
+ * Clearing the ration and assigning it again is the next assignment:
+ * the old completion stays, and the planned card is free.
  */
 export function rationOccurrenceCoversSlot(
   meal: RationSlotMeal,
   templateId: string,
   dayKey: string,
+  assignment = 0,
 ): boolean {
-  if (isDiaryOccurrenceUnique(meal)) return false
   if (diaryHistorySourceId(meal.assumptions) !== templateId) return false
   if (!isRationPlanDone(meal)) return false
-  return localDayKey(meal.at) === dayKey
+  if (localDayKey(meal.at) !== dayKey) return false
+  return rationAssignmentMatches(meal, assignment)
 }
 
-/** One completion row per template and calendar day. A later edit gets the next key. */
-export function rationOccurrenceClientKey(templateId: string, dayKey: string, generation = 0) {
+/** One completion row per template, calendar day, and assignment. A later edit gets the next key. */
+export function rationOccurrenceClientKey(
+  templateId: string,
+  dayKey: string,
+  generation = 0,
+  assignment = 0,
+) {
   const base = `occ:${templateId}:${dayKey}`
-  return (generation > 0 ? `${base}:${generation}` : base).slice(0, 64)
+  const assigned = assignment > 0 ? `${base}:a${assignment}` : base
+  return (generation > 0 ? `${assigned}:${generation}` : assigned).slice(0, 64)
 }
 
 export function rationOccurrenceClientKeyForSlot(
   meals: readonly RationSlotMeal[],
   templateId: string,
   dayKey: string,
+  assignment = 0,
 ) {
   const editedOnDay = meals.some(
     (meal) =>
       isDiaryOccurrenceUnique(meal)
       && diaryHistorySourceId(meal.assumptions) === templateId
-      && localDayKey(meal.at) === dayKey,
+      && localDayKey(meal.at) === dayKey
+      && rationAssignmentMatches(meal, assignment),
   )
-  return rationOccurrenceClientKey(templateId, dayKey, editedOnDay ? 1 : 0)
+  return rationOccurrenceClientKey(templateId, dayKey, editedOnDay ? 1 : 0, assignment)
 }
 
 type OpenPlanMeal = Pick<MealEntry, 'id' | 'at'> & {
@@ -430,6 +462,7 @@ export function openPlanDiaryCards<T extends OpenPlanMeal>(
     planStartFor: (planId: string) => Date | null
     layoutFor?: (planId: string) => PlanMealLayout | null
     planMealsFor?: (planId: string) => ReadonlyArray<{ id: string; at: string }>
+    assignmentGenerationFor?: (planId: string) => number
   },
 ): T[] {
   const now = input.now ?? new Date()
@@ -457,8 +490,9 @@ export function openPlanDiaryCards<T extends OpenPlanMeal>(
     if (localDayKey(historyAt(meal)) === projectedKey) continue
     if (projectedKey < todayKey) continue
     if (projectedKey > todayKey && !input.showWholePlan) continue
+    const assignment = input.assignmentGenerationFor?.(planId) ?? 0
     const alreadyEatenToday = meals.some((other) =>
-      rationOccurrenceCoversSlot(other, meal.id, projectedKey),
+      rationOccurrenceCoversSlot(other, meal.id, projectedKey, assignment),
     )
     if (alreadyEatenToday) continue
     cards.push({
@@ -496,16 +530,19 @@ export function pendingDiarySlotKey(layoutSlot: number | null, at: string) {
 }
 
 /**
- * Today's completion of a ration that is still selected keeps its board slot.
- * It leaves that slot when the day is no longer today, or the ration is no longer selected.
+ * Today's completion of the current ration assignment keeps its board slot.
+ * It moves after that row when the day is no longer today, the ration is no
+ * longer selected, or the completion belongs to an earlier assignment.
  */
 export function diaryDoneMealLeavesSlot(input: {
   done: boolean
   onCurrentDay: boolean
   planStillSelected: boolean
+  belongsToCurrentAssignment?: boolean
 }) {
   if (!input.done) return false
-  return !(input.onCurrentDay && input.planStillSelected)
+  const currentAssignment = input.belongsToCurrentAssignment !== false
+  return !(input.onCurrentDay && input.planStillSelected && currentAssignment)
 }
 
 /**

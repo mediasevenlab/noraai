@@ -263,6 +263,24 @@ function foldRu(value: string) {
 }
 
 /**
+ * «ветчину» and «ветчина» are the same food.
+ * A short word only grows by an ending. A longer word may also change its last letters.
+ */
+export function foodWordsMatch(left: string, right: string) {
+  if (left === right) return true
+  const [shorter, longer] = left.length <= right.length ? [left, right] : [right, left]
+  if (shorter.length < 3) return false
+  if (longer.startsWith(shorter)) {
+    const extra = longer.length - shorter.length
+    if (shorter.length < 4 && extra > 1) return false
+    return extra <= 3
+  }
+  let stem = 0
+  while (stem < shorter.length && shorter[stem] === longer[stem]) stem += 1
+  return stem >= 4 && shorter.length - stem <= 2 && longer.length - stem <= 2
+}
+
+/**
  * A plain «убери масло» keeps the saved lines and drops the named ones.
  * «Бери» is the same request with the first letter missing.
  * Mixed edits («убери масло и добавь хлеб») stay with the model.
@@ -283,9 +301,12 @@ export function applyNamedRemoval(card: Record<string, unknown>, message: string
   if (meal.composition.length < 2) return null
   const drop = new Set<number>()
   for (const words of targets) {
-    const hits = meal.composition.flatMap((item, index) =>
-      words.some((word) => foldRu(item.label).includes(word)) ? [index] : [],
-    )
+    const hits = meal.composition.flatMap((item, index) => {
+      const labelWords = foldRu(item.label).split(' ').filter((word) => word.length >= 3)
+      return words.some((word) => labelWords.some((labelWord) => foodWordsMatch(labelWord, word)))
+        ? [index]
+        : []
+    })
     if (hits.length === 0) return null
     for (const index of hits) drop.add(index)
   }

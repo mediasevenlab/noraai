@@ -10,7 +10,7 @@ import {
   usableMealCover,
   type MealEntry,
 } from '@/features/diary'
-import { isRationDiaryLog } from '@/features/diary/ration-import'
+import { DIARY_PLAN_SOURCE_PREFIX, isRationDiaryLog } from '@/features/diary/ration-import'
 import type { SharedRation, SharedRationSnapshot } from '@web-app-demo/contracts'
 import {
   assignedRationOnDay,
@@ -288,7 +288,25 @@ function mondayDayKey(date: Date) {
   return localDayKey(monday)
 }
 
-/** Live week uses this week's cards; otherwise the latest pending weekday template. */
+function isDiaryAddedPlate(meal: { assumptions?: readonly string[] }) {
+  return meal.assumptions?.some((item) => item.startsWith(DIARY_PLAN_SOURCE_PREFIX)) ?? false
+}
+
+function latestPendingWeek(meals: readonly MealEntry[], completedIds?: ReadonlySet<string>) {
+  const pending = meals.filter((meal) => isRationPlanPending(meal, completedIds))
+  if (pending.length === 0) return []
+  const latestWeek = pending.reduce((best, meal) => {
+    const key = mondayDayKey(new Date(meal.at))
+    return key > best ? key : best
+  }, '')
+  return pending.filter((meal) => mondayDayKey(new Date(meal.at)) === latestWeek)
+}
+
+/**
+ * The day's own plates come from this week, or from the latest pending week.
+ * A plate added from the diary is an extra card on that day, so it does not
+ * take the place of the plates already there.
+ */
 export function plannedMealsOnDay(
   meals: readonly MealEntry[],
   day: Date,
@@ -305,15 +323,14 @@ export function plannedMealsOnDay(
     )
     .slice()
     .sort((left, right) => (left.at < right.at ? -1 : left.at > right.at ? 1 : 0))
-  const thisWeek = matches.filter((meal) => mondayDayKey(new Date(meal.at)) === weekKey)
-  if (thisWeek.length > 0) return thisWeek
-  const pending = matches.filter((meal) => isRationPlanPending(meal, completedIds))
-  if (pending.length === 0) return []
-  const latestWeek = pending.reduce((best, meal) => {
-    const key = mondayDayKey(new Date(meal.at))
-    return key > best ? key : best
-  }, '')
-  return pending.filter((meal) => mondayDayKey(new Date(meal.at)) === latestWeek)
+  const added = matches.filter((meal) => isDiaryAddedPlate(meal))
+  const plates = matches.filter((meal) => !isDiaryAddedPlate(meal))
+  const thisWeekPlates = plates.filter((meal) => mondayDayKey(new Date(meal.at)) === weekKey)
+  const base = thisWeekPlates.length > 0 ? thisWeekPlates : latestPendingWeek(plates, completedIds)
+  const extras = added.filter((meal) => mondayDayKey(new Date(meal.at)) === weekKey)
+  if (extras.length === 0) return base
+  const seen = new Set(base.map((meal) => meal.id))
+  return [...base, ...extras.filter((meal) => !seen.has(meal.id))]
 }
 
 function dayIsoFromDate(date: Date) {

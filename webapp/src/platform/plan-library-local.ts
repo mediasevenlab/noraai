@@ -1,6 +1,11 @@
 import type { AuthoredPlan } from '@/platform/authored-plans'
 import { readAuthoredPlans, writeAuthoredPlans } from '@/platform/authored-plans'
-import { readPlanStartMap, writePlanStartMap } from '@/platform/plan-start'
+import {
+  readPlanAssignmentMap,
+  readPlanStartMap,
+  writePlanAssignmentMap,
+  writePlanStartMap,
+} from '@/platform/plan-start'
 import { readSavedPlanIds, writeSavedPlanIds } from '@/platform/saved-plan-ids'
 import type { SavedAccountScope } from '@/platform/saved-ids'
 import { readSelectedPlanIds, writeSelectedPlanIds } from '@/platform/selected-plan'
@@ -10,6 +15,7 @@ export type PlanLibrarySnapshot = {
   savedPlanIds: string[]
   selectedPlanIds: string[]
   planStarts: Record<string, string>
+  planGenerations?: Record<string, number>
 }
 
 export function emptyPlanLibrarySnapshot(): PlanLibrarySnapshot {
@@ -36,6 +42,7 @@ export function readPlanLibrarySnapshot(scope: SavedAccountScope | string): Plan
     savedPlanIds: [...readSavedPlanIds(scope)],
     selectedPlanIds: [...readSelectedPlanIds(scope)],
     planStarts: readPlanStartMap(scope),
+    planGenerations: readPlanAssignmentMap(scope),
   }
 }
 
@@ -47,6 +54,7 @@ export function writePlanLibrarySnapshot(
   writeSavedPlanIds(scope, new Set(snapshot.savedPlanIds))
   writeSelectedPlanIds(scope, new Set(snapshot.selectedPlanIds))
   writePlanStartMap(scope, snapshot.planStarts)
+  writePlanAssignmentMap(scope, snapshot.planGenerations ?? {})
 }
 
 export function withAuthoredPlan(
@@ -65,10 +73,13 @@ export function withoutAuthoredPlan(
 ): PlanLibrarySnapshot {
   const planStarts = { ...snapshot.planStarts }
   delete planStarts[planId]
+  const planGenerations = snapshot.planGenerations ? { ...snapshot.planGenerations } : undefined
+  if (planGenerations) delete planGenerations[planId]
   return {
     authoredPlans: snapshot.authoredPlans.filter((item) => item.id !== planId),
     savedPlanIds: snapshot.savedPlanIds.filter((id) => id !== planId),
     selectedPlanIds: snapshot.selectedPlanIds.filter((id) => id !== planId),
     planStarts,
+    ...(planGenerations ? { planGenerations } : {}),
   }
 }

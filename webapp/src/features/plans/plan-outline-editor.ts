@@ -1,3 +1,5 @@
+import type { RewriteMealRequest } from '@web-app-demo/contracts'
+
 import { mealCompositionLines, type MealEntry } from '@/features/diary'
 import {
   emptyPlanDayMeals,
@@ -7,6 +9,11 @@ import {
   type RationEntry,
   type RationMealDraft,
 } from '@/features/mentor'
+import {
+  mealDraftToMeal,
+  splitIngredientLines,
+  splitStepLines,
+} from '@/features/mentor/authored-rations'
 
 import { emptyPlanEditorDay, type WeekPlanDay } from './week-plan'
 
@@ -18,6 +25,76 @@ function isMealSlot(value: string): value is (typeof MEAL_SLOTS)[number] {
 
 function mealIngredientsDraft(meal: MealEntry) {
   return mealCompositionLines(meal).join('\n')
+}
+
+const MEAL_CATEGORIES = ['Птица', 'Рыба', 'Мясо', 'Завтрак', 'Перекус', 'Каша'] as const
+
+function portionObjects(meal: MealEntry): RewriteMealRequest['portionItems'] {
+  return (meal.portionItems ?? []).flatMap((item) => {
+    if (typeof item === 'string') {
+      const label = item.trim()
+      return label ? [{ label, kcal: 0, protein: 0, fat: 0, carbs: 0 }] : []
+    }
+    const label = item.label.trim()
+    if (!label) return []
+    return [{ label, kcal: item.kcal, protein: item.protein, fat: item.fat, carbs: item.carbs }]
+  })
+}
+
+/** Null when the editor did not change this plate. Image bytes are attached by the caller. */
+export function planMealRewriteRequest(
+  meal: MealEntry,
+  draft: RationMealDraft,
+): RewriteMealRequest | null {
+  const title = draft.title.trim()
+  if (!title) return null
+  const next = mealDraftToMeal(draft)
+  const nextLines = splitIngredientLines(draft.ingredients)
+  const currentLines = mealCompositionLines(meal)
+  const sameLines = nextLines.join('\n') === currentLines.join('\n')
+  const steps = splitStepLines(draft.stepsText).join('\n')
+  const currentSteps = (meal.clientComment ?? '').trim()
+  const imageChanged = draft.image.trim().length > 0 && draft.image.trim() !== meal.image.trim()
+  if (
+    title === meal.title.trim()
+    && next.slot === meal.meal
+    && next.kcal === meal.kcal
+    && next.protein === meal.protein
+    && next.fat === meal.fat
+    && next.carbs === meal.carbs
+    && sameLines
+    && steps === currentSteps
+    && !imageChanged
+  ) {
+    return null
+  }
+  const category =
+    next.slot === 'Завтрак' || next.slot === 'Перекус'
+      ? next.slot
+      : MEAL_CATEGORIES.includes(meal.category as (typeof MEAL_CATEGORIES)[number])
+        ? (meal.category as RewriteMealRequest['category'])
+        : 'Мясо'
+  const portionItems = sameLines
+    ? portionObjects(meal)
+    : nextLines.slice(0, 40).map((label) => ({
+        label: label.slice(0, 200),
+        kcal: 0,
+        protein: 0,
+        fat: 0,
+        carbs: 0,
+      }))
+  return {
+    title: title.slice(0, 200),
+    ingredients: (sameLines ? meal.ingredients : nextLines.join(', ')).trim().slice(0, 500),
+    category,
+    meal: next.slot,
+    kcal: next.kcal,
+    protein: next.protein,
+    fat: next.fat,
+    carbs: next.carbs,
+    portionItems,
+    clientComment: steps.slice(0, 4000),
+  }
 }
 
 export function mealEntryToRationDraft(meal: MealEntry): RationMealDraft {

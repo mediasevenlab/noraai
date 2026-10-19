@@ -25,6 +25,7 @@ import {
   type NoraModelChatMessage,
   type NoraModelChatResponse,
   type RefineMealRequest,
+  type RewriteMealRequest,
   type SelectMealVersionRequest,
   type SetMealPlanDoneRequest,
   type ShareMealRequest,
@@ -62,6 +63,18 @@ export function listMentorUserMeals(
   return transport.request(
     `/api/mentor/users/${encodeURIComponent(userId)}/meals`,
     listMealsResponseSchema,
+  )
+}
+
+export function rewriteMyMeal(
+  transport: AuthenticatedTransport,
+  mealId: string,
+  body: RewriteMealRequest,
+): Promise<MealMutationResponse> {
+  return transport.request(
+    `/api/users/me/meals/${encodeURIComponent(mealId)}/rewrite`,
+    mealMutationResponseSchema,
+    { method: 'POST', body },
   )
 }
 

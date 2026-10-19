@@ -30,6 +30,7 @@ const planStartWireSchema = z
   .object({
     planId: z.string(),
     dayKey: z.string(),
+    generation: z.number().optional(),
   })
   .passthrough()
 
@@ -84,12 +85,16 @@ function coerceAuthoredPlan(value: unknown): AuthoredPlan | null {
   }
 }
 
-function coercePlanStart(value: unknown): { planId: string; dayKey: string } | null {
+function coercePlanStart(value: unknown): { planId: string; dayKey: string; generation?: number } | null {
   const parsed = planStartWireSchema.safeParse(value)
   if (!parsed.success) return null
   const planId = parsed.data.planId.trim()
   const dayKey = parsed.data.dayKey.trim()
   if (!planId || !/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return null
+  const generation = parsed.data.generation
+  if (typeof generation === 'number' && Number.isInteger(generation) && generation >= 1 && generation <= 10_000) {
+    return { planId, dayKey, generation }
+  }
   return { planId, dayKey }
 }
 
@@ -127,7 +132,11 @@ export function toUserPlanLibrary(raw: z.infer<typeof userPlanLibraryWireSchema>
     const start = coercePlanStart(item)
     if (!start || seenStarts.has(start.planId)) continue
     seenStarts.add(start.planId)
-    planStarts.push(start)
+    planStarts.push({
+      planId: start.planId,
+      dayKey: start.dayKey,
+      ...(start.generation ? { generation: start.generation } : {}),
+    })
   }
   return {
     authoredPlans,
@@ -155,6 +164,9 @@ export function snapshotFromPlanLibrary(library: UserPlanLibrary): PlanLibrarySn
     savedPlanIds: library.savedPlanIds,
     selectedPlanIds: library.selectedPlanIds,
     planStarts: Object.fromEntries(library.planStarts.map((item) => [item.planId, item.dayKey])),
+    planGenerations: Object.fromEntries(
+      library.planStarts.flatMap((item) => (item.generation ? [[item.planId, item.generation] as const] : [])),
+    ),
   }
 }
 
@@ -184,7 +196,10 @@ export function putRequestFromSnapshot(
     authoredPlans,
     savedPlanIds: snapshot.savedPlanIds,
     selectedPlanIds: snapshot.selectedPlanIds,
-    planStarts: Object.entries(snapshot.planStarts).map(([planId, dayKey]) => ({ planId, dayKey })),
+    planStarts: Object.entries(snapshot.planStarts).map(([planId, dayKey]) => {
+      const generation = snapshot.planGenerations?.[planId]
+      return generation ? { planId, dayKey, generation } : { planId, dayKey }
+    }),
   })
 }
 

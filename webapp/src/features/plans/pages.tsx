@@ -83,7 +83,7 @@ import {
   isCatalogPlanId,
   PLAN_CATALOG,
 } from './plan-catalog'
-import { stampRationDaysOntoPlan, catalogCloneErrorMessage, firstDurablePlanCover } from './plan-create'
+import { rewriteEditedPlanMeals, stampRationDaysOntoPlan, catalogCloneErrorMessage, firstDurablePlanCover } from './plan-create'
 import { PlanOutlineDialog } from './PlanOutlineDialog'
 import { PlanPageShell } from './PlanPageShell'
 import {
@@ -348,6 +348,10 @@ export function PlanPage({
       planStarts: {
         ...snapshot.planStarts,
         [startPickerPlanId]: dayKeyFromDate(startOfLocalDay(date)),
+      },
+      planGenerations: {
+        ...snapshot.planGenerations,
+        [startPickerPlanId]: (snapshot.planGenerations?.[startPickerPlanId] ?? 0) + 1,
       },
     })
     setStartPickerPlanId(null)
@@ -1192,6 +1196,7 @@ export function CurrentPlanPage({
     description: string
     coverImage: string
     days: typeof scheduledDays
+    dayDrafts: Parameters<typeof rewriteEditedPlanMeals>[2]
     newDayRations: RationEntry[]
   }) {
     const title = next.title.trim()
@@ -1200,6 +1205,31 @@ export function CurrentPlanPage({
       return
     }
     if (!plan) return
+    if (auth.user?.role === 'user') {
+      try {
+        const rewritten = await rewriteEditedPlanMeals(auth.transport, next.days, next.dayDrafts)
+        if (rewritten.length > 0) {
+          queryClient.setQueryData<{ items: Array<(typeof rewritten)[number]['meal']> }>(
+            mealsQueryKeys.forSubject(auth.user.id),
+            (previous) => {
+              const kept = previous?.items ?? []
+              const incoming = new Map(rewritten.map((item) => [item.meal.id, item.meal]))
+              return {
+                ...previous,
+                items: [
+                  ...kept.map((item) => incoming.get(item.id) ?? item),
+                  ...[...incoming.values()].filter((item) => !kept.some((current) => current.id === item.id)),
+                ],
+              }
+            },
+          )
+          await queryClient.invalidateQueries({ queryKey: mealsQueryKeys.forSubject(auth.user.id) })
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Не удалось сохранить приёмы')
+        return
+      }
+    }
     let stampedMeals: Array<{ meal: { imageUrl?: string } }> = []
     const hasNewMeals = next.newDayRations.some((ration) => ration.meals.length > 0)
     if (hasNewMeals) {

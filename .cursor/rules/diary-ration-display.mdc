@@ -23,3 +23,7 @@ Order inside one diary day:
 3. Meals the person added with «Добавить» are last.
 
 Clearing a completion the same day makes the card pending again in its ration slot. Several rations may start on the same day; today's meals from each stay in selection order.
+
+Editing a planned meal on the current day turns that same card into the completed meal and keeps the edit on it. A second copy does not appear. The pending card appears again only after this ration is cleared and assigned again. That earlier completion then stands after the uncompleted meals of the new assignment.
+
+A ration meal has no version history. Chat edits and the version switch exist only in the diary. A meal added from the diary with the card plus lands as the current plate, without versions. To change a ration meal, open «Изменить» and save the plate there. Switching an older snapshot must not drop the meal from its ration.

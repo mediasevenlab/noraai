@@ -223,6 +223,25 @@ describe('nora meal routing', () => {
     ).toBeNull()
   })
 
+  test('«убери ветчину» drops the ham line written in the nominative', () => {
+    const meal = applyNamedRemoval(
+      {
+        title: 'Горячий круассан с ветчиной и сыром',
+        composition: [
+          { label: 'Круассан ~150 г (3 шт.)', kcal: 255, protein: 12, fat: 30, carbs: 60 },
+          { label: 'Ветчина ~120 г', kcal: 174, protein: 10, fat: 11, carbs: 1 },
+          { label: 'Сыр твердый ~40 г', kcal: 140, protein: 10, fat: 10, carbs: 0 },
+        ],
+      },
+      'убери ветчину из состава',
+    )
+    expect(meal?.composition.map((item) => item.label)).toEqual([
+      'Круассан ~150 г (3 шт.)',
+      'Сыр твердый ~40 г',
+    ])
+    expect(meal?.nutrition.kcal).toBe(255 + 140)
+  })
+
   test('a removal of a product that is not on the plate stays with the model', () => {
     expect(
       applyNamedRemoval(

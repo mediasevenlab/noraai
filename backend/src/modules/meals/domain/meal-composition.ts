@@ -1,6 +1,6 @@
 import type { MealCategory, MealMicronutrient, MealPortionItem, MealSlot } from '@web-app-demo/contracts'
 
-import { estimatePortionMacros } from './nora-meal'
+import { estimatePortionMacros, foodWordsMatch } from './nora-meal'
 
 export const REFINE_ATTACH_PHOTO_INSTRUCTION =
   'Добавь к текущему составу продукты с приложенного фото. Существующие позиции не удаляй. Пересчитай КБЖУ на объединённый приём.'
@@ -223,11 +223,7 @@ function foldEditText(value: string) {
 }
 
 function wordsMatch(left: string, right: string) {
-  if (left === right) return true
-  const [shorter, longer] = left.length <= right.length ? [left, right] : [right, left]
-  if (shorter.length < 3) return false
-  if (shorter.length < 4 && longer.length - shorter.length > 1) return false
-  return longer.startsWith(shorter) && longer.length - shorter.length <= 2
+  return foodWordsMatch(left, right)
 }
 
 function foodWords(label: string) {

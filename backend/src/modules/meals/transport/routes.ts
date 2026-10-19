@@ -21,6 +21,7 @@ import {
   mealComposerTurnRequestSchema,
   mealComposerTurnResponseSchema,
   refineMealRequestSchema,
+  rewriteMealRequestSchema,
   selectMealVersionRequestSchema,
   shareMealRequestSchema,
   likeMealRequestSchema,
@@ -361,6 +362,33 @@ const selectMyMealVersionRoute = createRoute({
     401: { content: errorContent, description: 'Authentication required' },
     403: { content: errorContent, description: 'Forbidden' },
     404: { content: errorContent, description: 'Meal or version not found' },
+  },
+})
+const rewriteMyMealRoute = createRoute({
+  method: 'post',
+  path: '/me/meals/{mealId}/rewrite',
+  tags: ['Meals'],
+  security: [{ BearerAuth: [] }],
+  request: {
+    params: z.object({ mealId: z.string().uuid() }),
+    body: {
+      content: {
+        'application/json': {
+          schema: rewriteMealRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: { 'application/json': { schema: mealMutationResponseSchema } },
+      description: 'Meal plate replaced without a new chat version',
+    },
+    400: { content: errorContent, description: 'Invalid rewrite request' },
+    401: { content: errorContent, description: 'Authentication required' },
+    403: { content: errorContent, description: 'Forbidden' },
+    404: { content: errorContent, description: 'Meal not found' },
+    409: { content: errorContent, description: 'Meal changed while saving' },
   },
 })
 const shareMyMealRoute = createRoute({
@@ -787,6 +815,12 @@ export function createMealsRoutes({
   userMealsRoutes.openapi(refineMyMealRoute, async (c) => {
     const result = await executeMeals(() =>
       service.refineMeal(c.var.user, c.req.valid('param').mealId, c.req.valid('json')),
+    )
+    return c.json(result, 200)
+  })
+  userMealsRoutes.openapi(rewriteMyMealRoute, async (c) => {
+    const result = await executeMeals(() =>
+      service.rewriteMealPlate(c.var.user, c.req.valid('param').mealId, c.req.valid('json')),
     )
     return c.json(result, 200)
   })

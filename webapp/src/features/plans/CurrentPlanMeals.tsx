@@ -931,6 +931,7 @@ export function CurrentPlanMeals({
                 }
               />
               <MealOpenDetail
+                allowComposer={false}
                 completedIds={completedIds}
                 meal={openMeal}
                 onMacrosRevealChange={setOpenMacrosReveal}

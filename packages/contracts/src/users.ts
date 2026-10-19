@@ -348,6 +348,7 @@ export const userPlanLibrarySchema = z
         .object({
           planId: savedItemIdSchema,
           dayKey: planStartDayKeySchema,
+          generation: z.number().int().min(1).max(10_000).optional(),
         })
         .strict(),
     ).max(40),

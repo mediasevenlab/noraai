@@ -14,6 +14,7 @@ import {
   planLayoutSlotIndex,
   openPlanDiaryCards,
   openPlanDiarySourceId,
+  rationAssignmentAssumption,
   rationOccurrenceClientKeyForSlot,
   planOccurrenceDiaryAt,
   planOccurrenceDiaryAtWithLayout,
@@ -248,19 +249,32 @@ describe('diary vs weekly plan occurrences', () => {
         selectedPlanIds: new Set([PLAN_ID]),
         planStartFor: () => start,
       }),
+    ).toHaveLength(0)
+    expect(
+      openPlanDiaryCards([eaten, edited], {
+        now,
+        selectedPlanIds: new Set([PLAN_ID]),
+        planStartFor: () => start,
+        assignmentGenerationFor: () => 1,
+      }),
     ).toHaveLength(1)
     const fresh = {
       ...edited,
       id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
       versions: [{ id: 'v1' }],
+      assumptions: [...edited.assumptions, rationAssignmentAssumption(1)],
     }
     expect(
       openPlanDiaryCards([eaten, edited, fresh], {
         now,
         selectedPlanIds: new Set([PLAN_ID]),
         planStartFor: () => start,
+        assignmentGenerationFor: () => 1,
       }),
     ).toHaveLength(0)
+    expect(
+      rationOccurrenceClientKeyForSlot([edited], eaten.id, '2026-10-19', 1),
+    ).toBe(`occ:${eaten.id}:2026-10-19:a1`)
     expect(
       rationOccurrenceClientKeyForSlot([edited], eaten.id, '2026-10-19'),
     ).toBe(`occ:${eaten.id}:2026-10-19:1`)
@@ -698,6 +712,27 @@ describe('diary vs weekly plan occurrences', () => {
         planStillSelected: true,
       }),
     ).toBe(true)
+    expect(
+      diaryDoneMealLeavesSlot({
+        done: true,
+        onCurrentDay: true,
+        planStillSelected: true,
+        belongsToCurrentAssignment: false,
+      }),
+    ).toBe(true)
+    const reassigned = orderDiaryDayByPlanLayout(
+      [
+        { id: 'edited', slot: 0 },
+        { id: 'pending', slot: 0 },
+        { id: 'tuna', slot: 1 },
+        { id: 'own', slot: 9 },
+      ],
+      (meal) => meal.slot,
+      (meal) => meal.id === 'own',
+      () => 0,
+      (meal) => meal.id === 'edited',
+    )
+    expect(reassigned.map((meal) => meal.id)).toEqual(['pending', 'tuna', 'edited', 'own'])
     const meals = [
       { id: 'sticks', at: '2026-10-14T08:00:00.000Z', keep: true },
       { id: 'tuna', at: '2026-10-14T12:00:00.000Z', keep: true },

@@ -6,6 +6,7 @@ import {
 import type { SavedAccountScope } from './saved-ids'
 
 const START_PREFIX = 'nora:plans-start:v1:'
+const ASSIGN_PREFIX = 'nora:plans-assign:v1:'
 
 function accountKeys(scope: SavedAccountScope | string): string[] {
   if (typeof scope === 'string') return [scope]
@@ -60,6 +61,43 @@ function writeStartMap(scope: SavedAccountScope | string, map: Record<string, st
   const payload = JSON.stringify(map)
   for (const key of accountKeys(scope)) {
     localStorage.setItem(`${START_PREFIX}${key}`, payload)
+  }
+}
+
+function parseAssignmentMap(raw: string | null): Record<string, number> {
+  if (!raw) return {}
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const out: Record<string, number> = {}
+    for (const [planId, generation] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof generation === 'number' && Number.isInteger(generation) && generation >= 1 && generation <= 10_000) {
+        out[planId] = generation
+      }
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+export function readPlanAssignmentMap(scope: SavedAccountScope | string): Record<string, number> {
+  if (typeof localStorage === 'undefined') return {}
+  const merged: Record<string, number> = {}
+  for (const key of accountKeys(scope)) {
+    Object.assign(merged, parseAssignmentMap(localStorage.getItem(`${ASSIGN_PREFIX}${key}`)))
+  }
+  return merged
+}
+
+export function writePlanAssignmentMap(
+  scope: SavedAccountScope | string,
+  map: Record<string, number>,
+) {
+  if (typeof localStorage === 'undefined') return
+  const payload = JSON.stringify(map)
+  for (const key of accountKeys(scope)) {
+    localStorage.setItem(`${ASSIGN_PREFIX}${key}`, payload)
   }
 }
 

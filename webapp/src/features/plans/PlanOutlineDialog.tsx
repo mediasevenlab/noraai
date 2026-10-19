@@ -6,6 +6,7 @@ import {
   type RationDraft,
   type RationEntry,
   type RationGoal,
+  type RationMealDraft,
 } from '@/features/mentor'
 
 import {
@@ -39,6 +40,7 @@ export function PlanOutlineDialog({
     description: string
     coverImage: string
     days: WeekPlanDay[]
+    dayDrafts: readonly RationMealDraft[][]
     newDayRations: RationEntry[]
   }) => void | Promise<void>
   open: boolean
@@ -81,6 +83,7 @@ export function PlanOutlineDialog({
           description: form.description.trim(),
           coverImage: form.coverImage?.trim() ?? '',
           days: applyPlanDayDrafts(paddedDays, dayDrafts),
+          dayDrafts,
           newDayRations: newMealRationsFromPlanDrafts(paddedDays, dayDrafts, form),
         })
       }}

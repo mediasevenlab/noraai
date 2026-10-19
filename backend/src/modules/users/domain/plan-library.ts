@@ -32,6 +32,7 @@ export type AuthoredUserPlanRecord = {
 export type PlanStartRecord = {
   planId: string
   dayKey: string
+  generation?: number
 }
 
 export type UserPlanLibraryFields = {
@@ -139,7 +140,7 @@ function uniquePlanStarts(value: unknown): PlanStartRecord[] {
     for (const item of value) {
       if (!item || typeof item !== 'object' || Array.isArray(item)) continue
       const record = item as Record<string, unknown>
-      const start = parsePlanStart(record.planId, record.dayKey)
+      const start = parsePlanStart(record.planId, record.dayKey, record.generation)
       if (!start || seen.has(start.planId)) continue
       seen.add(start.planId)
       starts.push(start)
@@ -158,11 +159,21 @@ function uniquePlanStarts(value: unknown): PlanStartRecord[] {
   return starts
 }
 
-function parsePlanStart(planIdValue: unknown, dayKeyValue: unknown): PlanStartRecord | null {
+function parsePlanStart(
+  planIdValue: unknown,
+  dayKeyValue: unknown,
+  generationValue?: unknown,
+): PlanStartRecord | null {
   const planId = parsePlanId(planIdValue)
   const dayKey = typeof dayKeyValue === 'string' ? dayKeyValue.trim() : ''
   if (!planId || !PLAN_START_DAY_RE.test(dayKey)) return null
-  return { planId, dayKey }
+  const generation = parseAssignmentGeneration(generationValue)
+  return generation ? { planId, dayKey, generation } : { planId, dayKey }
+}
+
+function parseAssignmentGeneration(value: unknown) {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 10_000) return 0
+  return value
 }
 
 function parsePlanId(value: unknown) {

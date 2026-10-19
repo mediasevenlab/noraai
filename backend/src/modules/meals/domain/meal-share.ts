@@ -53,6 +53,7 @@ export function isMealShareProvenanceStamp(line: string) {
     || value.startsWith(FEED_SOURCE_ID_PREFIX)
     || value.startsWith(CATALOG_FAVORITE_ID_PREFIX)
     || value.startsWith(RATION_DIARY_LOG_PREFIX)
+    || value.startsWith('Назначение:')
     || value.startsWith(DIARY_PLAN_SOURCE_PREFIX)
   )
 }

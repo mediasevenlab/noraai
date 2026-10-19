@@ -20,12 +20,38 @@ import {
   RATION_DIARY_DONE_MARK,
   RATION_DIARY_SOURCE_MARK,
   rationPlanAssumption,
+  rationTemplateVersionView,
   setRationImportedMealTitles,
   visibleMealAssumptions,
   weekPlanAssumption,
 } from '../src/features/diary/ration-import'
 import { SAMPLE_RATIONS } from './sample-ration'
 import { weekPlanOptions } from '../src/features/mentor/ration-assignments'
+
+test('a ration card shows the current plate as one version', () => {
+  const view = rationTemplateVersionView({
+    assumptions: [RATION_DIARY_SOURCE_MARK, 'План:week:2026-10-19'],
+    activeVersionId: 'v2',
+    versions: [
+      { id: 'v1', label: 'vers. 1.0' },
+      { id: 'v2', label: 'vers. 2.0' },
+    ],
+  })
+  expect(view.versions).toEqual([{ id: 'v2', label: 'vers. 1.0' }])
+  expect(view.activeVersionId).toBe('v2')
+})
+
+test('a diary history row keeps its versions', () => {
+  const view = rationTemplateVersionView({
+    assumptions: [RATION_DIARY_SOURCE_MARK, 'Выполнение:abc'],
+    activeVersionId: 'v2',
+    versions: [
+      { id: 'v1', label: 'vers. 1.0' },
+      { id: 'v2', label: 'vers. 2.0' },
+    ],
+  })
+  expect(view.versions.map((item) => item.label)).toEqual(['vers. 1.0', 'vers. 2.0'])
+})
 
 function restoreRationTitles() {
   setRationImportedMealTitles(SAMPLE_RATIONS.flatMap((ration) => ration.meals.map((meal) => meal.title)))
@@ -362,6 +388,7 @@ describe('ration-imported diary meals', () => {
       'Вес по фото',
     ])
     expect(visibleMealAssumptions(['На пару', 'Оценка, не весы'])).toEqual(['На пару'])
+    expect(visibleMealAssumptions(['На пару', 'Назначение:3', 'Выполнение:abc'])).toEqual(['На пару'])
   })
 
   test('deleting a ration drops only pending unmodified copies', () => {

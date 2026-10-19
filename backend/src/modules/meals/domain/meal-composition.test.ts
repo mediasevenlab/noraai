@@ -306,3 +306,31 @@ test('replacing one food removes it and keeps the rest of the plate', () => {
   expect(edited?.portionItems[0]).toEqual(plate.portionItems[1])
   expect(edited?.kcal).toBe(146 + 18 + 9 + 150)
 })
+
+test('«убери ветчину» drops the ham line even when the model keeps it', () => {
+  const croissant = {
+    ...plate,
+    title: 'Горячий круассан с ветчиной и сыром',
+    kcal: 880,
+    protein: 40,
+    fat: 51,
+    carbs: 63,
+    portionItems: [
+      { label: 'Круассан ~150 г (3 шт.)', kcal: 255, protein: 12, fat: 30, carbs: 60 },
+      { label: 'Ветчина ~120 г', kcal: 174, protein: 10, fat: 11, carbs: 1 },
+      { label: 'Сыр твердый ~40 г', kcal: 140, protein: 10, fat: 10, carbs: 0 },
+      { label: 'Салат листовой ~30 г', kcal: 3, protein: 0, fat: 0, carbs: 0 },
+      { label: 'Огурец ~50 г', kcal: 8, protein: 0, fat: 0, carbs: 2 },
+    ],
+  }
+  const edited = applyTextPortionEdit(croissant, croissant, 'убери ветчину')
+  expect(edited?.portionItems.map((item) => item.label)).toEqual([
+    'Круассан ~150 г (3 шт.)',
+    'Сыр твердый ~40 г',
+    'Салат листовой ~30 г',
+    'Огурец ~50 г',
+  ])
+  expect(edited?.portionItems[0]).toEqual(croissant.portionItems[0])
+  expect(edited?.kcal).toBe(255 + 140 + 3 + 8)
+  expect(edited?.title).toBe(croissant.title)
+})

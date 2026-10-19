@@ -80,6 +80,21 @@ test('snapshot helpers add and remove authored plans', () => {
   })
 })
 
+test('plan assignment generation survives the library round trip', () => {
+  const snapshot: PlanLibrarySnapshot = {
+    authoredPlans: [],
+    savedPlanIds: [],
+    selectedPlanIds: [authored.id],
+    planStarts: { [authored.id]: '2026-09-01' },
+    planGenerations: { [authored.id]: 2 },
+  }
+  const request = putRequestFromSnapshot(snapshot, new Date('2026-09-07T12:00:00.000Z'))
+  expect(request.planStarts).toEqual([{ planId: authored.id, dayKey: '2026-09-01', generation: 2 }])
+  expect(snapshotFromPlanLibrary(toUserPlanLibrary({ ...request, updatedAt: null })).planGenerations).toEqual({
+    [authored.id]: 2,
+  })
+})
+
 test('toUserPlanLibrary drops data-url covers', () => {
   const library = toUserPlanLibrary({
     authoredPlans: [

@@ -51,6 +51,27 @@ export function isRationDiaryLog(meal: { assumptions?: readonly string[] }) {
   return rationDiaryLogSourceId(meal.assumptions) != null
 }
 
+/**
+ * A ration card is one plate. Chat history stays on the diary row, so the
+ * ration card shows only the current plate as vers. 1.0.
+ */
+export function rationTemplateVersionView<T extends { id: string; label: string }>(meal: {
+  assumptions?: readonly string[]
+  versions?: readonly T[] | null
+  activeVersionId?: string | null
+}): { versions: T[]; activeVersionId: string | null } {
+  const versions = [...(meal.versions ?? [])]
+  if (!isRationImportedMeal(meal) || isRationDiaryLog(meal) || versions.length <= 1) {
+    return { versions, activeVersionId: meal.activeVersionId ?? null }
+  }
+  const active =
+    versions.find((item) => item.id === meal.activeVersionId) ?? versions[versions.length - 1]!
+  return {
+    versions: [{ ...active, label: 'vers. 1.0' }],
+    activeVersionId: active.id,
+  }
+}
+
 export function rationPlanAssumption(rationId: string) {
   return `${RATION_PLAN_ID_PREFIX}${rationId}`
 }
@@ -134,6 +155,7 @@ export function visibleMealAssumptions(assumptions: string[] | undefined): strin
         && !item.startsWith(CATALOG_FAVORITE_ID_PREFIX)
         && !item.startsWith(DIARY_PLAN_SOURCE_PREFIX)
         && !item.startsWith(RATION_DIARY_LOG_PREFIX)
+        && !item.startsWith('Назначение:')
         && !/не весы/i.test(item),
     ) ?? []
   )

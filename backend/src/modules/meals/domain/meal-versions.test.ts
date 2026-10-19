@@ -5,6 +5,7 @@ import {
   canRefineMeal,
   ensureMealVersions,
   mealCorrectionCount,
+  replaceMealPlate,
   sanitizeAssumptions,
   selectMealVersion,
   type MealWithVersions,
@@ -81,6 +82,66 @@ describe('meal versions', () => {
     expect(selected?.title).toBe('Овсянка')
     expect(selected?.kcal).toBe(300)
     expect(selected?.activeVersionId).toBe(original.versions[0]?.id)
+  })
+
+  test('selectMealVersion keeps the ration stamp an older snapshot does not have', () => {
+    const original = ensureMealVersions(baseMeal())
+    const refined = appendMealVersion(
+      {
+        ...original,
+        assumptions: ['На воде', 'Добавлено из рациона', 'План:week:2026-10-19'],
+        kcal: 880,
+      },
+      'добавь огурец',
+    )
+    const selected = selectMealVersion(refined, original.versions[0]!.id)
+    expect(selected?.kcal).toBe(300)
+    expect(selected?.assumptions).toContain('План:week:2026-10-19')
+    expect(selected?.assumptions).toContain('Добавлено из рациона')
+  })
+
+  test('selectMealVersion does not mark a pending ration meal done from an older snapshot', () => {
+    const original = ensureMealVersions(
+      baseMeal({
+        assumptions: ['Добавлено из рациона', 'План:week:2026-09-07', 'Выполнено по плану'],
+      }),
+    )
+    const refined = appendMealVersion(
+      {
+        ...original,
+        assumptions: ['Добавлено из рациона', 'План:week:2026-09-07'],
+        kcal: 880,
+      },
+      'огурец',
+    )
+    const selected = selectMealVersion(refined, original.versions[0]!.id)
+    expect(selected?.kcal).toBe(300)
+    expect(selected?.assumptions).toContain('План:week:2026-09-07')
+    expect(selected?.assumptions).not.toContain('Выполнено по плану')
+  })
+
+  test('replaceMealPlate keeps one current plate and the ration stamp', () => {
+    const original = ensureMealVersions(
+      baseMeal({ assumptions: ['Добавлено из рациона', 'План:authored-1'] }),
+    )
+    const refined = appendMealVersion({ ...original, title: 'С огурцом' }, 'огурец')
+    const replaced = replaceMealPlate(refined, {
+      title: 'Круассан',
+      ingredients: 'Круассан',
+      category: 'Завтрак',
+      mealSlot: 'Завтрак',
+      kcal: 400,
+      protein: 10,
+      fat: 20,
+      carbs: 40,
+      portionItems: [{ label: 'Круассан 80 г', kcal: 400, protein: 10, fat: 20, carbs: 40 }],
+      clientComment: 'Подогреть',
+    })
+    expect(replaced.versions).toHaveLength(1)
+    expect(replaced.versions[0]?.label).toBe('vers. 1.0')
+    expect(replaced.title).toBe('Круассан')
+    expect(replaced.assumptions).toContain('План:authored-1')
+    expect(replaced.activeVersionId).toBe(replaced.versions[0]?.id)
   })
 
   test('user and mentor each get two corrections on the same card', () => {

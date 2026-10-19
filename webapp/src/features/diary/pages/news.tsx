@@ -125,6 +125,8 @@ import {
   openPlanDiarySourceId,
   diaryDoneMealLeavesSlot,
   orderDiaryDayByPlanLayout,
+  rationAssignmentAssumption,
+  rationAssignmentGenerationFromAssumptions,
   rationOccurrenceClientKey,
   rationOccurrenceClientKeyForSlot,
   rationOccurrenceCoversSlot,
@@ -536,6 +538,7 @@ export function NewsPage({
   subjectPlan?: {
     selectedPlanIds: readonly string[];
     planStarts: Readonly<Record<string, string>>;
+    planGenerations?: Readonly<Record<string, number>>;
   };
   /** Mentor plan library is still loading. */
   subjectPlanPending?: boolean;
@@ -590,6 +593,14 @@ export function NewsPage({
     return new Set(planLibrary.selectedPlanIds);
   }, [planLibrary.selectedPlanIds, subjectPlan]);
   const selectedPlanId = planLibrary.selectedPlanIds[0] ?? null;
+  function assignmentGenerationForPlan(planId: string | null) {
+    if (!planId) return 0;
+    return (
+      subjectPlan?.planGenerations?.[planId] ??
+      planLibrary.planGenerations?.[planId] ??
+      0
+    );
+  }
   const questionnaireQuery = useQuestionnaireQuery(isOwnAccount);
   const [tab, setTab] = React.useState<FeedTab>("Все");
   const [query, setQuery] = React.useState("");
@@ -729,6 +740,10 @@ export function NewsPage({
   }, [readOnly, subjectFavoritesQuery.data, subjectId]);
 
   const selectedPlanKey = [...selectedPlanIds].sort().join("|");
+  const planGenerationKey = [...selectedPlanIds]
+    .sort()
+    .map((id) => `${id}:${assignmentGenerationForPlan(id)}`)
+    .join("|");
   React.useEffect(() => {
     if (!subjectId) return;
     setSkippedIds(
@@ -867,6 +882,7 @@ export function NewsPage({
         return readPlanStartDate(savedScope, planId);
       },
       layoutFor: (planId) => readPlanMealLayout(savedScope, planId),
+      assignmentGenerationFor: assignmentGenerationForPlan,
       planMealsFor: (planId) =>
         userMeals.filter(
           (meal) => diaryPlanIdForMeal(meal, selectedPlanIds) === planId,
@@ -882,6 +898,7 @@ export function NewsPage({
     seesSubjectDiary,
     selectedPlanIds,
     showWholePlan,
+    planGenerationKey,
     skippedIds,
     subjectPlan,
     userMeals,
@@ -997,17 +1014,27 @@ export function NewsPage({
       return;
     }
     const dayKey = localDayKey(shownAt);
+    const assignment = assignmentGenerationForPlan(planId);
     const epoch = (occurrenceEpochRef.current.get(templateId) ?? 0) + 1;
     occurrenceEpochRef.current.set(templateId, epoch);
     const draft = diaryMealCreatePlanDraft(source, planId, new Date(shownAt));
     draft.recordedAt = shownAt;
-    draft.clientKey = rationOccurrenceClientKeyForSlot(userMeals, templateId, dayKey);
+    draft.clientKey = rationOccurrenceClientKeyForSlot(
+      userMeals,
+      templateId,
+      dayKey,
+      assignment,
+    );
     draft.assumptions = [
       ...draft.assumptions.filter(
-        (item) => item !== RATION_DIARY_DONE_MARK && !item.startsWith("Выполнение:"),
+        (item) =>
+          item !== RATION_DIARY_DONE_MARK &&
+          !item.startsWith("Выполнение:") &&
+          !item.startsWith("Назначение:"),
       ),
       RATION_DIARY_DONE_MARK,
       rationDiaryLogAssumption(templateId),
+      ...(assignment > 0 ? [rationAssignmentAssumption(assignment)] : []),
     ];
     fitDiaryOccurrenceDraft(draft);
     const queryKey = mealsQueryKeys.forSubject(subjectId);
@@ -1042,9 +1069,14 @@ export function NewsPage({
       .then(async (ready) => {
         let result = await createMyMeal(auth.transport, ready);
         const covers = () =>
-          rationOccurrenceCoversSlot(mealDtoToEntry(result.meal), templateId, dayKey);
+          rationOccurrenceCoversSlot(
+            mealDtoToEntry(result.meal),
+            templateId,
+            dayKey,
+            assignment,
+          );
         if (!covers() && (result.meal.versions?.length ?? 0) > 1) {
-          ready.clientKey = rationOccurrenceClientKey(templateId, dayKey, 2);
+          ready.clientKey = rationOccurrenceClientKey(templateId, dayKey, 2, assignment);
           result = await createMyMeal(auth.transport, ready);
         }
         return result;
@@ -1552,8 +1584,11 @@ export function NewsPage({
         list = list.filter((meal) => {
           if (isRationDiaryLog(meal) || !isRationPlanPending(meal, completedIds)) return true;
           const dayKey = localDayKey(meal.at);
+          const assignment = assignmentGenerationForPlan(
+            diaryPlanIdForMeal(meal, selectedIds),
+          );
           const covered = userMeals.some((log) =>
-            rationOccurrenceCoversSlot(log, meal.id, dayKey),
+            rationOccurrenceCoversSlot(log, meal.id, dayKey, assignment),
           );
           return !covered;
         });
@@ -1601,6 +1636,7 @@ export function NewsPage({
     savedScope.userId,
     savedScope.email,
     selectedPlanKey,
+    planGenerationKey,
   ]);
 
   const dayGroups = React.useMemo(
@@ -1627,10 +1663,14 @@ export function NewsPage({
                 const planId =
                   diaryPlanIdForMeal(anchor, selectedPlanIds) ??
                   diaryPlanIdForMeal(meal, selectedPlanIds);
+                const stamped = rationAssignmentGenerationFromAssumptions(meal.assumptions);
+                const assignment = assignmentGenerationForPlan(planId);
+                const sameAssignment = stamped == null ? assignment === 0 : stamped === assignment;
                 return diaryDoneMealLeavesSlot({
                   done: isRationPlanDone(meal, completedIds),
                   onCurrentDay: isDiaryMealOnCurrentDay(meal),
                   planStillSelected: planId != null,
+                  belongsToCurrentAssignment: sameAssignment,
                 });
               },
             ),
@@ -1640,6 +1680,7 @@ export function NewsPage({
       completedIds,
       diaryAtById,
       filtered,
+      planGenerationKey,
       savedScope.email,
       savedScope.userId,
       selectedPlanKey,
@@ -2213,6 +2254,9 @@ export function NewsPage({
                     : () => toggleRationMealDone(openMeal.id)
                 }
                 diaryLocksRationTemplate
+                rationAssignmentGeneration={assignmentGenerationForPlan(
+                  diaryPlanIdForMeal(openMeal, selectedPlanIds),
+                )}
                 onDiaryOccurrence={setOpenId}
                 onMacrosRevealChange={setOpenMacrosReveal}
                 readOnly={readOnly}

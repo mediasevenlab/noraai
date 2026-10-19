@@ -150,6 +150,11 @@ export function MentorMenteeDiary({
         planStarts: Object.fromEntries(
           planLibrary.data.planStarts.map((item) => [item.planId, item.dayKey]),
         ),
+        planGenerations: Object.fromEntries(
+          planLibrary.data.planStarts.flatMap((item) =>
+            item.generation ? [[item.planId, item.generation] as const] : [],
+          ),
+        ),
       }
     }
     if (planLibrary.isError) return { selectedPlanIds: [], planStarts: {} }

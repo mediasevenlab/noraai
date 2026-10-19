@@ -70,8 +70,9 @@ export function diaryPlanSourceId(meal: { id: string; assumptions?: readonly str
 }
 
 /**
- * A completed ration card that the user then changed is its own meal.
- * Until that edit, it still occupies the same ration slots as the template.
+ * A completed ration card that the user then changed is its own meal
+ * when it is copied onto a ration board.
+ * In the diary it still fills the slot of the assignment it was eaten in.
  */
 export function isDiaryOccurrenceUnique(meal: {
   assumptions?: readonly string[]
@@ -386,6 +387,7 @@ function isOccurrenceStamp(line: string) {
     || line.startsWith('План:')
     || line.startsWith('Рацион:')
     || line.startsWith('Выполнение:')
+    || line.startsWith('Назначение:')
     || line.startsWith(DIARY_PLAN_SOURCE_PREFIX)
     || line.startsWith('Лента:')
     || line.startsWith('Каталог:')

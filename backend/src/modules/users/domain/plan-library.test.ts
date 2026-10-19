@@ -86,6 +86,17 @@ test('normalizePlanLibrary drops data-url covers and fills missing createdAt', (
   })
 })
 
+test('normalizePlanLibrary keeps the assignment generation', () => {
+  expect(
+    normalizePlanLibrary(
+      {
+        planStarts: [{ planId: 'plan_fixed-office', dayKey: '2026-09-02', generation: 2 }],
+      },
+      nowIso,
+    ).planStarts,
+  ).toEqual([{ planId: 'plan_fixed-office', dayKey: '2026-09-02', generation: 2 }])
+})
+
 test('emptyPlanLibrary is a blank document', () => {
   expect(emptyPlanLibrary()).toEqual({
     authoredPlans: [],

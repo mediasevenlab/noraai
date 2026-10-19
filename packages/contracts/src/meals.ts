@@ -369,6 +369,23 @@ export const selectMealVersionRequestSchema = z
     versionId: z.string().uuid(),
   })
   .strict()
+/** Ration editor writes the plate in place and does not append a chat version. */
+export const rewriteMealRequestSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    ingredients: z.string().trim().max(500).default(''),
+    category: mealCategorySchema,
+    meal: mealSlotSchema,
+    kcal: z.number().int().nonnegative(),
+    protein: z.number().int().nonnegative(),
+    fat: z.number().int().nonnegative(),
+    carbs: z.number().int().nonnegative(),
+    portionItems: mealPortionItemsSchema.default([]),
+    clientComment: z.string().trim().max(4000).default(''),
+    imageBase64: mealImageBase64Schema.optional(),
+    imageMime: mealImageMimeSchema.optional(),
+  })
+  .strict()
 export const mealMutationResponseSchema = z
   .object({
     meal: mealSchema,
@@ -566,6 +583,7 @@ export type CreateUserMealRequest = z.infer<typeof createUserMealRequestSchema>
 export type CreateUserMealResponse = z.infer<typeof createUserMealResponseSchema>
 export type RefineMealRequest = z.infer<typeof refineMealRequestSchema>
 export type SelectMealVersionRequest = z.infer<typeof selectMealVersionRequestSchema>
+export type RewriteMealRequest = z.infer<typeof rewriteMealRequestSchema>
 export type MealMutationResponse = z.infer<typeof mealMutationResponseSchema>
 export type DeleteMealResponse = z.infer<typeof deleteMealResponseSchema>
 export type ShareMealRequest = z.infer<typeof shareMealRequestSchema>

@@ -198,6 +198,36 @@ describe('current week plan', () => {
     expect(plan.cardDays[0]?.filled).toBe(false)
   })
 
+  test('a diary copy added this week stays beside the pending ration plate', () => {
+    const monday = new Date(2026, 7, 31)
+    const previousMonday = new Date(2026, 7, 24)
+    const ration = SAMPLE_RATIONS[0]!
+    const plan = buildCurrentWeekPlan({
+      now,
+      rations: SAMPLE_RATIONS,
+      meals: [
+        mealOn(previousMonday, {
+          id: 'template',
+          title: ration.meals[0]!.title,
+          kcal: 784,
+          assumptions: [RATION_DIARY_SOURCE_MARK, weekPlanAssumption('week:2026-08-24')],
+        }),
+        mealOn(monday, {
+          id: 'added',
+          title: ration.meals[0]!.title,
+          kcal: 1184,
+          assumptions: [
+            RATION_DIARY_SOURCE_MARK,
+            weekPlanAssumption('week:2026-08-31'),
+            'Дневник:edited-log',
+          ],
+        }),
+      ],
+    })
+    const day = plan.days.find((item) => item.meals.some((meal) => meal.id === 'added'))
+    expect(day?.meals.map((meal) => meal.id)).toEqual(['template', 'added'])
+  })
+
   test('hides a meal detached from the weekly plan', () => {
     const tuesday = new Date(2026, 8, 1)
     const first = SAMPLE_RATIONS[0]!

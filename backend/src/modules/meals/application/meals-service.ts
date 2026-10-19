@@ -8,6 +8,7 @@ import {
   type MealsGeminiRequest,
   type MentorNotifyDelivery,
   type RefineMealRequest,
+  type RewriteMealRequest,
   type GenerationUsageLedger,
 } from '@web-app-demo/contracts'
 
@@ -17,6 +18,7 @@ import { MealsFailure } from '../domain/errors'
 import {
   isMealShareProvenanceStamp,
   mealAssumptionsArePlanCopy,
+  RATION_DIARY_LOG_PREFIX,
   mealCanPublishToFeed,
   preserveMealShareAssumptions,
   uniqueSharedFeedMeals,
@@ -69,6 +71,7 @@ import {
   extraImageKeysForActiveVersion,
   extraImageKeysOf,
   ensureMealVersions,
+  replaceMealPlate,
   selectMealVersion,
   type MealVersionRecord,
   type MealWithVersions,
@@ -1019,6 +1022,72 @@ export class MealsService {
     })
     await ensureUsdRub()
     return { meal: this.toDto(saved) }
+  }
+
+  async rewriteMealPlate(
+    actor: { id: string; role: string },
+    mealId: string,
+    input: RewriteMealRequest,
+  ) {
+    const meal = await this.requireEditableMeal(actor, mealId)
+    if (meal.assumptions.some((item) => item.startsWith(RATION_DIARY_LOG_PREFIX))) {
+      throw new MealsFailure('bad_request', 'Историю дневника правят в дневнике')
+    }
+    let imageKey = meal.imageKey
+    let imageMime = meal.imageMime
+    let uploadedKey: string | null = null
+    if (input.imageBase64) {
+      const saved = await this.dependencies.imageStore.saveImage({
+        userId: meal.userId,
+        mealId,
+        imageBase64: input.imageBase64,
+        imageMime: input.imageMime,
+        variant: 'cover',
+      })
+      uploadedKey = saved.imageKey
+      imageKey = saved.imageKey
+      imageMime = saved.imageMime
+    }
+    const replaced = replaceMealPlate(this.toVersioned(meal), {
+      title: input.title,
+      ingredients: input.ingredients,
+      category: input.category,
+      mealSlot: input.meal,
+      kcal: input.kcal,
+      protein: input.protein,
+      fat: input.fat,
+      carbs: input.carbs,
+      portionItems: input.portionItems,
+      clientComment: input.clientComment,
+    })
+    try {
+      const saved = await this.dependencies.repository.updateMealContent(mealId, {
+        title: replaced.title,
+        ingredients: replaced.ingredients,
+        category: replaced.category,
+        mealSlot: replaced.mealSlot,
+        kcal: replaced.kcal,
+        protein: replaced.protein,
+        fat: replaced.fat,
+        carbs: replaced.carbs,
+        portionItems: replaced.portionItems,
+        clientComment: replaced.clientComment,
+        assumptions: replaced.assumptions,
+        micronutrients: replaced.micronutrients,
+        versions: replaced.versions,
+        activeVersionId: replaced.activeVersionId!,
+        expectedActiveVersionId: meal.activeVersionId,
+        ...(uploadedKey ? { imageKey, imageMime } : {}),
+      })
+      if (uploadedKey && meal.imageKey && meal.imageKey !== uploadedKey) {
+        await this.dependencies.imageStore.deleteImage?.(meal.imageKey)
+      }
+      await ensureUsdRub()
+      return { meal: this.toDto(saved) }
+    } catch (error) {
+      if (uploadedKey) await this.dependencies.imageStore.deleteImage?.(uploadedKey)
+      throw error
+    }
   }
 
   async deleteMeal(actor: { id: string; role: string }, mealId: string) {

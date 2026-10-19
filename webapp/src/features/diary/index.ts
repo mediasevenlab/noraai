@@ -70,7 +70,7 @@ export { groceryShoppingLines, mealCompositionLines, mealGroceryLines } from './
 export { mergeDemoAndApiMeals, mealDtoToEntry } from './merge-meals'
 export { useMealsQuery, useSharedMealsQuery, useSharedRationsQuery, useUserFavoritesQuery, usePlanLibraryQuery, mealsQueryKeys, favoritesQueryKeys, planLibraryQueryKeys } from './queries'
 export { formatGenerationMoney, formatGenerationSpend } from './generation-spend-format'
-export { createMyMeal, deleteMyMeal, setMyMealPlanDone, shareMyMeal, shareMyRation, listSharedRations, likeSharedRation } from './api'
+export { createMyMeal, deleteMyMeal, rewriteMyMeal, setMyMealPlanDone, shareMyMeal, shareMyRation, listSharedRations, likeSharedRation } from './api'
 export {
   authoredCloneOfSharedRation,
   canAddSharedRationToMine,
