@@ -5,9 +5,9 @@ alwaysApply: true
 
 # Nora release
 
-Use this path when the user asks to publish the current version. Do not follow `docs/VPS.md` for it: that file describes the old host. Production is https://25nutrition.site on server Nora.
+Use this path when the user asks to publish the current version. Do not follow `docs/VPS.md` for it: that file describes the old 24nutrition host. Production is https://24ainews.site and https://www.24ainews.site on server Nora.
 
-Stay on branch `hybrid`. Do not create a branch. Remote: https://github.com/mediasevenlab/24nutrition.git.
+Stay on branch `hybrid`. Do not create a branch. Remote: https://github.com/mediasevenlab/ai-news.git.
 
 ## Git
 
@@ -20,21 +20,23 @@ Stay on branch `hybrid`. Do not create a branch. Remote: https://github.com/medi
 
 ## Production
 
-SSH as `deploy-nutrition` to `nora-nutrition-wan`. From the office, the same user on `nora-nutrition`. Do not log in as `norton`, `nora`, or `root`.
+SSH as `deploy-ai-news` to `nora-ai-news-wan` (port 2222). From the office, the same user on `nora-ai-news`. Do not log in as `norton`, `nora`, or `root`.
 
-Do not run `docker` or `docker compose` directly. The only start command is `sudo nora-ctl nutrition up` (`docker compose up -d` without `--build`; Compose builds the new tag itself). Do not run `nora-ctl nutrition pull`: images are local and are not pulled from a registry.
+You may only change files in `/srv/apps/ai-news`. Do not touch other apps, nginx, certificates, or DNS. Host nginx already proxies the site to `127.0.0.1:18006`. Do not change that port.
 
-Server directory: `/srv/apps/nutrition`. Sources live in `app/` — an unpacked archive, not a git repo. In `compose.yml` the tags are `nora-nutrition-backend:<short sha>` and `nora-nutrition-web:<short sha>`. `RELEASE_SHA` is the full 40-character sha.
+Do not run `docker` or `docker compose` directly. The only start command is `sudo nora-ctl ai-news up` (`docker compose up -d` without `--build`; Compose builds a missing tag itself). Do not run `nora-ctl ai-news pull`: images are local and are not pulled from a registry.
+
+Server directory: `/srv/apps/ai-news`. Sources live in `app/` — an unpacked archive, not a git repo. In `compose.yml` the tags are `nora-ai-news-backend:<short sha>` and `nora-ai-news-web:<short sha>`. The web image is `deploy/nora/web.Dockerfile`; it serves the landing and the app and proxies `/api` and `/health` to the backend. `RELEASE_SHA` is the full 40-character sha. Postgres data stays in `./data/postgres`.
 
 1. Take the short and full sha of current `HEAD`.
 2. `git archive --format=tar -o .scratch/release-<short sha>.tar HEAD`
 3. Copy the archive to the server and unpack it into `app/`.
 4. Set both image tags to the new short sha and write the full sha to `RELEASE_SHA`.
-5. `sudo nora-ctl nutrition up`
-6. `sudo nora-ctl nutrition ps`: backend healthy, both containers on the new tag.
+5. `sudo nora-ctl ai-news up`
+6. `sudo nora-ctl ai-news ps`: backend healthy, web on `127.0.0.1:18006`, both containers on the new tag.
 
 In PowerShell, wrap remote `ssh` commands in single quotes so `$(...)` does not run locally. Do not print `.env` contents.
 
 The web image build runs `tsc` and Vite. A type error fails the whole web image even if the backend image already built.
 
-As of this instruction, GitHub and production were at `afcd5dd`. The diary plan-row edits were local only: not in git and not on https://25nutrition.site. Re-check `HEAD` before the next release; do not treat `afcd5dd` as still current.
+As of this instruction, GitHub and production publish from branch `hybrid` of https://github.com/mediasevenlab/ai-news.git. Re-check `HEAD` before the next release.
