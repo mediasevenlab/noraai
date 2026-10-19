@@ -1,14 +1,18 @@
-# Import workflow JSON from n8n/workflows into the local nutrition-app-n8n stack.
+# Import workflow JSON into this checkout's n8n stack.
 # Run from repository root or this folder:
 #   .\n8n\import-workflows.ps1
 #
-# Requires the local n8n compose project to be running (docs/N8N.md).
+# This copy must not use the nutrition-app-n8n project: that stack belongs to another
+# local checkout and is already bound to 127.0.0.1:5679.
 # Re-runs replace the committed workflow ids instead of creating duplicates.
+# Committed workflow files call the backend on port 3000. This checkout's API is on
+# 3010, so the import rewrites that host only in the staged copy.
 
 $ErrorActionPreference = "Stop"
 $Root = $PSScriptRoot
 $RepoRoot = Split-Path -Parent $Root
-$ComposeProject = "nutrition-app-n8n"
+$ComposeProject = "ai-news-1-n8n"
+$BackendOrigin = "http://host.docker.internal:3010"
 $ComposeFile = Join-Path $RepoRoot "docker-compose.n8n.yml"
 $EnvFile = Join-Path $Root ".env"
 $WorkflowsDir = Join-Path $Root "workflows"
@@ -49,8 +53,13 @@ foreach ($file in $files) {
     Write-Error "Workflow JSON has no id: $local"
   }
   $remote = "/tmp/$file"
+  $stagedDir = Join-Path $RepoRoot ".scratch\n8n-import"
+  New-Item -ItemType Directory -Force -Path $stagedDir | Out-Null
+  $staged = Join-Path $stagedDir $file
+  $raw = Get-Content -Raw -Path $local
+  Set-Content -Path $staged -Value $raw.Replace("http://host.docker.internal:3000", $BackendOrigin) -NoNewline
   Write-Host "→ copy $file"
-  docker compose -p $ComposeProject --env-file $EnvFile -f $ComposeFile cp $local "${service}:${remote}"
+  docker compose -p $ComposeProject --env-file $EnvFile -f $ComposeFile cp $staged "${service}:${remote}"
 
   Write-Host "→ upsert $file ($workflowId)"
   $overwriteFailed = $false
@@ -79,5 +88,6 @@ foreach ($file in $files) {
 }
 
 Write-Host ""
-Write-Host "Imported. Open http://localhost:5679 and reconnect credentials / activate as needed."
-Write-Host "Webhook base: http://localhost:5679/webhook/"
+Write-Host ""
+Write-Host "Imported. Open http://localhost:5680 and reconnect credentials / activate as needed."
+Write-Host "Webhook base: http://localhost:5680/webhook/"
