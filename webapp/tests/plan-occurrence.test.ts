@@ -7,12 +7,14 @@ import {
   diaryPlanIdForMeal,
   diaryPlanStartForMeal,
   keepsWeeklyPlanOnDiaryDelete,
+  diaryDoneMealLeavesSlot,
   mealListAfterPlanDone,
   orderDiaryDayByPlanLayout,
   pendingDiarySlotKey,
   planLayoutSlotIndex,
   openPlanDiaryCards,
   openPlanDiarySourceId,
+  rationOccurrenceClientKeyForSlot,
   planOccurrenceDiaryAt,
   planOccurrenceDiaryAtWithLayout,
   planOccurrenceStampWhilePending,
@@ -185,6 +187,83 @@ describe('diary vs weekly plan occurrences', () => {
       planStartFor: () => start,
     })
     expect(opened).toHaveLength(0)
+  })
+
+  test('a fresh completion closes the reopened card even if its diary time would move', () => {
+    const start = new Date(2026, 9, 19, 12, 0, 0)
+    const now = new Date(2026, 9, 19, 15, 0, 0)
+    const eaten = {
+      ...pendingPlanMeal,
+      at: new Date(2026, 9, 1, 8, 30, 0).toISOString(),
+      assumptions: [...pendingPlanMeal.assumptions, RATION_DIARY_DONE_MARK],
+    }
+    const opened = openPlanDiaryCards([eaten], {
+      now,
+      selectedPlanIds: new Set([PLAN_ID]),
+      planStartFor: () => start,
+    })
+    expect(opened).toHaveLength(1)
+    const projected = opened[0]!.at
+    const log = {
+      ...eaten,
+      id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      at: projected,
+      versions: [{ id: 'v1' }],
+      assumptions: [...eaten.assumptions, rationDiaryLogAssumption(eaten.id)],
+    }
+    expect(
+      openPlanDiaryCards([eaten, log], {
+        now,
+        selectedPlanIds: new Set([PLAN_ID]),
+        planStartFor: () => start,
+        historyAt: (meal) => (meal.id === log.id ? eaten.at : meal.at),
+      }),
+    ).toHaveLength(0)
+  })
+
+  test('an edited completion leaves the slot free when the ration is chosen again', () => {
+    const start = new Date(2026, 9, 19, 12, 0, 0)
+    const now = new Date(2026, 9, 19, 15, 0, 0)
+    const eaten = {
+      ...pendingPlanMeal,
+      at: new Date(2026, 9, 1, 8, 30, 0).toISOString(),
+      assumptions: [...pendingPlanMeal.assumptions, RATION_DIARY_DONE_MARK],
+    }
+    const opened = openPlanDiaryCards([eaten], {
+      now,
+      selectedPlanIds: new Set([PLAN_ID]),
+      planStartFor: () => start,
+    })
+    const projected = opened[0]!.at
+    const edited = {
+      ...eaten,
+      id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      at: projected,
+      versions: [{ id: 'v1' }, { id: 'v2' }],
+      assumptions: [...eaten.assumptions, rationDiaryLogAssumption(eaten.id)],
+    }
+    expect(
+      openPlanDiaryCards([eaten, edited], {
+        now,
+        selectedPlanIds: new Set([PLAN_ID]),
+        planStartFor: () => start,
+      }),
+    ).toHaveLength(1)
+    const fresh = {
+      ...edited,
+      id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      versions: [{ id: 'v1' }],
+    }
+    expect(
+      openPlanDiaryCards([eaten, edited, fresh], {
+        now,
+        selectedPlanIds: new Set([PLAN_ID]),
+        planStartFor: () => start,
+      }),
+    ).toHaveLength(0)
+    expect(
+      rationOccurrenceClientKeyForSlot([edited], eaten.id, '2026-10-19'),
+    ).toBe(`occ:${eaten.id}:2026-10-19:1`)
   })
 
   test('a diary completion stays out of the ration board', () => {
@@ -595,6 +674,52 @@ describe('diary vs weekly plan occurrences', () => {
       'second-late',
       'own',
     ])
+  })
+
+  test('today a completed meal of the selected ration stays in its slot', () => {
+    expect(
+      diaryDoneMealLeavesSlot({
+        done: true,
+        onCurrentDay: true,
+        planStillSelected: true,
+      }),
+    ).toBe(false)
+    expect(
+      diaryDoneMealLeavesSlot({
+        done: true,
+        onCurrentDay: true,
+        planStillSelected: false,
+      }),
+    ).toBe(true)
+    expect(
+      diaryDoneMealLeavesSlot({
+        done: true,
+        onCurrentDay: false,
+        planStillSelected: true,
+      }),
+    ).toBe(true)
+    const meals = [
+      { id: 'sticks', at: '2026-10-14T08:00:00.000Z', keep: true },
+      { id: 'tuna', at: '2026-10-14T12:00:00.000Z', keep: true },
+      { id: 'spaghetti', at: '2026-10-14T13:00:00.000Z', keep: true },
+      { id: 'own', at: '2026-10-14T18:00:00.000Z', keep: false },
+    ]
+    const ordered = orderDiaryDayByPlanLayout(
+      meals,
+      (meal) => (meal.id === 'own' ? null : pendingDiarySlotKey(null, meal.at)),
+      (meal) => meal.id === 'own',
+      () => 0,
+      (meal) => meal.id === 'tuna' && !meal.keep,
+    )
+    expect(ordered.map((meal) => meal.id)).toEqual(['sticks', 'tuna', 'spaghetti', 'own'])
+    const shifted = orderDiaryDayByPlanLayout(
+      meals,
+      (meal) => (meal.id === 'own' ? null : pendingDiarySlotKey(null, meal.at)),
+      (meal) => meal.id === 'own',
+      () => 0,
+      (meal) => meal.id === 'tuna',
+    )
+    expect(shifted.map((meal) => meal.id)).toEqual(['sticks', 'spaghetti', 'tuna', 'own'])
   })
 
   test('a completed ration meal moves to the end and returns when cleared', () => {

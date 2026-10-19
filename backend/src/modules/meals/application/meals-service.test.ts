@@ -182,6 +182,146 @@ describe('MealsService', () => {
     })
   })
 
+  test('createUserMeal reopens a plain occurrence onto the requested day', async () => {
+    const templateId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    const existing = mealRecord({
+      clientKey: `occ:${templateId}:2026-10-19`,
+      recordedAt: new Date('2026-10-01T01:30:00.000Z'),
+      assumptions: ['Добавлено из рациона'],
+      source: 'manual',
+      telegramUpdateId: null,
+    })
+    let updated: { recordedAt?: Date; assumptions: string[] } | null = null
+    const repository = repositoryStub({
+      findMealByClientKey: async () => existing,
+      updateMealContent: async (_id, content) => {
+        updated = { recordedAt: content.recordedAt, assumptions: content.assumptions }
+        return mealRecord({
+          ...existing,
+          recordedAt: content.recordedAt ?? existing.recordedAt,
+          assumptions: content.assumptions,
+          versions: content.versions,
+          activeVersionId: content.activeVersionId,
+        })
+      },
+    })
+    const service = new MealsService({
+      analyzer: {
+        analyze: async () => {
+          throw new Error('unused')
+        },
+        refine: async () => {
+          throw new Error('unused')
+        },
+      },
+      imageStore: {
+        saveImage: async () => {
+          throw new Error('unused')
+        },
+        readImage: async () => null,
+      },
+      imageUrlBuilder: imageUrls(),
+      repository,
+    })
+    const result = await service.createUserMeal(
+      { id: existing.userId, role: 'user' },
+      {
+        title: 'Овсянка',
+        ingredients: 'Овсянка',
+        category: 'Завтрак',
+        meal: 'Завтрак',
+        recordedAt: '2026-10-19T01:30:00.000Z',
+        kcal: 300,
+        protein: 20,
+        fat: 8,
+        carbs: 40,
+        portionItems: [],
+        clientComment: '',
+        assumptions: [
+          'Добавлено из рациона',
+          'Выполнено по плану',
+          `Выполнение:${templateId}`,
+        ],
+        micronutrients: [],
+        source: 'manual',
+        clientKey: existing.clientKey!,
+      },
+    )
+    expect(result.created).toBe(false)
+    expect(updated?.assumptions).toContain('Выполнено по плану')
+    expect(updated?.assumptions).toContain(`Выполнение:${templateId}`)
+    expect(updated?.recordedAt?.toISOString()).toBe('2026-10-19T01:30:00.000Z')
+    expect(result.meal.assumptions).toContain('Выполнено по плану')
+  })
+
+  test('createUserMeal leaves an edited occurrence in place', async () => {
+    const templateId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    const base = mealRecord()
+    const existing = mealRecord({
+      clientKey: `occ:${templateId}:2026-10-19`,
+      assumptions: ['Добавлено из рациона', 'Выполнено по плану', `Выполнение:${templateId}`],
+      versions: [
+        base.versions[0]!,
+        { ...base.versions[0]!, id: '44444444-4444-4444-8444-444444444444' },
+      ],
+      source: 'manual',
+      telegramUpdateId: null,
+    })
+    let writes = 0
+    const repository = repositoryStub({
+      findMealByClientKey: async () => existing,
+      updateMealContent: async (_id, content) => {
+        writes += 1
+        return mealRecord({ ...existing, assumptions: content.assumptions })
+      },
+    })
+    const service = new MealsService({
+      analyzer: {
+        analyze: async () => {
+          throw new Error('unused')
+        },
+        refine: async () => {
+          throw new Error('unused')
+        },
+      },
+      imageStore: {
+        saveImage: async () => {
+          throw new Error('unused')
+        },
+        readImage: async () => null,
+      },
+      imageUrlBuilder: imageUrls(),
+      repository,
+    })
+    const result = await service.createUserMeal(
+      { id: existing.userId, role: 'user' },
+      {
+        title: 'Овсянка',
+        ingredients: 'Овсянка',
+        category: 'Завтрак',
+        meal: 'Завтрак',
+        recordedAt: '2026-10-19T01:30:00.000Z',
+        kcal: 300,
+        protein: 20,
+        fat: 8,
+        carbs: 40,
+        portionItems: [],
+        clientComment: '',
+        assumptions: [
+          'Добавлено из рациона',
+          'Выполнено по плану',
+          `Выполнение:${templateId}`,
+        ],
+        micronutrients: [],
+        source: 'manual',
+        clientKey: existing.clientKey!,
+      },
+    )
+    expect(result.created).toBe(false)
+    expect(result.meal.id).toBe(existing.id)
+    expect(writes).toBe(0)
+  })
+
   test('notifies the mentor through n8n after a mentee saves a new meal', async () => {
     const menteeId = '22222222-2222-4222-8222-222222222222'
     const mentorId = '66666666-6666-4666-8666-666666666666'

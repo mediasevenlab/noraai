@@ -374,6 +374,57 @@ export function diaryMealPhotoSrc(
   })
 }
 
+function clampOccurrenceInt(value: number) {
+  if (!Number.isFinite(value) || value < 0) return 0
+  return Math.min(100_000, Math.round(value))
+}
+
+function isOccurrenceStamp(line: string) {
+  return (
+    line === RATION_DIARY_SOURCE_MARK
+    || line === 'Выполнено по плану'
+    || line.startsWith('План:')
+    || line.startsWith('Рацион:')
+    || line.startsWith('Выполнение:')
+    || line.startsWith(DIARY_PLAN_SOURCE_PREFIX)
+    || line.startsWith('Лента:')
+    || line.startsWith('Каталог:')
+    || line === 'Добавлено из ленты'
+    || line === 'Добавлено из каталога'
+    || line === 'Добавлено своё фото'
+  )
+}
+
+/** Keep a repeated completion inside the create limits of an edited plate. */
+export function fitDiaryOccurrenceDraft(draft: CreateUserMealRequest) {
+  draft.title = draft.title.trim().slice(0, 200) || 'Приём'
+  draft.ingredients = draft.ingredients.trim().slice(0, 500)
+  draft.kcal = clampOccurrenceInt(draft.kcal)
+  draft.protein = clampOccurrenceInt(draft.protein)
+  draft.fat = clampOccurrenceInt(draft.fat)
+  draft.carbs = clampOccurrenceInt(draft.carbs)
+  draft.portionItems = draft.portionItems.slice(0, 40).flatMap((item) => {
+    const label = item.label.trim().slice(0, 200)
+    if (!label) return []
+    return [{
+      label,
+      kcal: clampOccurrenceInt(item.kcal),
+      protein: clampOccurrenceInt(item.protein),
+      fat: clampOccurrenceInt(item.fat),
+      carbs: clampOccurrenceInt(item.carbs),
+    }]
+  })
+  const stamps: string[] = []
+  const notes: string[] = []
+  for (const item of draft.assumptions) {
+    const line = item.trim()
+    if (!line) continue
+    if (isOccurrenceStamp(line)) stamps.push(line)
+    else notes.push(line.slice(0, 400))
+  }
+  draft.assumptions = [...stamps, ...notes].slice(0, 40)
+}
+
 /** One planned-meal create payload. Appends to the day; does not replace a ration. */
 export function diaryMealCreatePlanDraft(
   meal: DiaryMealDraftSource,

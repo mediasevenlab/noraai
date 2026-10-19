@@ -13,6 +13,7 @@ import {
 } from '@/platform/plan-slots'
 import { readSavedIdSet, writeSavedIdSet, type SavedAccountScope } from '@/platform/saved-ids'
 
+import { isDiaryOccurrenceUnique } from './diary-plan-import'
 import { localCalendarDayKey, localDayKey } from './diary-feed'
 import { feedMealStampOnDay } from './feed-import'
 import {
@@ -364,6 +365,48 @@ function diaryHistorySourceId(assumptions: readonly string[] | undefined) {
   return id || null
 }
 
+type RationSlotMeal = {
+  at: string
+  assumptions?: readonly string[]
+  versions?: readonly unknown[]
+}
+
+/**
+ * A plain completion fills the ration slot on the day it was recorded.
+ * An edited completion is its own meal and leaves the slot open, so the
+ * ration can be chosen again.
+ */
+export function rationOccurrenceCoversSlot(
+  meal: RationSlotMeal,
+  templateId: string,
+  dayKey: string,
+): boolean {
+  if (isDiaryOccurrenceUnique(meal)) return false
+  if (diaryHistorySourceId(meal.assumptions) !== templateId) return false
+  if (!isRationPlanDone(meal)) return false
+  return localDayKey(meal.at) === dayKey
+}
+
+/** One completion row per template and calendar day. A later edit gets the next key. */
+export function rationOccurrenceClientKey(templateId: string, dayKey: string, generation = 0) {
+  const base = `occ:${templateId}:${dayKey}`
+  return (generation > 0 ? `${base}:${generation}` : base).slice(0, 64)
+}
+
+export function rationOccurrenceClientKeyForSlot(
+  meals: readonly RationSlotMeal[],
+  templateId: string,
+  dayKey: string,
+) {
+  const editedOnDay = meals.some(
+    (meal) =>
+      isDiaryOccurrenceUnique(meal)
+      && diaryHistorySourceId(meal.assumptions) === templateId
+      && localDayKey(meal.at) === dayKey,
+  )
+  return rationOccurrenceClientKey(templateId, dayKey, editedOnDay ? 1 : 0)
+}
+
 type OpenPlanMeal = Pick<MealEntry, 'id' | 'at'> & {
   fromApi?: boolean
   title?: string
@@ -414,11 +457,9 @@ export function openPlanDiaryCards<T extends OpenPlanMeal>(
     if (localDayKey(historyAt(meal)) === projectedKey) continue
     if (projectedKey < todayKey) continue
     if (projectedKey > todayKey && !input.showWholePlan) continue
-    const alreadyEatenToday = meals.some((other) => {
-      if (diaryHistorySourceId(other.assumptions) !== meal.id) return false
-      if (!isRationPlanDone(other, input.completedIds)) return false
-      return localDayKey(historyAt(other)) === projectedKey
-    })
+    const alreadyEatenToday = meals.some((other) =>
+      rationOccurrenceCoversSlot(other, meal.id, projectedKey),
+    )
     if (alreadyEatenToday) continue
     cards.push({
       ...meal,
@@ -455,10 +496,23 @@ export function pendingDiarySlotKey(layoutSlot: number | null, at: string) {
 }
 
 /**
- * Line pending ration meals up with the plan board: slot 1, then 2, then 3.
+ * Today's completion of a ration that is still selected keeps its board slot.
+ * It leaves that slot when the day is no longer today, or the ration is no longer selected.
+ */
+export function diaryDoneMealLeavesSlot(input: {
+  done: boolean
+  onCurrentDay: boolean
+  planStillSelected: boolean
+}) {
+  if (!input.done) return false
+  return !(input.onCurrentDay && input.planStillSelected)
+}
+
+/**
+ * Line ration meals up with the plan board: slot 1, then 2, then 3.
  * When several selected plans share the day, each plan stays a block, in selection order.
- * A completed ration card moves to the end of that row. Clearing the completion
- * puts it back in its slot. Meals the user added stay after the ration.
+ * A completion that no longer belongs to the selected ration moves to the end of that row.
+ * Meals the user added stay after the ration.
  */
 export function orderDiaryDayByPlanLayout<T extends { id: string }>(
   meals: readonly T[],

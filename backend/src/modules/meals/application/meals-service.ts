@@ -15,6 +15,7 @@ import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import { MealsFailure } from '../domain/errors'
 import {
+  isMealShareProvenanceStamp,
   mealAssumptionsArePlanCopy,
   mealCanPublishToFeed,
   preserveMealShareAssumptions,
@@ -540,8 +541,9 @@ export class MealsService {
     }
     const existing = await this.findIdempotentMeal(input)
     if (existing) {
+      const reopened = await this.reopenPlainOccurrence(existing, input)
       return {
-        meal: this.toDto(await this.ensurePersistedVersions(existing)),
+        meal: this.toDto(await this.ensurePersistedVersions(reopened ?? existing)),
         created: false,
         mentorNotify: 'skipped' as const,
       }
@@ -645,8 +647,9 @@ export class MealsService {
         }
         if (conflictHit) {
           await cleanupImages()
+          const reopened = await this.reopenPlainOccurrence(conflictHit, input)
           return {
-            meal: this.toDto(await this.ensurePersistedVersions(conflictHit)),
+            meal: this.toDto(await this.ensurePersistedVersions(reopened ?? conflictHit)),
             created: false,
             mentorNotify: 'skipped' as const,
           }
@@ -733,6 +736,54 @@ export class MealsService {
         generationSpend: generationSpendFromAccount(mealAccount),
       },
     }
+  }
+
+  /**
+   * The same template and day already has a plain completion.
+   * Move that row onto the requested time and keep the done stamps.
+   * An edited completion stays untouched so the ration slot can open again.
+   */
+  private async reopenPlainOccurrence(
+    existing: MealRecord,
+    input: MealCreateInput,
+  ): Promise<MealRecord | null> {
+    if (!input.clientKey?.startsWith('occ:')) return null
+    if (existing.versions.length > 1) return null
+    const requested = input.recordedAt ? new Date(input.recordedAt) : existing.recordedAt
+    const recordedAt = Number.isNaN(requested.getTime()) ? existing.recordedAt : requested
+    const assumptions = [...existing.assumptions]
+    for (const raw of input.assumptions ?? []) {
+      const stamp = raw.trim()
+      if (!stamp || !isMealShareProvenanceStamp(stamp) || assumptions.includes(stamp)) continue
+      assumptions.push(stamp)
+    }
+    const sameTime = recordedAt.getTime() === existing.recordedAt.getTime()
+    const sameMarks = assumptions.length === existing.assumptions.length
+      && assumptions.every((item, index) => item === existing.assumptions[index])
+    if (sameTime && sameMarks) return null
+    const hydrated = this.hydrateVersions({ ...existing, assumptions })
+    const versions = hydrated.versions.map((version) =>
+      version.id === hydrated.activeVersionId
+        ? { ...version, snapshot: { ...version.snapshot, assumptions } }
+        : version,
+    )
+    return this.dependencies.repository.updateMealContent(existing.id, {
+      title: hydrated.title,
+      ingredients: hydrated.ingredients,
+      category: mealCategorySchema.parse(hydrated.category),
+      mealSlot: mealSlotSchema.parse(hydrated.mealSlot),
+      kcal: hydrated.kcal,
+      protein: hydrated.protein,
+      fat: hydrated.fat,
+      carbs: hydrated.carbs,
+      portionItems: hydrated.portionItems,
+      clientComment: hydrated.clientComment,
+      assumptions,
+      micronutrients: hydrated.micronutrients,
+      versions,
+      activeVersionId: hydrated.activeVersionId!,
+      recordedAt,
+    })
   }
 
   private async findIdempotentMeal(input: {

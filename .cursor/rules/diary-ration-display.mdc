@@ -18,8 +18,8 @@ Past days keep meals that were eaten that day. Pending ration cards do not appea
 
 Order inside one diary day:
 
-1. Pending meals of the selected rations. The first selected ration is one block, left to right as on that day's board, then the next selected ration, in selection order.
-2. Completed ration meals go to the end of that row, in the same ration order. «Выполнить» does not leave the card in its old place and does not move it to the start.
+1. Today's meals of the selected rations, left to right as on that day's board. The first selected ration is one block, then the next, in selection order. Completing a meal keeps it in that slot and shows it as done.
+2. Completed meals whose ration is no longer selected — it was cleared or another ration was assigned instead — follow that row, in the same ration order.
 3. Meals the person added with «Добавить» are last.
 
-Clearing a completion the same day puts the card back into its ration slot. Several rations may start on the same day; today's meals from each stay in selection order.
+Clearing a completion the same day makes the card pending again in its ration slot. Several rations may start on the same day; today's meals from each stay in selection order.
