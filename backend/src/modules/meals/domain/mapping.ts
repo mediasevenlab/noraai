@@ -107,7 +107,7 @@ export function mapGeminiComposition(raw: unknown): MealPortionItem[] {
       record.nutrition && typeof record.nutrition === 'object'
         ? (record.nutrition as Record<string, unknown>)
         : record
-    const label = String(record.label ?? record.name ?? record.title ?? record.item ?? '').trim()
+    const label = String(record.label ?? record.product ?? record.name ?? record.title ?? record.item ?? '').trim()
     if (!label) continue
     items.push({
       label: label.slice(0, 200),

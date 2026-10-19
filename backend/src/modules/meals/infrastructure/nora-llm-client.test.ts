@@ -169,4 +169,40 @@ describe('Nora photo correction', () => {
       globalThis.fetch = original
     }
   })
+
+  test('a text correction stays on the text model and does not pretend there is a photo', async () => {
+    const original = globalThis.fetch
+    let body = ''
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      body = String(init?.body ?? '')
+      return new Response(
+        JSON.stringify({
+          choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(readyCard) } }],
+        }),
+        { status: 200 },
+      )
+    }) as typeof fetch
+    try {
+      await refineMealWithNora(env, {
+        card: {
+          title: 'Скумбрия',
+          mealType: 'Ужин',
+          composition: [{ label: 'Скумбрия ~120 г' }, { label: 'Масло растительное ~40 г' }],
+        },
+        message: 'убери масло из приема',
+      })
+    } finally {
+      globalThis.fetch = original
+    }
+    const request = JSON.parse(body) as {
+      max_tokens: number
+      model: string
+      messages: Array<{ role: string; content: unknown }>
+    }
+    expect(request.model).toBe('qwen2.5:7b')
+    expect(request.max_tokens).toBe(2048)
+    const system = String(request.messages.find((message) => message.role === 'system')?.content)
+    expect(system).toContain('Фото нет')
+    expect(system).not.toContain('На фото добавка')
+  })
 })

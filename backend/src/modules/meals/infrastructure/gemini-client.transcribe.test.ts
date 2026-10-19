@@ -71,7 +71,10 @@ describe('voice transcription model', () => {
         },
       )
       expect(url).toContain(`/models/${GEMINI_VOICE_MODEL}:generateContent`)
-      expect(JSON.parse(body).generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'minimal' })
+      expect(JSON.parse(body).generationConfig.audioTranscriptionConfig).toEqual({
+        languageCodes: ['ru-RU'],
+        mode: 'VERBATIM',
+      })
       expect(result.model).toBe(GEMINI_VOICE_MODEL)
       expect(result.text).toBe('гречка 150 грамм')
       expect(result.usage?.[GEMINI_VOICE_MODEL]?.audioInputTokens).toBe(320)
@@ -93,6 +96,25 @@ describe('parseGeminiCandidateText', () => {
         }),
       ),
     ).toBe('Добавь брокколи')
+  })
+
+  test('reads the speech model transcript and ignores a drafted sentence', () => {
+    expect(
+      parseGeminiCandidateText(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  { text: 'На завтрак съел кашу рисовую на молоке.' },
+                  { audioTranscription: { text: 'Убери перец из приёма.' } },
+                ],
+              },
+            },
+          ],
+        }),
+      ),
+    ).toBe('Убери перец из приёма.')
   })
 
   test('rejects a non-JSON envelope', () => {

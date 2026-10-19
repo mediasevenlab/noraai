@@ -13,6 +13,7 @@ import {
   portionLabelsNeedWeight,
   readMealCardJson,
   withCompositionNutrition,
+  withEstimatedLineMacros,
   withEstimatedPortionWeights,
   withRolledUpNutrition,
 } from '../domain/nora-meal'
@@ -180,7 +181,7 @@ async function completeNora(
       0.75,
     )
   }
-  let meal = withRolledUpNutrition(card.meal)
+  let meal = withEstimatedLineMacros(withRolledUpNutrition(card.meal))
   if (meal.composition.length === 0 || mealNumbersMissing(meal) || linesLackMacros(meal, input.lineMacros)) {
     card = await requestNoraCard(
       env,
@@ -190,7 +191,7 @@ async function completeNora(
       },
       0.3,
     )
-    meal = withRolledUpNutrition(card.meal)
+    meal = withEstimatedLineMacros(withRolledUpNutrition(card.meal))
   }
   if (portionLabelsNeedWeight(meal.composition)) {
     const rewritten = await rewritePortionWeights(env, meal)
@@ -450,7 +451,7 @@ export async function refineMealWithNora(
       text,
       images: kind === 'vision' ? images : [],
       lineMacros: true,
-      maxTokens: NORA_REFINE_MAX_TOKENS,
+      maxTokens: kind === 'text' ? 2048 : NORA_REFINE_MAX_TOKENS,
       system: noraRefinePrompt(input.photoMode),
     }),
   )

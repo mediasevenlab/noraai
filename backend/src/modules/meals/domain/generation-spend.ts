@@ -9,8 +9,10 @@ export type GenerationTokenBucket = GenerationUsageLedger[string]
  * $1.00 audio input, $2.50 output including thinking.
  * Gemini 2.5 Flash-Lite, kept for already recorded voice: $0.10 text/image/video,
  * $0.30 audio, $0.40 output.
- * Gemini 3.5 Flash-Lite, current voice model, standard tier checked 2026-10-19:
- * $0.30 text/image/video/audio, $2.50 output. Thinking on voice stays minimal.
+ * Gemini 3.5 Flash-Lite, kept for the day voice used it: $0.30 text/image/video/audio,
+ * $2.50 output.
+ * Gemini 3.5 Transcribe, current voice model, standard tier checked 2026-10-19:
+ * $2.00 audio input, $12.00 text output.
  * A pasted link is ordinary prompt text. The URL-context tool is not enabled.
  * Unknown models are not priced. Batch, flex, and priority tiers are not used.
  */
@@ -46,6 +48,14 @@ const FLASH_LITE_35_USD_PER_MILLION: UsdPerMillion = {
   output: 2.5,
 }
 
+const TRANSCRIBE_35_USD_PER_MILLION: UsdPerMillion = {
+  text: 2,
+  image: 2,
+  link: 2,
+  audio: 2,
+  output: 12,
+}
+
 const GEMINI_PRICING_URL = 'https://ai.google.dev/gemini-api/docs/pricing.md.txt'
 const PRICE_TTL_MS = 6 * 60 * 60 * 1000
 const PRICE_FAILURE_TTL_MS = 60 * 1000
@@ -73,6 +83,7 @@ function fallbackPrices(model: string): UsdPerMillion | null {
   if (normalized === 'gemini-2.5-flash') return { ...FLASH_USD_PER_MILLION }
   if (normalized === 'gemini-2.5-flash-lite') return { ...FLASH_LITE_USD_PER_MILLION }
   if (normalized === 'gemini-3.5-flash-lite') return { ...FLASH_LITE_35_USD_PER_MILLION }
+  if (normalized === 'gemini-3.5-transcribe') return { ...TRANSCRIBE_35_USD_PER_MILLION }
   return null
 }
 

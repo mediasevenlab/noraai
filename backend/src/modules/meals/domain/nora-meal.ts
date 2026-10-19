@@ -125,7 +125,9 @@ export function noraRefinePrompt(photoMode?: 'replace' | 'augment') {
   const photo =
     photoMode === 'replace'
       ? 'На фото новый приём. Продукты, которых нет на фото, не переноси.'
-      : 'На фото добавка к уже собранному приёму. Сохрани строки из «Состав сейчас» и добавь продукты с фото отдельными строками.'
+      : photoMode === 'augment'
+        ? 'На фото добавка к уже собранному приёму. Сохрани строки из «Состав сейчас» и добавь продукты с фото отдельными строками.'
+        : 'Фото нет. Это правка уже собранного приёма. Убери, замени или добавь только то, что назвал пользователь. Остальные строки из «Состав сейчас» сохрани.'
   return [
     'Верни только JSON карточки приёма, без markdown.',
     photo,
@@ -175,20 +177,73 @@ function finiteMacro(value: number) {
 }
 
 export function portionLabelWithWeight(record: Record<string, unknown>) {
-  const label = String(record.label ?? record.name ?? record.title ?? record.item ?? '').trim()
+  const label = String(record.label ?? record.product ?? record.name ?? record.title ?? record.item ?? '').trim()
   if (!label || PORTION_WEIGHT.test(label)) return label
-  const milliliters = portionMeasure(record.ml ?? record.milliliters)
-  if (milliliters != null) return `${label} ~${milliliters} мл`
-  const grams = portionMeasure(record.grams ?? record.weightGrams ?? record.weight ?? record.amount)
+  const milliliters = describedPortion(record.ml ?? record.milliliters)
+  if (milliliters) return `${label} ~${milliliters.amount} мл`
+  const grams = describedPortion(record.grams ?? record.weightGrams ?? record.weight ?? record.amount)
   if (grams == null) return label
-  const unit = String(record.unit ?? record.weightUnit ?? '').toLowerCase()
-  return `${label} ~${grams} ${unit.includes('мл') ? 'мл' : 'г'}`
+  return `${label} ~${grams.amount} ${grams.unit}`
 }
 
-function portionMeasure(value: unknown) {
+export function withEstimatedLineMacros<
+  T extends { nutrition: MacroTotals; composition: Array<MacroTotals & { label: string }> },
+>(meal: T): T {
+  if (!mealNumbersMissing(meal)) return meal
+  const composition = meal.composition.map((item) => {
+    if (item.kcal + item.protein + item.fat + item.carbs > 0) return item
+    const estimated = estimatePortionMacros(item.label)
+    return estimated ? { ...item, ...estimated } : item
+  })
+  if (macroSum(composition) <= 0) return meal
+  return withRolledUpNutrition({ ...meal, composition })
+}
+
+export function estimatePortionMacros(label: string) {
+  const match = label.match(/(\d+(?:[.,]\d+)?)\s*(килограмм(?:а|ов)?|кг|грамм(?:а|ов)?|гр|мл|шт|г|л)(?!\p{L})/iu)
+  if (!match?.[1] || !match[2]) return null
+  let amount = Number(match[1].replace(',', '.'))
+  const unit = match[2].toLowerCase()
+  if (unit.startsWith('кг') || unit.startsWith('килограмм')) amount *= 1000
+  if (unit === 'л') amount *= 1000
+  if (unit === 'шт') amount *= 50
+  amount = Math.round(amount)
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 2000) return null
+  if (/чай|кофе|вода/i.test(label)) {
+    return { kcal: 1, protein: 0, fat: 0, carbs: 0 }
+  }
+  if (/сок|молок|компот|напит/i.test(label)) {
+    const kcal = Math.max(1, Math.round(amount * 0.5))
+    return { kcal, protein: 0, fat: Math.round(kcal / 20), carbs: Math.max(1, Math.round(kcal / 4)) }
+  }
+  if (/куриц|мяс|рыб|котлет|индей|говяд|свинин|колбас/i.test(label)) {
+    const protein = Math.max(1, Math.round(amount * 0.18))
+    const fat = Math.max(1, Math.round(amount * 0.08))
+    return { kcal: protein * 4 + fat * 9, protein, fat, carbs: 0 }
+  }
+  if (/рис|греч|овсян|картоф|макарон|булгур|хлеб|лаваш/i.test(label)) {
+    const carbs = Math.max(1, Math.round(amount * 0.2))
+    const protein = Math.max(1, Math.round(amount * 0.03))
+    return { kcal: carbs * 4 + protein * 4, protein, fat: 0, carbs }
+  }
+  const carbs = Math.max(1, Math.round(amount * 0.05))
+  return { kcal: carbs * 4, protein: 0, fat: 0, carbs }
+}
+
+function describedPortion(value: unknown): { amount: number; unit: 'г' | 'мл' } | null {
+  if (typeof value === 'string') {
+    const match = value.match(/(\d+(?:[.,]\d+)?)\s*(мл|кг|гр|г|л)?/iu)
+    if (!match?.[1]) return null
+    let amount = Number(match[1].replace(',', '.'))
+    const unit = (match[2] || 'г').toLowerCase()
+    if (unit === 'кг') amount *= 1000
+    if (unit === 'л') amount *= 1000
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 2000) return null
+    return { amount: Math.round(amount), unit: unit === 'мл' || unit === 'л' ? 'мл' : 'г' }
+  }
   const amount = Number(value)
   if (!Number.isFinite(amount) || amount <= 0 || amount > 2000) return null
-  return Math.round(amount)
+  return { amount: Math.round(amount), unit: 'г' }
 }
 
 function compositionWithWeights(raw: unknown) {

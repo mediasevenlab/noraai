@@ -11,6 +11,8 @@ import {
   portionLabelsNeedWeight,
   readMealCardJson,
   withCompositionNutrition,
+  estimatePortionMacros,
+  withEstimatedLineMacros,
   withEstimatedPortionWeights,
   withRolledUpNutrition,
 } from './nora-meal'
@@ -126,6 +128,8 @@ describe('nora meal routing', () => {
       }),
     ).toEqual([{ base64: 'plate', mime: 'image/jpeg' }])
     expect(noraRefinePrompt('replace')).toContain('новый приём')
+    expect(noraRefinePrompt()).toContain('Фото нет')
+    expect(noraRefinePrompt()).toContain('Убери, замени или добавь')
   })
 
   test('a correction sent to Nora keeps names and drops the old calories', () => {
@@ -146,6 +150,22 @@ describe('nora meal routing', () => {
       title: 'Рис',
       mealType: 'Обед',
     })
+  })
+
+  test('a vision card that names product and weight still gets an estimated calorie line', () => {
+    const card = normalizeGeneratedMealCard({
+      title: 'Суп с мясом и овощами',
+      excerpt: 'мясо, морковь, картофель',
+      composition: [
+        { product: 'мясо', weight: '~40 г' },
+        { product: 'картофель', weight: '~30 г' },
+      ],
+    })
+    expect(card.composition.map((item) => item.label)).toEqual(['мясо ~40 г', 'картофель ~30 г'])
+    const meal = withEstimatedLineMacros(card)
+    expect(mealNumbersMissing(meal)).toBe(false)
+    expect(meal.composition[0]?.kcal).toBeGreaterThan(0)
+    expect(estimatePortionMacros('картофель ~30 г')?.carbs).toBeGreaterThan(0)
   })
 
   test('a card with no numbers is empty', () => {

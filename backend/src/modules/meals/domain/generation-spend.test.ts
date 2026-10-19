@@ -122,6 +122,15 @@ describe('generation spend', () => {
     expect(generationSpend(answer, 100)).toEqual({ tokens: 1_000_000, dollars: 2.5, rubles: 250 })
   })
 
+  test('prices the speech model by the audio minute, not as a chat reply', () => {
+    const audio = usageLedgerFromGemini(
+      'gemini-3.5-transcribe',
+      { promptTokenCount: 1_000_000, candidatesTokenCount: 0, thoughtsTokenCount: 0 },
+      { audio: true },
+    )
+    expect(generationSpend(audio, 100).dollars).toBe(2)
+  })
+
   test('publishes the same flash prices the spend math uses', () => {
     expect(generationModelPrices()).toEqual({
       model: 'gemini-2.5-flash',

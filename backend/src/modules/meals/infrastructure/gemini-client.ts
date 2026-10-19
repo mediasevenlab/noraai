@@ -364,10 +364,10 @@ export async function refineMealWithGemini(
 }
 
 /**
- * Voice is a short transcript. Gemini 3.5 Flash-Lite hears it and does not draft a meal card.
- * 2.5 Flash-Lite is closed to this key. 3.5 rejects thinkingBudget and wants thinkingLevel.
+ * Voice is a transcript, not a meal draft. Gemini 3.5 Flash-Lite rewrites unclear
+ * speech into a diary sentence. The speech model returns audioTranscription.text.
  */
-export const GEMINI_VOICE_MODEL = 'gemini-3.5-flash-lite'
+export const GEMINI_VOICE_MODEL = 'gemini-3.5-transcribe'
 
 const TRANSCRIBE_PROMPT = [
   'Транскрибируй голосовое сообщение пользователя дневника питания.',
@@ -377,15 +377,24 @@ const TRANSCRIBE_PROMPT = [
 ].join('\n')
 
 export function parseGeminiCandidateText(envelope: string) {
-  let payload: { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+  let payload: {
+    candidates?: Array<{
+      content?: {
+        parts?: Array<{ text?: string; audioTranscription?: { text?: string } }>
+      }
+    }>
+  }
   try {
     payload = JSON.parse(envelope) as typeof payload
   } catch {
     throw new MealsFailure('upstream', 'Gemini returned non-JSON envelope')
   }
-  return (payload.candidates?.[0]?.content?.parts ?? [])
-    .map((part) => part.text ?? '')
-    .join('\n')
+  const parts = payload.candidates?.[0]?.content?.parts ?? []
+  const spoken = parts
+    .map((part) => part.audioTranscription?.text ?? '')
+    .filter((line) => line.trim().length > 0)
+  const raw = (spoken.length > 0 ? spoken : parts.map((part) => part.text ?? '')).join('\n')
+  return raw
     .trim()
     .replace(/^```(?:json|text)?\s*/i, '')
     .replace(/```$/i, '')
@@ -426,8 +435,10 @@ export async function transcribeAudioWithGemini(
       },
     ],
     generationConfig: {
-      temperature: 0,
-      thinkingConfig: { thinkingLevel: 'minimal' },
+      audioTranscriptionConfig: {
+        languageCodes: ['ru-RU'],
+        mode: 'VERBATIM',
+      },
     },
   })
   const path = `/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`
