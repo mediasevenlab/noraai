@@ -107,6 +107,21 @@ describe('generation spend', () => {
     })
   })
 
+  test('prices current flash-lite voice at the 3.5 standard tier', () => {
+    const audio = usageLedgerFromGemini(
+      'gemini-3.5-flash-lite',
+      { promptTokenCount: 1_000_000, candidatesTokenCount: 0, thoughtsTokenCount: 0 },
+      { audio: true },
+    )
+    const answer = usageLedgerFromGemini('gemini-3.5-flash-lite', {
+      promptTokenCount: 0,
+      candidatesTokenCount: 1_000_000,
+      thoughtsTokenCount: 0,
+    })
+    expect(generationSpend(audio, 100)).toEqual({ tokens: 1_000_000, dollars: 0.3, rubles: 30 })
+    expect(generationSpend(answer, 100)).toEqual({ tokens: 1_000_000, dollars: 2.5, rubles: 250 })
+  })
+
   test('publishes the same flash prices the spend math uses', () => {
     expect(generationModelPrices()).toEqual({
       model: 'gemini-2.5-flash',

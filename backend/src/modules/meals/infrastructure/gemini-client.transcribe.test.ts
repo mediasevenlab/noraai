@@ -71,7 +71,7 @@ describe('voice transcription model', () => {
         },
       )
       expect(url).toContain(`/models/${GEMINI_VOICE_MODEL}:generateContent`)
-      expect(JSON.parse(body).generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 })
+      expect(JSON.parse(body).generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'minimal' })
       expect(result.model).toBe(GEMINI_VOICE_MODEL)
       expect(result.text).toBe('гречка 150 грамм')
       expect(result.usage?.[GEMINI_VOICE_MODEL]?.audioInputTokens).toBe(320)

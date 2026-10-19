@@ -363,8 +363,11 @@ export async function refineMealWithGemini(
   return generateMealCard(env, parts, input.thinking)
 }
 
-/** Voice is a short transcript. Flash-Lite hears it and does not draft a meal card. */
-export const GEMINI_VOICE_MODEL = 'gemini-2.5-flash-lite'
+/**
+ * Voice is a short transcript. Gemini 3.5 Flash-Lite hears it and does not draft a meal card.
+ * 2.5 Flash-Lite is closed to this key. 3.5 rejects thinkingBudget and wants thinkingLevel.
+ */
+export const GEMINI_VOICE_MODEL = 'gemini-3.5-flash-lite'
 
 const TRANSCRIBE_PROMPT = [
   'Транскрибируй голосовое сообщение пользователя дневника питания.',
@@ -422,7 +425,10 @@ export async function transcribeAudioWithGemini(
         ],
       },
     ],
-    generationConfig: geminiGenerationConfig({ temperature: 0, thinking: false }),
+    generationConfig: {
+      temperature: 0,
+      thinkingConfig: { thinkingLevel: 'minimal' },
+    },
   })
   const path = `/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`
   const response = await requestGeminiGenerateContent(env, {

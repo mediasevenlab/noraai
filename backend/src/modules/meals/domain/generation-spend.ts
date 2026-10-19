@@ -7,8 +7,10 @@ export type GenerationTokenBucket = GenerationUsageLedger[string]
  * Live numbers come from Google's Gemini pricing page (standard tier only).
  * Gemini 2.5 Flash fallback, checked 2026-10-14: $0.30 text/image/video input,
  * $1.00 audio input, $2.50 output including thinking.
- * Gemini 2.5 Flash-Lite, used for voice: $0.10 text/image/video, $0.30 audio,
- * $0.40 output. Thinking on that model stays off.
+ * Gemini 2.5 Flash-Lite, kept for already recorded voice: $0.10 text/image/video,
+ * $0.30 audio, $0.40 output.
+ * Gemini 3.5 Flash-Lite, current voice model, standard tier checked 2026-10-19:
+ * $0.30 text/image/video/audio, $2.50 output. Thinking on voice stays minimal.
  * A pasted link is ordinary prompt text. The URL-context tool is not enabled.
  * Unknown models are not priced. Batch, flex, and priority tiers are not used.
  */
@@ -34,6 +36,14 @@ const FLASH_LITE_USD_PER_MILLION: UsdPerMillion = {
   link: 0.1,
   audio: 0.3,
   output: 0.4,
+}
+
+const FLASH_LITE_35_USD_PER_MILLION: UsdPerMillion = {
+  text: 0.3,
+  image: 0.3,
+  link: 0.3,
+  audio: 0.3,
+  output: 2.5,
 }
 
 const GEMINI_PRICING_URL = 'https://ai.google.dev/gemini-api/docs/pricing.md.txt'
@@ -62,6 +72,7 @@ function fallbackPrices(model: string): UsdPerMillion | null {
   const normalized = normalizeGenerationModel(model)
   if (normalized === 'gemini-2.5-flash') return { ...FLASH_USD_PER_MILLION }
   if (normalized === 'gemini-2.5-flash-lite') return { ...FLASH_LITE_USD_PER_MILLION }
+  if (normalized === 'gemini-3.5-flash-lite') return { ...FLASH_LITE_35_USD_PER_MILLION }
   return null
 }
 
