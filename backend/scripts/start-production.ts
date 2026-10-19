@@ -7,6 +7,10 @@ import {
   bootstrapAdmin,
   parseAdminSeedConfig,
 } from '../src/modules/users/infrastructure/admin-bootstrap'
+import {
+  bootstrapDefaultAccounts,
+  DEFAULT_APP_ACCOUNT_PASSWORD,
+} from '../src/modules/users'
 
 const backendRoot = resolve(import.meta.dirname, '..')
 
@@ -37,6 +41,10 @@ try {
     )
     console.log(`Administrator ${admin.email} is login-capable.`)
   }
+  const defaults = await bootstrapDefaultAccounts(db, DEFAULT_APP_ACCOUNT_PASSWORD)
+  console.log(
+    `Default accounts: created=${defaults.created.length} updated=${defaults.updated.length}`,
+  )
   await assertLoginCapableAdmin(db)
 } finally {
   await db.$disconnect()
