@@ -161,9 +161,19 @@ const REFINE_PROMPT = [
   '}',
 ].join('\n')
 
+const REFINE_KEEP_LINES =
+  'Строки, которые пользователь не назвал, верни без изменений: тот же label и те же kcal, protein, fat, carbs. Не меняй их вес и пропорции. Добавь, убавь или убери только названное. Склеенные продукты не разделяй, пока об этом не попросили.'
+
 export function refineSystemPrompt(photoMode?: 'replace' | 'augment') {
-  if (photoMode !== 'replace') return REFINE_PROMPT
-  return REFINE_PROMPT.replace(
+  const prompt =
+    photoMode === 'replace'
+      ? REFINE_PROMPT
+      : REFINE_PROMPT.replace(
+          'Обнови composition по правилам полного разбора тарелки. Если в текущей карточке продукты склеены в одну строку — раздели их.',
+          REFINE_KEEP_LINES,
+        )
+  if (photoMode !== 'replace') return prompt
+  return prompt.replace(
     '2) Дополнительное фото — дополняет текущую карточку, а не заменяет её.',
     '2) Новые фото заменяют текущую карточку. Состав бери только с новых снимков.',
   )

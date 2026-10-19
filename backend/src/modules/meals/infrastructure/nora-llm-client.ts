@@ -3,6 +3,7 @@ import type { MealsGeminiResponse, MealsNoraRequest, MealsTranscribeResponse } f
 import type { AppEnv } from '../../../env'
 import { MealsFailure } from '../domain/errors'
 import {
+  applyNamedRemoval,
   mealNumbersMissing,
   noraExtractPrompt,
   noraModelKind,
@@ -15,6 +16,7 @@ import {
   withCompositionNutrition,
   withEstimatedLineMacros,
   withEstimatedPortionWeights,
+  withFilledLineMacros,
   withRolledUpNutrition,
 } from '../domain/nora-meal'
 import { MEAL_CARD_PROMPT } from './gemini-client'
@@ -42,12 +44,11 @@ const BREVITY_RULE = [
 const WEIGHT_ASK = 'В composition у каждой строки свой ориентировочный вес в label. Оцени каждый продукт отдельно и не ставь всем одно и то же число. Форма строки: «Морковь ~40 г», «Курица ~150 г», «Чай ~200 мл».'
 
 const NORA_REFINE_RECALC = [
-  'Калорий и БЖУ в текущем составе нет. Посчитай их заново по весу каждой строки.',
-  'Вес уже названной строки не меняй, пока пользователь не назвал другой.',
-  'Добавленный продукт — новая строка со своим весом и своими КБЖУ. Калораж приёма от этого вырастет.',
-  'Убранный продукт удали. Калораж приёма от этого уменьшится.',
-  'Нельзя оставить прежний калораж, перераспределив его по строкам.',
-  'nutrition — сумма kcal, protein, fat и carbs по строкам composition. Целые числа.',
+  'Строки, которые пользователь не назвал, скопируй как есть: тот же label и те же kcal, protein, fat, carbs. Их вес и пропорции не меняй.',
+  'Добавленный продукт — новая строка со своим весом и своими КБЖУ.',
+  'Убранный продукт не включай.',
+  'Убавленную или заменённую строку обнови, остальные не трогай.',
+  'nutrition — сумма строк после правки. Не оставляй прежний общий калораж и не размазывай его по строкам.',
 ].join('\n')
 
 const TEXT_RULE = [
@@ -166,9 +167,11 @@ async function completeNora(
     maxTokens?: number
   },
 ): Promise<MealsGeminiResponse> {
+  const firstPenalty = input.kind === 'vision' ? 0.3 : 0
+  const retryPenalty = input.kind === 'vision' ? 0.75 : 0
   let card: MealsGeminiResponse
   try {
-    card = await requestNoraCard(env, input, 0.3)
+    card = await requestNoraCard(env, input, firstPenalty)
   } catch (error) {
     if (!(error instanceof MealsFailure) || error.kind !== 'upstream') throw error
     if (/^Своя модель/.test(error.message)) throw error
@@ -178,10 +181,10 @@ async function completeNora(
         ...input,
         text: `${input.text}\n\nПредыдущий ответ оборвался. Верни один короткий JSON без повторов и без markdown. В каждом label укажи вес.`,
       },
-      0.75,
+      retryPenalty,
     )
   }
-  let meal = withEstimatedLineMacros(withRolledUpNutrition(card.meal))
+  let meal = noraMealFromCard(card, input.lineMacros)
   if (meal.composition.length === 0 || mealNumbersMissing(meal) || linesLackMacros(meal, input.lineMacros)) {
     card = await requestNoraCard(
       env,
@@ -189,9 +192,9 @@ async function completeNora(
         ...input,
         text: `${input.text}\n\nВерни composition: каждый продукт отдельной строкой, с весом в label и КБЖУ строки. nutrition.kcal больше 0.`,
       },
-      0.3,
+      retryPenalty,
     )
-    meal = withEstimatedLineMacros(withRolledUpNutrition(card.meal))
+    meal = noraMealFromCard(card, input.lineMacros)
   }
   if (portionLabelsNeedWeight(meal.composition)) {
     const rewritten = await rewritePortionWeights(env, meal)
@@ -204,6 +207,11 @@ async function completeNora(
     throw new MealsFailure('upstream', unfinishedCardMessage(input.kind))
   }
   return { ...card, meal }
+}
+
+function noraMealFromCard(card: MealsGeminiResponse, lineMacros: boolean | undefined) {
+  const meal = withEstimatedLineMacros(withRolledUpNutrition(card.meal))
+  return lineMacros ? withFilledLineMacros(meal) : meal
 }
 
 function linesLackMacros(
@@ -249,8 +257,8 @@ async function requestNoraCard(
       model,
       temperature: 0.2,
       max_tokens: input.maxTokens ?? 4096,
-      // qwen2.5vl repeats the ingredient list on a real photo and hits the token cap with an unfinished JSON card.
-      // A high penalty also drops the repeated «г» in composition lines, so the first pass stays mild.
+      // qwen2.5vl repeats the ingredient list on a real photo and hits the token cap.
+      // The same penalty on a text correction drops repeated JSON keys (label, kcal) and the card fails to parse.
       frequency_penalty: penalty,
       messages: [
         {
@@ -435,12 +443,18 @@ export async function refineMealWithNora(
   })
   const images = await Promise.all(selected.map((image) => shrinkNoraVisionImage(image)))
   const kind = noraModelKind(images.length)
+  if (kind === 'text') {
+    const removed = applyNamedRemoval(input.card, input.message)
+    if (removed) {
+      return { ok: true, model: env.LLM_TEXT_MODEL, meal: withCompositionNutrition(removed) }
+    }
+  }
   const source = noraRefineSource(input.card, input.photoMode)
   const text = [
     input.message.trim() ? `Уточнение пользователя:\n${input.message.trim()}` : '',
     input.photoMode === 'replace'
       ? 'Старый состав не используй. Разбери только новые фото.'
-      : `Состав сейчас, без калорий:\n${JSON.stringify(source)}`,
+      : `Состав сейчас:\n${JSON.stringify(source)}`,
     NORA_REFINE_RECALC,
   ]
     .filter(Boolean)

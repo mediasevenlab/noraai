@@ -972,6 +972,151 @@ describe('MealsService', () => {
     expect(refineInput?.coverBase64).toBeUndefined()
   })
 
+  test('refineMeal removes only the named food when the plate lives in the ingredient list', async () => {
+    const ingredients =
+      'Скумбрия – 700 г, Зелень – 20 г, Масло оливковое – 35 г, Чеснок – 1 зуб., Сок лимонный – 1 ч.л., Смесь перцев – 2 щепотка (-и), Соль – 3 г по вкусу'
+    const existing = mealRecord({
+      title: 'Скумбрия на сковороде-гриль',
+      ingredients,
+      category: 'Рыба',
+      mealSlot: 'Ужин',
+      kcal: 879,
+      protein: 67,
+      fat: 67,
+      carbs: 2,
+      portionItems: [],
+    })
+    let sentLabels: string[] = []
+    const service = new MealsService({
+      analyzer: {
+        analyze: async () => {
+          throw new Error('unused')
+        },
+        refine: async (input) => {
+          sentLabels = (input.card.composition as Array<{ label: string }>).map((item) => item.label)
+          return {
+            ok: true as const,
+            model: 'gemini-test',
+            meal: {
+              title: 'Скумбрия на сковороде-гриль',
+              excerpt: 'Скумбрия, лук, чай',
+              body: '',
+              category: 'Рыба',
+              mealType: 'Ужин',
+              tags: [] as string[],
+              nutrition: { kcal: 45, protein: 0, fat: 0, carbs: 11 },
+              clientNoteStructured: '',
+              composition: [
+                { label: 'Скумбрия ~200 г', kcal: 40, protein: 0, fat: 0, carbs: 10 },
+                { label: 'Лук ~10 г', kcal: 4, protein: 0, fat: 0, carbs: 1 },
+                { label: 'Чай ~200 мл', kcal: 1, protein: 0, fat: 0, carbs: 0 },
+              ],
+              assumptions: ['Лук придаёт блюду аромат и вкус.'],
+              micronutrients: [],
+            },
+          }
+        },
+      },
+      imageStore: {
+        saveImage: async () => ({ imageKey: 'a', imageMime: 'image/jpeg' }),
+        readImage: async () => Buffer.from('img'),
+      },
+      imageUrlBuilder: imageUrls(),
+      repository: repositoryStub({
+        findMealById: async () => existing,
+        updateMealContent: async (_id, content) =>
+          mealRecord({
+            ...content,
+            id: existing.id,
+            userId: existing.userId,
+          }),
+      }),
+    })
+
+    const result = await service.refineMeal(
+      { id: existing.userId, role: 'user' },
+      existing.id,
+      { message: 'убери зелень и состава' },
+    )
+
+    expect(sentLabels).toContain('Зелень – 20 г ~80 г')
+    expect(result.meal.portionItems.map((item) => item.label)).toEqual([
+      'Скумбрия – 700 г ~120 г',
+      'Масло оливковое – 35 г ~60 г',
+      'Чеснок – 1 зуб ~40 г',
+      'Сок лимонный – 1 ч.л ~30 г',
+      'Смесь перцев – 2 щепотка (-и) ~20 г',
+      'Соль – 3 г по вкусу ~25 г',
+    ])
+    expect(result.meal.kcal).toBe(858)
+    expect(result.meal.protein).toBe(65)
+    expect(result.meal.fat).toBe(65)
+  })
+
+  test('refineMeal adds only the named food and keeps the other lines', async () => {
+    const existing = mealRecord({
+      kcal: 127,
+      protein: 8,
+      fat: 8,
+      carbs: 6,
+      portionItems: [{ label: 'Творог – 70 г ~120 г', kcal: 127, protein: 8, fat: 8, carbs: 6 }],
+    })
+    const service = new MealsService({
+      analyzer: {
+        analyze: async () => {
+          throw new Error('unused')
+        },
+        refine: async () => ({
+          ok: true as const,
+          model: 'gemini-test',
+          meal: {
+            title: 'Творог с хлебом',
+            excerpt: 'Творог, хлеб',
+            body: '',
+            category: 'Завтрак',
+            mealType: 'Завтрак',
+            tags: [] as string[],
+            nutrition: { kcal: 400, protein: 30, fat: 20, carbs: 40 },
+            clientNoteStructured: '',
+            composition: [
+              { label: 'Творог ~200 г', kcal: 220, protein: 20, fat: 12, carbs: 10 },
+              { label: 'Хлеб ~30 г', kcal: 80, protein: 3, fat: 1, carbs: 15 },
+            ],
+            assumptions: [],
+            micronutrients: [],
+          },
+        }),
+      },
+      imageStore: {
+        saveImage: async () => ({ imageKey: 'a', imageMime: 'image/jpeg' }),
+        readImage: async () => Buffer.from('img'),
+      },
+      imageUrlBuilder: imageUrls(),
+      repository: repositoryStub({
+        findMealById: async () => existing,
+        updateMealContent: async (_id, content) =>
+          mealRecord({
+            ...content,
+            id: existing.id,
+            userId: existing.userId,
+          }),
+      }),
+    })
+
+    const result = await service.refineMeal(
+      { id: existing.userId, role: 'user' },
+      existing.id,
+      { message: 'добавь хлеб' },
+    )
+
+    expect(result.meal.portionItems.map((item) => item.label)).toEqual([
+      'Творог – 70 г ~120 г',
+      'Хлеб ~30 г',
+    ])
+    expect(result.meal.portionItems[0]).toMatchObject({ kcal: 127, protein: 8, fat: 8, carbs: 6 })
+    expect(result.meal.kcal).toBe(207)
+  })
+
   test('refineMeal keeps catalog origin stamps after a text-only change', async () => {
     const existing = mealRecord({
       assumptions: ['Добавлено из каталога', 'Каталог:plan-preview:catalog_loss:1'],

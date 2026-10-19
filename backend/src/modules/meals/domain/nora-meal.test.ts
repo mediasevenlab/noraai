@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
+  applyNamedRemoval,
   mealNumbersMissing,
   noraExtractPrompt,
   noraModelKind,
@@ -14,6 +15,7 @@ import {
   estimatePortionMacros,
   withEstimatedLineMacros,
   withEstimatedPortionWeights,
+  withFilledLineMacros,
   withRolledUpNutrition,
 } from './nora-meal'
 
@@ -132,7 +134,7 @@ describe('nora meal routing', () => {
     expect(noraRefinePrompt()).toContain('Убери, замени или добавь')
   })
 
-  test('a correction sent to Nora keeps names and drops the old calories', () => {
+  test('a correction sent to Nora keeps each line and drops the old total', () => {
     expect(noraRefineSource({
       title: 'Рис с курицей',
       mealType: 'Обед',
@@ -144,7 +146,10 @@ describe('nora meal routing', () => {
     })).toEqual({
       title: 'Рис с курицей',
       mealType: 'Обед',
-      composition: [{ label: 'Рис ~180 г' }, { label: 'Курица ~120 г' }],
+      composition: [
+        { label: 'Рис ~180 г', kcal: 230, protein: 5, fat: 1, carbs: 48 },
+        { label: 'Курица ~120 г', kcal: 200, protein: 30, fat: 8, carbs: 0 },
+      ],
     })
     expect(noraRefineSource({ title: 'Рис', mealType: 'Обед', nutrition: { kcal: 500 } }, 'replace')).toEqual({
       title: 'Рис',
@@ -166,6 +171,71 @@ describe('nora meal routing', () => {
     expect(mealNumbersMissing(meal)).toBe(false)
     expect(meal.composition[0]?.kcal).toBeGreaterThan(0)
     expect(estimatePortionMacros('картофель ~30 г')?.carbs).toBeGreaterThan(0)
+  })
+
+  test('a header total does not hide lines that arrived without macros', () => {
+    const meal = withFilledLineMacros({
+      nutrition: { kcal: 250, protein: 18, fat: 15, carbs: 15 },
+      composition: [
+        { label: 'Творог ~120 г', kcal: 0, protein: 0, fat: 0, carbs: 0 },
+        { label: 'Масло сливочное ~40 г', kcal: 9, protein: 1, fat: 1, carbs: 0 },
+      ],
+    })
+    expect(meal.composition[0]?.kcal).toBeGreaterThan(0)
+    expect(meal.nutrition.kcal).toBe(meal.composition[0]!.kcal + 9)
+  })
+
+  test('«бери масло из приема» drops the saved butter line and keeps the other calories', () => {
+    const meal = applyNamedRemoval(
+      {
+        title: 'Жареный творог на сковороде с яйцом',
+        mealType: 'Завтрак',
+        composition: [
+          { label: 'Творог – 70 г ~120 г', kcal: 127, protein: 8, fat: 8, carbs: 6 },
+          { label: 'Яйцо куриное – 2 шт. Размер С0 ~80 г', kcal: 146, protein: 10, fat: 9, carbs: 7 },
+          { label: 'Масло сливочное – 5 г ~40 г', kcal: 9, protein: 1, fat: 1, carbs: 0 },
+          { label: 'Зелень – 2 веточка (-) ~30 г', kcal: 55, protein: 4, fat: 3, carbs: 3 },
+        ],
+      },
+      'Бери масло из приема',
+    )
+    expect(meal?.composition.map((item) => item.label)).toEqual([
+      'Творог – 70 г ~120 г',
+      'Яйцо куриное – 2 шт. Размер С0 ~80 г',
+      'Зелень – 2 веточка (-) ~30 г',
+    ])
+    expect(meal?.nutrition.kcal).toBe(127 + 146 + 55)
+    expect(meal?.excerpt).toBe('Творог, Яйцо куриное, Зелень')
+  })
+
+  test('a removal that also adds food stays with the model', () => {
+    expect(
+      applyNamedRemoval(
+        {
+          title: 'Творог',
+          composition: [
+            { label: 'Творог ~120 г', kcal: 127, protein: 8, fat: 8, carbs: 6 },
+            { label: 'Масло ~40 г', kcal: 9, protein: 1, fat: 1, carbs: 0 },
+          ],
+        },
+        'убери масло и добавь хлеб',
+      ),
+    ).toBeNull()
+  })
+
+  test('a removal of a product that is not on the plate stays with the model', () => {
+    expect(
+      applyNamedRemoval(
+        {
+          title: 'Творог',
+          composition: [
+            { label: 'Творог ~120 г', kcal: 127, protein: 8, fat: 8, carbs: 6 },
+            { label: 'Масло ~40 г', kcal: 9, protein: 1, fat: 1, carbs: 0 },
+          ],
+        },
+        'убери перец',
+      ),
+    ).toBeNull()
   })
 
   test('a card with no numbers is empty', () => {

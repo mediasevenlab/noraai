@@ -189,20 +189,49 @@ describe('Nora photo correction', () => {
           mealType: 'Ужин',
           composition: [{ label: 'Скумбрия ~120 г' }, { label: 'Масло растительное ~40 г' }],
         },
-        message: 'убери масло из приема',
+        message: 'добавь хлеб',
       })
     } finally {
       globalThis.fetch = original
     }
     const request = JSON.parse(body) as {
+      frequency_penalty: number
       max_tokens: number
       model: string
       messages: Array<{ role: string; content: unknown }>
     }
     expect(request.model).toBe('qwen2.5:7b')
     expect(request.max_tokens).toBe(2048)
+    expect(request.frequency_penalty).toBe(0)
     const system = String(request.messages.find((message) => message.role === 'system')?.content)
     expect(system).toContain('Фото нет')
     expect(system).not.toContain('На фото добавка')
+  })
+
+  test('«бери масло из приема» drops the saved line and does not ask the model', async () => {
+    const original = globalThis.fetch
+    let called = false
+    globalThis.fetch = (async () => {
+      called = true
+      return new Response('{}', { status: 500 })
+    }) as typeof fetch
+    try {
+      const result = await refineMealWithNora(env, {
+        card: {
+          title: 'Жареный творог на сковороде с яйцом',
+          mealType: 'Завтрак',
+          composition: [
+            { label: 'Творог – 70 г ~120 г', kcal: 127, protein: 8, fat: 8, carbs: 6 },
+            { label: 'Масло сливочное – 5 г ~40 г', kcal: 9, protein: 1, fat: 1, carbs: 0 },
+          ],
+        },
+        message: 'Бери масло из приема',
+      })
+      expect(called).toBe(false)
+      expect(result.meal.composition.map((item) => item.label)).toEqual(['Творог – 70 г ~120 г'])
+      expect(result.meal.nutrition.kcal).toBe(127)
+    } finally {
+      globalThis.fetch = original
+    }
   })
 })

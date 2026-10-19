@@ -152,7 +152,21 @@ export function noraRefineSource(
     ...source,
     composition: card.composition.map((item) => {
       if (!item || typeof item !== 'object') return { label: '' }
-      return { label: String((item as { label?: unknown }).label ?? '') }
+      const record = item as {
+        label?: unknown
+        kcal?: unknown
+        protein?: unknown
+        fat?: unknown
+        carbs?: unknown
+      }
+      const line = {
+        label: String(record.label ?? ''),
+        kcal: Math.max(0, Math.round(Number(record.kcal) || 0)),
+        protein: Math.max(0, Math.round(Number(record.protein) || 0)),
+        fat: Math.max(0, Math.round(Number(record.fat) || 0)),
+        carbs: Math.max(0, Math.round(Number(record.carbs) || 0)),
+      }
+      return line.kcal + line.protein + line.fat + line.carbs > 0 ? line : { label: line.label }
     }),
   }
 }
@@ -197,6 +211,100 @@ export function withEstimatedLineMacros<
   })
   if (macroSum(composition) <= 0) return meal
   return withRolledUpNutrition({ ...meal, composition })
+}
+
+/** A header total must not hide lines that arrived without their own macros. */
+export function withFilledLineMacros<
+  T extends { nutrition: MacroTotals; composition: Array<MacroTotals & { label: string }> },
+>(meal: T): T {
+  let filled = false
+  const composition = meal.composition.map((item) => {
+    if (item.kcal + item.protein + item.fat + item.carbs > 0) return item
+    const estimated = estimatePortionMacros(item.label)
+    if (!estimated) return item
+    filled = true
+    return { ...item, ...estimated }
+  })
+  if (!filled || macroSum(composition) <= 0) return meal
+  return withCompositionNutrition({ ...meal, composition })
+}
+
+const REMOVAL_STOP_WORDS = new Set([
+  'из',
+  'от',
+  'для',
+  'это',
+  'этот',
+  'эту',
+  'этого',
+  'прием',
+  'приема',
+  'состав',
+  'состава',
+  'блюда',
+  'блюдо',
+  'тарелки',
+  'тарелку',
+  'пожалуйста',
+  'строку',
+  'строки',
+  'позицию',
+  'продукт',
+  'продукта',
+])
+
+function foldRu(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/[^a-zа-я0-9]+/giu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * A plain «убери масло» keeps the saved lines and drops the named ones.
+ * «Бери» is the same request with the first letter missing.
+ * Mixed edits («убери масло и добавь хлеб») stay with the model.
+ */
+export function applyNamedRemoval(card: Record<string, unknown>, message: string) {
+  const normalized = foldRu(message).replace(/^бери(?=\s|$)/u, 'убери')
+  if (/(добав|замен|помен|вместо|увелич|уменьш|поставь|сделай)/u.test(normalized)) return null
+  const request = normalized.match(/^(?:убери|удали|убрать|без)\s+(.+)$/u)
+  if (!request?.[1]) return null
+  const targets = request[1]
+    .split(/\s+и\s+|,/u)
+    .map((part) =>
+      part.split(/\s+/u).filter((word) => word.length >= 3 && !REMOVAL_STOP_WORDS.has(word)),
+    )
+    .filter((words) => words.length > 0)
+  if (targets.length === 0) return null
+  const meal = normalizeGeneratedMealCard(card)
+  if (meal.composition.length < 2) return null
+  const drop = new Set<number>()
+  for (const words of targets) {
+    const hits = meal.composition.flatMap((item, index) =>
+      words.some((word) => foldRu(item.label).includes(word)) ? [index] : [],
+    )
+    if (hits.length === 0) return null
+    for (const index of hits) drop.add(index)
+  }
+  if (drop.size === 0 || drop.size >= meal.composition.length) return null
+  const composition = meal.composition.flatMap((item, index) => {
+    if (drop.has(index)) return []
+    if (item.kcal + item.protein + item.fat + item.carbs > 0) return [item]
+    const estimated = estimatePortionMacros(item.label)
+    return estimated ? [{ ...item, ...estimated }] : [item]
+  })
+  if (composition.some((item) => item.kcal + item.protein + item.fat + item.carbs <= 0)) return null
+  return withCompositionNutrition({
+    ...meal,
+    excerpt: composition
+      .map((item) => item.label.replace(/\s*[~–—-].*$/u, '').trim())
+      .filter(Boolean)
+      .join(', '),
+    composition,
+  })
 }
 
 export function estimatePortionMacros(label: string) {

@@ -35,7 +35,9 @@ import {
 import { detectMealImageMime } from '../domain/meal-image'
 import {
   applyAdditivePhotoRefine,
+  applyTextPortionEdit,
   photoAttachKeepsCurrentMeal,
+  portionItemsShownOnCard,
   REFINE_ATTACH_PHOTO_INSTRUCTION,
   REFINE_REPLACE_PHOTO_INSTRUCTION,
 } from '../domain/meal-composition'
@@ -813,8 +815,10 @@ export class MealsService {
       engine === 'nora' && this.dependencies.noraRefine
         ? this.dependencies.noraRefine
         : this.dependencies.analyzer.refine
+    const shownItems = portionItemsShownOnCard(ensured)
+    const cardMeal = shownItems.length > 0 ? { ...ensured, portionItems: shownItems } : ensured
     const result = await refine({
-      card: this.toGeminiCard(ensured),
+      card: this.toGeminiCard(cardMeal),
       message,
       coverBase64,
       coverMime,
@@ -828,26 +832,25 @@ export class MealsService {
       ...(thinking ? {} : { thinking: false as const }),
     })
     const analyzed = mapGeminiCardToMealFields(result.meal)
-    const current = this.toVersioned(ensured)
+    const current = this.toVersioned(cardMeal)
+    const currentFields = {
+      title: current.title,
+      ingredients: current.ingredients,
+      category: current.category,
+      meal: current.mealSlot,
+      kcal: current.kcal,
+      protein: current.protein,
+      fat: current.fat,
+      carbs: current.carbs,
+      portionItems: current.portionItems,
+      clientComment: current.clientComment,
+      assumptions: analyzed.assumptions,
+      micronutrients: analyzed.micronutrients,
+    }
+    const edited = replacePhotos ? null : applyTextPortionEdit(currentFields, analyzed, userText)
     const fields = keepCurrentMeal
-      ? applyAdditivePhotoRefine(
-          {
-            title: current.title,
-            ingredients: current.ingredients,
-            category: current.category,
-            meal: current.mealSlot,
-            kcal: current.kcal,
-            protein: current.protein,
-            fat: current.fat,
-            carbs: current.carbs,
-            portionItems: current.portionItems,
-            clientComment: current.clientComment,
-            assumptions: analyzed.assumptions,
-            micronutrients: analyzed.micronutrients,
-          },
-          analyzed,
-        )
-      : analyzed
+      ? applyAdditivePhotoRefine(currentFields, analyzed)
+      : edited ?? analyzed
     const replaced = replacePhotos
       ? await this.replacedMealImages(ensured, mealId, images)
       : null
