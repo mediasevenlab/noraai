@@ -81,6 +81,12 @@ export {
   mentorWeekdayIndex,
 } from './feed-ration-clone'
 export { useSyncedPlanLibrary } from './use-plan-library'
+export {
+  DiaryPeriodPicker,
+  diaryToolbarIconButtonClass,
+  diaryToolbarPairDividerClass,
+  diaryToolbarPillClass,
+} from './DiaryPeriodPicker'
 
 export { NewsPage as DiaryNewsPage } from './pages/news'
 export { diaryPeriodStartOverrideForEmail } from './diary-period-start'

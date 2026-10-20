@@ -43,6 +43,7 @@ model User {
   planLibrary         UserPlanLibrary?
   mentorPlans         MentorPlan[]
   telegramLinkChallenges TelegramLinkChallenge[]
+  newsPosts        NewsPost[]
   generationUsage  Json          @default("{}") @map("generation_usage")
 
   @@index([role], map: "users_role_idx")
@@ -309,4 +310,21 @@ model AuthSession {
   @@index([userId], map: "auth_sessions_user_id_idx")
   @@index([expiresAt], map: "auth_sessions_expires_at_idx")
   @@map("auth_sessions")
+}
+
+model NewsPost {
+  id             String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  channelHandle  String   @map("channel_handle")
+  telegramPostId Int      @map("telegram_post_id")
+  text           String   @db.Text
+  postedAt       DateTime @map("posted_at")
+  media          Json     @default("[]")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "news_posts_user_id_fkey")
+
+  @@unique([userId, channelHandle, telegramPostId], map: "news_posts_user_channel_post_key")
+  @@index([userId, postedAt], map: "news_posts_user_id_posted_at_idx")
+  @@map("news_posts")
 }

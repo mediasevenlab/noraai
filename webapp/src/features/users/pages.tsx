@@ -22,14 +22,11 @@ import {
 
 import { AtSignIcon, HashIcon, MailIcon, UserRoundIcon } from '@/components/icons'
 import { SettingsCanvas, SettingsEntry, SettingsReadRows } from '@/components/settings-canvas'
-import { ClientProfileCard, QuestionnaireEditorProvider, useQuestionnaireEditor } from './ClientProfileCard'
 import { MentorConnectionPanel } from './MentorConnectionPanel'
-import { ProfileMobileMasthead, type ProfileMobileTab } from './ProfileMobileMasthead'
+import { ProfileMobileMasthead } from './ProfileMobileMasthead'
 import { ProfilePanel } from './ProfilePanel'
-import { QuestionnaireOnboarding } from './QuestionnaireOnboarding'
 import { GenerationTokenUsagePanel } from './GenerationTokenUsagePanel'
 import { MealEnginePanel } from './MealEnginePanel'
-import { MaintenanceCaloriesPanel } from './MaintenanceCaloriesPanel'
 import { ReferralLinkPanel } from './ReferralLinkPanel'
 import { ReferralsDirectory } from './ReferralsDirectory'
 import { useUserReferralsQuery, usePayoutAccrualQuery } from './queries'
@@ -40,72 +37,21 @@ export function UserHome() {
   return <Navigate replace search={userGeneralSearch()} to="/app/general" />
 }
 
-function ProfileQuestionnaire({ className, user }: { className?: string, user: UserDto }) {
-  const profile = useQuestionnaireEditor()
-
-  return (
-    <>
-      <MaintenanceCaloriesPanel className={className} userId={user.id} />
-      {profile.isLoading ? (
-        <li className="font-[family-name:var(--nora-font)] text-[13px] font-light text-[var(--nora-text-tertiary)] lg:ml-auto lg:w-lg">
-          Загрузка анкеты…
-        </li>
-      ) : profile.isError ? (
-        <li className="font-[family-name:var(--nora-font)] text-[13px] text-[var(--nora-error)] lg:ml-auto lg:w-lg">
-          Не удалось загрузить анкету.
-        </li>
-      ) : (
-        <ClientProfileCard
-          editing={profile.editing}
-          layout="entry"
-          omitTitles={['Цель']}
-          onChange={profile.onChange}
-          sectionClassName={className}
-          user={user}
-          values={profile.values}
-        />
-      )}
-      {profile.saveError ? (
-        <li className="pt-4 font-[family-name:var(--nora-font)] text-[13px] text-[var(--nora-error)] lg:ml-auto lg:w-lg">
-          Не удалось сохранить анкету. Попробуйте ещё раз.
-        </li>
-      ) : null}
-    </>
-  )
-}
-
 export function UserProfile({ user }: { user: UserDto }) {
-  const [tab, setTab] = useState<ProfileMobileTab>('profile')
-  const accountClass = tab === 'questionnaire' ? 'max-lg:hidden' : undefined
-  const questionnaireClass = tab === 'profile' ? 'max-lg:hidden' : undefined
-
   return (
     <SettingsCanvas
       ctaLabel="Профиль"
-      description="Имя и никнейм, затем анкета с калорийностью."
+      description="Имя и никнейм."
       editable
       eyebrow="Аккаунт"
-      lead={(
-        <ProfileMobileMasthead
-          onTab={setTab}
-          tab={tab}
-          user={user}
-        />
-      )}
+      lead={<ProfileMobileMasthead user={user} />}
       meta={user.email}
       panelsId="profile-panels"
       title="Профиль"
     >
-      <QuestionnaireEditorProvider>
-      <ProfilePanel className={accountClass} user={user} />
-      <ProfileQuestionnaire className={questionnaireClass} user={user} />
-      </QuestionnaireEditorProvider>
+      <ProfilePanel user={user} />
     </SettingsCanvas>
   )
-}
-
-export function UserOnboarding() {
-  return <QuestionnaireOnboarding />
 }
 
 /** Mentor/admin identity profile without the user questionnaire. */

@@ -7,7 +7,7 @@ import {
   useRouter,
   useSearch,
 } from '@tanstack/react-router'
-import type { RegistrationRole, UserDto, UserRole } from '@web-app-demo/contracts'
+import type { UserDto, UserRole } from '@web-app-demo/contracts'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 import {
@@ -37,6 +37,7 @@ import {
 } from '@/features/auth'
 import { SharedMealsFeedPage, authDemoPlayFrom, authDemoSetPaused } from '@/features/diary'
 import { homePathForRole, postAuthPath, userFeedSearch, userGeneralSearch } from '@/features/navigation'
+import { NewsPage } from '@/features/news'
 import { useDismissAppBootSplash } from '@/platform/app-boot-splash'
 import {
   MentorMenteeDiary,
@@ -50,7 +51,6 @@ import { CurrentPlanPage, GeneralNutritionPage, MenteeAssignedPlans, MentorPlanD
 import {
   AccountProfile,
   UserHome,
-  UserOnboarding,
   UserProfile,
   UserReferrals,
   UserSettings,
@@ -67,13 +67,7 @@ export function HomePage() {
   }
   if (auth.user) {
     return (
-      <HrefRedirect
-        href={postAuthPath(
-          auth.user.role,
-          returnTo,
-          auth.user.questionnaireCompleted,
-        )}
-      />
+      <HrefRedirect href={postAuthPath(auth.user.role, returnTo)} />
     )
   }
   const destination = ref
@@ -148,7 +142,7 @@ export function LoginPage() {
   const { returnTo } = useSearch({ from: '/login' })
   return (
     <GuestAuthPage returnTo={returnTo}>
-      <AuthPageShell surface="login">
+      <AuthPageShell>
         <LoginForm returnTo={returnTo} />
       </AuthPageShell>
     </GuestAuthPage>
@@ -157,12 +151,11 @@ export function LoginPage() {
 
 export function SignupPage() {
   const { ref, returnTo } = useSearch({ from: '/signup' })
-  const [role, setRole] = useState<RegistrationRole>('user')
 
   return (
     <GuestAuthPage returnTo={returnTo}>
-      <AuthPageShell surface={role === 'mentor' ? 'signup-mentor' : 'signup-user'}>
-        <RegisterForm onRoleChange={setRole} referralCode={ref} returnTo={returnTo} />
+      <AuthPageShell>
+        <RegisterForm referralCode={ref} returnTo={returnTo} />
       </AuthPageShell>
     </GuestAuthPage>
   )
@@ -256,6 +249,16 @@ export function MentorFeedPage() {
   )
 }
 
+export function UserNewsPage() {
+  useWorkspaceUser('user')
+  return <NewsPage />
+}
+
+export function MentorNewsPage() {
+  useWorkspaceUser('mentor')
+  return <NewsPage />
+}
+
 export function UserRationsPage() {
   useWorkspaceUser('user')
   return <Navigate replace search={userGeneralSearch('plan')} to="/app/general" />
@@ -283,7 +286,7 @@ export function UserGeneralPage() {
   const view = search.view === 'plan' ? 'plan' : 'diary'
   const openPlanId = typeof search.planId === 'string' ? search.planId : undefined
   const library =
-    search.library === 'catalog' || search.library === 'mentor' || search.library === 'mine'
+    search.library === 'mentor' || search.library === 'mine'
       ? search.library
       : undefined
   return (
@@ -293,11 +296,12 @@ export function UserGeneralPage() {
       onClosePlan={() => {
         void navigate({
           replace: true,
-          search: userGeneralSearch('plan', undefined, library === 'catalog' ? 'catalog' : undefined),
+          search: userGeneralSearch('plan'),
           to: '/app/general',
         })
       }}
       onLibraryChange={(next) => {
+        if (next === 'catalog') return
         void navigate({
           replace: true,
           search: userGeneralSearch('plan', undefined, next === 'mine' ? undefined : next),
@@ -307,7 +311,7 @@ export function UserGeneralPage() {
       onOpenPlan={(planId) => {
         void navigate({
           replace: true,
-          search: userGeneralSearch('plan', planId, library === 'catalog' ? 'catalog' : undefined),
+          search: userGeneralSearch('plan', planId),
           to: '/app/general',
         })
       }}
@@ -348,7 +352,7 @@ export function UserSavedPage() {
 
 export function UserOnboardingPage() {
   useWorkspaceUser('user')
-  return <UserOnboarding />
+  return <Navigate replace search={userGeneralSearch()} to="/app/general" />
 }
 
 export function UserProfilePage() {
@@ -550,22 +554,6 @@ function WorkspaceRoute({ role }: { role: UserRole }) {
     return <HrefRedirect href={homePathForRole(auth.user.role)} />
   }
 
-  if (
-    role === 'user'
-    && !auth.user.questionnaireCompleted
-    && location.pathname !== '/app/onboarding'
-  ) {
-    return <HrefRedirect href="/app/onboarding" />
-  }
-
-  if (
-    role === 'user'
-    && auth.user.questionnaireCompleted
-    && location.pathname === '/app/onboarding'
-  ) {
-    return <HrefRedirect href="/app/general" />
-  }
-
   if (role !== 'user') {
     return (
       <WorkspaceShell onLogout={auth.logout} user={auth.user}>
@@ -616,13 +604,7 @@ function GuestAuthPage({
   }
   if (auth.user) {
     return (
-      <HrefRedirect
-        href={postAuthPath(
-          auth.user.role,
-          returnTo,
-          auth.user.questionnaireCompleted,
-        )}
-      />
+      <HrefRedirect href={postAuthPath(auth.user.role, returnTo)} />
     )
   }
 

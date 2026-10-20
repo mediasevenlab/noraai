@@ -1,16 +1,10 @@
 import type { UserDto } from '@web-app-demo/contracts'
-import { BadgeCheck as BadgeCheckIcon, CameraIcon, ZapIcon } from '@/components/icons'
-import { productSheetFrostFillClass } from '@/components/nora/product-sheet'
+import { BadgeCheck as BadgeCheckIcon, CameraIcon } from '@/components/icons'
 import { useEffect, useRef, useState } from 'react'
 
 import { useSettingsDraft, useSettingsMode } from '@/components/settings-canvas'
 import { cn } from '@/lib/utils'
 
-import { followedDailyCalories, formatCalorieKcal, useCaloriePreference } from './calorie-preference'
-import { questionnaireDailyCalorieTarget } from './questionnaire-calorie-target'
-import { useQuestionnaireQuery } from './queries'
-
-export type ProfileMobileTab = 'profile' | 'questionnaire'
 
 const AVATAR_KEY = (userId: string) => `24nutrition.profile-avatar.${userId}`
 const COVER_KEY = (userId: string) => `24nutrition.profile-cover.${userId}`
@@ -124,38 +118,7 @@ function loadImage(file: File, maxSize: number) {
   })
 }
 
-function ProfileCalorieBadge({ userId }: { userId: string }) {
-  const preference = useCaloriePreference(userId)
-  const questionnaire = useQuestionnaireQuery()
-  const kcal = followedDailyCalories({
-    goalTarget: questionnaireDailyCalorieTarget(questionnaire.data?.answers),
-    preference,
-  })
-  if (kcal == null) return null
-
-  return (
-    <span
-      className={cn(
-        'ios-glass-glare absolute top-3 left-4 z-[1] inline-flex h-8 min-h-8 max-h-8 items-center gap-1 rounded-full py-0 pr-3 pl-2.5',
-        productSheetFrostFillClass,
-        'font-[family-name:var(--nora-font)] text-[11px] font-medium leading-none text-[var(--nora-text)] tabular-nums',
-      )}
-    >
-      <ZapIcon aria-hidden className="size-[15px] shrink-0" strokeWidth={1.75} />
-      {formatCalorieKcal(kcal)} ккал
-    </span>
-  )
-}
-
-export function ProfileMobileMasthead({
-  onTab,
-  tab,
-  user,
-}: {
-  onTab: (tab: ProfileMobileTab) => void
-  tab: ProfileMobileTab
-  user: UserDto
-}) {
+export function ProfileMobileMasthead({ user }: { user: UserDto }) {
   const mode = useSettingsMode()
   const avatarRef = useRef<HTMLInputElement>(null)
   const coverRef = useRef<HTMLInputElement>(null)
@@ -221,7 +184,6 @@ export function ProfileMobileMasthead({
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-black/25" />
         </>
       ) : null}
-      <ProfileCalorieBadge userId={user.id} />
       {mode.editing ? (
         <div className="absolute top-3 right-3 z-[1] flex items-center gap-1.5">
           {avatar ? (
@@ -306,35 +268,6 @@ export function ProfileMobileMasthead({
       {nickname ? (
         <p className={cn('relative mt-0.5 text-[13px] font-light', coverDark ? 'text-white/80' : 'text-[var(--nora-text-tertiary)]')}>@{nickname}</p>
       ) : null}
-      <div className="relative mt-4 flex items-center gap-2">
-        <ProfileTab active={tab === 'profile'} onClick={() => onTab('profile')}>
-          Профиль
-        </ProfileTab>
-        <ProfileTab active={tab === 'questionnaire'} onClick={() => onTab('questionnaire')}>
-          Анкета
-        </ProfileTab>
-      </div>
     </div>
-  )
-}
-
-function ProfileTab({
-  active,
-  children,
-  onClick,
-}: {
-  active: boolean
-  children: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      className="profile-masthead-tab nora-press-grow inline-flex h-9 w-[6.75rem] cursor-pointer items-center justify-center rounded-full text-[13px] font-medium"
-      data-active={active ? '' : undefined}
-      onClick={onClick}
-      type="button"
-    >
-      {children}
-    </button>
   )
 }

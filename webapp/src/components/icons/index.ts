@@ -39,6 +39,7 @@ import {
   CookingPotIcon as LucideCookingPotIcon,
   CreditCardIcon as LucideCreditCardIcon,
   DollarSignIcon as LucideDollarSignIcon,
+  DownloadIcon as LucideDownloadIcon,
   DropletIcon as LucideDropletIcon,
   DropletsIcon as LucideDropletsIcon,
   EclipseIcon as LucideEclipseIcon,
@@ -275,6 +276,7 @@ export const CookieIcon = packIcon(LucideCookieIcon, undefined, 'CookieIcon')
 export const CookingPotIcon = packIcon(LucideCookingPotIcon, AnimatedCookingPotIcon, 'CookingPotIcon')
 export const CreditCardIcon = packIcon(LucideCreditCardIcon, AnimatedCreditCardIcon, 'CreditCardIcon')
 export const DollarSignIcon = packIcon(LucideDollarSignIcon, AnimatedDollarSignIcon, 'DollarSignIcon')
+export const DownloadIcon = packIcon(LucideDownloadIcon, undefined, 'DownloadIcon')
 export const DropletIcon = packIcon(LucideDropletIcon, AnimatedDropletIcon, 'DropletIcon')
 export const DropletsIcon = packIcon(LucideDropletsIcon, undefined, 'DropletsIcon')
 export const EclipseIcon = packIcon(LucideEclipseIcon, undefined, 'EclipseIcon')

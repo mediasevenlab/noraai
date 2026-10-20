@@ -11,6 +11,7 @@ import { errorResponse, handleError, validationErrorHook } from './http/errors'
 import { createAuthSecurity, createInternalRateLimit } from './http/security'
 import { createAuthModule, type AuthHttpEnv } from './modules/auth'
 import { createMealsModule } from './modules/meals'
+import { createNewsModule } from './modules/news'
 import { createPaymentsModule } from './modules/payments'
 import { createQuestionnaireProjectUser, createTelegramLinkStore, createUsersModule } from './modules/users'
 
@@ -54,6 +55,11 @@ export function createApp({
     env,
     requireAuth: auth.requireAuth,
     startRenewal: startPaymentRenewal,
+  })
+  const news = createNewsModule({
+    db: prisma,
+    env,
+    requireAuth: auth.requireAuth,
   })
   const users = createUsersModule({
     botUsername: env.TELEGRAM_MEALS_BOT_USERNAME,
@@ -113,6 +119,7 @@ export function createApp({
     app.use('/api/admin/*', middleware)
     app.use('/api/mentor/*', middleware)
     app.use('/api/payments/*', middleware)
+    app.use('/api/news/*', middleware)
   }
   app.get('/', (c) => {
     return c.json({
@@ -150,6 +157,7 @@ export function createApp({
   app.route('/api/mentor', users.mentorRoutes)
   app.route('/api/mentor', meals.mentorMealsRoutes)
   app.route('/api/payments', payments.routes)
+  app.route('/api/news', news.routes)
   app.use(
     '/api/internal/*',
     bodyLimit({

@@ -224,13 +224,7 @@ export function AuthDemoPanel({
   )
 }
 
-export function AuthPageShell({
-  children,
-  surface = 'login',
-}: {
-  children: ReactNode
-  surface?: AuthDemoSurface
-}) {
+export function AuthPageShell({ children }: { children: ReactNode }) {
   useDismissAppBootSplash()
 
   return (
@@ -254,7 +248,14 @@ export function AuthPageShell({
           <div className="w-full max-w-[22rem]">{children}</div>
         </div>
       </section>
-      <AuthDemoPanel className="hidden lg:block" surface={surface} />
+      <section className="relative hidden overflow-hidden bg-black lg:block">
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-black">
+          <SmokeBackground className="size-full" smokeColor="#0099ff" />
+        </div>
+        <div className="absolute top-6 right-6 z-10 md:top-10 md:right-10">
+          <AuthThemeToggle className="bg-[var(--nora-panel)]/80 shadow-[inset_0_0_0_1px_var(--nora-border,rgba(0,0,0,0.08))] backdrop-blur-sm hover:bg-[var(--nora-panel)]" />
+        </div>
+      </section>
       <div className="absolute top-6 right-6 z-10 md:top-10 md:right-10 lg:hidden">
         <AuthThemeToggle />
       </div>

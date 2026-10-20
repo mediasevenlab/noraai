@@ -114,6 +114,8 @@ The notifications bot is separate from the meals bot. Mentors bind it from `/men
 
 On a host that cannot reach `api.telegram.org`, set `TELEGRAM_API_BASE` to the foreign proxy path (the same host as Gemini, with `/telegram`). The poller and this workflow then call that base and send `X-Gemini-Proxy-Token` from `GEMINI_PROXY_TOKEN`. Leave `TELEGRAM_API_BASE` empty to call Telegram directly.
 
+News import uses the same proxy host when `GEMINI_API_HOST` is not `*.googleapis.com`. Public channel HTML is `GET /tme/s/{channel}`. Post images and video are `GET /cdn` with `X-Upstream-Url` set to an allowlisted `t.me` or Telegram CDN address. The browser only talks to this API, so playback does not need a VPN. Direct `t.me` is used when the Google host is configured.
+
 Required extra backend env: `TELEGRAM_NOTIFY_BOT_TOKEN`, `TELEGRAM_NOTIFY_BOT_USERNAME`, `N8N_MENTOR_NOTIFY_WEBHOOK_URL`. Optional: `TELEGRAM_API_BASE`.
 
 ## Operations

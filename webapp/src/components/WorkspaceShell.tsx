@@ -4,14 +4,13 @@ import {
   Columns2Icon,
   HomeIcon,
   ImagesIcon,
-  LayoutGridIcon,
   NewspaperIcon,
   SettingsIcon,
   UserIcon,
   UsersIcon,
   WalletIcon,
 } from '@/components/icons'
-import { useLocation, useNavigate } from '@tanstack/react-router'
+import { useLocation } from '@tanstack/react-router'
 import type { UserDto } from '@web-app-demo/contracts'
 import { useEffect, type PropsWithChildren } from 'react'
 
@@ -33,7 +32,6 @@ import {
   navigationItemsForRole,
   primaryNavigationItemsForRole,
   secondaryNavigationItemsForRole,
-  userGeneralSearch,
 } from '@/features/navigation'
 import {
   MentorMealPlanNavigation,
@@ -67,6 +65,7 @@ const iconsByPath = {
   '/app': HomeIcon,
   '/app/diary': NewspaperIcon,
   '/app/feed': ImagesIcon,
+  '/app/news': NewspaperIcon,
   '/app/plan': CalendarRangeIcon,
   '/app/general': Columns2Icon,
   '/app/plan/current': CalendarRangeIcon,
@@ -81,6 +80,7 @@ const iconsByPath = {
   '/admin/settings': SettingsIcon,
   '/mentor': HomeIcon,
   '/mentor/plans': CalendarRangeIcon,
+  '/mentor/news': NewspaperIcon,
   '/mentor/feed': ImagesIcon,
   '/mentor/profile': UserIcon,
   '/mentor/users': UsersIcon,
@@ -154,12 +154,6 @@ export function WorkspaceShell({
     }
   }, [])
   const pathname = useLocation({ select: (location) => location.pathname })
-  const catalogOpen = useLocation({
-    select: (location) =>
-      location.pathname === '/app/general' &&
-      (location.search as { library?: unknown }).library === 'catalog',
-  })
-  const navigate = useNavigate()
   const showSidebarPromoCards = useSidebarPromoCards()
   const navigationItems = navigationItemsForRole(user.role)
   const activeItem = navigationItemMatchingPath(user.role, pathname)
@@ -188,7 +182,7 @@ export function WorkspaceShell({
                 ? (['Разработка'] as const)
                 : ([activeItem?.label ?? 'Главная'] as const)
   const homePath = homePathForRole(user.role)
-  const navigationLocked = user.role === 'user' && !user.questionnaireCompleted
+  const navigationLocked = false
   const toDashboardItems = (
     items: ReadonlyArray<{
       disabled?: boolean
@@ -217,10 +211,9 @@ export function WorkspaceShell({
           !navigationLocked &&
           !item.disabled &&
           (item.to === '/app/general'
-            ? !catalogOpen &&
-              (pathname === '/app/general' ||
-                isUserPlanPath(pathname) ||
-                pathname.startsWith('/app/diary'))
+            ? pathname === '/app/general' ||
+              isUserPlanPath(pathname) ||
+              pathname.startsWith('/app/diary')
             : item.to === '/mentor/plans'
               ? isMentorPlanPath(pathname)
               : item.to === pathname),
@@ -229,22 +222,6 @@ export function WorkspaceShell({
         label: item.label,
         to: item.to,
       })),
-    ...(user.role === 'user' && !navigationLocked
-      ? [
-          {
-            active: catalogOpen,
-            icon: LayoutGridIcon,
-            label: 'Каталог',
-            onSelect: () => {
-              void navigate({
-                search: userGeneralSearch('plan', undefined, 'catalog'),
-                to: '/app/general',
-              })
-            },
-            to: '/app/general' as const,
-          },
-        ]
-      : []),
   ]
 
   return (

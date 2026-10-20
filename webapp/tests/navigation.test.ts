@@ -19,6 +19,7 @@ import {
 test('role navigation exposes only the current workspace', () => {
   expect(navigationItemsForRole('user')).toEqual([
     { label: 'Мой дневник', to: '/app/general' },
+    { label: 'Новости', to: '/app/news' },
     { label: 'Лента', to: '/app/feed' },
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Рефералы', to: '/app/referrals' },
@@ -32,6 +33,7 @@ test('role navigation exposes only the current workspace', () => {
   ])
   expect(navigationItemsForRole('mentor')).toEqual([
     { label: 'Рационы', to: '/mentor/plans' },
+    { label: 'Новости', to: '/mentor/news' },
     { label: 'Лента', to: '/mentor/feed' },
     { label: 'Профиль', to: '/mentor/profile' },
     { label: 'Пользователи', to: '/mentor/users' },
@@ -89,8 +91,8 @@ test('role navigation separates primary and account-menu destinations', () => {
 test('post-auth landing resumes only the current role safe return path', () => {
   expect(postAuthPath('user', '/app/settings')).toBe('/app/settings')
   expect(postAuthPath('user')).toBe('/app/general')
-  expect(postAuthPath('user', '/app/settings', false)).toBe('/app/onboarding')
-  expect(postAuthPath('user', undefined, false)).toBe('/app/onboarding')
+  expect(postAuthPath('user', '/app/settings', false)).toBe('/app/settings')
+  expect(postAuthPath('user', undefined, false)).toBe('/app/general')
   expect(postAuthPath('mentor', '/mentor/users')).toBe('/mentor/users')
   expect(postAuthPath('mentor')).toBe('/mentor/plans')
   expect(postAuthPath('mentor', '/mentor')).toBe('/mentor/plans')

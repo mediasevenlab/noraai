@@ -87,24 +87,25 @@ test('unread badge hides zero and caps at 99+', () => {
   expect(formatMentorUnreadBadge(100)).toBe('99+')
 })
 
-test('mentee workspace menu includes diary, questionnaire and plan', () => {
+test('mentee workspace menu includes diary, profile and rations', () => {
   const pages = readFileSync(
     new URL('../src/features/mentor/pages.tsx', import.meta.url),
     'utf8',
   )
   expect(pages).toContain("label: 'Дневник'")
-  expect(pages).toContain("label: 'Анкета'")
+  expect(pages).toContain("label: 'Профиль'")
+  expect(pages).not.toContain("label: 'Анкета'")
   expect(pages).toContain("label: 'Рационы'")
-  expect(pages).toContain('FileTextIcon')
+  expect(pages).not.toContain('FileTextIcon')
   expect(pages).not.toContain('ClipboardListIcon')
   expect(pages).not.toContain('inline-grid')
   const questionnaire = readFileSync(
     new URL('../src/features/mentor/MentorMenteeQuestionnaire.tsx', import.meta.url),
     'utf8',
   )
-  expect(questionnaire).toContain('layout="entry"')
-  expect(questionnaire).toContain('title="Калорийность"')
-  expect(questionnaire).toContain('Имя и никнейм, затем анкета с калорийностью.')
+  expect(questionnaire).not.toContain('layout="entry"')
+  expect(questionnaire).not.toContain('title="Калорийность"')
+  expect(questionnaire).toContain('Имя и никнейм.')
   expect(questionnaire).toContain('<SettingsCanvas')
   expect(questionnaire).toContain('showJumpLink={false}')
   expect(questionnaire).toContain('title="Данные профиля"')

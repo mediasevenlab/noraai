@@ -1,4 +1,4 @@
-import { Columns2Icon, ImagesIcon, LayoutGridIcon } from '@/components/icons'
+import { Columns2Icon, ImagesIcon, NewspaperIcon } from '@/components/icons'
 import { Link, useRouterState } from '@tanstack/react-router'
 
 import { useFilteredBySidebarSearch } from '@/components/dashboard/SidebarSearch'
@@ -22,12 +22,14 @@ const GENERAL_ITEMS = [
     search: userGeneralSearch(),
     icon: Columns2Icon,
   },
+]
+
+const NEWS_ITEMS = [
   {
-    key: 'catalog',
-    label: 'Каталог',
-    to: '/app/general' as const,
-    search: userGeneralSearch('plan', undefined, 'catalog'),
-    icon: LayoutGridIcon,
+    key: 'news',
+    label: 'Новости',
+    to: '/app/news' as const,
+    icon: NewspaperIcon,
   },
 ]
 
@@ -42,7 +44,10 @@ const SOCIAL_ITEMS = [
 ]
 
 function UserNavGroup<
-  T extends (typeof GENERAL_ITEMS)[number] | (typeof SOCIAL_ITEMS)[number],
+  T extends
+    | (typeof GENERAL_ITEMS)[number]
+    | (typeof NEWS_ITEMS)[number]
+    | (typeof SOCIAL_ITEMS)[number],
 >({
   disabled,
   items,
@@ -66,16 +71,12 @@ function UserNavGroup<
           <SidebarMenu>
             {visible.map((item) => {
               const locked = disabled
-              const catalogActive =
-                item.key === 'catalog'
-                && location.pathname === '/app/general'
-                && location.search.library === 'catalog'
               const generalActive =
                 item.key === 'general'
                 && (location.pathname === '/app/general' || location.pathname.startsWith('/app/diary'))
-                && location.search.library !== 'catalog'
+              const newsActive = item.key === 'news' && location.pathname === '/app/news'
               const feedActive = item.key === 'feed' && location.pathname === item.to
-              const active = !locked && (catalogActive || generalActive || feedActive)
+              const active = !locked && (generalActive || newsActive || feedActive)
               const Icon = item.icon
 
               return (
@@ -100,6 +101,11 @@ function UserNavGroup<
                             onClick={() => setOpenMobile(false)}
                             search={item.search}
                             to="/app/feed"
+                          />
+                        ) : item.to === '/app/news' ? (
+                          <Link
+                            onClick={() => setOpenMobile(false)}
+                            to="/app/news"
                           />
                         ) : (
                           <Link
@@ -127,11 +133,13 @@ function UserNavGroup<
   )
 }
 
-/** Diary and plan share Мой дневник; catalog is its own entry; feed stays under Социальная сеть. */
+/** Diary and the person's own rations share Мой дневник; feed stays under Социальная сеть. */
 export function UserAppNavigation({ disabled = false }: { disabled?: boolean }) {
   return (
     <>
       <UserNavGroup disabled={disabled} items={GENERAL_ITEMS} label="Питание" />
+      <SidebarSeparator />
+      <UserNavGroup disabled={disabled} items={NEWS_ITEMS} label="Новости" />
       <SidebarSeparator />
       <UserNavGroup disabled={disabled} items={SOCIAL_ITEMS} label="Социальная сеть" />
     </>

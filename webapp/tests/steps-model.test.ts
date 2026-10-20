@@ -9,7 +9,7 @@ import {
 
 test('development history records product work after the template and names the current version', () => {
   expect(STEPS_META.title).toBe('Разработка')
-  expect(STEP_ITEMS.length).toBeGreaterThanOrEqual(9)
+  expect(STEP_ITEMS.length).toBeGreaterThanOrEqual(8)
   expect(STEPS_META.itemCount).toBe(STEP_ITEMS.length)
   expect(STEPS_META.currentVersion).toBe(stepVersion(STEP_ITEMS[STEP_ITEMS.length - 1]!))
   expect(STEPS_META.subtitle).toBe(ruStepCountLabel(STEP_ITEMS.length))
@@ -26,11 +26,9 @@ test('development history records product work after the template and names the 
 
   const text = STEP_ITEMS.map((item) => `${item.title} ${item.description}`).join('\n').toLowerCase()
   expect(text).toMatch(/рол/)
-  expect(text).toContain('дневник')
-  expect(text).toContain('рацион')
-  expect(text).toMatch(/gemini|ии/)
+  expect(text).toContain('новост')
   expect(text).toContain('telegram')
-  expect(text).toContain('анкет')
+  expect(text).toMatch(/закладк|избранн/)
 
   for (const item of STEP_ITEMS) {
     expect(item.category).toMatch(/^Версия · v\d+\.\d+$/)

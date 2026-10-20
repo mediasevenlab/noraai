@@ -45,43 +45,8 @@ export async function fillLoginForm(
   await page.getByLabel('Пароль', { exact: true }).fill(password)
 }
 
-async function choosePlaque(page: Page, name: string | RegExp) {
-  await page.getByRole('radio', { name }).click()
-}
-
-async function fillLabeledInput(page: Page, label: string, value: string) {
-  await page.getByLabel(new RegExp(`^${label}`)).fill(value)
-}
-
-async function goNext(page: Page) {
-  await page.getByRole('button', { name: 'Далее' }).click()
-}
-
-/** Completes the post-signup questionnaire for role=user. */
+/** Registration no longer asks for a questionnaire; the app opens directly. */
 export async function completeUserQuestionnaire(page: Page) {
-  await expect(page).toHaveURL(/\/app\/onboarding$/)
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Базовые данные' }),
-  ).toBeVisible()
-
-  await choosePlaque(page, 'Мужской')
-  await fillLabeledInput(page, 'Возраст', '30 лет')
-  await fillLabeledInput(page, 'Рост', '180 см')
-  await fillLabeledInput(page, 'Вес', '85 кг')
-  await goNext(page)
-
-  await expect(page.getByRole('heading', { level: 1, name: 'Активность' })).toBeVisible()
-  await choosePlaque(page, /Умеренная/)
-  await goNext(page)
-
-  await expect(page.getByRole('heading', { level: 1, name: 'Цель' })).toBeVisible()
-  await choosePlaque(page, /Похудение/)
-  await choosePlaque(page, /Умеренно/)
-  await goNext(page)
-
-  await expect(page.getByRole('heading', { level: 1, name: 'Ограничения' })).toBeVisible()
-  await page.getByRole('button', { name: 'Завершить' }).click()
-
   await expect(page).toHaveURL(/\/app\/general/)
 }
 

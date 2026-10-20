@@ -6,6 +6,7 @@ export type UserRoutePath =
   | '/app/feed'
   | '/app/plan'
   | '/app/general'
+  | '/app/news'
   | '/app/plan/current'
   | '/app/onboarding'
   | '/app/profile'
@@ -20,6 +21,7 @@ export type MentorRoutePath =
   | '/mentor/settings'
   | '/mentor/payments'
   | '/mentor/plans'
+  | '/mentor/news'
   | '/mentor/feed'
 export type WorkspaceRoutePath = UserRoutePath | AdminRoutePath | MentorRoutePath
 
@@ -46,7 +48,9 @@ export function userSplitNutritionGeneralPath(pathname: string): string | null {
 const CONTENT_AREA_PATHS = new Set<WorkspaceRoutePath>([
   '/app/feed',
   '/app/general',
+  '/app/news',
   '/mentor/plans',
+  '/mentor/news',
   '/mentor/feed',
 ])
 
@@ -56,6 +60,7 @@ const FOOTER_HOME_PATHS = new Set<WorkspaceRoutePath>(['/admin/users'])
 const navigationByRole = {
   user: [
     { label: 'Мой дневник', to: '/app/general' },
+    { label: 'Новости', to: '/app/news' },
     { label: 'Лента', to: '/app/feed' },
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Рефералы', to: '/app/referrals' },
@@ -69,6 +74,7 @@ const navigationByRole = {
   ],
   mentor: [
     { label: 'Рационы', to: '/mentor/plans' },
+    { label: 'Новости', to: '/mentor/news' },
     { label: 'Лента', to: '/mentor/feed' },
     { label: 'Профиль', to: '/mentor/profile' },
     { label: 'Пользователи', to: '/mentor/users' },
@@ -113,7 +119,7 @@ export function homePathForRole(role: UserRole): WorkspaceRoutePath {
 export function userGeneralSearch(
   view: 'diary' | 'plan' = 'diary',
   planId?: string,
-  library?: 'mine' | 'mentor' | 'catalog',
+  library?: 'mine' | 'mentor',
 ) {
   return {
     view,
@@ -130,11 +136,8 @@ export function userFeedSearch(rationId?: string) {
 export function postAuthPath(
   role: UserRole,
   returnTo?: string,
-  questionnaireCompleted = true,
+  _questionnaireCompleted = true,
 ): string {
-  if (role === 'user' && !questionnaireCompleted) {
-    return '/app/onboarding'
-  }
   return safeReturnPath(role, returnTo) ?? homePathForRole(role)
 }
 
@@ -247,7 +250,7 @@ export function safeReturnPath(role: UserRole, value: string | undefined): strin
   }
 
   if (role === 'user' && url.pathname === '/app/onboarding') {
-    return '/app/onboarding'
+    return homePathForRole('user')
   }
 
 

@@ -36,7 +36,6 @@ export { getUserFavorites, putUserFavorites, getUserPlanLibrary, putUserPlanLibr
 export {
   AccountProfile,
   UserHome,
-  UserOnboarding,
   UserProfile,
   UserSettings,
 } from './pages'

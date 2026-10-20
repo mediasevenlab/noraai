@@ -14,7 +14,7 @@ import {
   PLAN_MOBILE_DOCK_EDIT_ID,
 } from './mobile-dock'
 import { CurrentPlanPage, PlanPage } from './pages'
-import { PLAN_PILL_TAB_CLASS, planToolbarPillClass } from './PlanToolbar'
+import { PLAN_PILL_TAB_CLASS, planToolbarPillClass, type PlanLibrary } from './PlanToolbar'
 
 export type GeneralNutritionView = 'diary' | 'plan'
 
@@ -139,11 +139,11 @@ export function GeneralNutritionPage({
   onOpenPlan,
   onViewChange,
 }: {
-  library?: 'mine' | 'mentor' | 'catalog'
+  library?: PlanLibrary
   openPlanId?: string
   view: GeneralNutritionView
   onClosePlan: () => void
-  onLibraryChange?: (library: 'mine' | 'mentor' | 'catalog') => void
+  onLibraryChange?: (library: PlanLibrary) => void
   onOpenPlan: (planId: string) => void
   onViewChange: (view: GeneralNutritionView) => void
 }) {
@@ -161,18 +161,11 @@ export function GeneralNutritionPage({
       />
     ) : view === 'plan' ? (
       <PlanPage
-        heading={{
-          ...GENERAL_HEADING,
-          title: library === 'catalog' ? 'Каталог' : GENERAL_HEADING.title,
-          description:
-            library === 'catalog'
-              ? 'Готовые планы на семь дней. Добавьте в «Мои», чтобы менять приёмы.'
-              : GENERAL_HEADING.description,
-        }}
+        heading={GENERAL_HEADING}
         library={library}
         onLibraryChange={onLibraryChange}
         onOpenPlan={onOpenPlan}
-        toolbarStart={library === 'catalog' ? undefined : desktopSwitcher}
+        toolbarStart={desktopSwitcher}
       />
     ) : (
       <DiaryNewsPage
@@ -188,7 +181,7 @@ export function GeneralNutritionPage({
         inPlanDetail={inPlanDetail}
         onBack={inPlanDetail ? onClosePlan : undefined}
         onViewChange={onViewChange}
-        showViewSwitcher={library !== 'catalog'}
+        showViewSwitcher
         view={view}
       />
     </div>

@@ -441,9 +441,8 @@ describe('auth demo captions', () => {
     expect(shell).toContain('key={surface}')
     expect(shell).not.toContain('AuthRoleGuide')
     const pages = readFileSync(new URL('../../pages.tsx', import.meta.url), 'utf8')
-    expect(pages).toContain('surface="login"')
-    expect(pages).toContain("role === 'mentor' ? 'signup-mentor' : 'signup-user'")
-    expect(pages).toContain('onRoleChange={setRole}')
+    expect(pages).toContain('<AuthPageShell>')
+    expect(pages).not.toContain("role === 'mentor' ? 'signup-mentor' : 'signup-user'")
   })
 })
 

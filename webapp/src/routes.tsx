@@ -88,6 +88,12 @@ const userDiaryNewsLegacyRoute = createRoute({
   component: lazyRouteComponent(() => import('./pages'), 'UserHomePage'),
 })
 
+const userNewsRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/news',
+  component: lazyRouteComponent(() => import('./pages'), 'UserNewsPage'),
+})
+
 const userFeedRoute = createRoute({
   getParentRoute: () => userWorkspaceRoute,
   path: '/app/feed',
@@ -131,8 +137,8 @@ const userGeneralRoute = createRoute({
     view: search.view === 'plan' ? ('plan' as const) : ('diary' as const),
     planId: typeof search.planId === 'string' && search.planId.trim() ? search.planId : undefined,
     library:
-      search.library === 'catalog' || search.library === 'mentor' || search.library === 'mine'
-        ? (search.library as 'mine' | 'mentor' | 'catalog')
+      search.library === 'mentor' || search.library === 'mine'
+        ? (search.library as 'mine' | 'mentor')
         : undefined,
   }),
   component: lazyRouteComponent(() => import('./pages'), 'UserGeneralPage'),
@@ -330,6 +336,12 @@ const mentorPlansRoute = createRoute({
   component: lazyRouteComponent(() => import('./pages'), 'MentorPlansWorkspacePage'),
 })
 
+const mentorNewsRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor/news',
+  component: lazyRouteComponent(() => import('./pages'), 'MentorNewsPage'),
+})
+
 const mentorFeedRoute = createRoute({
   getParentRoute: () => mentorWorkspaceRoute,
   path: '/mentor/feed',
@@ -359,6 +371,7 @@ const routeTree = rootRoute.addChildren([
     userHomeRoute,
     userDiaryRoute,
     userDiaryNewsLegacyRoute,
+    userNewsRoute,
     userFeedRoute,
     userRationsRoute,
     userMentorRationsRoute,
@@ -399,6 +412,7 @@ const routeTree = rootRoute.addChildren([
     mentorAssignedRationsRoute,
     mentorPlansRoute,
     mentorPlanDetailRoute,
+    mentorNewsRoute,
     mentorFeedRoute,
   ]),
 ])

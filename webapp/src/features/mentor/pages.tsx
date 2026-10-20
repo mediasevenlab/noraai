@@ -5,14 +5,13 @@ import {
   noraPageTitleClass,
 } from '@/components/PageLayout'
 import { SettingsCanvas, SettingsEntry, SettingsReadRows } from '@/components/settings-canvas'
-import { ArrowLeftIcon, BookOpenIcon, CalendarDaysIcon, FileTextIcon, HashIcon, UserRoundIcon } from '@/components/icons'
+import { ArrowLeftIcon, BookOpenIcon, CalendarDaysIcon, HashIcon, UserRoundIcon } from '@/components/icons'
 import { NoraSelect } from '@/components/nora/primitives'
 import { productFeedPageClass, productToolbarSelectContentClass, productToolbarSelectItemClass } from '@/components/nora/product-sheet'
 import { DiaryNewsPage } from '@/features/diary'
 import {
   NicknamePanel,
   ProfilePanel,
-  questionnaireDailyCalorieTarget,
   ReferralLinkPanel,
   TelegramUsernamePanel,
 } from '@/features/users'
@@ -21,7 +20,6 @@ import { MentorUserDirectory } from './MentorUserDirectory'
 import {
   useMarkMentorMealsViewedMutation,
   useMentorUserPlanLibraryQuery,
-  useMentorUserQuestionnaireQuery,
   useMentorUsersQuery,
 } from './queries'
 
@@ -29,7 +27,7 @@ type MenteeView = 'diary' | 'questionnaire' | 'rations'
 
 const MENTEE_VIEWS = [
   { value: 'diary', label: 'Дневник', icon: BookOpenIcon },
-  { value: 'questionnaire', label: 'Анкета', icon: FileTextIcon },
+  { value: 'questionnaire', label: 'Профиль', icon: UserRoundIcon },
   { value: 'rations', label: 'Рационы', icon: CalendarDaysIcon },
 ] as const
 
@@ -141,7 +139,6 @@ export function MentorMenteeDiary({
     [markViewed.mutate, userId],
   )
   const title = mentee?.displayName ?? mentee?.nickname ?? mentee?.email ?? 'Пользователь'
-  const menteeQuestionnaire = useMentorUserQuestionnaireQuery(userId)
   const planLibrary = useMentorUserPlanLibraryQuery(userId)
   const subjectPlan = useMemo(() => {
     if (planLibrary.data) {
@@ -160,12 +157,9 @@ export function MentorMenteeDiary({
     if (planLibrary.isError) return { selectedPlanIds: [], planStarts: {} }
     return undefined
   }, [planLibrary.data, planLibrary.isError])
-  const calorieTarget =
-    questionnaireDailyCalorieTarget(menteeQuestionnaire.data?.answers) ?? undefined
-
   const viewDescription =
     view === 'questionnaire'
-      ? 'Анкета подключённого пользователя.'
+      ? 'Профиль подключённого пользователя.'
       : view === 'rations'
         ? 'Рационы подключённого пользователя.'
         : 'Дневник подключённого пользователя.'
@@ -178,7 +172,6 @@ export function MentorMenteeDiary({
             displayName={mentee?.displayName}
             email={mentee?.email}
             nickname={mentee?.nickname}
-            userId={userId}
           />
         ) : view === 'rations' ? (
           planView
@@ -190,7 +183,6 @@ export function MentorMenteeDiary({
       }}
       periodStartIso={mentee?.createdAt}
       readOnly
-      calorieTarget={calorieTarget}
       subjectEmail={mentee?.email}
       subjectPlan={subjectPlan}
       subjectPlanPending={planLibrary.isPending}
