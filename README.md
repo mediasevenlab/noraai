@@ -1,6 +1,6 @@
 # 24nutrition
 
-Live product: [https://24ainews.site](https://24ainews.site). Production is server Nora; publish with the Nora release rule. [docs/VPS.md](docs/VPS.md) describes the old 24nutrition host. Demo UI stays under `/demo` and is not a production home.
+Live product: [https://aimods.site](https://aimods.site). Production is server Nora; publish with the Nora release rule. [docs/VPS.md](docs/VPS.md) describes the old 24nutrition host. Demo UI stays under `/demo` and is not a production home.
 
 Local development still uses this Bun monorepo: Hono backend, React webapp, Astro website, and shared contracts.
 
@@ -12,8 +12,8 @@ Local development still uses this Bun monorepo: Hono backend, React webapp, Astr
 
 This repository **is** the ai-news checkout. It is not a fresh vibe-template install and must not be treated as one.
 
-- Live product: [https://24ainews.site](https://24ainews.site) and [https://www.24ainews.site](https://www.24ainews.site)
-- GitHub (private): [https://github.com/mediasevenlab/ai-news](https://github.com/mediasevenlab/ai-news)
+- Live product: [https://aimods.site](https://aimods.site) and [https://www.aimods.site](https://www.aimods.site)
+- GitHub: [https://github.com/mediasevenlab/noraai](https://github.com/mediasevenlab/noraai)
 - Working branch (and GitHub default): `hybrid`
 
 If you cloned this repo to work on ai-news, skip template intake. Read this README, `CLAUDE.md` / `AGENTS.md`, [docs/LOCAL_DATABASE.md](docs/LOCAL_DATABASE.md), then follow Quick Start. Do **not** detach or replace `origin`. Do **not** globally rename npm packages, cookie names, or Compose database names (`@web-app-demo/*`, `web_app_demo`) unless that dedicated migration is explicitly requested.
@@ -26,7 +26,7 @@ If you cloned this repo to work on ai-news, skip template intake. Read this READ
 - `hybrid/` — shipped Android shell (Capacitor around `webapp`)
 - Expo `mobile/` — **not** in this checkout; see [mobile/README.md](mobile/README.md)
 
-Local PostgreSQL is Docker Compose only. Production for this checkout is https://24ainews.site on Nora. [docs/VPS.md](docs/VPS.md) and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) still describe the old 24nutrition host.
+Local PostgreSQL is Docker Compose only. Production for this checkout is https://aimods.site on Nora. [docs/VPS.md](docs/VPS.md) and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) still describe the old 24nutrition host.
 
 ## What's Inside
 

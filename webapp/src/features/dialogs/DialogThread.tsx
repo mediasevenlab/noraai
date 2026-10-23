@@ -420,15 +420,17 @@ function DialogComposerChips({ disabled }: { disabled: boolean }) {
 
   useEffect(() => {
     const created: string[] = []
-    const next = aui.composer.getState().attachments.flatMap((attachment) => {
-      if (attachment.type === 'document') {
-        return [{ id: attachment.id, name: attachment.name, src: '', kind: 'file' as const }]
-      }
-      if (!attachment.file) return []
-      const src = URL.createObjectURL(attachment.file)
-      created.push(src)
-      return [{ id: attachment.id, name: attachment.name, src, kind: 'image' as const }]
-    })
+    const next = aui.composer.getState().attachments.flatMap(
+      (attachment): Array<{ id: string; name: string; src: string; kind: 'image' | 'file' }> => {
+        if (attachment.type === 'document') {
+          return [{ id: attachment.id, name: attachment.name, src: '', kind: 'file' }]
+        }
+        if (!attachment.file) return []
+        const src = URL.createObjectURL(attachment.file)
+        created.push(src)
+        return [{ id: attachment.id, name: attachment.name, src, kind: 'image' }]
+      },
+    )
     setItems(next)
     return () => {
       for (const src of created) URL.revokeObjectURL(src)

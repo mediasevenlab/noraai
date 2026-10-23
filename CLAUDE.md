@@ -74,7 +74,7 @@
 ## Git And Remote Policy
 
 - Inspect `git remote -v` before any branch, commit, push, or PR workflow.
-- This checkout is the ai-news product (`https://24ainews.site`). GitHub is `https://github.com/mediasevenlab/ai-news.git`. Do not treat it as the 24nutrition production checkout or as a fresh template install.
+- This checkout is the Nora chat (`https://aimods.site`). GitHub is `https://github.com/mediasevenlab/noraai.git`. Do not treat it as the 24nutrition production checkout or as a fresh template install. Do not publish it over `https://24ainews.site` unless the user asks.
 - Do not create, switch to, or suggest new branches without request. Stay on the current working branch.
 - Do not add, remove, or change `origin` unless the user provides a destination URL and explicitly asks to change remotes.
 - Do not push, open PRs, or configure deployment from the template remote by accident.

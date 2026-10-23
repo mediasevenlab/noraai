@@ -137,7 +137,9 @@ function withSpans(children: ReactNode, columns: number): ReactNode {
       if (!spans) return child
       const kept = cells.slice(0, spans.length).map((cell, index) => {
         const span = spans[index] ?? 1
-        return span > 1 ? cloneElement(cell, { colSpan: span }) : cell
+        return span > 1
+          ? cloneElement(cell as ReactElement<{ colSpan?: number }>, { colSpan: span })
+          : cell
       })
       return cloneElement(child, {}, kept)
     })
