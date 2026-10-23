@@ -74,11 +74,11 @@ export function AppSidebar({
                 className={cn(sidebarDockButtonClass, 'opacity-50')}
                 disabled
                 size="lg"
-                tooltip="Nutrition"
+                tooltip="NoraAI"
               >
                 <BrandMark className="opacity-60" />
                 <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                  <span className="truncate font-[family-name:var(--nora-font)] font-medium text-foreground">Nutrition</span>
+                  <span className="truncate font-[family-name:var(--nora-font)] font-medium text-foreground">NoraAI</span>
                   <span className="truncate font-light text-xs text-muted-foreground">
                     {workspaceLabel}
                   </span>
@@ -89,11 +89,11 @@ export function AppSidebar({
                 className={sidebarDockButtonClass}
                 render={<DashboardLink to={homePath} />}
                 size="lg"
-                tooltip="Nutrition"
+                tooltip="NoraAI"
               >
                 <BrandMark />
                 <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                  <span className="truncate font-[family-name:var(--nora-font)] font-medium text-foreground">Nutrition</span>
+                  <span className="truncate font-[family-name:var(--nora-font)] font-medium text-foreground">NoraAI</span>
                   <span className="truncate font-light text-xs text-muted-foreground">
                     {workspaceLabel}
                   </span>

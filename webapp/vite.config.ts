@@ -22,6 +22,9 @@ export default defineConfig({
       '/api': {
         target: process.env.VITE_DEV_PROXY_TARGET ?? 'http://127.0.0.1:3000',
         changeOrigin: true,
+        // A scanned PDF stays on this request while each page is read.
+        timeout: 1_500_000,
+        proxyTimeout: 1_500_000,
       },
     },
   },
@@ -90,6 +93,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Bun's hoisted install copies this package, so edits in packages/contracts
+      // otherwise stay invisible to the dev server.
+      '@web-app-demo/contracts': path.resolve(__dirname, '../packages/contracts/src/index.ts'),
     },
     dedupe: ['react', 'react-dom'],
   },

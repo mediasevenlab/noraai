@@ -7,9 +7,6 @@ import {
 import { useEffect, useState } from 'react'
 
 import { ChevronLeftIcon, ChevronRightIcon, SearchIcon, Trash2Icon } from '@/components/icons'
-import { formatGenerationMoney, formatGenerationSpend } from '@/features/diary'
-import { GenerationCurrencySelect, useGenerationCurrency } from '@/features/users'
-
 import { cn } from '@/lib/utils'
 import {
   productToolbarSelectContentClass,
@@ -59,7 +56,7 @@ const directoryHeadClass =
 const directoryCellClass =
   `flex items-center h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-3.5 last:pr-3.5 ${directoryStickyClass}`
 const directoryTableClass =
-  'grid w-max min-w-full grid-cols-[11rem_max-content_max-content_max-content_max-content_max-content_max-content] max-md:grid-cols-[7.5rem_max-content_max-content_max-content_max-content_max-content_max-content] justify-between max-md:justify-start'
+  'grid w-max min-w-full grid-cols-[11rem_max-content_max-content_max-content_max-content_max-content] max-md:grid-cols-[7.5rem_max-content_max-content_max-content_max-content_max-content] justify-between max-md:justify-start'
 
 type PendingRoleChange = {
   role: UserRole
@@ -67,7 +64,6 @@ type PendingRoleChange = {
 }
 
 export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
-  const currency = useGenerationCurrency()
   const [draftQuery, setDraftQuery] = useState('')
   const [query, setQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all')
@@ -127,9 +123,6 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
     )
   }
 
-  const totalSpend = usersQuery.data?.generationSpend
-  const totalSpendMoney =
-    totalSpend && totalSpend.tokens > 0 ? formatGenerationMoney(totalSpend, currency) : null
   const shownCount = usersQuery.data?.items.length ?? 0
   const pageSize = usersQuery.data?.pageSize ?? 19
   const shownFrom = usersQuery.data && shownCount > 0 ? (usersQuery.data.page - 1) * pageSize + 1 : 0
@@ -204,12 +197,6 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
                   <TableHead className={directoryHeadClass}>ID</TableHead>
                   <TableHead className={directoryHeadClass}>Роль</TableHead>
                   <TableHead className={directoryHeadClass}>Создан</TableHead>
-                  <TableHead className={directoryHeadClass}>
-                    Расход
-                    {totalSpendMoney ? (
-                      <span className="font-[250]"> ({totalSpendMoney})</span>
-                    ) : null}
-                  </TableHead>
                   <TableHead className={directoryHeadClass} />
                 </TableRow>
               </TableHeader>
@@ -254,11 +241,6 @@ export function UserDirectory({ currentUser }: { currentUser: UserDto }) {
                       </TableCell>
                       <TableCell className={directoryCellClass}>
                         {new Date(user.createdAt).toLocaleDateString('ru-RU')}
-                      </TableCell>
-                      <TableCell className={cn(directoryCellClass, 'tabular-nums')}>
-                        {user.generationSpend && user.generationSpend.tokens > 0
-                          ? formatGenerationSpend(user.generationSpend, currency)
-                          : '—'}
                       </TableCell>
                       <TableCell className={directoryCellClass}>
                         <DirectoryDeleteButton
@@ -413,7 +395,6 @@ function DirectoryToolbar({
 }) {
   return (
     <div className="flex min-w-0 flex-1 flex-nowrap items-center justify-end gap-1.5">
-      <GenerationCurrencySelect className="!h-8 !min-h-8 shrink-0 !bg-[var(--nora-input-bg)] max-md:!w-auto max-md:!min-w-0 max-md:!px-2.5" />
       <DirectoryRoleFilter onChange={onRole} value={role} />
       <NoraSearch
         aria-label="Поиск пользователей"

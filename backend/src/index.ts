@@ -7,15 +7,24 @@ const app = createApp({
   backgroundTasks: runtime.backgroundTasks,
   env: runtime.env,
   prisma: runtime.prisma,
-  startMealsPoller: true,
-  startPaymentRenewal: true,
+  startMealsPoller: false,
 })
 
 const server = Bun.serve({
   port: runtime.env.PORT,
-  // Two YooKassa attempts can take about 30s. The default 10s cuts the payment off first.
-  idleTimeout: 40,
-  fetch: app.fetch,
+  // A Qwen reply with reasoning can take longer than the default idle timeout.
+  idleTimeout: 120,
+  fetch(request, bunServer) {
+    // A scanned PDF is several vision calls. The global cap is 255 seconds.
+    const path = new URL(request.url).pathname
+    if (
+      request.method === 'POST' &&
+      (/\/knowledge-bases\/[^/]+\/files\/?$/.test(path) || /\/model-chat\/?$/.test(path))
+    ) {
+      bunServer.timeout(request, 1500)
+    }
+    return app.fetch(request)
+  },
 })
 
 console.log(`Backend listening on ${server.url}`)
@@ -24,6 +33,9 @@ if (runtime.env.TELEGRAM_MEALS_BOT_TOKEN) {
 }
 if (runtime.env.TELEGRAM_NOTIFY_BOT_TOKEN) {
   console.log('Telegram notify poller enabled')
+}
+if (runtime.env.N8N_NEWS_ARCHIVE_WEBHOOK_URL) {
+  console.log('News archive webhook enabled')
 }
 
 let shuttingDown = false
@@ -48,3 +60,4 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
   void shutdown('SIGTERM')
 })
+

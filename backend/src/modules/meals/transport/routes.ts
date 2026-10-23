@@ -5,15 +5,11 @@ import {
   createUserMealRequestSchema,
   createUserMealResponseSchema,
   deleteMealResponseSchema,
-  generationPricingResponseSchema,
-  resetGenerationSpendResponseSchema,
   listMealsResponseSchema,
   mealMutationResponseSchema,
   mealsGeminiRequestSchema,
   mealsGeminiResponseSchema,
   mealsNoraRequestSchema,
-  mealEngineResponseSchema,
-  updateMealEngineRequestSchema,
   mealsTranscribeRequestSchema,
   mealsTranscribeResponseSchema,
   noraModelChatRequestSchema,
@@ -43,10 +39,7 @@ import type { MiddlewareHandler } from 'hono'
 import { validationErrorHook } from '../../../http/errors'
 import type { AuthHttpEnv } from '../../auth'
 import type { MealsService } from '../application/meals-service'
-import { MealsFailure } from '../domain/errors'
-
 import type { AppMealComposer } from '../application/app-meal-composer'
-import type { createMealEngineStore } from '../infrastructure/meal-engine-store'
 import { executeMeals } from './errors'
 import { createRequireServiceToken } from './service-token'
 import { generationRequestKey, rememberGenerationUsage } from '../application/generation-usage-bridge'
@@ -254,30 +247,6 @@ const modelChatRoute = createRoute({
     503: { content: errorContent, description: 'Nora model is not configured' },
   },
 })
-const modelChatTranscribeRoute = createRoute({
-  method: 'post',
-  path: '/me/model-chat/transcribe',
-  tags: ['Meals'],
-  security: [{ BearerAuth: [] }],
-  request: {
-    body: {
-      content: {
-        'application/json': {
-          schema: mealsTranscribeRequestSchema,
-        },
-      },
-    },
-  },
-  responses: {
-    200: {
-      content: { 'application/json': { schema: mealsTranscribeResponseSchema } },
-      description: 'Transcript from the office speech model',
-    },
-    401: { content: errorContent, description: 'Authentication required' },
-    502: { content: errorContent, description: 'Upstream speech failure' },
-    503: { content: errorContent, description: 'Speech model is not configured' },
-  },
-})
 const composerTurnRoute = createRoute({
   method: 'post',
   path: '/me/meals/composer',
@@ -462,68 +431,6 @@ const deleteMyMealRoute = createRoute({
     404: { content: errorContent, description: 'Meal not found' },
   },
 })
-const mealEngineRoute = createRoute({
-  method: 'get',
-  path: '/me/meal-engine',
-  tags: ['Meals'],
-  security: [{ BearerAuth: [] }],
-  responses: {
-    200: {
-      content: { 'application/json': { schema: mealEngineResponseSchema } },
-      description: 'Diary model chosen by the current user',
-    },
-    401: { content: errorContent, description: 'Authentication required' },
-  },
-})
-const updateMealEngineRoute = createRoute({
-  method: 'put',
-  path: '/me/meal-engine',
-  tags: ['Meals'],
-  security: [{ BearerAuth: [] }],
-  request: {
-    body: {
-      content: {
-        'application/json': {
-          schema: updateMealEngineRequestSchema,
-        },
-      },
-    },
-  },
-  responses: {
-    200: {
-      content: { 'application/json': { schema: mealEngineResponseSchema } },
-      description: 'Saved diary model',
-    },
-    401: { content: errorContent, description: 'Authentication required' },
-    403: { content: errorContent, description: 'Only a user can choose the diary model' },
-  },
-})
-const generationPricingRoute = createRoute({
-  method: 'get',
-  path: '/me/generation-pricing',
-  tags: ['Meals'],
-  security: [{ BearerAuth: [] }],
-  responses: {
-    200: {
-      content: { 'application/json': { schema: generationPricingResponseSchema } },
-      description: 'Current dollar rate and model token prices',
-    },
-    401: { content: errorContent, description: 'Authentication required' },
-  },
-})
-const resetMyGenerationSpendRoute = createRoute({
-  method: 'post',
-  path: '/me/generation-spend/reset',
-  tags: ['Meals'],
-  security: [{ BearerAuth: [] }],
-  responses: {
-    200: {
-      content: { 'application/json': { schema: resetGenerationSpendResponseSchema } },
-      description: 'Current user generation spend cleared',
-    },
-    401: { content: errorContent, description: 'Authentication required' },
-  },
-})
 const listSharedMealsRoute = createRoute({
   method: 'get',
   path: '/shared',
@@ -705,10 +612,13 @@ const selectMentorMealVersionRoute = createRoute({
 })
 type CreateMealsRoutesOptions = {
   composer: AppMealComposer
-  mealEngine: ReturnType<typeof createMealEngineStore>
   analyzeNora: (input: MealsNoraRequest) => Promise<MealsGeminiResponse>
-  chatWithNora: (input: NoraModelChatRequest) => Promise<NoraModelChatResponse>
-  transcribeChatVoice: (input: MealsTranscribeRequest) => Promise<MealsTranscribeResponse>
+  chatWithNora: (userId: string, input: NoraModelChatRequest) => Promise<NoraModelChatResponse>
+  streamChatWithNora: (
+    userId: string,
+    input: NoraModelChatRequest,
+    signal: AbortSignal,
+  ) => Promise<AsyncIterable<{ reasoning?: string; reply?: string; resetReply?: boolean; searched?: boolean }>>
   internalServiceToken: string | undefined
   requireAuth: MiddlewareHandler<AuthHttpEnv>
   requireMentor: MiddlewareHandler<AuthHttpEnv>
@@ -728,11 +638,10 @@ type CreateMealsRoutesOptions = {
 }
 
 export function createMealsRoutes({
-  composer,
-  mealEngine,
+  composer: _composer,
   analyzeNora,
   chatWithNora,
-  transcribeChatVoice,
+  streamChatWithNora,
   internalServiceToken,
   requireAuth,
   requireMentor,
@@ -774,114 +683,49 @@ export function createMealsRoutes({
   })
   const userMealsRoutes = new OpenAPIHono<AuthHttpEnv>({ defaultHook: validationErrorHook })
   userMealsRoutes.use('*', requireAuth)
-  userMealsRoutes.openapi(listMyMealsRoute, async (c) => {
-    const result = await executeMeals(() => service.listCurrentUserMeals(c.var.user.id))
-    return c.json(result, 200)
-  })
-  userMealsRoutes.openapi(createMyMealRoute, async (c) => {
-    const result = await executeMeals(() =>
-      service.createUserMeal(c.var.user, c.req.valid('json')),
-    )
-    return c.json(result, 200)
+  userMealsRoutes.post('/me/model-chat', async (c, next) => {
+    const peeked = await c.req.raw.clone().json().catch(() => null) as { stream?: boolean } | null
+    if (!peeked?.stream) return next()
+    const parsed = noraModelChatRequestSchema.safeParse(peeked)
+    if (!parsed.success) return next()
+    const input = parsed.data
+    const encoder = new TextEncoder()
+    const stream = new ReadableStream({
+      async start(controller) {
+        const write = (event: unknown) => {
+          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
+        }
+        try {
+          const events = await streamChatWithNora(c.var.user.id, input, c.req.raw.signal)
+          for await (const event of events) {
+            if (event.reasoning || event.reply || event.resetReply || event.searched) write(event)
+          }
+        } catch (error) {
+          const message = error instanceof Error && error.message.trim()
+            ? error.message
+            : 'Не удалось получить ответ.'
+          write({ error: message })
+        } finally {
+          controller.close()
+        }
+      },
+    })
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/x-ndjson; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no',
+      },
+    })
   })
   userMealsRoutes.openapi(modelChatRoute, async (c) => {
-    const result = await executeMeals(() => chatWithNora(c.req.valid('json')))
-    return c.json(result, 200)
-  })
-  userMealsRoutes.openapi(modelChatTranscribeRoute, async (c) => {
-    const result = await executeMeals(() => transcribeChatVoice(c.req.valid('json')))
+    const result = await executeMeals(() => chatWithNora(c.var.user.id, c.req.valid('json')))
     return c.json(result, 200)
   })
   userMealsRoutes.openapi(transcribeMyVoiceRoute, async (c) => {
-    const result = await executeMeals(async () => {
-      const thinking = await mealEngine.thinking(c.var.user.id)
-      return transcribeUserVoice({
-        ...c.req.valid('json'),
-        ...(thinking ? {} : { thinking: false }),
-      })
-    })
+    const result = await executeMeals(() => transcribeUserVoice(c.req.valid('json')))
     await service.rememberVoiceUsage(c.var.user.id, result.usage)
-    return c.json(result, 200)
-  })
-  userMealsRoutes.openapi(composerSnapshotRoute, async (c) => {
-    return c.json(composer.snapshot(c.var.user.id), 200)
-  })
-  userMealsRoutes.openapi(composerTurnRoute, async (c) => {
-    const result = await executeMeals(() =>
-      composer.applyTurn(c.var.user.id, c.req.valid('json')),
-    )
-    return c.json(result, 200)
-  })
-  userMealsRoutes.openapi(refineMyMealRoute, async (c) => {
-    const result = await executeMeals(() =>
-      service.refineMeal(c.var.user, c.req.valid('param').mealId, c.req.valid('json')),
-    )
-    return c.json(result, 200)
-  })
-  userMealsRoutes.openapi(rewriteMyMealRoute, async (c) => {
-    const result = await executeMeals(() =>
-      service.rewriteMealPlate(c.var.user, c.req.valid('param').mealId, c.req.valid('json')),
-    )
-    return c.json(result, 200)
-  })
-  userMealsRoutes.openapi(selectMyMealVersionRoute, async (c) => {
-    const result = await executeMeals(() =>
-      service.selectMealVersion(
-        c.var.user,
-        c.req.valid('param').mealId,
-        c.req.valid('json').versionId,
-      ),
-    )
-    return c.json(result, 200)
-  })
-  userMealsRoutes.openapi(shareMyMealRoute, async (c) => {
-    const result = await executeMeals(() =>
-      service.setMealShared(
-        c.var.user,
-        c.req.valid('param').mealId,
-        c.req.valid('json').shared,
-      ),
-    )
-    return c.json(result, 200)
-  })
-  userMealsRoutes.openapi(setMyMealPlanDoneRoute, async (c) => {
-    const body = c.req.valid('json')
-    const result = await executeMeals(() =>
-      service.setMealPlanDone(
-        c.var.user,
-        c.req.valid('param').mealId,
-        body.done,
-        body.recordedAt,
-      ),
-    )
-    return c.json(result, 200)
-  })
-  userMealsRoutes.openapi(deleteMyMealRoute, async (c) => {
-    const result = await executeMeals(() =>
-      service.deleteMeal(c.var.user, c.req.valid('param').mealId),
-    )
-    return c.json(result, 200)
-  })
-  userMealsRoutes.openapi(mealEngineRoute, async (c) => {
-    const settings = await executeMeals(() => mealEngine.getSettings(c.var.user.id))
-    return c.json(settings, 200)
-  })
-  userMealsRoutes.openapi(updateMealEngineRoute, async (c) => {
-    const body = c.req.valid('json')
-    const saved = await executeMeals(async () => {
-      if (c.var.user.role !== 'user') {
-        throw new MealsFailure('forbidden', 'Модель дневника выбирает пользователь')
-      }
-      return mealEngine.set(c.var.user.id, body.engine, body.thinking)
-    })
-    return c.json(saved, 200)
-  })
-  userMealsRoutes.openapi(generationPricingRoute, async (c) => {
-    const result = await executeMeals(() => service.generationPricing())
-    return c.json(result, 200)
-  })
-  userMealsRoutes.openapi(resetMyGenerationSpendRoute, async (c) => {
-    const result = await executeMeals(() => service.resetGenerationSpend(c.var.user.id))
     return c.json(result, 200)
   })
   const mentorMealsRoutes = new OpenAPIHono<AuthHttpEnv>({ defaultHook: validationErrorHook })

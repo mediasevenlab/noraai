@@ -41,6 +41,7 @@ const queryClient = new QueryClient({
 })
 
 const root = createRoot(document.getElementById('root')!)
+window.setTimeout(() => dismissAppBootSplash(), 8_000)
 flushSync(() => {
   root.render(
     <StrictMode>
@@ -77,5 +78,3 @@ flushSync(() => {
     </StrictMode>,
   )
 })
-
-window.setTimeout(() => dismissAppBootSplash(), 8_000)

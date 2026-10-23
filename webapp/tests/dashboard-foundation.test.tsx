@@ -208,7 +208,8 @@ test('mentor and user relation status lives in the sidebar footer, not the deskt
 
   expect(shell).toContain('footerExtra=')
   expect(shell).toContain('showSidebarPromoCards')
-  expect(shell).toContain('<SubscriptionRenewalBanner')
+  expect(shell).not.toContain('SubscriptionRenewalBanner')
+  expect(shell).not.toContain('SubscriptionMobileCapsule')
   expect(shell).toContain('<MentorMenteesBanner')
   expect(shell).not.toContain('SidebarSubscriptionCard')
   expect(header).toContain('SidebarPromoToggle')
@@ -233,38 +234,6 @@ test('mentor and user relation status lives in the sidebar footer, not the deskt
   expect(card).toContain('hides direct `span`')
   expect(card).toContain('keeps the first div as the icon tile')
   expect(card).toMatch(/<div className="flex items-center gap-/)
-
-  const banner = readFileSync(
-    new URL('../src/features/payments/SubscriptionRenewalBanner.tsx', import.meta.url),
-    'utf8',
-  )
-  expect(banner).toContain('Продлить')
-  expect(banner).toContain('Не продлена')
-  expect(banner).toContain('href="/app/payments"')
-  expect(banner).toContain('if (!overview?.renewalNotice) return null')
-
-  const subscription = readFileSync(
-    new URL('../src/features/payments/SidebarSubscriptionCard.tsx', import.meta.url),
-    'utf8',
-  )
-  expect(subscription).toContain('<DashboardLink')
-  expect(subscription).toContain('Продлить')
-  expect(subscription).toContain('DEMO_USER_NEXT_CHARGE.label')
-  expect(subscription).toContain('role="progressbar"')
-  expect(subscription).toContain('noraProductTitleClass')
-  expect(subscription).toContain('noraProductMetaClass')
-  expect(subscription).toContain('text-[13px] font-medium leading-5')
-  expect(subscription).toContain('text-[12px] font-light leading-5')
-  expect(subscription).toContain('items-baseline')
-  expect(subscription).toContain('border-t border-[var(--nora-divider)]')
-  expect(subscription).toContain('bg-[var(--nora-input-bg)] py-1.5 pr-1.5 pl-3.5 text-[var(--nora-text)]')
-  expect(subscription).toContain('group-hover/menu-button:bg-[var(--nora-row-hover)]')
-  expect(subscription).toContain('rounded-full bg-[var(--nora-panel)]')
-  expect(subscription).not.toContain('bg-[var(--nora-text)] py-1.5')
-  expect(subscription).not.toContain('color-mix(in_srgb,var(--nora-text)_30%')
-  expect(subscription).not.toContain('variant="h4"')
-  expect(subscription).not.toContain('from \'@/components/typography\'')
-  expect(subscription).toContain('hides direct `span`')
 
   const sidebar = readFileSync(
     new URL('../src/components/ui/sidebar.tsx', import.meta.url),

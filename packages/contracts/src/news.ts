@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const newsMediaSchema = z.object({
   kind: z.enum(['image', 'video']),
   url: z.string().min(1),
+  role: z.enum(['poster']).optional(),
 })
 
 export const newsPostSchema = z.object({
@@ -13,6 +14,7 @@ export const newsPostSchema = z.object({
   postedAt: z.string().datetime(),
   href: z.string().url(),
   media: z.array(newsMediaSchema),
+  ad: z.boolean(),
 })
 
 export const newsFeedSchema = z.object({
@@ -42,6 +44,7 @@ export const newsChannelDeleteResponseSchema = z.object({
 export const newsImportResponseSchema = newsFeedSchema.extend({
   imported: z.number().int(),
   skipped: z.number().int(),
+  archived: z.number().int(),
   failed: z.array(newsImportFailureSchema),
 })
 

@@ -44,6 +44,7 @@ model User {
   mentorPlans         MentorPlan[]
   telegramLinkChallenges TelegramLinkChallenge[]
   newsPosts        NewsPost[]
+  knowledgeBases   KnowledgeBase[]
   generationUsage  Json          @default("{}") @map("generation_usage")
 
   @@index([role], map: "users_role_idx")
@@ -317,14 +318,55 @@ model NewsPost {
   userId         String   @map("user_id") @db.Uuid
   channelHandle  String   @map("channel_handle")
   telegramPostId Int      @map("telegram_post_id")
-  text           String   @db.Text
-  postedAt       DateTime @map("posted_at")
-  media          Json     @default("[]")
-  createdAt      DateTime @default(now()) @map("created_at")
+  text               String   @db.Text
+  postedAt           DateTime @map("posted_at")
+  media              Json     @default("[]")
+  archiveChatId      String?  @map("archive_chat_id")
+  archiveMessageIds  Json     @default("[]") @map("archive_message_ids")
+  ad                 Boolean  @default(false)
+  createdAt          DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "news_posts_user_id_fkey")
 
   @@unique([userId, channelHandle, telegramPostId], map: "news_posts_user_channel_post_key")
   @@index([userId, postedAt], map: "news_posts_user_id_posted_at_idx")
   @@map("news_posts")
+}
+
+model KnowledgeBase {
+  id        String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId    String          @map("user_id") @db.Uuid
+  name      String          @db.VarChar(80)
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade, map: "knowledge_bases_user_id_fkey")
+  files     KnowledgeFile[]
+
+  @@index([userId, updatedAt], map: "knowledge_bases_user_id_updated_at_idx")
+  @@map("knowledge_bases")
+}
+
+model KnowledgeFile {
+  id        String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  baseId    String           @map("base_id") @db.Uuid
+  name      String           @db.VarChar(180)
+  mime      String           @default("") @db.VarChar(120)
+  bytes     Int
+  createdAt DateTime         @default(now()) @map("created_at")
+  base      KnowledgeBase    @relation(fields: [baseId], references: [id], onDelete: Cascade, map: "knowledge_files_base_id_fkey")
+  chunks    KnowledgeChunk[]
+
+  @@index([baseId, createdAt], map: "knowledge_files_base_id_created_at_idx")
+  @@map("knowledge_files")
+}
+
+model KnowledgeChunk {
+  id       String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  fileId   String        @map("file_id") @db.Uuid
+  position Int
+  text     String
+  file     KnowledgeFile @relation(fields: [fileId], references: [id], onDelete: Cascade, map: "knowledge_chunks_file_id_fkey")
+
+  @@index([fileId, position], map: "knowledge_chunks_file_id_position_idx")
+  @@map("knowledge_chunks")
 }

@@ -4,7 +4,7 @@ import type { AdminUserSummary } from '@web-app-demo/contracts'
 import { useEffect, useState, type FormEvent } from 'react'
 
 import { SettingsEntry } from '@/components/settings-canvas'
-import { NoraBadge, NoraIconButton, NoraSearch } from '@/components/nora/primitives'
+import { NoraIconButton, NoraSearch } from '@/components/nora/primitives'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { SectionLoading } from '@/components/nora/product-sheet'
 import {
@@ -16,12 +16,10 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { DetachMentorUserDialog } from './DetachMentorUserDialog'
-import { formatMentorBonus } from './model'
 import {
   useDetachMentorUserMutation,
   useMentorUsersQuery,
 } from './queries'
-import { usePayoutAccrualQuery } from '@/features/users'
 
 const MENTOR_USERS_PAGE_SIZE = 10
 
@@ -41,8 +39,6 @@ export function MentorUserDirectory() {
     page,
     pageSize: MENTOR_USERS_PAGE_SIZE,
   })
-  const accrual = usePayoutAccrualQuery()
-  const bonusById = new Map(accrual.data?.people.map((person) => [person.userId, person.bonusRub]) ?? [])
   const detach = useDetachMentorUserMutation()
   const totalPages = users.data
     ? Math.max(1, Math.ceil(users.data.total / users.data.pageSize))
@@ -52,7 +48,6 @@ export function MentorUserDirectory() {
     : users.isPending
       ? 'Загрузка…'
       : null
-  const bonusTotal = accrual.isSuccess ? accrual.data.accruedRub : null
 
   useEffect(() => {
     const next = draftQuery.trim()
@@ -69,16 +64,6 @@ export function MentorUserDirectory() {
     setPage((current) => (query === next ? current : 1))
     setQuery(next)
   }
-
-  const bonusChip =
-    bonusTotal !== null ? (
-      <div className="flex items-center gap-1.5">
-        <span className="text-[13px] font-medium text-[var(--nora-text-secondary)]" data-settings-meta="">
-          Бонусы
-        </span>
-        <NoraBadge variant="green">{formatMentorBonus(bonusTotal)}</NoraBadge>
-      </div>
-    ) : null
 
   const searchField = (
     <NoraSearch
@@ -104,7 +89,7 @@ export function MentorUserDirectory() {
               <p className="font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
                 {description}
               </p>
-            ) : bonusChip}
+            ) : null}
           </div>
           <div className="relative h-8 min-w-0">{searchField}</div>
         </form>
@@ -139,25 +124,21 @@ export function MentorUserDirectory() {
           {users.data && users.data.items.length > 0 && (
             <Table className="w-full table-fixed">
               <colgroup>
-                <col className="w-[34%]" />
-                <col className="w-[18%]" />
-                <col className="w-[12%]" />
+                <col className="w-[42%]" />
                 <col className="w-[22%]" />
-                <col className="w-[14%]" />
+                <col className="w-[18%]" />
+                <col className="w-[18%]" />
               </colgroup>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className={headClass}>Пользователь</TableHead>
                   <TableHead className={headClass}>Никнейм</TableHead>
                   <TableHead className={headClass}>ID</TableHead>
-                  <TableHead className={headClass}>Бонусы</TableHead>
                   <TableHead className={headClass} />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.data.items.map((user) => {
-                  const bonus = bonusById.get(user.id)
-                  return (
+                {users.data.items.map((user) => (
                     <TableRow className="hover:bg-[var(--nora-row-hover)]" key={user.id}>
                       <TableCell className={cn(cellClass, 'whitespace-normal')}>
                         <div className="grid min-w-0">
@@ -169,15 +150,6 @@ export function MentorUserDirectory() {
                       </TableCell>
                       <TableCell className={cellClass}>{user.nickname ?? '—'}</TableCell>
                       <TableCell className={cellClass}>{user.publicId}</TableCell>
-                      <TableCell className={statusClass}>
-                        {accrual.isSuccess ? (
-                          bonus
-                            ? <NoraBadge className="!font-[250]" variant="green">{formatMentorBonus(bonus)}</NoraBadge>
-                            : <NoraBadge className="!font-[250]" variant="yellow">Ждёт оплаты</NoraBadge>
-                        ) : (
-                          <NoraBadge className="!font-[250]" variant="neutral">…</NoraBadge>
-                        )}
-                      </TableCell>
                       <TableCell className={cn(statusClass, 'text-center')}>
                         <NoraIconButton
                           aria-label={`Отключить ${user.email}`}
@@ -193,8 +165,7 @@ export function MentorUserDirectory() {
                         </NoraIconButton>
                       </TableCell>
                     </TableRow>
-                  )
-                })}
+                ))}
               </TableBody>
             </Table>
           )}

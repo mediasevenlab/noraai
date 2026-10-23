@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 
 import { DataTableFrame } from '@/components/dashboard'
 import { SettingsEntry } from '@/components/settings-canvas'
-import { NoraBadge, NoraSearch } from '@/components/nora/primitives'
+import { NoraSearch } from '@/components/nora/primitives'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { ProductFeedEmpty, SectionLoading } from '@/components/nora/product-sheet'
 import { cn } from '@/lib/utils'
@@ -15,10 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  formatUserReferralBonus,
-} from './model'
-import { useUserReferralsQuery, usePayoutAccrualQuery } from './queries'
+import { useUserReferralsQuery } from './queries'
 
 const REFERRALS_PAGE_SIZE = 8
 
@@ -26,15 +23,10 @@ const headClass =
   '!h-auto px-2.5 py-3 text-left !font-[family-name:var(--nora-font)] !text-[13px] !font-medium !leading-5 whitespace-nowrap !text-[var(--nora-text)] first:pl-3.5 last:pr-3.5'
 const cellClass =
   'h-auto px-2.5 py-3 text-left font-[family-name:var(--nora-font)] !text-[13px] !font-[250] !leading-5 whitespace-nowrap !text-[var(--nora-text-secondary)] first:pl-3.5 last:pr-3.5'
-const statusClass = 'h-auto px-2.5 py-3 text-left whitespace-nowrap first:pl-3.5 last:pr-3.5'
-
 export function ReferralsDirectory({
   layout = 'card',
-  unpaidRub = null,
 }: {
   layout?: 'card' | 'entry'
-  /** Unpaid referral bonus after payouts. Falls back to the server total. */
-  unpaidRub?: number | null
 }) {
   const [draftQuery, setDraftQuery] = useState('')
   const [query, setQuery] = useState('')
@@ -44,8 +36,6 @@ export function ReferralsDirectory({
     page,
     pageSize: REFERRALS_PAGE_SIZE,
   })
-  const accrual = usePayoutAccrualQuery()
-  const bonusById = new Map(accrual.data?.people.map((person) => [person.userId, person.bonusRub]) ?? [])
   const totalPages = referrals.data
     ? Math.max(1, Math.ceil(referrals.data.total / referrals.data.pageSize))
     : 1
@@ -54,7 +44,6 @@ export function ReferralsDirectory({
     : referrals.isPending
       ? 'Загрузка…'
       : null
-  const bonusTotal = unpaidRub != null ? unpaidRub : accrual.isSuccess ? accrual.data.accruedRub : null
 
   useEffect(() => {
     const next = draftQuery.trim()
@@ -103,57 +92,32 @@ export function ReferralsDirectory({
         )
       )}
       {referrals.data && referrals.data.items.length > 0 && (
-        <Table columns className="grid w-max min-w-full grid-cols-[max-content_max-content_max-content_max-content] justify-between">
+        <Table columns className="grid w-max min-w-full grid-cols-[max-content_max-content_max-content] justify-between">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className={headClass}>Аккаунт</TableHead>
               <TableHead className={headClass}>Никнейм</TableHead>
               <TableHead className={headClass}>ID</TableHead>
-              <TableHead className={headClass}>Бонус</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {referrals.data.items.map((user) => {
-              const bonus = bonusById.get(user.id)
-              return (
-                <TableRow
-                  className="even:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:!bg-[var(--nora-row-hover)]"
-                  key={user.id}
-                >
-                  <TableCell className={cellClass}>
-                    <span className="block max-w-[10rem] truncate" data-table-text="">{user.displayName ?? user.email}</span>
-                  </TableCell>
-                  <TableCell className={cellClass}>{user.nickname ?? '—'}</TableCell>
-                  <TableCell className={cellClass}>{user.publicId}</TableCell>
-                  <TableCell className={statusClass}>
-                    {accrual.isSuccess ? (
-                      bonus
-                        ? <NoraBadge className="!font-[250]" variant="green">{formatUserReferralBonus(bonus)}</NoraBadge>
-                        : <NoraBadge className="!font-[250]" variant="yellow">Ждёт оплаты</NoraBadge>
-                    ) : (
-                      <NoraBadge className="!font-[250]" variant="neutral">…</NoraBadge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              )
-            })}
+            {referrals.data.items.map((user) => (
+              <TableRow
+                className="even:!bg-[color-mix(in_srgb,var(--nora-inset)_28%,transparent)] hover:!bg-[var(--nora-row-hover)]"
+                key={user.id}
+              >
+                <TableCell className={cellClass}>
+                  <span className="block max-w-[10rem] truncate" data-table-text="">{user.displayName ?? user.email}</span>
+                </TableCell>
+                <TableCell className={cellClass}>{user.nickname ?? '—'}</TableCell>
+                <TableCell className={cellClass}>{user.publicId}</TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       )}
     </>
   )
-
-  const bonusChip =
-    bonusTotal !== null ? (
-      <div className="flex items-center gap-1.5">
-        <span className="text-[13px] font-medium text-[var(--nora-text-secondary)]" data-settings-meta="">
-          Бонусы
-        </span>
-        <NoraBadge variant="green">
-          {formatUserReferralBonus(bonusTotal)}
-        </NoraBadge>
-      </div>
-    ) : null
 
   const searchField = (
     <NoraSearch
@@ -169,7 +133,6 @@ export function ReferralsDirectory({
 
   const search = (
     <form className="flex min-w-0 flex-1 items-center gap-2 lg:flex-none" onSubmit={submitSearch}>
-      {bonusChip}
       <div className="min-w-0 lg:w-[220px]">{searchField}</div>
     </form>
   )
@@ -188,7 +151,7 @@ export function ReferralsDirectory({
                 <p className="font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]">
                   {description}
                 </p>
-              ) : bonusChip}
+              ) : null}
             </div>
             <div className="relative h-8 min-w-0">{searchField}</div>
           </form>

@@ -1,14 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { NewsPost } from '@web-app-demo/contracts'
 
 import {
   BookmarkIcon,
+  CalendarIcon,
   CirclePlusIcon,
   ClapperboardIcon,
   DownloadIcon,
-  LinkIcon,
+  ImagePlusIcon,
   NewspaperIcon,
-  Share2Icon,
+  PencilIcon,
+  PlusIcon,
+  SaveIcon,
   SlidersHorizontalIcon,
   Trash2Icon,
   UsersIcon,
@@ -16,11 +19,12 @@ import {
 } from '@/components/icons'
 
 import { noraPageDescriptionClass, noraPageTitleClass } from '@/components/PageLayout'
-import { NoraButton, NoraHoverTip, NoraInput } from '@/components/nora/primitives'
-import { ProductFeedEmpty, productDesktopCardMinHeightClass, productFeedGridClass, productFeedPageClass, productSheetOverlayChipClass, productToolbarSelectContentClass, productToolbarSelectItemClass } from '@/components/nora/product-sheet'
+import { NoraButton, NoraInput } from '@/components/nora/primitives'
+import { ProductFeedEmpty, productCardOriginAnchorClass, productDesktopCardMinHeightClass, productFeedGridClass, productFeedPageClass, productSheetOverlayChipClass, productToolbarSelectContentClass, productToolbarSelectItemClass } from '@/components/nora/product-sheet'
 import { ProductToolbarSearch } from '@/components/nora/toolbar-search'
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -37,15 +41,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/features/auth'
+import { feedDayHeading } from './days'
 import {
   DiaryPeriodPicker,
   diaryToolbarPairDividerClass,
   diaryToolbarPillClass,
-} from '@/features/diary'
-import { ApiRequestError } from '@/platform/api'
+} from './PeriodPicker'
 import { cn } from '@/lib/utils'
 
-import { deleteNewsChannel, deleteNewsPost, importNewsPosts, listNewsPosts } from './api'
+import { deleteNewsChannel, deleteNewsPost, importNewsPosts, listNewsPosts, updateNewsPost } from './api'
+import { groupNewsByDay, postsCountLabel } from './days'
+import { waitForSavedPosts } from './watch-feed'
+import { newsCoverUrls, newsSlides } from './gallery'
+import { NewsSlides } from './NewsSlides'
 
 import {
   parseTelegramChannelLink,
@@ -107,6 +115,12 @@ const newsDialogTitleClass =
 
 const newsDialogMetaClass =
   'font-[family-name:var(--nora-font)] text-[12px] font-light leading-5 text-[var(--nora-text-tertiary)]'
+
+const newsEditFieldClass =
+  'w-full rounded-[9.5px] border border-[color-mix(in_srgb,var(--nora-panel)_88%,#000)] bg-[var(--nora-panel)] p-3 outline-none focus-visible:shadow-[var(--nora-shadow-focus)] [.scheme-editor-dark_&]:border-[color-mix(in_srgb,var(--nora-panel)_70%,#fff)]'
+
+const newsEditTypeClass =
+  'font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 text-[var(--nora-text-secondary)]'
 
 const newsMenuContentClass = cn(
   'account-workspace-menu',
@@ -179,6 +193,7 @@ export function NewsPage() {
   const [exportFrom, setExportFrom] = useState(() => shiftLocalDate(-1))
   const [exportTo, setExportTo] = useState(() => shiftLocalDate(0))
   const [openPost, setOpenPost] = useState<NewsPost | null>(null)
+  const exportWatch = useRef<AbortController | null>(null)
 
   function addChannel() {
     const parsed = parseTelegramChannelLink(draft)
@@ -212,11 +227,17 @@ export function NewsPage() {
     })
   }
 
+  useEffect(() => () => exportWatch.current?.abort(), [])
+
   useEffect(() => {
     let cancelled = false
     const listed = new Set(readNewsChannels().map((channel) => channel.handle.toLowerCase()))
     void listNewsPosts(transport)
       .then(async (feed) => {
+        if (listed.size === 0) {
+          if (!cancelled) setPosts(feed.posts)
+          return
+        }
         const kept = feed.posts.filter((post) => listed.has(post.channelHandle.toLowerCase()))
         const dropped = [...new Set(
           feed.posts
@@ -257,25 +278,6 @@ export function NewsPage() {
     return filtered
   }, [bookmarks, channelFilter, channels, favoritesOnly, filters.order, filters.source, period, posts, query])
 
-  function toggleBookmark(postId: string) {
-    setBookmarks((current) => {
-      const next = current.includes(postId)
-        ? current.filter((id) => id !== postId)
-        : [postId, ...current]
-      writeNewsBookmarks(next)
-      return next
-    })
-  }
-
-  async function sharePostLink(post: NewsPost) {
-    try {
-      await navigator.clipboard.writeText(post.href)
-      toast.success('Ссылка скопирована', { icon: <LinkIcon className="size-4" /> })
-    } catch {
-      toast.error('Не удалось скопировать ссылку')
-    }
-  }
-
   function exportRange() {
     const from = new Date(`${exportFrom}T00:00:00`)
     const to = new Date(`${exportTo}T23:59:59.999`)
@@ -296,20 +298,49 @@ export function NewsPage() {
       return
     }
     setImporting(true)
+    exportWatch.current?.abort()
+    const watch = new AbortController()
+    exportWatch.current = watch
+    const listed = new Set(channels.map((channel) => channel.handle.toLowerCase()))
+    const previousIds = new Set(posts.map((post) => post.id))
+    const applyFeed = (feed: NewsPost[]) => {
+      setPosts(feed.filter((post) => listed.has(post.channelHandle.toLowerCase())))
+    }
+    const appeared = waitForSavedPosts({
+      previousIds,
+      signal: watch.signal,
+      load: async () => (await listNewsPosts(transport)).posts,
+    }).then((feed) => {
+      if (feed && !watch.signal.aborted) applyFeed(feed)
+      return feed
+    })
+    const started = Date.now()
     try {
       const result = await importNewsPosts(
         transport,
         channels.map((channel) => channel.handle),
         { from: range.from.toISOString(), to: range.to.toISOString() },
       )
-      const listed = new Set(channels.map((channel) => channel.handle.toLowerCase()))
-      setPosts(result.posts.filter((post) => listed.has(post.channelHandle.toLowerCase())))
-      if (result.imported > 0) toast.success(`Новых постов: ${result.imported}`)
+      watch.abort()
+      applyFeed(result.posts)
+      if (result.archived > 0) toast.success(`В архив: ${result.archived}`)
+      else if (result.imported > 0) toast.success(`Новых постов: ${result.imported}`)
       else if (result.failed.length > 0) toast.error('Не удалось открыть канал')
       else toast.info('Новых постов за этот период нет')
-    } catch (error) {
-      toast.error(error instanceof ApiRequestError ? 'Не удалось выгрузить посты' : 'Не удалось выгрузить посты')
+      if (result.archived > 0 && result.failed.length > 0) toast.warning('Часть каналов не выгрузилась')
+    } catch {
+      const slow = Date.now() - started >= 15_000
+      if (!slow) watch.abort()
+      const feed = slow ? await appeared : null
+      if (feed) {
+        const added = feed.filter((post) => listed.has(post.channelHandle.toLowerCase()) && !previousIds.has(post.id)).length
+        if (added > 0) toast.success(`В архив: ${added}`)
+        else toast.info('Новых постов за этот период нет')
+      } else {
+        toast.error('Не удалось выгрузить посты')
+      }
     } finally {
+      watch.abort()
       setImporting(false)
     }
   }
@@ -466,21 +497,32 @@ export function NewsPage() {
           title={channels.length > 0 && posts.length > 0 ? 'Ничего не найдено' : 'Пока пусто'}
         />
       ) : (
-        <div className={productFeedGridClass}>
-          {visible.map((post) => (
-            <NewsCard
-              key={post.id}
-              post={post}
-              saved={bookmarks.includes(post.id)}
-              onDelete={() => {
-                void deletePost(post)
-              }}
-              onOpen={() => setOpenPost(post)}
-              onShare={() => {
-                void sharePostLink(post)
-              }}
-              onToggleSave={() => toggleBookmark(post.id)}
-            />
+        <div className="flex flex-col gap-6">
+          {groupNewsByDay(visible).map((group) => (
+            <section key={group.dayKey} className="flex flex-col gap-5">
+              <div className="flex w-full min-w-0 items-center gap-2 overflow-x-auto no-scrollbar">
+                <div className="ios-glass-glare inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-[var(--nora-text)] py-0 pr-2.5 pl-2 font-[family-name:var(--nora-font)] text-[12px] font-normal leading-none text-white dark:bg-[#2C2C2E]">
+                  <CalendarIcon aria-hidden className="size-[13px] text-white" strokeWidth={1.75} />
+                  {feedDayHeading(group.dayIso)}
+                </div>
+                <div className="ios-glass-glare inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-[var(--nora-input-bg)] py-0 pr-2.5 pl-2 font-[family-name:var(--nora-font)] text-[12px] font-normal leading-none text-[var(--nora-text-secondary)]">
+                  <NewspaperIcon aria-hidden className="size-[13px]" strokeWidth={1.75} />
+                  {postsCountLabel(group.posts.length)}
+                </div>
+              </div>
+              <div className={productFeedGridClass}>
+                {group.posts.map((post) => (
+                  <NewsCard
+                    key={post.id}
+                    post={post}
+                    onDelete={() => {
+                      void deletePost(post)
+                    }}
+                    onOpen={() => setOpenPost(post)}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}
@@ -592,15 +634,15 @@ export function NewsPage() {
       </Dialog>
 
       <Dialog open={openPost !== null} onOpenChange={(open) => { if (!open) setOpenPost(null) }}>
-        <DialogContent className="flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden md:max-w-[min(560px,calc(100%-2rem))]">
+        <DialogContent showCloseButton={false} className="flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden md:max-w-[min(560px,calc(100%-2rem))]">
           {openPost ? (
             <NewsPostView
               post={openPost}
-              saved={bookmarks.includes(openPost.id)}
-              onShare={() => {
-                void sharePostLink(openPost)
+              onSaved={(next) => {
+                setPosts((current) => current.map((item) => item.id === next.id ? next : item))
+                setOpenPost(next)
+                toast.success('Пост сохранён')
               }}
-              onToggleSave={() => toggleBookmark(openPost.id)}
             />
           ) : null}
         </DialogContent>
@@ -611,22 +653,17 @@ export function NewsPage() {
 
 function NewsCard({
   post,
-  saved,
   onOpen,
   onDelete,
-  onShare,
-  onToggleSave,
 }: {
   post: NewsPost
-  saved: boolean
   onOpen: () => void
   onDelete: () => void
-  onShare: () => void
-  onToggleSave: () => void
 }) {
   const title = postTitle(post)
-  const cover = post.media.find((item) => item.kind === 'image')
+  const covers = newsCoverUrls(post.media)
   const hasVideo = post.media.some((item) => item.kind === 'video')
+  const gallery = covers.length > 1
   return (
     <article
       className={cn('group relative flex h-full min-w-0 flex-col', productDesktopCardMinHeightClass)}
@@ -650,28 +687,21 @@ function NewsCard({
       >
         <Trash2Icon aria-hidden className="size-4" />
       </button>
-      <button className="flex min-h-0 min-w-0 flex-1 cursor-pointer flex-col text-left" type="button" onClick={onOpen}>
+      {gallery ? (
         <div className="relative shrink-0 px-2 pt-2">
           <div className="relative block w-full" data-slot="meal-card-preview">
-            <div
-              className="relative aspect-[4/3] max-h-[132px] w-full overflow-hidden bg-[var(--nora-inset)] shadow-[inset_0_0_0_1px_var(--nora-border)] sm:max-h-[148px] md:aspect-auto md:h-[168px] md:max-h-none"
-              data-slot="meal-cover"
-            >
-              {cover ? (
-                <img alt="" className="size-full object-cover" src={cover.url} />
-              ) : (
-                <span className="flex size-full items-center justify-center text-[var(--nora-text-tertiary)]">
-                  <NewspaperIcon aria-hidden className="size-6" strokeWidth={1.5} />
-                </span>
-              )}
-              {hasVideo ? (
-                <span className="absolute right-2 bottom-2 inline-flex size-7 items-center justify-center rounded-full bg-black/55 text-white">
-                  <ClapperboardIcon aria-hidden className="size-3.5" strokeWidth={1.75} />
-                </span>
-              ) : null}
-            </div>
+            <NewsCover ad={post.ad} covers={covers} hasVideo={hasVideo} onOpen={onOpen} />
           </div>
         </div>
+      ) : null}
+      <button className="flex min-h-0 min-w-0 flex-1 cursor-pointer flex-col text-left" type="button" onClick={onOpen}>
+        {gallery ? null : (
+          <div className="relative shrink-0 px-2 pt-2">
+            <div className="relative block w-full" data-slot="meal-card-preview">
+              <NewsCover ad={post.ad} covers={covers} hasVideo={hasVideo} />
+            </div>
+          </div>
+        )}
         <div className="flex min-h-0 flex-1 flex-col px-3 pt-3 sm:px-4 sm:pt-3.5">
           <h3 className="truncate font-[family-name:var(--nora-font)] text-[15px] font-medium leading-6 text-[var(--nora-text)]">
             {title}
@@ -683,125 +713,412 @@ function NewsCard({
       </button>
       <div className="mt-auto px-3 sm:px-4">
         <div aria-hidden className={newsFooterDividerClass} />
-        <div className="flex items-center justify-between gap-2 py-2">
+        <div className="py-2">
           <p className="min-w-0 truncate font-[family-name:var(--nora-font)] text-[12px] font-light leading-4 text-[var(--nora-text-tertiary)]">
             @{post.channelHandle} · {formatPostTime(post.postedAt)}
           </p>
-          <NewsPostActions saved={saved} onShare={onShare} onToggleSave={onToggleSave} />
         </div>
       </div>
     </article>
   )
 }
 
-function NewsPostActions({
-  saved,
-  onShare,
-  onToggleSave,
+function NewsCover({
+  ad,
+  covers,
+  hasVideo,
+  onOpen,
 }: {
-  saved: boolean
-  onShare: () => void
-  onToggleSave: () => void
+  ad: boolean
+  covers: string[]
+  hasVideo: boolean
+  onOpen?: () => void
 }) {
-  const shareLabel = 'Поделиться ссылкой'
-  const saveLabel = saved ? 'Убрать из закладок' : 'Добавить в закладки'
-  const buttonClass = cn(
-    'nora-press-grow inline-flex size-6 shrink-0 items-center justify-center rounded-full border-0 bg-transparent',
-    'text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]',
-  )
   return (
-    <div className="flex shrink-0 items-center justify-end gap-1">
-      <NoraHoverTip label={shareLabel}>
-        <button aria-label={shareLabel} className={buttonClass} type="button" onClick={onShare}>
-          <Share2Icon aria-hidden className="size-4" strokeWidth={1.75} />
-        </button>
-      </NoraHoverTip>
-      <NoraHoverTip label={saveLabel}>
-        <button
-          aria-label={saveLabel}
-          aria-pressed={saved}
-          className={cn(buttonClass, saved && 'text-[var(--nora-tint)] hover:text-[var(--nora-tint)]')}
-          type="button"
-          onClick={onToggleSave}
+    <div
+      className="relative aspect-[4/3] max-h-[132px] w-full overflow-hidden bg-[var(--nora-inset)] shadow-[inset_0_0_0_1px_var(--nora-border)] sm:max-h-[148px] md:aspect-auto md:h-[168px] md:max-h-none"
+      data-slot="meal-cover"
+    >
+      {covers.length > 1 ? (
+        <NewsSlides
+          size="card"
+          slides={covers.map((url) => ({ kind: 'image', url }))}
+          onActivate={onOpen}
+        />
+      ) : covers[0] ? (
+        <img alt="" className="size-full object-cover" src={covers[0]} />
+      ) : (
+        <span className="flex size-full items-center justify-center text-[var(--nora-text-tertiary)]">
+          <NewspaperIcon aria-hidden className="size-6" strokeWidth={1.5} />
+        </span>
+      )}
+      {ad ? (
+        <span className={cn(productCardOriginAnchorClass, 'z-[3]')}>
+          <span className="ios-glass-glare-soft inline-flex h-[22px] items-center rounded-full bg-[var(--nora-success)] px-2 font-[family-name:var(--nora-font)] text-[11px] font-medium leading-none whitespace-nowrap text-white backdrop-blur-[10px]">
+            Реклама
+          </span>
+        </span>
+      ) : null}
+      {hasVideo ? (
+        <span
+          aria-label="Видео"
+          className="pointer-events-none absolute right-2 bottom-2 z-[4] inline-flex size-7 items-center justify-center rounded-full bg-black/55 text-white"
+          role="img"
         >
-          <BookmarkIcon aria-hidden className={cn('size-4', saved && 'fill-current')} strokeWidth={1.75} />
-        </button>
-      </NoraHoverTip>
+          <ClapperboardIcon aria-hidden className="size-3.5" strokeWidth={1.75} />
+        </span>
+      ) : null}
     </div>
   )
 }
 
+type NewsDraftFile = {
+  key: string
+  kind: 'image' | 'video'
+  url: string
+  poster?: string
+  keepIndex?: number
+  file?: File
+}
+
+const EDITABLE_MEDIA = 'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime'
+
+function draftFiles(post: NewsPost): NewsDraftFile[] {
+  const poster = post.media.find((item) => item.role === 'poster' && item.kind === 'image')?.url
+  return post.media.flatMap((item, index) => {
+    if (item.role === 'poster') return []
+    return [{
+      key: `kept-${index}`,
+      kind: item.kind,
+      url: item.url,
+      ...(item.kind === 'video' && poster ? { poster } : {}),
+      keepIndex: index,
+    }]
+  })
+}
+
 function NewsPostView({
   post,
-  saved,
-  onShare,
-  onToggleSave,
+  onSaved,
 }: {
   post: NewsPost
-  saved: boolean
-  onShare: () => void
-  onToggleSave: () => void
+  onSaved: (post: NewsPost) => void
 }) {
-  const images = post.media.filter((item) => item.kind === 'image')
-  const videos = post.media.filter((item) => item.kind === 'video')
-  const heroVideo = videos[0]
-  const heroImage = heroVideo ? undefined : images[0]
-  const extraImages = heroVideo ? images : images.slice(1)
-  const extraVideos = videos.slice(1)
+  const { transport } = useAuth()
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [draft, setDraft] = useState<NewsDraftFile[]>([])
+  const [selected, setSelected] = useState(0)
+  const createdUrls = useRef<string[]>([])
+  const bodyField = useRef<HTMLTextAreaElement>(null)
+  const slides = newsSlides(post.media)
+
+  useEffect(() => {
+    setEditing(false)
+    setSaving(false)
+  }, [post.id])
+
+  useEffect(() => () => {
+    for (const url of createdUrls.current) URL.revokeObjectURL(url)
+  }, [])
+
+  useLayoutEffect(() => {
+    const field = bodyField.current
+    if (!editing || !field) return
+    const dragged = field.style.height
+    const style = getComputedStyle(field)
+    const border = Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth)
+    field.style.minHeight = '0px'
+    field.style.height = '0px'
+    const needed = field.scrollHeight + border
+    field.style.minHeight = `${needed}px`
+    const chosen = Number.parseFloat(dragged)
+    field.style.height = Number.isFinite(chosen) && chosen > needed ? dragged : ''
+  }, [editing, body])
+
+  function startEdit() {
+    setTitle(editableTitle(post))
+    setBody(editableBody(post))
+    setDraft(draftFiles(post))
+    setSelected(0)
+    setEditing(true)
+  }
+
+  function cancelEdit() {
+    if (saving) return
+    for (const url of createdUrls.current) URL.revokeObjectURL(url)
+    createdUrls.current = []
+    setEditing(false)
+  }
+
+  function rememberFile(file: File): NewsDraftFile | null {
+    const allowed = new Set(EDITABLE_MEDIA.split(','))
+    if (!allowed.has(file.type)) return null
+    const url = URL.createObjectURL(file)
+    createdUrls.current.push(url)
+    return {
+      key: `new-${createdUrls.current.length}`,
+      kind: file.type.startsWith('video/') ? 'video' : 'image',
+      url,
+      file,
+    }
+  }
+
+  function addFiles(list: FileList | null) {
+    if (!list) return
+    const next: NewsDraftFile[] = []
+    for (const file of list) {
+      if (draft.length + next.length >= 10) break
+      const item = rememberFile(file)
+      if (item) next.push(item)
+    }
+    if (next.length === 0) return
+    setSelected(draft.length)
+    setDraft((current) => [...current, ...next])
+  }
+
+  function replaceSelected(list: FileList | null) {
+    const file = list?.[0]
+    const index = Math.min(selected, Math.max(0, draft.length - 1))
+    const current = draft[index]
+    if (!file || !current) return
+    const item = rememberFile(file)
+    if (!item) return
+    if (current.file) {
+      URL.revokeObjectURL(current.url)
+      createdUrls.current = createdUrls.current.filter((url) => url !== current.url)
+    }
+    setDraft((files) => files.map((entry, entryIndex) => entryIndex === index ? item : entry))
+  }
+
+  function removeFile(key: string) {
+    const index = draft.findIndex((file) => file.key === key)
+    if (index < 0) return
+    const item = draft[index]
+    if (item?.file) {
+      URL.revokeObjectURL(item.url)
+      createdUrls.current = createdUrls.current.filter((url) => url !== item.url)
+    }
+    const next = draft.filter((file) => file.key !== key)
+    setDraft(next)
+    setSelected((current) => index < current ? current - 1 : Math.min(current, Math.max(0, next.length - 1)))
+  }
+
+  async function save() {
+    if (saving) return
+    const form = new FormData()
+    form.set('title', title)
+    form.set('body', body)
+    form.set('keep', JSON.stringify(draft.flatMap((item) => item.keepIndex === undefined ? [] : [item.keepIndex])))
+    form.set('order', JSON.stringify(draft.map((item) => item.keepIndex === undefined ? 'file' : 'keep')))
+    for (const item of draft) {
+      if (item.file) form.append('file', item.file)
+    }
+    setSaving(true)
+    try {
+      const next = await updateNewsPost(transport, post.id, form)
+      for (const item of draft) {
+        if (!item.file) continue
+        URL.revokeObjectURL(item.url)
+        createdUrls.current = createdUrls.current.filter((url) => url !== item.url)
+      }
+      setEditing(false)
+      onSaved(next)
+    } catch {
+      toast.error('Не удалось сохранить пост')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const canSave = title.trim().length > 0 || body.trim().length > 0 || draft.length > 0
+  const selectedIndex = Math.min(selected, Math.max(0, draft.length - 1))
+  const selectedFile = draft[selectedIndex]
+  const previewSlides = selectedFile
+    ? [{ kind: selectedFile.kind, url: selectedFile.url, ...(selectedFile.poster ? { poster: selectedFile.poster } : {}) }]
+    : []
+  const showHero = editing || slides.length > 0
   return (
     <>
-      {heroVideo || heroImage ? (
+      {showHero ? (
         <div className={newsHeroClass}>
           <div className={newsHeroFrameClass}>
-            {heroVideo ? (
-              <video
-                className="size-full object-contain"
-                controls
-                playsInline
-                poster={images[0]?.url}
-                preload="metadata"
-                src={heroVideo.url}
-              />
-            ) : (
-              <img alt="" className="size-full object-cover" src={heroImage?.url} />
+            {editing && previewSlides.length === 0 ? null : (
+              <NewsSlides key={editing ? selectedFile?.key : post.id} size="hero" slides={editing ? previewSlides : slides} />
             )}
+            <NewsPostClose editing={editing} saving={saving} canSave={canSave} onCancel={cancelEdit} onEdit={startEdit} onSave={() => void save()} className="top-2 right-2" />
+            {editing && selectedFile ? (
+              <label className="absolute top-2 left-2 z-[5] inline-flex size-[30px] cursor-pointer items-center justify-center rounded-full bg-black/55 text-white">
+                <ImagePlusIcon aria-hidden className="size-4" strokeWidth={1.75} />
+                <span className="sr-only">Заменить файл</span>
+                <input
+                  accept={EDITABLE_MEDIA}
+                  className="sr-only"
+                  type="file"
+                  onChange={(event) => {
+                    replaceSelected(event.target.files)
+                    event.target.value = ''
+                  }}
+                />
+              </label>
+            ) : null}
+            {editing ? (
+              <div className="absolute inset-x-2 bottom-2 z-[5] flex items-center gap-2">
+                {draft.length > 0 ? (
+                  <div className="flex min-w-0 gap-1.5 overflow-x-auto rounded-[16px] bg-black/80 p-1.5">
+                    {draft.map((item, index) => (
+                      <div key={item.key} className="relative size-14 shrink-0 overflow-hidden rounded-[10px] bg-black">
+                        <button
+                          aria-label={`Показать файл ${index + 1}`}
+                          aria-pressed={index === selectedIndex}
+                          className="size-full"
+                          type="button"
+                          onClick={() => setSelected(index)}
+                        >
+                          {item.kind === 'video' ? (
+                            <video className={cn('size-full object-cover', index !== selectedIndex && 'grayscale')} muted playsInline poster={item.poster} src={item.url} />
+                          ) : (
+                            <img alt="" className={cn('size-full object-cover', index !== selectedIndex && 'grayscale')} src={item.url} />
+                          )}
+                        </button>
+                        <button
+                          aria-label="Удалить файл"
+                          className="absolute top-1 right-1 inline-flex size-5 items-center justify-center rounded-full bg-black/70 text-white"
+                          type="button"
+                          onClick={() => removeFile(item.key)}
+                        >
+                          <XIcon aria-hidden className="size-3" strokeWidth={1.75} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                {draft.length < 10 ? (
+                  <label className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-black/55 text-white">
+                    <PlusIcon aria-hidden className="size-4" strokeWidth={1.75} />
+                    <span className="sr-only">Добавить фото или видео</span>
+                    <input
+                      accept={EDITABLE_MEDIA}
+                      className="sr-only"
+                      multiple
+                      type="file"
+                      onChange={(event) => {
+                        addFiles(event.target.files)
+                        event.target.value = ''
+                      }}
+                    />
+                  </label>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
-      ) : null}
+      ) : (
+        <NewsPostClose editing={editing} saving={saving} canSave={canSave} onCancel={cancelEdit} onEdit={startEdit} onSave={() => void save()} className="top-3 right-3" />
+      )}
       <DialogHeader className="gap-1 px-3 pt-3 sm:px-4 sm:pt-3.5">
-        <DialogTitle className={newsDialogTitleClass}>{postTitle(post)}</DialogTitle>
+        {editing ? (
+          <>
+            <DialogTitle className="sr-only">Редактирование поста</DialogTitle>
+            <input
+              aria-label="Заголовок"
+              spellCheck={false}
+              className={cn(newsEditFieldClass, newsEditTypeClass, 'h-auto appearance-none py-[8.4px]')}
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </>
+        ) : (
+          <DialogTitle className={newsDialogTitleClass}>{postTitle(post)}</DialogTitle>
+        )}
         <DialogDescription className={newsDialogMetaClass}>
           @{post.channelHandle} · {formatPostTime(post.postedAt)}
         </DialogDescription>
       </DialogHeader>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 pt-3 pb-4 sm:px-4">
-        {extraVideos.map((item) => (
-          <video
-            key={item.url}
-            className="max-h-[360px] w-full rounded-[12px] bg-black sm:rounded-[14px]"
-            controls
-            playsInline
-            preload="metadata"
-            src={item.url}
-          />
-        ))}
-        {extraImages.map((item) => (
-          <img key={item.url} alt="" className="w-full rounded-[12px] sm:rounded-[14px]" src={item.url} />
-        ))}
-        {postBody(post) ? (
+        {editing ? (
+          <div className={cn(newsEditFieldClass, 'p-0 pr-3 pb-3 focus-within:shadow-[var(--nora-shadow-focus)]')}>
+            <textarea
+              ref={bodyField}
+              aria-label="Текст поста"
+              spellCheck={false}
+              className={cn(newsEditTypeClass, 'block min-h-5 w-full resize-y overflow-hidden border-0 bg-transparent px-3 pt-3 pb-[15px] whitespace-pre-wrap outline-none')}
+              rows={1}
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+            />
+          </div>
+        ) : postBody(post) ? (
           <p className="whitespace-pre-wrap font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 text-[var(--nora-text-secondary)]">
             {postBody(post)}
           </p>
         ) : null}
       </div>
-      <div className="shrink-0 px-3 sm:px-4">
-        <div aria-hidden className={newsFooterDividerClass} />
-        <div className="flex justify-end py-2">
-          <NewsPostActions saved={saved} onShare={onShare} onToggleSave={onToggleSave} />
-        </div>
-      </div>
     </>
   )
+}
+
+const newsCornerIconButtonClass =
+  'inline-flex size-[30px] cursor-pointer items-center justify-center rounded-full border-0 bg-[var(--nora-surface)] text-[var(--nora-text-tertiary)] outline-none hover:text-[var(--nora-text)] disabled:opacity-50'
+
+function NewsPostClose({
+  editing,
+  saving,
+  canSave,
+  onCancel,
+  onEdit,
+  onSave,
+  className,
+}: {
+  editing: boolean
+  saving: boolean
+  canSave: boolean
+  onCancel: () => void
+  onEdit: () => void
+  onSave: () => void
+  className: string
+}) {
+  return (
+    <div className={cn('absolute z-[6] flex items-center gap-2', className)}>
+      {editing ? (
+        <button
+          aria-label="Сохранить"
+          className={newsCornerIconButtonClass}
+          disabled={saving || !canSave}
+          type="button"
+          onClick={onSave}
+        >
+          <SaveIcon aria-hidden className="size-4" strokeWidth={1.75} />
+        </button>
+      ) : (
+        <button aria-label="Изменить" className={newsCornerIconButtonClass} type="button" onClick={onEdit}>
+          <PencilIcon aria-hidden className="size-4" strokeWidth={1.75} />
+        </button>
+      )}
+      {editing ? (
+        <button aria-label="Отмена" className={newsCornerIconButtonClass} disabled={saving} type="button" onClick={onCancel}>
+          <XIcon aria-hidden className="size-4" strokeWidth={1.75} />
+        </button>
+      ) : (
+        <DialogClose className={newsCornerIconButtonClass}>
+          <XIcon aria-hidden className="size-4" strokeWidth={1.75} />
+          <span className="sr-only">Закрыть</span>
+        </DialogClose>
+      )}
+    </div>
+  )
+}
+
+function editableTitle(post: NewsPost) {
+  return post.text.split('\n').map((item) => item.trim()).find(Boolean) ?? ''
+}
+
+function editableBody(post: NewsPost) {
+  const lines = post.text.split('\n').map((item) => item.trim()).filter(Boolean)
+  if (lines.length <= 1) return ''
+  return lines.slice(1).join('\n\n')
 }
 
 function postTitle(post: NewsPost) {

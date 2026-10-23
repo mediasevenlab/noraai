@@ -204,6 +204,38 @@ export class AuthApi {
     return this.performAuthenticatedRequest(path, schema, options)
   }
 
+  async rawAuthenticated(path: string, options: HttpRequestOptions = {}, accessTokenOverride?: string): Promise<Response> {
+    const requestEpoch = this.sessionEpoch
+    const accessToken = accessTokenOverride ?? this.options.getAccessToken()
+    const headers = new Headers(options.headers)
+    if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
+    try {
+      const response = await this.http.raw(path, { ...options, headers })
+      if (!this.isSessionEpochCurrent(requestEpoch)) {
+        throw new BrowserSessionEpochChangedError('Browser auth session changed')
+      }
+      return response
+    } catch (error) {
+      if (!(error instanceof ApiRequestError) || error.status !== 401 || accessTokenOverride) throw error
+      if (!this.isSessionEpochCurrent(requestEpoch)) throw error
+      let refreshed: CookieRefreshResponse
+      try {
+        refreshed = await this.refresh(requestEpoch)
+      } catch (refreshError) {
+        if (refreshError instanceof BrowserSessionEpochChangedError) throw error
+        throw refreshError
+      }
+      if (!this.isSessionEpochCurrent(requestEpoch)) throw error
+      if (!accessToken || !hasSamePrincipal(accessToken, refreshed.accessToken)) {
+        this.options.setAccessToken(null)
+        await this.options.onAuthExpired?.()
+        throw error
+      }
+      this.options.setAccessToken(refreshed.accessToken)
+      return this.rawAuthenticated(path, options, refreshed.accessToken)
+    }
+  }
+
   private async performAuthenticatedRequest<TSchema extends z.ZodType>(
     path: string,
     schema: TSchema,

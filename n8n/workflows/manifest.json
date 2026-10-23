@@ -70,5 +70,14 @@
     "nodes": 6,
     "telegram_tokens_redacted": 0,
     "gemini_keys_redacted": 0
+  },
+  {
+    "name": "Новости: архивный канал",
+    "id": "NewsArchiveSync001",
+    "active": true,
+    "file": "news-archive-sync.json",
+    "nodes": 14,
+    "telegram_tokens_redacted": 0,
+    "gemini_keys_redacted": 0
   }
 ]

@@ -1,10 +1,8 @@
 export {
   homePathForRole,
-  isMentorFeedPath,
   isMentorPlanPath,
   isUserPlanPath,
   userGeneralSearch,
-  userFeedSearch,
   userSplitNutritionGeneralPath,
   navigationItemMatchingPath,
   navigationItemsForRole,

@@ -5,7 +5,6 @@ import type { AuthHttpEnv } from '../auth'
 import { createQuestionnaireProjectUser } from './application/questionnaire-project-user'
 import { UsersService } from './application/users-service'
 import type { MealMediaCleanup } from './application/ports'
-import type { PaidSubscription } from '../payments'
 import { createPrismaUsersRepository } from './infrastructure/users-repository'
 import { createTelegramLinkStore } from './infrastructure/telegram-link-store'
 import { createUsersRoutes } from './transport/routes'
@@ -15,7 +14,6 @@ type CreateUsersModuleOptions = {
   notifyBotUsername?: string
   db: DbClient
   mealMediaCleanup?: MealMediaCleanup
-  listPaidSubscriptions?: () => Promise<PaidSubscription[]>
   requireAdmin: MiddlewareHandler<AuthHttpEnv>
   requireAuth: MiddlewareHandler<AuthHttpEnv>
   requireMentor: MiddlewareHandler<AuthHttpEnv>
@@ -33,7 +31,6 @@ export function createUsersModule(options: CreateUsersModuleOptions) {
     clock: { now: () => new Date() },
     currentUserMentorReader: repository,
     mealMediaCleanup: options.mealMediaCleanup,
-    listPaidSubscriptions: options.listPaidSubscriptions,
     mentorPlansStore: repository,
     rationCleanup: repository,
     mentorUsersManager: repository,

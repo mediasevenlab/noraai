@@ -12,7 +12,6 @@
 @import "./styles/planned-cover-blur.css";
 @import "./styles/composer-press.css";
 @import "./styles/icon-pack.css";
-@import "./styles/subscription-freeze.css";
 
 /* Production nginx serves /fonts/ from the landing build, so these files also live in website/public/fonts. */
 @font-face {

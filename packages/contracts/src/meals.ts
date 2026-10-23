@@ -679,24 +679,42 @@ export const noraModelChatMessageSchema = z
       )
       .max(8)
       .optional(),
+    files: z
+      .array(
+        z
+          .object({
+            name: z.string().trim().min(1).max(180),
+            base64: z.string().trim().min(1).max(28_000_000),
+          })
+          .strict(),
+      )
+      .max(1)
+      .optional(),
   })
   .strict()
 export const noraModelChatRequestSchema = z
   .object({
     messages: z.array(noraModelChatMessageSchema).min(1).max(30),
     search: z.boolean().optional(),
+    knowledgeBaseIds: z.array(z.string().uuid()).max(8).optional(),
+    stream: z.boolean().optional(),
+    think: z.boolean().optional(),
   })
   .strict()
   .refine((value) => {
     const last = value.messages.at(-1)
     return Boolean(
-      last?.role === 'user' && (last.text.trim() || last.images?.some((image) => image.base64)),
+      last?.role === 'user' &&
+        (last.text.trim() ||
+          last.images?.some((image) => image.base64) ||
+          last.files?.some((file) => file.base64)),
     )
-  }, 'Напишите сообщение или прикрепите фото')
+  }, 'Напишите сообщение, прикрепите фото или файл')
 export const noraModelChatResponseSchema = z
   .object({
     reply: z.string().min(1),
     model: z.string().min(1),
+    reasoning: z.string().max(20_000).optional(),
   })
   .strict()
 export type NoraModelChatMessage = z.infer<typeof noraModelChatMessageSchema>

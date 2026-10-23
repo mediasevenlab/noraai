@@ -1,32 +1,19 @@
 import { useForm } from '@tanstack/react-form'
 import { Link } from '@tanstack/react-router'
 import {
-  CircleCheckIcon,
-  CircleXIcon,
-  GraduationCapIcon,
-  InfoIcon,
-  Loader2Icon,
-} from '@/components/icons'
-import {
   registerRequestSchema,
-  registrationMentorIdentifierSchema,
   type RegisterRequest,
   type RegistrationRole,
-  type ReferralLookupResponse,
 } from '@web-app-demo/contracts'
 import { useEffect, useId, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldGroup } from '@/components/ui/field'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { ApiRequestError } from '@/platform/api'
-import { cn } from '@/lib/utils'
 import { useAuth } from '../use-auth'
 import { AuthFloatingInput } from './AuthFloatingInput'
 import { AuthPasswordToggleButton } from './AuthPasswordToggleButton'
 import {
-  authFieldAdornmentClassName,
-  authFieldIconClassName,
   authFormClassName,
   authSubmitClassName,
   authTitleClassName,
@@ -39,11 +26,6 @@ import {
   hasErrors,
   toRussianAuthFieldErrors,
 } from './form-validation'
-
-const registrationRoleOptions = [
-  { value: 'user', label: 'Пользователь' },
-  { value: 'mentor', label: 'Наставник' },
-] as const
 
 export function RegisterForm({
   referralCode,
@@ -64,25 +46,17 @@ export function RegisterForm({
   const passwordErrorId = useId()
   const confirmPasswordId = useId()
   const confirmPasswordErrorId = useId()
-  const mentorIdentifierId = useId()
-  const roleFieldId = useId()
-  const [selectedRole, setSelectedRole] = useState<RegistrationRole>('user')
-  const [mentorLookupState, setMentorLookupState] = useState<
-    'idle' | 'checking' | 'found' | 'not_found' | 'error'
-  >('idle')
-  const [mentorIdentifier, setMentorIdentifier] = useState('')
   const [referralState, setReferralState] = useState<
     'idle' | 'checking' | 'found' | 'not_found'
   >(referralCode ? 'checking' : 'idle')
-  const [referrer, setReferrer] = useState<ReferralLookupResponse['referrer']>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [passwordVisible, setPasswordVisible] = useState(false)
   const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false)
 
   useEffect(() => {
-    onRoleChange?.(selectedRole)
-  }, [onRoleChange, selectedRole])
+    onRoleChange?.('user')
+  }, [onRoleChange])
 
   useEffect(() => {
     if (!referralCode) return
@@ -91,7 +65,6 @@ export function RegisterForm({
     void auth.lookupReferrer(referralCode)
       .then((result) => {
         if (!active) return
-        setReferrer(result.referrer)
         setReferralState(result.found ? 'found' : 'not_found')
       })
       .catch(() => {
@@ -101,43 +74,6 @@ export function RegisterForm({
       active = false
     }
   }, [auth, referralCode])
-
-  useEffect(() => {
-    if (selectedRole !== 'user' || !referralCode) return
-    if (referrer?.role === 'mentor' || referralState === 'not_found') {
-      setMentorIdentifier(referralCode)
-    }
-  }, [referralCode, referralState, referrer?.role, selectedRole])
-
-  useEffect(() => {
-    const identifier = mentorIdentifier.trim()
-    if (selectedRole !== 'user' || identifier === '') {
-      setMentorLookupState('idle')
-      return
-    }
-    if (!registrationMentorIdentifierSchema.safeParse(identifier).success) {
-      setMentorLookupState('not_found')
-      return
-    }
-
-    let active = true
-    setMentorLookupState('checking')
-    const timer = window.setTimeout(() => {
-      void auth
-        .lookupRegistrationMentor(identifier)
-        .then((result) => {
-          if (active) setMentorLookupState(result.found ? 'found' : 'not_found')
-        })
-        .catch(() => {
-          if (active) setMentorLookupState('error')
-        })
-    }, 400)
-
-    return () => {
-      active = false
-      window.clearTimeout(timer)
-    }
-  }, [auth, mentorIdentifier, selectedRole])
 
   const form = useForm({
     defaultValues: {
@@ -153,26 +89,12 @@ export function RegisterForm({
         displayName: value.displayName,
         email: value.email,
         password: value.password,
-        role: value.role,
-        mentorIdentifier: value.role === 'user' && mentorIdentifier.trim()
-          ? mentorIdentifier
-          : undefined,
-        referralCode:
-          value.role === 'user' && referralState === 'found'
-            ? referralCode
-            : undefined,
+        role: 'user',
+        referralCode: referralState === 'found' ? referralCode : undefined,
       })
       const nextErrors = result.success ? {} : toRussianAuthFieldErrors(result.error.issues)
       if (value.password !== value.confirmPassword) {
         nextErrors.confirmPassword = [{ message: 'Пароли не совпадают.' }]
-      }
-      if (
-        value.role === 'user'
-        && mentorIdentifier.trim()
-        && mentorLookupState !== 'found'
-      ) {
-        setFormError('Сначала укажите существующего наставника или оставьте поле пустым.')
-        return
       }
       if (!result.success || hasErrors(nextErrors.confirmPassword)) {
         setFieldErrors(nextErrors)
@@ -213,160 +135,6 @@ export function RegisterForm({
             Заполните форму, чтобы зарегистрироваться
           </p>
         </div>
-
-        <div className="flex flex-col gap-5">
-          <form.Field
-            name="role"
-            children={(field) => (
-              <Field className="gap-2">
-                <RadioGroup
-                  aria-label="Тип аккаунта"
-                  className="grid grid-cols-2 gap-2"
-                  onValueChange={(value) => {
-                    if (value === 'user' || value === 'mentor') {
-                      field.handleChange(value)
-                      setSelectedRole(value)
-                      setFormError(null)
-                    }
-                  }}
-                  value={field.state.value}
-                >
-                  {registrationRoleOptions.map((option) => {
-                    const id = `${roleFieldId}-${option.value}`
-                    return (
-                      <label
-                        className={cn(
-                          'relative box-border flex h-10 min-[768px]:h-[37px] cursor-pointer items-center justify-start gap-2 rounded-[var(--nora-radius-md)] bg-[var(--auth-field-bg,var(--nora-panel))] px-3 shadow-[inset_0_0_0_1px_var(--settings-well-stroke,var(--nora-border))]',
-                          'font-[family-name:var(--nora-font)] text-[13px] font-normal leading-5 text-[var(--nora-text)]',
-                          'outline-none transition-[box-shadow,background-color] duration-[var(--nora-duration,0.15s)]',
-                          'has-focus-visible:shadow-[inset_0_0_0_1px_var(--nora-tint)]',
-                          'has-data-checked:bg-[var(--nora-tint-dimmed)] has-data-checked:text-[var(--nora-tint)] has-data-checked:shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--nora-tint)_35%,transparent)]',
-                        )}
-                        htmlFor={id}
-                        key={option.value}
-                      >
-                        <RadioGroupItem
-                          className="size-4 shrink-0 [&_[data-slot=radio-group-indicator]>span]:size-2"
-                          id={id}
-                          value={option.value}
-                        />
-                        <span className="min-w-0 truncate text-left">{option.label}</span>
-                      </label>
-                    )
-                  })}
-                </RadioGroup>
-                <FieldDescription>Тип аккаунта</FieldDescription>
-              </Field>
-            )}
-          />
-
-          {selectedRole === 'user' && referralState === 'checking' && (
-            <p className="text-[11px] leading-relaxed font-normal text-[var(--nora-text-tertiary)] dark:text-[var(--nora-text-secondary)]">
-              Проверяем реферальную ссылку…
-            </p>
-          )}
-          {selectedRole === 'user'
-            && referralState === 'found'
-            && referrer?.role === 'user' && (
-            <div
-              className="flex items-start gap-2.5 rounded-[var(--nora-radius-md)] bg-[var(--nora-panel)] px-3 py-2.5 shadow-[inset_0_0_0_1px_var(--settings-well-stroke,var(--nora-border))]"
-              role="status"
-            >
-              <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--nora-text)] text-[var(--nora-on-accent)] dark:bg-[#333333]">
-                <InfoIcon aria-hidden className="size-3.5" strokeWidth={2} />
-              </span>
-              <div className="min-w-0">
-                <p className="font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
-                  Вас пригласил пользователь
-                </p>
-                <p className="truncate font-[family-name:var(--nora-font)] text-[13px] font-light leading-5 text-[var(--nora-text-secondary)] dark:font-normal">
-                  {referrer.displayName ?? referrer.nickname ?? `ID ${referrer.publicId}`}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {selectedRole === 'user' && (
-          <Field className="gap-2" data-invalid={mentorLookupState === 'not_found' || mentorLookupState === 'error'}>
-            <AuthFloatingInput
-              aria-invalid={mentorLookupState === 'not_found' || mentorLookupState === 'error'}
-              autoComplete="off"
-              endAdornment={
-                <span
-                  aria-hidden={mentorLookupState === 'idle'}
-                  aria-label={
-                    mentorLookupState === 'found'
-                      ? 'Наставник найден'
-                      : mentorLookupState === 'not_found' && mentorIdentifier.trim()
-                        ? 'Наставник не найден'
-                        : mentorLookupState === 'error' && mentorIdentifier.trim()
-                          ? 'Не удалось проверить наставника'
-                          : mentorLookupState === 'checking'
-                            ? 'Проверяем наставника'
-                            : undefined
-                  }
-                  className={cn(
-                    authFieldAdornmentClassName,
-                    'pointer-events-none',
-                    mentorLookupState === 'found' && 'text-[var(--nora-success)]',
-                    mentorLookupState === 'not_found'
-                      && mentorIdentifier.trim()
-                      && 'text-[var(--nora-error)]',
-                    mentorLookupState === 'error'
-                      && mentorIdentifier.trim()
-                      && 'text-[var(--nora-error)]',
-                    mentorLookupState === 'checking' && 'text-[var(--nora-text-secondary)]',
-                  )}
-                >
-                  {mentorLookupState === 'found' ? (
-                    <CircleCheckIcon aria-hidden className={authFieldIconClassName} strokeWidth={1.75} />
-                  ) : (mentorLookupState === 'not_found' || mentorLookupState === 'error') && mentorIdentifier.trim() ? (
-                    <CircleXIcon aria-hidden className={authFieldIconClassName} strokeWidth={1.75} />
-                  ) : mentorLookupState === 'checking' ? (
-                    <Loader2Icon aria-hidden className={cn(authFieldIconClassName, 'animate-spin')} strokeWidth={1.75} />
-                  ) : (
-                    <GraduationCapIcon aria-hidden className={authFieldIconClassName} strokeWidth={1.75} />
-                  )}
-                </span>
-              }
-              hint="Необязательно"
-              id={mentorIdentifierId}
-              label="Никнейм или ID наставника"
-              onChange={(event) => {
-                setMentorIdentifier(event.target.value)
-                setFormError(null)
-              }}
-              tone={
-                mentorLookupState === 'found'
-                  ? 'success'
-                  : mentorLookupState === 'not_found' && mentorIdentifier.trim()
-                    ? 'error'
-                    : mentorLookupState === 'error' && mentorIdentifier.trim()
-                      ? 'error'
-                      : 'default'
-              }
-              value={mentorIdentifier}
-            />
-            {mentorLookupState === 'checking' && (
-              <FieldDescription>Проверяем наставника…</FieldDescription>
-            )}
-            {mentorLookupState === 'idle' && (
-              <FieldDescription>Можно выбрать позже</FieldDescription>
-            )}
-            {mentorLookupState === 'found' && (
-              <FieldDescription className="text-[var(--nora-success)]">
-                Наставник найден
-              </FieldDescription>
-            )}
-            {mentorLookupState === 'not_found' && mentorIdentifier.trim() && (
-              <FieldError>Такого пользователя не найдено.</FieldError>
-            )}
-            {mentorLookupState === 'error' && mentorIdentifier.trim() && (
-              <FieldError>Не удалось проверить наставника. Попробуйте ещё раз.</FieldError>
-            )}
-          </Field>
-        )}
 
         <form.Field
           name="displayName"

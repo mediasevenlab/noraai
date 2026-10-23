@@ -10,9 +10,9 @@ import type { AppEnv } from './env'
 import { errorResponse, handleError, validationErrorHook } from './http/errors'
 import { createAuthSecurity, createInternalRateLimit } from './http/security'
 import { createAuthModule, type AuthHttpEnv } from './modules/auth'
+import { createKnowledgeModule } from './modules/knowledge'
 import { createMealsModule } from './modules/meals'
 import { createNewsModule } from './modules/news'
-import { createPaymentsModule } from './modules/payments'
 import { createQuestionnaireProjectUser, createTelegramLinkStore, createUsersModule } from './modules/users'
 
 type CreateAppOptions = {
@@ -21,7 +21,6 @@ type CreateAppOptions = {
   env: AppEnv
   prisma: DbClient
   startMealsPoller?: boolean
-  startPaymentRenewal?: boolean
 }
 
 export function createApp({
@@ -30,7 +29,6 @@ export function createApp({
   env,
   prisma,
   startMealsPoller = false,
-  startPaymentRenewal = false,
 }: CreateAppOptions) {
   // Photos travel as Base64. Chat and a meal with several shots need more than the 64 KB account limit.
   const mealRequestBodyLimitBytes = 32 * 1024 * 1024
@@ -42,6 +40,11 @@ export function createApp({
     projectUser: createQuestionnaireProjectUser(prisma),
   })
   const telegramLinks = createTelegramLinkStore(prisma)
+  const knowledge = createKnowledgeModule({
+    db: prisma,
+    env,
+    requireAuth: auth.requireAuth,
+  })
   const meals = createMealsModule({
     backgroundTasks,
     completeTelegramLink: (code, proof, extras) => telegramLinks.complete(code, proof, extras),
@@ -49,12 +52,9 @@ export function createApp({
     env,
     requireAuth: auth.requireAuth,
     requireMentor: auth.requireMentor,
+    loadKnowledge: knowledge.loadContext,
+    readDocument: (name, bytes) => knowledge.readDocument(name, bytes),
     startPoller: startMealsPoller,
-  })
-  const payments = createPaymentsModule({
-    env,
-    requireAuth: auth.requireAuth,
-    startRenewal: startPaymentRenewal,
   })
   const news = createNewsModule({
     db: prisma,
@@ -69,7 +69,6 @@ export function createApp({
     requireAdmin: auth.requireAdmin,
     requireAuth: auth.requireAuth,
     requireMentor: auth.requireMentor,
-    listPaidSubscriptions: payments.listPaidSubscriptions,
     telegramLinks,
   })
   const app = new OpenAPIHono<AuthHttpEnv>({
@@ -118,7 +117,6 @@ export function createApp({
     app.use('/api/plans/*', middleware)
     app.use('/api/admin/*', middleware)
     app.use('/api/mentor/*', middleware)
-    app.use('/api/payments/*', middleware)
     app.use('/api/news/*', middleware)
   }
   app.get('/', (c) => {
@@ -152,11 +150,9 @@ export function createApp({
   app.route('/api/auth', auth.routes)
   app.route('/api/users', users.userRoutes)
   app.route('/api/users', meals.userMealsRoutes)
-  app.route('/api/plans', users.planRoutes)
+  app.route('/api/users', knowledge.routes)
   app.route('/api/admin', users.adminRoutes)
   app.route('/api/mentor', users.mentorRoutes)
-  app.route('/api/mentor', meals.mentorMealsRoutes)
-  app.route('/api/payments', payments.routes)
   app.route('/api/news', news.routes)
   app.use(
     '/api/internal/*',
@@ -175,8 +171,7 @@ export function createApp({
       trustedProxyClientIpPosition: env.TRUSTED_PROXY_CLIENT_IP_POSITION,
     }),
   )
-  app.route('/api/internal', meals.internalRoutes)
-  app.route('/api/meals', meals.mealImageRoutes)
+  app.route('/api/internal', news.internalRoutes)
 
   app.doc('/openapi.json', {
     openapi: '3.0.0',
@@ -191,7 +186,6 @@ export function createApp({
 
   return Object.assign(app, {
     dispose: async () => {
-      payments.dispose()
       await meals.dispose()
     },
   })

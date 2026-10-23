@@ -294,7 +294,7 @@ describe('AppMealComposer', () => {
     composer.dispose()
   })
 
-  test('asks Gemini to skip reasoning when the user turned it off', async () => {
+  test('does not pass a reasoning flag when a photo is analyzed', async () => {
     let thinking: boolean | undefined = true
     const composer = new AppMealComposer({
       analyze: async (input) => {
@@ -317,15 +317,13 @@ describe('AppMealComposer', () => {
           },
         }
       },
-      engineFor: async () => 'gemini',
-      thinkingFor: async () => false,
       persist: async () => ({ meal: mealDto(), created: true }),
     })
     const userId = '22222222-2222-4222-8222-222222222222'
     await composer.applyTurn(userId, { action: 'open' })
     await composer.applyTurn(userId, { action: 'photo', imageBase64: 'a', imageMime: 'image/jpeg' })
     await composer.applyTurn(userId, { action: 'flush' })
-    expect(thinking).toBe(false)
+    expect(thinking).toBeUndefined()
     composer.dispose()
   })
 

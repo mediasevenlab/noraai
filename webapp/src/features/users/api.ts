@@ -5,13 +5,7 @@ import {
   forgetRationParamsSchema,
   mentorUserMutationResponseSchema,
   putQuestionnaireRequestSchema,
-  payoutAccrualResponseSchema,
-  generationPricingResponseSchema,
-  mealEngineResponseSchema,
-  updateMealEngineRequestSchema,
-  type MealEngine,
   questionnaireResponseSchema,
-  resetGenerationSpendResponseSchema,
   telegramLinkRequestSchema,
   telegramLinkResponseSchema,
   updateProfileRequestSchema,
@@ -76,10 +70,6 @@ export function getUserReferrals(
   return transport.request(`/api/users/me/referrals?${search}`, userReferralsResponseSchema)
 }
 
-export function getPayoutAccrual(transport: AuthenticatedTransport) {
-  return transport.request('/api/users/me/payout-accrual', payoutAccrualResponseSchema)
-}
-
 export function getQuestionnaire(transport: AuthenticatedTransport) {
   return transport.request('/api/users/me/questionnaire', questionnaireResponseSchema)
 }
@@ -112,37 +102,11 @@ export function startTelegramLink(
   )
 }
 
-export function getMealEngine(transport: AuthenticatedTransport) {
-  return transport.request('/api/users/me/meal-engine', mealEngineResponseSchema)
-}
-
-export function putMealEngine(
-  transport: AuthenticatedTransport,
-  input: { engine: MealEngine; thinking?: boolean },
-) {
-  return transport.request('/api/users/me/meal-engine', mealEngineResponseSchema, {
-    method: 'PUT',
-    body: updateMealEngineRequestSchema.parse(input),
-  })
-}
-
-export function getGenerationPricing(transport: AuthenticatedTransport) {
-  return transport.request('/api/users/me/generation-pricing', generationPricingResponseSchema)
-}
-
 export function forgetMyRation(transport: AuthenticatedTransport, planId: string) {
   const params = forgetRationParamsSchema.parse({ planId })
   return transport.request(
     `/api/users/me/plans/${encodeURIComponent(params.planId)}`,
     deleteMentorPlanResponseSchema,
     { method: 'DELETE' },
-  )
-}
-
-export function resetMyGenerationSpend(transport: AuthenticatedTransport) {
-  return transport.request(
-    '/api/users/me/generation-spend/reset',
-    resetGenerationSpendResponseSchema,
-    { method: 'POST' },
   )
 }

@@ -29,6 +29,7 @@ $files = @(
   "meal-nora-analyze.json",
   "meal-voice-transcribe.json",
   "mentor-meal-notify.json",
+  "news-archive-sync.json",
   "telegram-polling-pcc-inbox.json"
 )
 

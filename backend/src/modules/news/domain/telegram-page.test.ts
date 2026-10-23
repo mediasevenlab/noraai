@@ -35,7 +35,7 @@ test('widget html becomes posts with text, photo, and video', () => {
     telegramPostId: 100539,
     text: 'Hello world\nSecond line',
     media: [
-      { kind: 'image', url: 'https://cdn4.telesco.pe/file/poster.jpg' },
+      { kind: 'image', url: 'https://cdn4.telesco.pe/file/poster.jpg', role: 'poster' },
       { kind: 'video', url: 'https://cdn4.telesco.pe/file/clip.mp4' },
     ],
   })

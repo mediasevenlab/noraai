@@ -211,6 +211,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const transport = useMemo(
     () => ({
       request: api.requestAuthenticated.bind(api),
+      raw: api.rawAuthenticated.bind(api),
     }),
     [api],
   )

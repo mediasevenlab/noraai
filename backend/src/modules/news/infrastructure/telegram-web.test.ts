@@ -18,6 +18,7 @@ test('public pages and media stay on t.me until the foreign proxy is configured'
   expect(usesTelegramWebProxy(direct)).toBe(false)
   const page = channelPageRequest(direct, 'bbcnews', 100)
   expect(page.url).toBe('https://t.me/s/bbcnews?before=100')
+  expect(channelPageRequest(direct, 'bbcnews', undefined, 42).url).toBe('https://t.me/s/bbcnews/42')
   expect(page.headers.Authorization).toBeUndefined()
   const media = mediaRequest(direct, 'https://cdn4.telesco.pe/file/clip.mp4', 'bytes=0-1')
   expect(media.url).toBe('https://cdn4.telesco.pe/file/clip.mp4')

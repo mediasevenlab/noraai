@@ -3,26 +3,22 @@ import type { UserRole } from '@web-app-demo/contracts'
 export type UserRoutePath =
   | '/app'
   | '/app/diary'
-  | '/app/feed'
   | '/app/plan'
   | '/app/general'
-  | '/app/news'
   | '/app/plan/current'
   | '/app/onboarding'
   | '/app/profile'
   | '/app/settings'
   | '/app/referrals'
-  | '/app/payments'
-export type AdminRoutePath = '/admin' | '/admin/profile' | '/admin/users' | '/admin/settings'
+  | '/app/dialogs'
+export type AdminRoutePath = '/admin' | '/admin/news' | '/admin/profile' | '/admin/users' | '/admin/settings'
 export type MentorRoutePath =
   | '/mentor'
   | '/mentor/profile'
   | '/mentor/users'
   | '/mentor/settings'
-  | '/mentor/payments'
   | '/mentor/plans'
-  | '/mentor/news'
-  | '/mentor/feed'
+  | '/mentor/dialogs'
 export type WorkspaceRoutePath = UserRoutePath | AdminRoutePath | MentorRoutePath
 
 export type WorkspaceNavigationItem = {
@@ -32,26 +28,26 @@ export type WorkspaceNavigationItem = {
   disabled?: boolean
 }
 
-/** Legacy diary/plan URLs fold into Общее, the only user nutrition surface. */
+/** Retired diary and ration URLs open dialogs. */
 export function userSplitNutritionGeneralPath(pathname: string): string | null {
-  if (pathname === '/app/diary' || pathname === '/app/diary/news') return '/app/general'
-  if (pathname === '/app/plan') return '/app/general?view=plan'
-  if (pathname === '/app/plan/current') return '/app/general?view=plan&planId=current'
-  const detail = pathname.match(/^\/app\/plan\/([^/]+)$/)
-  if (detail?.[1]) {
-    return `/app/general?view=plan&planId=${encodeURIComponent(detail[1])}`
+  if (
+    pathname === '/app/general'
+    || pathname === '/app/diary'
+    || pathname === '/app/diary/news'
+    || pathname === '/app/plan'
+    || pathname === '/app/plan/current'
+    || /^\/app\/plan\/[^/]+$/.test(pathname)
+  ) {
+    return '/app/dialogs'
   }
   return null
 }
 
 /** Destinations rendered by dedicated content nav groups, not the account menu. */
 const CONTENT_AREA_PATHS = new Set<WorkspaceRoutePath>([
-  '/app/feed',
-  '/app/general',
-  '/app/news',
-  '/mentor/plans',
-  '/mentor/news',
-  '/mentor/feed',
+  '/app/dialogs',
+  '/admin/news',
+  '/mentor/dialogs',
 ])
 
 /** Home destinations that still belong in the account menu, not the top primary group. */
@@ -59,27 +55,22 @@ const FOOTER_HOME_PATHS = new Set<WorkspaceRoutePath>(['/admin/users'])
 
 const navigationByRole = {
   user: [
-    { label: 'Мой дневник', to: '/app/general' },
-    { label: 'Новости', to: '/app/news' },
-    { label: 'Лента', to: '/app/feed' },
+    { label: 'Диалоги', to: '/app/dialogs' },
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Рефералы', to: '/app/referrals' },
     { label: 'Настройки', to: '/app/settings' },
-    { label: 'Платежи', to: '/app/payments' },
   ],
   admin: [
+    { label: 'Новости', to: '/admin/news' },
     { label: 'Профиль', to: '/admin/profile' },
     { label: 'Пользователи', to: '/admin/users' },
     { label: 'Настройки', to: '/admin/settings' },
   ],
   mentor: [
-    { label: 'Рационы', to: '/mentor/plans' },
-    { label: 'Новости', to: '/mentor/news' },
-    { label: 'Лента', to: '/mentor/feed' },
+    { label: 'Диалоги', to: '/mentor/dialogs' },
     { label: 'Профиль', to: '/mentor/profile' },
     { label: 'Пользователи', to: '/mentor/users' },
     { label: 'Настройки', to: '/mentor/settings' },
-    { label: 'Платежи', to: '/mentor/payments' },
   ],
 } as const satisfies Record<UserRole, ReadonlyArray<WorkspaceNavigationItem>>
 
@@ -106,14 +97,16 @@ export function secondaryNavigationItemsForRole(role: UserRole) {
   return navigationItemsForRole(role).filter((item) => {
     if (item.to === homePath && !FOOTER_HOME_PATHS.has(item.to)) return false
     if (CONTENT_AREA_PATHS.has(item.to)) return false
+    // Referrals stay in the product, but the account menu hides them for now.
+    if (item.to === '/app/referrals') return false
     return true
   })
 }
 
 export function homePathForRole(role: UserRole): WorkspaceRoutePath {
   if (role === 'admin') return '/admin/users'
-  if (role === 'mentor') return '/mentor/plans'
-  return '/app/general'
+  if (role === 'mentor') return '/mentor/dialogs'
+  return '/app/dialogs'
 }
 
 export function userGeneralSearch(
@@ -128,16 +121,13 @@ export function userGeneralSearch(
   }
 }
 
-export function userFeedSearch(rationId?: string) {
-  return { rationId }
-}
-
-/** Landing path after login/register, restricted to the current role's safe route set. */
+/** Landing path after login/register. User and mentor always open a new dialog. */
 export function postAuthPath(
   role: UserRole,
   returnTo?: string,
   _questionnaireCompleted = true,
 ): string {
+  if (role === 'user' || role === 'mentor') return homePathForRole(role)
   return safeReturnPath(role, returnTo) ?? homePathForRole(role)
 }
 
@@ -147,10 +137,6 @@ export function isUserPlanPath(pathname: string) {
 
 export function isMentorPlanPath(pathname: string) {
   return pathname === '/mentor/plans' || pathname.startsWith('/mentor/plans/')
-}
-
-export function isMentorFeedPath(pathname: string) {
-  return pathname === '/mentor/feed'
 }
 
 export function navigationItemMatchingPath(role: UserRole, pathname: string) {
@@ -166,13 +152,13 @@ export function navigationItemMatchingPath(role: UserRole, pathname: string) {
       || pathname.startsWith('/app/diary/')
     )
   ) {
-    return items.find((item) => item.to === '/app/general')
+    return items.find((item) => item.to === '/app/dialogs')
   }
   if (role === 'mentor' && isRetiredMentorRationsPath(pathname)) {
-    return items.find((item) => item.to === '/mentor/plans')
+    return items.find((item) => item.to === '/mentor/dialogs')
   }
   if (role === 'mentor' && isMentorPlanPath(pathname)) {
-    return items.find((item) => item.to === '/mentor/plans')
+    return items.find((item) => item.to === '/mentor/dialogs')
   }
   if (role === 'mentor' && (pathname === '/mentor/users' || pathname.startsWith('/mentor/users/'))) {
     return items.find((item) => item.to === '/mentor/users')
@@ -192,14 +178,28 @@ export function resolveRoleDestination(
   role: UserRole,
   pathname: string,
 ): WorkspaceRoutePath {
-  if (role === 'mentor' && (pathname === '/mentor' || isRetiredMentorRationsPath(pathname))) {
-    return '/mentor/plans'
+  if (role === 'mentor' && (pathname === '/mentor' || isRetiredMentorRationsPath(pathname) || isMentorPlanPath(pathname))) {
+    return '/mentor/dialogs'
   }
   if (role === 'user' && isRetiredUserRationsPath(pathname)) {
-    return '/app/general'
+    return '/app/dialogs'
   }
-  if (role === 'user' && userSplitNutritionGeneralPath(pathname)) {
-    return '/app/general'
+  if (
+    role === 'user'
+    && (
+      pathname === '/app/feed'
+      || pathname === '/app/news'
+      || pathname === '/app/payments'
+      || userSplitNutritionGeneralPath(pathname)
+    )
+  ) {
+    return '/app/dialogs'
+  }
+  if (
+    role === 'mentor'
+    && (pathname === '/mentor/feed' || pathname === '/mentor/news' || pathname === '/mentor/payments')
+  ) {
+    return '/mentor/dialogs'
   }
   if (role === 'user' && pathname === '/app/saved') {
     return homePathForRole('user')
@@ -220,6 +220,19 @@ export function safeReturnPath(role: UserRole, value: string | undefined): strin
   }
   if (url.origin !== 'https://app.invalid') return null
 
+  if (
+    role === 'user'
+    && (url.pathname === '/app/feed' || url.pathname === '/app/news' || url.pathname === '/app/payments')
+  ) {
+    return '/app/dialogs'
+  }
+  if (
+    role === 'mentor'
+    && (url.pathname === '/mentor/feed' || url.pathname === '/mentor/news' || url.pathname === '/mentor/payments')
+  ) {
+    return '/mentor/dialogs'
+  }
+
   if (role === 'user') {
     const folded = userSplitNutritionGeneralPath(url.pathname)
     if (folded) return folded
@@ -229,11 +242,11 @@ export function safeReturnPath(role: UserRole, value: string | undefined): strin
   if (known && !known.disabled) return `${url.pathname}${url.search}`
 
   if (role === 'user' && isRetiredUserRationsPath(url.pathname)) {
-    return '/app/general?view=plan'
+    return '/app/dialogs'
   }
 
-  if (role === 'mentor' && /^\/mentor\/plans\/[^/]+$/.test(url.pathname)) {
-    return `${url.pathname}${url.search}`
+  if (role === 'mentor' && isMentorPlanPath(url.pathname)) {
+    return '/mentor/dialogs'
   }
 
   if (role === 'user' && url.pathname === '/app/saved') {
@@ -241,7 +254,7 @@ export function safeReturnPath(role: UserRole, value: string | undefined): strin
   }
 
   if (role === 'mentor' && (url.pathname === '/mentor' || isRetiredMentorRationsPath(url.pathname))) {
-    return '/mentor/plans'
+    return '/mentor/dialogs'
   }
 
   // Legacy user home and diary feed still resolve to Общее.

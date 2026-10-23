@@ -7,6 +7,9 @@ const MAX_MEDIA = 8
 export type ParsedTelegramMedia = {
   kind: NewsMediaKind
   url: string
+  fileId?: string
+  /** Still frame of a video. The app can use it as a cover; the archive sends the video itself. */
+  role?: 'poster'
 }
 
 export type ParsedTelegramPost = {
@@ -74,12 +77,13 @@ function messageText(slice: string) {
 
 function messageMedia(slice: string) {
   const images: string[] = []
+  const posters: string[] = []
   const videos: string[] = []
   for (const match of slice.matchAll(/tgme_widget_message_photo_wrap\b[^>]*style="([^"]*)"/gi)) {
     pushUrl(images, cssUrl(match[1] ?? ''))
   }
   for (const match of slice.matchAll(/tgme_widget_message_video_thumb\b[^>]*style="([^"]*)"/gi)) {
-    pushUrl(images, cssUrl(match[1] ?? ''))
+    pushUrl(posters, cssUrl(match[1] ?? ''))
   }
   for (const tag of slice.matchAll(/<video\b[^>]*>/gi)) {
     pushUrl(videos, attr(tag[0], 'src'))
@@ -89,6 +93,7 @@ function messageMedia(slice: string) {
   }
 
   const media: ParsedTelegramMedia[] = [
+    ...posters.filter((url) => !images.includes(url)).map((url) => ({ kind: 'image' as const, url, role: 'poster' as const })),
     ...images.map((url) => ({ kind: 'image' as const, url })),
     ...videos.map((url) => ({ kind: 'video' as const, url })),
   ]

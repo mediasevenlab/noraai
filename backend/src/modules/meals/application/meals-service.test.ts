@@ -1337,13 +1337,11 @@ describe('MealsService', () => {
       },
     }
     async function refineOnce(
-      userThinking: boolean,
       request: { message: string; imageBase64?: string; imageMime?: 'image/jpeg' },
     ) {
       const existing = mealRecord()
       let thinking: boolean | undefined = true
       const service = new MealsService({
-        geminiThinking: async () => userThinking,
         analyzer: {
           analyze: async () => {
             throw new Error('unused')
@@ -1372,13 +1370,10 @@ describe('MealsService', () => {
       return thinking
     }
 
-    expect(await refineOnce(true, { message: 'рис 150 г' })).toBe(false)
+    expect(await refineOnce({ message: 'рис 150 г' })).toBe(false)
     expect(
-      await refineOnce(true, { message: '', imageBase64: 'att', imageMime: 'image/jpeg' }),
+      await refineOnce({ message: '', imageBase64: 'att', imageMime: 'image/jpeg' }),
     ).toBeUndefined()
-    expect(
-      await refineOnce(false, { message: '', imageBase64: 'att', imageMime: 'image/jpeg' }),
-    ).toBe(false)
   })
 
   test('refineMeal with a new photo does not send the old cover', async () => {

@@ -17,6 +17,7 @@ import type { WorkspaceRoutePath } from '@/features/navigation'
 type HomeDestination = '/login' | WorkspaceRoutePath
 
 export function SessionLoadingSection() {
+  useDismissAppBootSplash()
   return (
     <RouteStateCard
       description="Проверяем сессию…"

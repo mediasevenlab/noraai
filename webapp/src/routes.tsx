@@ -97,13 +97,7 @@ const userNewsRoute = createRoute({
 const userFeedRoute = createRoute({
   getParentRoute: () => userWorkspaceRoute,
   path: '/app/feed',
-  validateSearch: (search: Record<string, unknown>) => ({
-    rationId:
-      typeof search.rationId === 'string' && search.rationId.trim()
-        ? search.rationId.trim()
-        : undefined,
-  }),
-  component: lazyRouteComponent(() => import('./pages'), 'UserFeedPage'),
+  component: lazyRouteComponent(() => import('./pages'), 'UserFeedRedirectPage'),
 })
 
 const userRationsRoute = createRoute({
@@ -192,6 +186,12 @@ const userPaymentsRoute = createRoute({
   component: lazyRouteComponent(() => import('./pages'), 'UserPaymentsPage'),
 })
 
+const userDialogsRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/dialogs',
+  component: lazyRouteComponent(() => import('./pages'), 'UserDialogsPage'),
+})
+
 const adminWorkspaceRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'adminWorkspace',
@@ -214,6 +214,12 @@ const adminProfileRoute = createRoute({
   getParentRoute: () => adminWorkspaceRoute,
   path: '/admin/profile',
   component: lazyRouteComponent(() => import('./pages'), 'AdminProfilePage'),
+})
+
+const adminNewsRoute = createRoute({
+  getParentRoute: () => adminWorkspaceRoute,
+  path: '/admin/news',
+  component: lazyRouteComponent(() => import('./pages'), 'AdminNewsPage'),
 })
 
 const adminUsersRoute = createRoute({
@@ -297,11 +303,8 @@ const mentorUsersRoute = createRoute({
 const mentorMenteeRoute = createRoute({
   getParentRoute: () => mentorWorkspaceRoute,
   path: '/mentor/users/$userId',
-  validateSearch: (search: Record<string, unknown>) => ({
-    view:
-      search.view === 'questionnaire' || search.view === 'rations'
-        ? search.view
-        : ('diary' as const),
+  validateSearch: (_search: Record<string, unknown>) => ({
+    view: 'profile' as const,
   }),
   component: lazyRouteComponent(() => import('./pages'), 'MentorMenteePage'),
 })
@@ -342,16 +345,16 @@ const mentorNewsRoute = createRoute({
   component: lazyRouteComponent(() => import('./pages'), 'MentorNewsPage'),
 })
 
+const mentorDialogsRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor/dialogs',
+  component: lazyRouteComponent(() => import('./pages'), 'MentorDialogsPage'),
+})
+
 const mentorFeedRoute = createRoute({
   getParentRoute: () => mentorWorkspaceRoute,
   path: '/mentor/feed',
-  validateSearch: (search: Record<string, unknown>) => ({
-    rationId:
-      typeof search.rationId === 'string' && search.rationId.trim()
-        ? search.rationId.trim()
-        : undefined,
-  }),
-  component: lazyRouteComponent(() => import('./pages'), 'MentorFeedPage'),
+  component: lazyRouteComponent(() => import('./pages'), 'MentorFeedRedirectPage'),
 })
 
 const mentorPlanDetailRoute = createRoute({
@@ -386,10 +389,12 @@ const routeTree = rootRoute.addChildren([
     userSettingsRoute,
     userReferralsRoute,
     userPaymentsRoute,
+    userDialogsRoute,
   ]),
   adminWorkspaceRoute.addChildren([
     adminDashboardRoute,
     adminDemoLegacyRoute,
+    adminNewsRoute,
     adminProfileRoute,
     adminUsersRoute,
     adminSettingsRoute,
@@ -413,6 +418,7 @@ const routeTree = rootRoute.addChildren([
     mentorPlansRoute,
     mentorPlanDetailRoute,
     mentorNewsRoute,
+    mentorDialogsRoute,
     mentorFeedRoute,
   ]),
 ])

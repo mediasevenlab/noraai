@@ -1,0 +1,523 @@
+{
+  "updatedAt": "2026-10-21T09:40:00.000Z",
+  "createdAt": "2026-10-21T08:50:00.000Z",
+  "id": "NewsArchiveSync001",
+  "name": "Новости: архивный канал",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Архив новостей\nКнопка **Выгрузить** вызывает этот webhook один раз.\n\nКаналы идут в порядке списка. Внутри канала посты идут от старых к новым.\n\nКартинки и видео n8n скачивает сам и отправляет файлом: Telegram не открывает ссылку CDN.\nТекст уходит обычным сообщением. Удаление — `deleteMessage`.",
+        "height": 280,
+        "width": 460,
+        "color": 5
+      },
+      "id": "news-archive-note",
+      "name": "Note: обзор",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "news-archive-sync",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "news-archive-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "news-archive-sync"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const root = items[0].json || {}\nconst body = root.body || root\nconst action = body.action === 'delete' ? 'delete' : 'publish'\nconst token = String($env.TELEGRAM_NEWS_BOT_TOKEN || '')\nconst chatId = String(body.chatId || $env.TELEGRAM_NEWS_CHANNEL_ID || '').trim()\nconst base = String($env.TELEGRAM_API_BASE || 'https://api.telegram.org').replace(/\\/$/, '')\nconst proxyToken = base.includes('api.telegram.org') ? '' : String($env.GEMINI_PROXY_TOKEN || '')\n\nfunction done(ok, published, failed, deleted) {\n  return [{ json: { skip: true, ok, published, failed, deleted, rollback: null } }]\n}\n\nif (!token) return done(false, [], { handle: '', message: 'News bot token is not set' }, 0)\nif (!chatId) return done(false, [], { handle: '', message: 'Archive channel is not configured' }, 0)\n\nfunction urlFor(method) {\n  return base + '/bot' + token + '/' + method\n}\n\nif (action === 'delete') {\n  const ids = Array.isArray(body.messageIds) ? body.messageIds : []\n  if (ids.length === 0) return done(true, [], null, 0)\n  return ids.map((messageId) => ({\n    json: {\n      skip: false,\n      mode: 'json',\n      kind: 'delete',\n      chatId,\n      url: urlFor('deleteMessage'),\n      proxyToken,\n      payload: { chat_id: chatId, message_id: messageId },\n    },\n  }))\n}\n\nconst calls = []\nconst channels = Array.isArray(body.channels) ? body.channels : []\nfor (let channelIndex = 0; channelIndex < channels.length; channelIndex += 1) {\n  const channel = channels[channelIndex] || {}\n  const handle = String(channel.handle || '')\n  const posts = Array.isArray(channel.posts) ? channel.posts : []\n  for (let postIndex = 0; postIndex < posts.length; postIndex += 1) {\n    const post = posts[postIndex] || {}\n    const text = String(post.text || '').trim()\n    const media = (Array.isArray(post.media) ? post.media : []).filter((item) => item && item.url).slice(0, 10)\n    calls.push({\n      json: {\n        skip: false,\n        mode: 'json',\n        kind: 'publish',\n        handle,\n        telegramPostId: post.telegramPostId,\n        chatId,\n        url: 'http://host.docker.internal:3010/api/internal/news-archive/send',\n        serviceToken: String($env.INTERNAL_SERVICE_TOKEN || ''),\n        proxyToken: '',\n        payload: { chatId, handle, telegramPostId: post.telegramPostId, text, media },\n      },\n    })\n  }\n}\n\nif (calls.length === 0) return done(true, [], null, 0)\nreturn calls\n"
+      },
+      "id": "news-archive-prepare",
+      "name": "Подготовить вызовы",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "skip-telegram",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "news-archive-if",
+      "name": "Уже есть ответ",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "news-archive-loop",
+      "name": "По одному",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        760,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "mode-file",
+              "leftValue": "={{ $json.mode }}",
+              "rightValue": "file",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "news-archive-file-if",
+      "name": "Это файл",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        980,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.downloadUrl }}",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "id": "news-archive-download",
+      "name": "Скачать медиа",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        160
+      ],
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "let source = {}\ntry {\n  source = $('По одному').item.json || {}\n} catch (error) {\n  source = {}\n}\nconst item = items[0]\nconst binary = item.binary && item.binary.data\nconst mime = binary && binary.mimeType ? String(binary.mimeType) : ''\nif (!binary || mime.includes('text/html')) {\n  const previous = item.json && (item.json.description || (item.json.error && item.json.error.message) || '')\n  item.json = {\n    ok: false,\n    description: String(previous || 'Could not download the post media').replace(/https?:\\/\\/\\S+/g, '[url]').slice(0, 300),\n  }\n  return [item]\n}\nconst video = source.field === 'video'\nbinary.fileName = video ? 'clip.mp4' : 'photo.jpg'\nif (!mime || mime.includes('octet-stream')) binary.mimeType = video ? 'video/mp4' : 'image/jpeg'\nreturn [item]\n"
+      },
+      "id": "news-archive-filename",
+      "name": "Имя файла",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1420,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "download-failed",
+              "leftValue": "={{ $json.ok === false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "news-archive-downloaded-if",
+      "name": "Файл не скачался",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1640,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('По одному').item.json.uploadUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Gemini-Proxy-Token",
+              "value": "={{ $('По одному').item.json.proxyToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formData",
+              "name": "chat_id",
+              "value": "={{ $('По одному').item.json.chatId }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "caption",
+              "value": "={{ $('По одному').item.json.caption }}"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "={{ $('По одному').item.json.field }}",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "news-archive-upload",
+      "name": "Загрузить в Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1860,
+        40
+      ],
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Gemini-Proxy-Token",
+              "value": "={{ $json.proxyToken }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ $json.serviceToken ? 'Bearer ' + $json.serviceToken : '' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "news-archive-http",
+      "name": "Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const prepared = $('Подготовить вызовы').all().map((item) => item.json).filter((item) => !item.skip)\nconst source = prepared[Number.isInteger($runIndex) ? $runIndex : prepared.length] || {}\nconst response = (items[0] && items[0].json) || {}\nconst payload = source.payload || {}\nconst tooFast = /spacing your requests|too many requests|retry after/i.test(JSON.stringify(response).slice(0, 400))\nawait new Promise((resolve) => setTimeout(resolve, tooFast ? 5000 : 3000))\nreturn [{\n  json: {\n    kind: source.kind || '',\n    handle: source.handle || '',\n    telegramPostId: source.telegramPostId,\n    media: source.media || [],\n    chatId: String(source.chatId || payload.chat_id || ''),\n    response,\n  },\n}]\n"
+      },
+      "id": "news-archive-remember",
+      "name": "Запомнить",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "function clean(value) {\n  return String(value || '').replace(/bot\\d+:[A-Za-z0-9_-]+/g, 'bot').replace(/https?:\\/\\/\\S+/g, '[url]').slice(0, 300)\n}\n\nfunction fileId(message, kind) {\n  if (!message) return ''\n  if (kind === 'video') return message.video && message.video.file_id ? message.video.file_id : ''\n  const photos = message.photo || []\n  return photos.length ? photos[photos.length - 1].file_id : ''\n}\n\nconst rows = items.map((item) => item.json)\nconst published = []\nlet deleted = 0\nlet current = null\n\nfunction flush() {\n  if (!current) return\n  published.push(current)\n  current = null\n}\n\nfunction fail(source, message) {\n  const rollback = current && current.messageIds.length\n    ? { chatId: current.chatId, messageIds: current.messageIds.slice() }\n    : null\n  current = null\n  return [{\n    json: {\n      ok: false,\n      published,\n      failed: { handle: source.handle || '', message },\n      deleted,\n      rollback,\n    },\n  }]\n}\n\nfor (let index = 0; index < rows.length; index += 1) {\n  const source = rows[index] || {}\n  const response = source.response || {}\n  const missing = /message to delete not found|message identifier is not specified|message_id_invalid/i\n  if (response.ok !== true) {\n    const message = clean(response.description || (response.error && response.error.message) || 'Telegram request failed')\n    if (source.kind === 'delete' && missing.test(message)) {\n      deleted += 1\n      continue\n    }\n    return fail(source, message)\n  }\n  if (source.kind === 'delete') {\n    deleted += 1\n    continue\n  }\n  if (Array.isArray(response.messageIds)) {\n    const directIds = response.messageIds.filter((id) => Number.isInteger(id))\n    if (directIds.length === 0) return fail(source, 'Telegram did not return a message id')\n    published.push({\n      handle: source.handle,\n      telegramPostId: source.telegramPostId,\n      chatId: String(response.chatId || source.chatId || ''),\n      messageIds: directIds,\n      media: Array.isArray(response.media) ? response.media.filter((item) => item && item.fileId) : [],\n    })\n    continue\n  }\n  const result = response.result\n  const messages = Array.isArray(result) ? result : [result]\n  const messageIds = messages.map((message) => message && message.message_id).filter((id) => Number.isInteger(id))\n  if (messageIds.length === 0) return fail(source, 'Telegram did not return a message id')\n  const chatId = String(messages[0] && messages[0].chat ? messages[0].chat.id : source.chatId)\n  const same = current && current.handle === source.handle && current.telegramPostId === source.telegramPostId\n  if (!same) {\n    flush()\n    current = { handle: source.handle, telegramPostId: source.telegramPostId, chatId, messageIds: [], media: [] }\n  }\n  current.messageIds.push.apply(current.messageIds, messageIds)\n  const kinds = source.media || []\n  for (let mediaIndex = 0; mediaIndex < kinds.length; mediaIndex += 1) {\n    const id = fileId(messages[mediaIndex] || messages[0], kinds[mediaIndex])\n    if (id) current.media.push({ kind: kinds[mediaIndex], fileId: id })\n  }\n}\n\nflush()\nreturn [{ json: { ok: true, published, failed: null, deleted, rollback: null } }]\n"
+      },
+      "id": "news-archive-assemble",
+      "name": "Собрать ответ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "news-archive-respond",
+      "name": "Ответ",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        -40
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Подготовить вызовы",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Подготовить вызовы": {
+      "main": [
+        [
+          {
+            "node": "Уже есть ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Уже есть ответ": {
+      "main": [
+        [
+          {
+            "node": "Ответ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "По одному",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "По одному": {
+      "main": [
+        [
+          {
+            "node": "Собрать ответ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Это файл",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Это файл": {
+      "main": [
+        [
+          {
+            "node": "Скачать медиа",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Скачать медиа": {
+      "main": [
+        [
+          {
+            "node": "Имя файла",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Имя файла": {
+      "main": [
+        [
+          {
+            "node": "Файл не скачался",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Файл не скачался": {
+      "main": [
+        [
+          {
+            "node": "Запомнить",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Загрузить в Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Загрузить в Telegram": {
+      "main": [
+        [
+          {
+            "node": "Запомнить",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram": {
+      "main": [
+        [
+          {
+            "node": "Запомнить",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Запомнить": {
+      "main": [
+        [
+          {
+            "node": "По одному",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Собрать ответ": {
+      "main": [
+        [
+          {
+            "node": "Ответ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "news-archive-sync-v5",
+  "activeVersionId": "news-archive-sync-v5",
+  "versionCounter": 5,
+  "triggerCount": 1,
+  "tags": []
+}

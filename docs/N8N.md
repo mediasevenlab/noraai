@@ -75,7 +75,7 @@ Required backend env (see `backend/.env.example`):
 - `N8N_NORA_MEAL_WEBHOOK_URL` (default `http://127.0.0.1:5680/webhook/meal-nora-analyze`) — used only when the user picks Nora in Settings
 - `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_TEXT_MODEL`, `LLM_VISION_MODEL` — office OpenAI-compatible API. The key stays in backend env. Photo uses the vision model, text-only uses the text model, and the backend queues them so the single GPU loads one model at a time. Ollama on `127.0.0.1:18005` answers 403 when nginx forwards `Host: llm.25nutrition.site`. The llm site must proxy with `proxy_set_header Host 127.0.0.1:18005;` and keep `proxy_read_timeout 300s`. `/healthz` stays on nginx and does not need the key.
 - `LLM_STT_URL` — office speech model (GigaAM) for the settings chat microphone. Meal voice stays on the Gemini/n8n transcribe path. On Nora the backend joins the `nora-llm_default` network and calls the speech container on port 8080. The host address `127.0.0.1:18150` is not reachable from the nutrition container.
-- `LLM_SEARCH_URL` — SearXNG for the settings chat, same network, port 8080. The text model may call `web_search`; photo turns do not.
+- `LLM_SEARCH_URL` — SearXNG for the chat. Local Compose publishes it on `http://127.0.0.1:18080`. On Nora the backend uses the docker-network address on port 8080. When the internet button is on, the backend searches the user's question and gives those results to the model. A photo in the thread does not turn that search off.
 - `N8N_TRANSCRIBE_WEBHOOK_URL` (default `http://127.0.0.1:5680/webhook/meal-voice-transcribe`)
 - `N8N_MENTOR_NOTIFY_WEBHOOK_URL` (default `http://127.0.0.1:5680/webhook/mentor-meal-notify`)
 - `TELEGRAM_NOTIFY_BOT_TOKEN`
@@ -117,6 +117,12 @@ On a host that cannot reach `api.telegram.org`, set `TELEGRAM_API_BASE` to the f
 News import uses the same proxy host when `GEMINI_API_HOST` is not `*.googleapis.com`. Public channel HTML is `GET /tme/s/{channel}`. Post images and video are `GET /cdn` with `X-Upstream-Url` set to an allowlisted `t.me` or Telegram CDN address. The browser only talks to this API, so playback does not need a VPN. Direct `t.me` is used when the Google host is configured.
 
 Required extra backend env: `TELEGRAM_NOTIFY_BOT_TOKEN`, `TELEGRAM_NOTIFY_BOT_USERNAME`, `N8N_MENTOR_NOTIFY_WEBHOOK_URL`. Optional: `TELEGRAM_API_BASE`.
+
+### News archive
+
+«Выгрузить» walks the channel list in the order saved in the app, oldest post first inside one channel. The backend parses the public pages, skips posts that already have an archive copy, and calls `N8N_NEWS_ARCHIVE_WEBHOOK_URL` (default `http://127.0.0.1:5680/webhook/news-archive-sync`). The workflow asks the backend to publish each source post as one channel message. Several photos or videos become one album. A video preview image is not sent as its own message. Telegram cannot download a public CDN link itself, so the backend downloads each file and uploads the bytes. Sends are spaced a few seconds apart so the channel does not hit Telegram's rate limit. The backend then stores the returned message ids. The open news page asks for that saved list while the export runs, so the posts show up together even when the long request itself drops. Before that save, the same export step asks the model to read the post text and mark advertising. The check is not an n8n node. A second export does not publish those posts again. Deleting a post or its channel asks the same workflow to `deleteMessage` before the row is removed. A deleted post can be exported again. «Сохранить» in an open post writes the new title and text into the same archive message when the files stay the same. Adding or removing a photo or video sends a new archive message first and deletes the previous one only after that send succeeds. The model reads the edited text again and refreshes the ad mark. That save talks to Telegram directly and does not go through this workflow.
+
+Put the news bot token and the private channel id in `n8n/.env` as well as the backend token in `backend/.env`. Do not commit either value. Recreate the n8n container after changing them so the workflow can read `$env`.
 
 ## Operations
 

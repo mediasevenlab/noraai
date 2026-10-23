@@ -21,12 +21,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import type { WorkspaceRoutePath } from '@/features/navigation'
-import {
-  formatMentorUnreadBadge,
-  MENTEE_UNREAD_BADGE_CLASS,
-  useMentorUnreadByUserId,
-  useMentorUsersQuery,
-} from '@/features/mentor'
+import { useMentorUsersQuery } from '@/features/mentor'
 import { useCurrentUserMentorQuery } from '@/features/users'
 import { cn } from '@/lib/utils'
 
@@ -138,7 +133,6 @@ export function MobileNavFab({
   const hasMentor = user.role !== 'user' || Boolean(mentorQuery.data?.mentor)
   const isMentor = user.role === 'mentor'
   const mentorUsers = useMentorUsersQuery({ page: 1, pageSize: 100 }, isMentor)
-  const unreadByUserId = useMentorUnreadByUserId(isMentor)
   const displayName = user.displayName ?? user.email
   const { resolvedTheme, setTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -334,15 +328,12 @@ export function MobileNavFab({
                     const label =
                       mentee.displayName ?? mentee.nickname ?? mentee.email
                     const active = pathname === `/mentor/users/${mentee.id}`
-                    const unreadLabel = formatMentorUnreadBadge(
-                      unreadByUserId.get(mentee.id) ?? 0,
-                    )
                     return (
                       <li key={mentee.id}>
                         <Link
                           to="/mentor/users/$userId"
                           params={{ userId: mentee.id }}
-                          search={{ view: 'diary' }}
+                          search={{ view: 'profile' }}
                           onClick={() => setOpen(false)}
                           className={cn(
                             'nora-press-grow flex h-14 items-center gap-3 rounded-[14px] px-3 outline-none',
@@ -371,17 +362,6 @@ export function MobileNavFab({
                           <span className="min-w-0 flex-1 truncate text-[15px] font-normal tracking-[-0.01em]">
                             {label}
                           </span>
-                          {unreadLabel ? (
-                            <span
-                              aria-label={`${unreadLabel} непрочитанных приёмов`}
-                              className={cn(
-                                MENTEE_UNREAD_BADGE_CLASS,
-                                active && 'bg-white/20 text-white',
-                              )}
-                            >
-                              {unreadLabel}
-                            </span>
-                          ) : null}
                         </Link>
                       </li>
                     )

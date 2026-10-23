@@ -100,7 +100,7 @@ export const STACK_META = {
   title: 'Стек',
   subtitle: '4 поверхности',
   description:
-    'Технологии Nutrition-приложения: webapp, backend, website и shared contracts в одном репозитории — от UI-токенов Nora до PostgreSQL и деплоя.',
+    'Технологии NoraAI: webapp, backend, website и shared contracts в одном репозитории — от UI-токенов Nora до PostgreSQL и деплоя.',
   ctaLabel: 'Дизайн-система',
   itemCount: STACK_ITEMS.length,
 } as const

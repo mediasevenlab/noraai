@@ -96,9 +96,6 @@ export type MealsServiceDependencies = {
   backgroundTasks?: MentorNotifyTaskDeferrer
   onNotifyError?: (error: unknown) => void
   generationModel?: string
-  mealEngine?: (userId: string) => Promise<'gemini' | 'nora'>
-  geminiThinking?: (userId: string) => Promise<boolean>
-  noraRefine?: MealAnalyzer['refine']
 }
 
 type MealCreateInput = Omit<CreateMealFromBotRequest, 'telegramUpdateId'> & {
@@ -135,9 +132,8 @@ export class MealsService {
     return this.dependencies.analyzer.analyze(input)
   }
 
-  async geminiThinkingEnabled(userId: string) {
-    if (!this.dependencies.geminiThinking) return true
-    return this.dependencies.geminiThinking(userId)
+  async geminiThinkingEnabled(_userId: string) {
+    return true
   }
 
   async transcribeAudio(input: { audioBase64: string; audioMime?: string }) {
@@ -857,18 +853,9 @@ export class MealsService {
         coverMime = ensured.imageMime ?? 'image/jpeg'
       }
     }
-    const engine = this.dependencies.mealEngine
-      ? await this.dependencies.mealEngine(ensured.userId)
-      : 'gemini'
     // Text-only edits already have the card, so they skip the draft.
-    // A new photo still reasons when the user left the switch on.
-    const thinking =
-      engine !== 'gemini' ||
-      (images.length > 0 && (await this.geminiThinkingEnabled(ensured.userId)))
-    const refine =
-      engine === 'nora' && this.dependencies.noraRefine
-        ? this.dependencies.noraRefine
-        : this.dependencies.analyzer.refine
+    const thinking = images.length > 0
+    const refine = this.dependencies.analyzer.refine
     const shownItems = portionItemsShownOnCard(ensured)
     const cardMeal = shownItems.length > 0 ? { ...ensured, portionItems: shownItems } : ensured
     const result = await refine({

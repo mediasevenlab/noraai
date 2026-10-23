@@ -1,4 +1,5 @@
 export * from './auth'
+export * from './knowledge'
 export * from './errors'
 export * from './meals'
 export * from './news'

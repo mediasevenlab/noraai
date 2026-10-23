@@ -2,13 +2,12 @@ import {
   Navigate,
   Outlet,
   useLocation,
-  useNavigate,
   useParams,
   useRouter,
   useSearch,
 } from '@tanstack/react-router'
 import type { UserDto, UserRole } from '@web-app-demo/contracts'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 
 import {
   NotFoundSection,
@@ -29,14 +28,14 @@ import {
 import { StackPage } from '@/features/stack'
 import { StepsPage } from '@/features/steps'
 import {
-  AuthDemoPanel,
   AuthPageShell,
   LoginForm,
   RegisterForm,
   useAuth,
 } from '@/features/auth'
-import { SharedMealsFeedPage, authDemoPlayFrom, authDemoSetPaused } from '@/features/diary'
-import { homePathForRole, postAuthPath, userFeedSearch, userGeneralSearch } from '@/features/navigation'
+import { AuthMercuryOrb } from '@/features/auth/components/AuthMercuryOrb'
+import { DialogsPage, DialogsRuntimeProvider } from '@/features/dialogs'
+import { homePathForRole, postAuthPath } from '@/features/navigation'
 import { NewsPage } from '@/features/news'
 import { useDismissAppBootSplash } from '@/platform/app-boot-splash'
 import {
@@ -44,17 +43,13 @@ import {
   MentorProfile,
   MentorSettings,
   MentorUsers,
-  useMentorUsersQuery,
 } from '@/features/mentor'
-import { MentorPayments, SubscriptionAccessProvider, UserPayments, subscriptionFreezeActive, useSubscriptionAccess } from '@/features/payments'
-import { CurrentPlanPage, GeneralNutritionPage, MenteeAssignedPlans, MentorPlanDetailPage, MentorPlansPage } from '@/features/plans'
 import {
   AccountProfile,
   UserHome,
   UserProfile,
   UserReferrals,
   UserSettings,
-  usePayoutAccrualQuery,
 } from '@/features/users'
 
 export function HomePage() {
@@ -79,62 +74,13 @@ export function HomePage() {
 }
 
 export function AuthDemoEmbedPage() {
-  const { surface } = useSearch({ from: '/embed/auth-demo' })
-  const framed = typeof window !== 'undefined' && window.parent !== window
   useDismissAppBootSplash()
-  useEffect(() => {
-    if (!framed) return
-    const onMessage = (event: MessageEvent) => {
-      if (event.source !== window.parent) return
-      if (event.data?.type === 'auth-demo-restart') {
-        authDemoPlayFrom(0, { autoplay: true })
-        return
-      }
-      if (event.data?.type === 'auth-demo-pause') authDemoSetPaused(true)
-    }
-    window.addEventListener('message', onMessage)
-    window.parent.postMessage({ type: 'auth-demo-ready', surface }, '*')
-    return () => window.removeEventListener('message', onMessage)
-  }, [framed, surface])
-  useEffect(() => {
-    const nodes = [document.documentElement, document.body, document.getElementById('root')].filter(
-      (node): node is HTMLElement => node instanceof HTMLElement,
-    )
-    const previous = nodes.map((node) => ({
-      background: node.style.background,
-      overflow: node.style.overflow,
-    }))
-    for (const node of nodes) {
-      // An opaque document is required: iOS Safari drops a transparent iframe,
-      // so the landing would show only the panel behind it.
-      node.style.setProperty('background', '#000000', 'important')
-      node.style.setProperty('overflow', 'hidden', 'important')
-    }
-    const root = document.documentElement
-    const previousColorScheme = root.style.colorScheme
-    root.style.setProperty('color-scheme', 'light', 'important')
-    return () => {
-      nodes.forEach((node, index) => {
-        node.style.background = previous[index]?.background ?? ''
-        node.style.overflow = previous[index]?.overflow ?? ''
-      })
-      if (previousColorScheme) root.style.colorScheme = previousColorScheme
-      else root.style.removeProperty('color-scheme')
-    }
-  }, [])
   return (
-    <AuthDemoPanel
-      key={surface}
-      autoplay={!framed}
-      className="h-dvh w-full bg-black"
-      plain
-      showThemeToggle={false}
-      surface={
-        surface === 'signup-user' || surface === 'signup-mentor' || surface === 'login'
-          ? surface
-          : 'login'
-      }
-    />
+    <div className="relative h-dvh w-full overflow-hidden bg-black">
+      <div className="absolute inset-0 flex items-center justify-center">
+        <AuthMercuryOrb />
+      </div>
+    </div>
   )
 }
 
@@ -176,183 +122,86 @@ export function UserHomePage() {
 
 export function UserDiaryNewsPage() {
   useWorkspaceUser('user')
-  return <Navigate replace search={userGeneralSearch()} to="/app/general" />
+  return <Navigate replace to="/app/dialogs" />
 }
 
-export function UserFeedPage() {
+export function UserFeedRedirectPage() {
   useWorkspaceUser('user')
-  const navigate = useNavigate()
-  const search = useLocation({ select: (location) => location.search })
-  const rationId = typeof search.rationId === 'string' ? search.rationId : undefined
-  return (
-    <>
-      <div className={rationId ? 'hidden' : undefined} hidden={Boolean(rationId)}>
-        <SharedMealsFeedPage
-          onOpenRation={(id) => {
-            void navigate({ search: userFeedSearch(id), to: '/app/feed' })
-          }}
-        />
-      </div>
-      {rationId ? (
-        <div className="max-md:pb-24">
-          <CurrentPlanPage
-            onBack={() => {
-              void navigate({ search: userFeedSearch(), to: '/app/feed' })
-            }}
-            onOpenPlan={(planId) => {
-              void navigate({
-                search: userGeneralSearch('plan', planId),
-                to: '/app/general',
-              })
-            }}
-            sharedRationId={rationId}
-            showMobileBackDock
-          />
-        </div>
-      ) : null}
-    </>
-  )
+  return <Navigate replace to="/app/dialogs" />
 }
 
-export function MentorFeedPage() {
+export function MentorFeedRedirectPage() {
   useWorkspaceUser('mentor')
-  const navigate = useNavigate()
-  const search = useLocation({ select: (location) => location.search })
-  const rationId = typeof search.rationId === 'string' ? search.rationId : undefined
-  return (
-    <>
-      <div className={rationId ? 'hidden' : undefined} hidden={Boolean(rationId)}>
-        <SharedMealsFeedPage
-          onOpenRation={(id) => {
-            void navigate({ search: userFeedSearch(id), to: '/mentor/feed' })
-          }}
-        />
-      </div>
-      {rationId ? (
-        <div className="max-md:pb-24">
-          <CurrentPlanPage
-            onBack={() => {
-              void navigate({ search: userFeedSearch(), to: '/mentor/feed' })
-            }}
-            onOpenPlan={(planId) => {
-              void navigate({
-                params: { planId },
-                to: '/mentor/plans/$planId',
-              })
-            }}
-            sharedRationId={rationId}
-            showMobileBackDock
-          />
-        </div>
-      ) : null}
-    </>
-  )
+  return <Navigate replace to="/mentor/dialogs" />
 }
 
 export function UserNewsPage() {
   useWorkspaceUser('user')
-  return <NewsPage />
+  return <Navigate replace to="/app/dialogs" />
 }
 
 export function MentorNewsPage() {
   useWorkspaceUser('mentor')
+  return <Navigate replace to="/mentor/dialogs" />
+}
+
+export function UserDialogsPage() {
+  useWorkspaceUser('user')
+  return <DialogsPage />
+}
+
+export function MentorDialogsPage() {
+  useWorkspaceUser('mentor')
+  return <DialogsPage />
+}
+
+export function AdminNewsPage() {
+  useWorkspaceUser('admin')
   return <NewsPage />
 }
 
 export function UserRationsPage() {
   useWorkspaceUser('user')
-  return <Navigate replace search={userGeneralSearch('plan')} to="/app/general" />
+  return <Navigate replace to="/app/dialogs" />
 }
 
 export function UserMentorRationsPage() {
   useWorkspaceUser('user')
-  return <Navigate replace search={userGeneralSearch('plan')} to="/app/general" />
+  return <Navigate replace to="/app/dialogs" />
 }
 
 export function UserMyRationsPage() {
   useWorkspaceUser('user')
-  return <Navigate replace search={userGeneralSearch('plan')} to="/app/general" />
+  return <Navigate replace to="/app/dialogs" />
 }
 
 export function UserPlanPage() {
   useWorkspaceUser('user')
-  return <Navigate replace search={userGeneralSearch('plan')} to="/app/general" />
+  return <Navigate replace to="/app/dialogs" />
 }
 
 export function UserGeneralPage() {
   useWorkspaceUser('user')
-  const navigate = useNavigate()
-  const search = useLocation({ select: (location) => location.search })
-  const view = search.view === 'plan' ? 'plan' : 'diary'
-  const openPlanId = typeof search.planId === 'string' ? search.planId : undefined
-  const library =
-    search.library === 'mentor' || search.library === 'mine'
-      ? search.library
-      : undefined
-  return (
-    <GeneralNutritionPage
-      library={library}
-      openPlanId={openPlanId}
-      onClosePlan={() => {
-        void navigate({
-          replace: true,
-          search: userGeneralSearch('plan'),
-          to: '/app/general',
-        })
-      }}
-      onLibraryChange={(next) => {
-        if (next === 'catalog') return
-        void navigate({
-          replace: true,
-          search: userGeneralSearch('plan', undefined, next === 'mine' ? undefined : next),
-          to: '/app/general',
-        })
-      }}
-      onOpenPlan={(planId) => {
-        void navigate({
-          replace: true,
-          search: userGeneralSearch('plan', planId),
-          to: '/app/general',
-        })
-      }}
-      onViewChange={(next) => {
-        void navigate({
-          replace: true,
-          search: userGeneralSearch(next),
-          to: '/app/general',
-        })
-      }}
-      view={view}
-    />
-  )
+  return <Navigate replace to="/app/dialogs" />
 }
 
 export function UserPlanCurrentPage() {
   useWorkspaceUser('user')
-  return (
-    <Navigate
-      replace
-      search={userGeneralSearch('plan', 'current')}
-      to="/app/general"
-    />
-  )
+  return <Navigate replace to="/app/dialogs" />
 }
 
 export function UserPlanDetailPage() {
   useWorkspaceUser('user')
-  const { planId } = useParams({ from: '/userWorkspace/app/plan/$planId' })
-  return (
-    <Navigate replace search={userGeneralSearch('plan', planId)} to="/app/general" />
-  )
+  return <Navigate replace to="/app/dialogs" />
 }
 
 export function UserSavedPage() {
-  return <Navigate replace search={userGeneralSearch()} to="/app/general" />
+  return <Navigate replace to="/app/dialogs" />
 }
 
 export function UserOnboardingPage() {
   useWorkspaceUser('user')
-  return <Navigate replace search={userGeneralSearch()} to="/app/general" />
+  return <Navigate replace to="/app/dialogs" />
 }
 
 export function UserProfilePage() {
@@ -371,8 +220,8 @@ export function UserReferralsPage() {
 }
 
 export function UserPaymentsPage() {
-  const user = useWorkspaceUser('user')
-  return <UserPayments user={user} />
+  useWorkspaceUser('user')
+  return <Navigate replace to="/app/dialogs" />
 }
 
 export function AdminHomeRedirectPage() {
@@ -431,7 +280,7 @@ export function AdminStepsPage() {
 
 export function MentorHomePage() {
   useWorkspaceUser('mentor')
-  return <Navigate replace to="/mentor/plans" />
+  return <Navigate replace to="/mentor/dialogs" />
 }
 
 export function MentorProfilePage() {
@@ -447,31 +296,7 @@ export function MentorUsersPage() {
 export function MentorMenteePage() {
   useWorkspaceUser('mentor')
   const { userId } = useParams({ from: '/mentorWorkspace/mentor/users/$userId' })
-  const { view: viewSearch } = useSearch({ from: '/mentorWorkspace/mentor/users/$userId' })
-  const view =
-    viewSearch === 'questionnaire' || viewSearch === 'rations' ? viewSearch : 'diary'
-  const navigate = useNavigate()
-  const [rationBack, setRationBack] = useState<(() => void) | null>(null)
-  const rememberRationBack = useCallback((back: (() => void) | null) => {
-    setRationBack(() => back)
-  }, [])
-  const onViewChange = useCallback((next: 'diary' | 'questionnaire' | 'rations') => {
-    void navigate({
-      to: '/mentor/users/$userId',
-      params: { userId },
-      search: { view: next },
-      replace: true,
-    })
-  }, [navigate, userId])
-  return (
-    <MentorMenteeDiary
-      onViewChange={onViewChange}
-      planView={<MenteeAssignedPlans onDetailBack={rememberRationBack} userId={userId} />}
-      rationBack={rationBack}
-      userId={userId}
-      view={view}
-    />
-  )
+  return <MentorMenteeDiary userId={userId} />
 }
 
 export function MentorSettingsPage() {
@@ -480,38 +305,28 @@ export function MentorSettingsPage() {
 }
 
 export function MentorPaymentsPage() {
-  const user = useWorkspaceUser('mentor')
-  const users = useMentorUsersQuery({ page: 1, pageSize: 1 })
-  const accrual = usePayoutAccrualQuery()
-  return (
-    <MentorPayments
-      accruedRub={accrual.isSuccess ? accrual.data.accruedRub : null}
-      connectedUsers={users.data?.total ?? null}
-      pending={users.isPending || accrual.isPending}
-      user={user}
-    />
-  )
+  useWorkspaceUser('mentor')
+  return <Navigate replace to="/mentor/dialogs" />
 }
 
 export function MentorMealPlanPage() {
   useWorkspaceUser('mentor')
-  return <Navigate replace to="/mentor/plans" />
+  return <Navigate replace to="/mentor/dialogs" />
 }
 
 export function MentorAssignedRationsPage() {
   useWorkspaceUser('mentor')
-  return <Navigate replace to="/mentor/plans" />
+  return <Navigate replace to="/mentor/dialogs" />
 }
 
 export function MentorPlansWorkspacePage() {
   useWorkspaceUser('mentor')
-  return <MentorPlansPage />
+  return <Navigate replace to="/mentor/dialogs" />
 }
 
 export function MentorPlanDetailWorkspacePage() {
   useWorkspaceUser('mentor')
-  const { planId } = useParams({ from: '/mentorWorkspace/mentor/plans/$planId' })
-  return <MentorPlanDetailPage planId={planId} />
+  return <Navigate replace to="/mentor/dialogs" />
 }
 
 export function UserWorkspaceLayout() {
@@ -554,6 +369,16 @@ function WorkspaceRoute({ role }: { role: UserRole }) {
     return <HrefRedirect href={homePathForRole(auth.user.role)} />
   }
 
+  if (role === 'mentor') {
+    return (
+      <DialogsRuntimeProvider key={auth.user.id} userId={auth.user.id}>
+        <WorkspaceShell onLogout={auth.logout} user={auth.user}>
+          <Outlet />
+        </WorkspaceShell>
+      </DialogsRuntimeProvider>
+    )
+  }
+
   if (role !== 'user') {
     return (
       <WorkspaceShell onLogout={auth.logout} user={auth.user}>
@@ -563,29 +388,11 @@ function WorkspaceRoute({ role }: { role: UserRole }) {
   }
 
   return (
-    <SubscriptionAccessProvider>
-      <FrozenUserWorkspace onLogout={auth.logout} user={auth.user} />
-    </SubscriptionAccessProvider>
-  )
-}
-
-function FrozenUserWorkspace({
-  onLogout,
-  user,
-}: {
-  onLogout: () => Promise<void>
-  user: UserDto
-}) {
-  const pathname = useLocation({ select: (location) => location.pathname })
-  const { overview } = useSubscriptionAccess()
-  return (
-    <WorkspaceShell
-      onLogout={onLogout}
-      subscriptionFrozen={subscriptionFreezeActive({ overview, pathname, role: user.role })}
-      user={user}
-    >
-      <Outlet />
-    </WorkspaceShell>
+    <DialogsRuntimeProvider key={auth.user.id} userId={auth.user.id}>
+      <WorkspaceShell onLogout={auth.logout} user={auth.user}>
+        <Outlet />
+      </WorkspaceShell>
+    </DialogsRuntimeProvider>
   )
 }
 

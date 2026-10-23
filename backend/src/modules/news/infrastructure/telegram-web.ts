@@ -17,9 +17,10 @@ export function usesTelegramWebProxy(env: TelegramWebEnv) {
     && !host.endsWith('.googleapis.com')
 }
 
-export function channelPageRequest(env: TelegramWebEnv, handle: string, before?: number) {
-  const search = before ? `?before=${before}` : ''
-  const path = `/s/${encodeURIComponent(handle)}${search}`
+export function channelPageRequest(env: TelegramWebEnv, handle: string, before?: number, postId?: number) {
+  const path = postId
+    ? `/s/${encodeURIComponent(handle)}/${postId}`
+    : `/s/${encodeURIComponent(handle)}${before ? `?before=${before}` : ''}`
   const headers: Record<string, string> = {
     Accept: 'text/html,application/xhtml+xml',
     'User-Agent': BROWSER_UA,
@@ -58,6 +59,12 @@ export function mediaRequest(env: TelegramWebEnv, upstream: string, range?: stri
 
 export function createTelegramChannelSource(env: TelegramWebEnv): TelegramChannelSource {
   return {
+    async loadPost(handle, telegramPostId) {
+      const html = await fetchChannelHtml(env, handle, undefined, telegramPostId)
+      return parseTelegramChannelPage(html).find((post) => (
+        post.channelHandle === handle && post.telegramPostId === telegramPostId
+      )) ?? null
+    },
     async loadRecent(handle, since) {
       const found = new Map<number, ReturnType<typeof parseTelegramChannelPage>[number]>()
       let before: number | undefined
@@ -80,8 +87,8 @@ export function createTelegramChannelSource(env: TelegramWebEnv): TelegramChanne
   }
 }
 
-async function fetchChannelHtml(env: TelegramWebEnv, handle: string, before?: number) {
-  const request = channelPageRequest(env, handle, before)
+async function fetchChannelHtml(env: TelegramWebEnv, handle: string, before?: number, postId?: number) {
+  const request = channelPageRequest(env, handle, before, postId)
   let response: Response
   try {
     response = await fetch(request.url, {

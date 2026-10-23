@@ -1,7 +1,7 @@
 {
-  "name": "24nutrition",
-  "short_name": "24nutrition",
-  "description": "Дневник питания",
+  "name": "NoraAI",
+  "short_name": "NoraAI",
+  "description": "NoraAI",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

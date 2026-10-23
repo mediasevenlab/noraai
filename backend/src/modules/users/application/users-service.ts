@@ -16,7 +16,6 @@ import type {
 
 import type { AuthenticatedPrincipal } from '../../auth'
 import { UsersFailure } from '../domain/errors'
-import { payoutAccrual, type PaidSubscription } from '../../payments'
 import { publishedFavoriteMealIds } from '../domain/favorite-meal-ids'
 import {
   authoredPlanCanShareToFeed,
@@ -73,7 +72,6 @@ type UsersServiceDependencies = {
   botUsername?: string
   notifyBotUsername?: string
   mealMediaCleanup?: MealMediaCleanup
-  listPaidSubscriptions?: () => Promise<PaidSubscription[]>
   userDeleter: UserDeleter
   userRoleUpdater: UserRoleUpdater
 }
@@ -437,35 +435,6 @@ export class UsersService {
 
   listMentorUsers(principal: AuthenticatedPrincipal, query: MentorUsersQuery) {
     return this.dependencies.mentorUsersManager.listMentorUsers(principal.id, query)
-  }
-
-  async readPayoutAccrual(principal: AuthenticatedPrincipal) {
-    if (principal.role !== 'user' && principal.role !== 'mentor') {
-      throw new UsersFailure('forbidden', 'Бонус доступен пользователю или наставнику.')
-    }
-    const payments = await this.dependencies.listPaidSubscriptions?.() ?? []
-    const ids = principal.role === 'user'
-      ? await this.linkedIds((page) => this.dependencies.userReferralsReader.listUserReferrals(principal.id, {
-        page,
-        pageSize: 100,
-      }))
-      : await this.linkedIds((page) => this.dependencies.mentorUsersManager.listMentorUsers(principal.id, {
-        page,
-        pageSize: 100,
-      }))
-    return payoutAccrual(principal.role === 'user' ? 'referral' : 'mentor', ids, payments)
-  }
-
-  private async linkedIds(
-    list: (page: number) => Promise<{ hasNext: boolean, items: Array<{ id: string }> }>,
-  ) {
-    const ids: string[] = []
-    for (let page = 1; page <= 100; page += 1) {
-      const result = await list(page)
-      ids.push(...result.items.map((item) => item.id))
-      if (!result.hasNext) break
-    }
-    return ids
   }
 
   async detachMentorUser(

@@ -18,11 +18,6 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
-import {
-  formatMentorUnreadBadge,
-  MENTEE_UNREAD_BADGE_CLASS,
-} from './unread-badge'
-import { useMentorUnreadByUserId } from './use-mentor-unread-counts'
 import { useMentorUsersQuery } from './queries'
 
 const OPEN_KEY = 'nutrition-mentor-users-nav-open'
@@ -63,7 +58,6 @@ export function MentorMenteeNavigation() {
     page: 1,
     pageSize: 100,
   })
-  const unreadByUserId = useMentorUnreadByUserId()
   const searchQuery = useSidebarSearchQuery()
   const searching = searchQuery.trim().length > 0
   const mentees = useMemo(
@@ -109,7 +103,6 @@ export function MentorMenteeNavigation() {
         const label = user.displayName ?? user.nickname ?? user.email
         const href = `/mentor/users/${user.id}`
         const active = pathname === href
-        const unreadLabel = formatMentorUnreadBadge(unreadByUserId.get(user.id) ?? 0)
         return (
           <SidebarMenuItem key={user.id}>
             <SidebarMenuButton
@@ -118,7 +111,7 @@ export function MentorMenteeNavigation() {
                 <Link
                   onClick={() => setOpenMobile(false)}
                   params={{ userId: user.id }}
-                  search={{ view: 'diary' }}
+                  search={{ view: 'profile' }}
                   to="/mentor/users/$userId"
                 />
               )}
@@ -134,14 +127,6 @@ export function MentorMenteeNavigation() {
               <span className="min-w-0 flex-1 truncate group-data-[collapsible=icon]:hidden">
                 {label}
               </span>
-              {unreadLabel ? (
-                <span
-                  aria-label={`${unreadLabel} непрочитанных приёмов`}
-                  className={cn(MENTEE_UNREAD_BADGE_CLASS, 'group-data-[collapsible=icon]:hidden')}
-                >
-                  {unreadLabel}
-                </span>
-              ) : null}
             </SidebarMenuButton>
           </SidebarMenuItem>
         )

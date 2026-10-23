@@ -52,7 +52,8 @@ export class HttpClient {
 
   async raw(path: string, options: HttpRequestOptions = {}): Promise<Response> {
     const headers = new Headers(options.headers)
-    if (options.body !== undefined) {
+    const form = typeof FormData !== 'undefined' && options.body instanceof FormData
+    if (options.body !== undefined && !form) {
       headers.set('Content-Type', 'application/json')
     }
 
@@ -61,7 +62,7 @@ export class HttpClient {
       credentials: options.credentials ?? 'include',
       headers,
       signal: options.signal,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: requestBody(options.body),
     })
 
     if (!response.ok) {
@@ -70,6 +71,12 @@ export class HttpClient {
 
     return response
   }
+}
+
+function requestBody(body: unknown): BodyInit | undefined {
+  if (body === undefined) return undefined
+  if (typeof FormData !== 'undefined' && body instanceof FormData) return body
+  return JSON.stringify(body)
 }
 
 async function toApiError(response: Response) {

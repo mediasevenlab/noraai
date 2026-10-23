@@ -47,7 +47,7 @@ export async function fillLoginForm(
 
 /** Registration no longer asks for a questionnaire; the app opens directly. */
 export async function completeUserQuestionnaire(page: Page) {
-  await expect(page).toHaveURL(/\/app\/general/)
+  await expect(page).toHaveURL(/\/app\/dialogs/)
 }
 
 export async function registerCompletedUser(

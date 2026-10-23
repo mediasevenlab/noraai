@@ -3,13 +3,11 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from 'react'
-import { createPortal } from 'react-dom'
 import { ArrowUpRightIcon, CheckIcon, PencilIcon, XIcon, type LucideIcon } from '@/components/icons'
 
 import { cn } from '@/lib/utils'
@@ -322,36 +320,12 @@ export function useSettingsDraft(draft: SettingsDraft) {
 const SETTINGS_DOCK_CLASS =
   'mobile-dock fixed z-40 flex flex-wrap-reverse items-center gap-2 lg:hidden left-4 right-[4.75rem] bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]'
 
-/** Beside «Не продлена» the edit control is a circle. Otherwise it stays the left dock pill. */
 function SettingsPhoneDock({ children }: { children: ReactNode }) {
-  const [slot, setSlot] = useState<HTMLElement | null>(null)
-
-  useLayoutEffect(() => {
-    const phone = window.matchMedia('(max-width: 767px)')
-    const sync = () => {
-      const next = document.getElementById('subscription-dock-actions')
-      setSlot(phone.matches && next ? next : null)
-    }
-    sync()
-    phone.addEventListener('change', sync)
-    const observer = new MutationObserver(sync)
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-subscription-capsule'],
-    })
-    return () => {
-      phone.removeEventListener('change', sync)
-      observer.disconnect()
-    }
-  }, [])
-
-  const dock = (
-    <div className={slot ? 'flex items-center gap-2' : SETTINGS_DOCK_CLASS} data-settings-dock="">
+  return (
+    <div className={SETTINGS_DOCK_CLASS} data-settings-dock="">
       {children}
     </div>
   )
-  if (slot) return createPortal(dock, slot)
-  return dock
 }
 
 function SettingsBarButton({

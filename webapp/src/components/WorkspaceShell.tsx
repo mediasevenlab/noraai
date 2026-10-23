@@ -3,12 +3,11 @@ import {
   ClipboardListIcon,
   Columns2Icon,
   HomeIcon,
-  ImagesIcon,
+  MessageCircleIcon,
   NewspaperIcon,
   SettingsIcon,
   UserIcon,
   UsersIcon,
-  WalletIcon,
 } from '@/components/icons'
 import { useLocation } from '@tanstack/react-router'
 import type { UserDto } from '@web-app-demo/contracts'
@@ -26,8 +25,6 @@ import { SidebarInset, SidebarProvider, SidebarSeparator } from '@/components/ui
 import { useSidebarPromoCards } from '@/components/sidebar-promo-store'
 import {
   homePathForRole,
-  isMentorPlanPath,
-  isUserPlanPath,
   navigationItemMatchingPath,
   navigationItemsForRole,
   primaryNavigationItemsForRole,
@@ -38,7 +35,7 @@ import {
   MentorMenteeNavigation,
   MentorMenteesBanner,
 } from '@/features/mentor'
-import { SubscriptionMobileCapsule, SubscriptionRenewalBanner } from '@/features/payments'
+import { AdminNewsNavigation } from '@/features/news'
 import { UserAppNavigation } from '@/features/users'
 import {
   AdminDesignSystemNavigation,
@@ -64,8 +61,7 @@ import { STEPS_BASE_PATH } from '@/features/steps'
 const iconsByPath = {
   '/app': HomeIcon,
   '/app/diary': NewspaperIcon,
-  '/app/feed': ImagesIcon,
-  '/app/news': NewspaperIcon,
+  '/app/dialogs': MessageCircleIcon,
   '/app/plan': CalendarRangeIcon,
   '/app/general': Columns2Icon,
   '/app/plan/current': CalendarRangeIcon,
@@ -73,19 +69,17 @@ const iconsByPath = {
   '/app/profile': UserIcon,
   '/app/referrals': UsersIcon,
   '/app/settings': SettingsIcon,
-  '/app/payments': WalletIcon,
   '/admin': UsersIcon,
+  '/admin/news': NewspaperIcon,
   '/admin/profile': UserIcon,
   '/admin/users': UsersIcon,
   '/admin/settings': SettingsIcon,
   '/mentor': HomeIcon,
   '/mentor/plans': CalendarRangeIcon,
-  '/mentor/news': NewspaperIcon,
-  '/mentor/feed': ImagesIcon,
+  '/mentor/dialogs': MessageCircleIcon,
   '/mentor/profile': UserIcon,
   '/mentor/users': UsersIcon,
   '/mentor/settings': SettingsIcon,
-  '/mentor/payments': WalletIcon,
 } as const
 
 function getSidebarDefaultOpen() {
@@ -100,11 +94,9 @@ function getSidebarDefaultOpen() {
 export function WorkspaceShell({
   children,
   onLogout,
-  subscriptionFrozen = false,
   user,
 }: PropsWithChildren<{
   onLogout: () => Promise<void>
-  subscriptionFrozen?: boolean
   user: UserDto
 }>) {
   useDismissAppBootSplash()
@@ -196,27 +188,18 @@ export function WorkspaceShell({
     isActive:
       !navigationLocked &&
       !item.disabled &&
-      (item.to === '/app/general'
-        ? pathname === '/app/general' || isUserPlanPath(pathname) || pathname.startsWith('/app/diary')
-        : item.to === '/mentor/plans'
-          ? isMentorPlanPath(pathname)
-          : item.to === pathname),
+      item.to === pathname,
   }))
   const primaryItems = toDashboardItems(primaryNavigationItemsForRole(user.role))
   const secondaryItems = toDashboardItems(secondaryNavigationItemsForRole(user.role))
   const mobileNavItems = [
     ...navigationItems
+      .filter((item) => item.to !== '/app/referrals')
       .map((item) => ({
         active:
           !navigationLocked &&
           !item.disabled &&
-          (item.to === '/app/general'
-            ? pathname === '/app/general' ||
-              isUserPlanPath(pathname) ||
-              pathname.startsWith('/app/diary')
-            : item.to === '/mentor/plans'
-              ? isMentorPlanPath(pathname)
-              : item.to === pathname),
+          item.to === pathname,
         disabled: item.disabled,
         icon: iconsByPath[item.to],
         label: item.label,
@@ -234,6 +217,8 @@ export function WorkspaceShell({
           user.role === 'admin'
             ? (
                 <>
+                  <AdminNewsNavigation />
+                  <SidebarSeparator className="my-3" />
                   <AdminDesignSystemNavigation />
                   <SidebarSeparator className="my-3" />
                   <AdminComponentsNavigation />
@@ -257,17 +242,9 @@ export function WorkspaceShell({
         }
         filterNavigationBySearch={user.role !== 'mentor'}
         footerExtra={
-          navigationLocked
-            ? null
-            : user.role === 'user'
-              ? (
-                  <SubscriptionRenewalBanner />
-                )
-              : user.role === 'mentor' && showSidebarPromoCards
-                ? (
-                    <MentorMenteesBanner />
-                  )
-                : null
+          !navigationLocked && user.role === 'mentor' && showSidebarPromoCards
+            ? <MentorMenteesBanner />
+            : null
         }
         homePath={homePath}
         navigationLocked={navigationLocked}
@@ -292,11 +269,9 @@ export function WorkspaceShell({
         <div
           className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto overscroll-y-contain lg:[scrollbar-gutter:stable] max-md:[-ms-overflow-style:none] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden"
           data-app-scroll=""
-          data-subscription-frozen={subscriptionFrozen ? '' : undefined}
         >
           {children}
         </div>
-        {user.role === 'user' ? <SubscriptionMobileCapsule /> : null}
         <MobileNavFab
           items={mobileNavItems}
           navigationLocked={navigationLocked}
