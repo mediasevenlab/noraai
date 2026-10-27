@@ -11,6 +11,8 @@ export type UserRoutePath =
   | '/app/settings'
   | '/app/referrals'
   | '/app/dialogs'
+  | '/app/meetings'
+  | '/app/notes'
 export type AdminRoutePath = '/admin' | '/admin/news' | '/admin/profile' | '/admin/users' | '/admin/settings'
 export type MentorRoutePath =
   | '/mentor'
@@ -19,6 +21,8 @@ export type MentorRoutePath =
   | '/mentor/settings'
   | '/mentor/plans'
   | '/mentor/dialogs'
+  | '/mentor/meetings'
+  | '/mentor/notes'
 export type WorkspaceRoutePath = UserRoutePath | AdminRoutePath | MentorRoutePath
 
 export type WorkspaceNavigationItem = {
@@ -46,8 +50,10 @@ export function userSplitNutritionGeneralPath(pathname: string): string | null {
 /** Destinations rendered by dedicated content nav groups, not the account menu. */
 const CONTENT_AREA_PATHS = new Set<WorkspaceRoutePath>([
   '/app/dialogs',
+  '/app/meetings',
   '/admin/news',
   '/mentor/dialogs',
+  '/mentor/meetings',
 ])
 
 /** Home destinations that still belong in the account menu, not the top primary group. */
@@ -56,9 +62,11 @@ const FOOTER_HOME_PATHS = new Set<WorkspaceRoutePath>(['/admin/users'])
 const navigationByRole = {
   user: [
     { label: 'Диалоги', to: '/app/dialogs' },
+    { label: 'Встречи', to: '/app/meetings' },
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Рефералы', to: '/app/referrals' },
     { label: 'Настройки', to: '/app/settings' },
+    { label: 'Заметки', to: '/app/notes' },
   ],
   admin: [
     { label: 'Новости', to: '/admin/news' },
@@ -68,9 +76,11 @@ const navigationByRole = {
   ],
   mentor: [
     { label: 'Диалоги', to: '/mentor/dialogs' },
+    { label: 'Встречи', to: '/mentor/meetings' },
     { label: 'Профиль', to: '/mentor/profile' },
     { label: 'Пользователи', to: '/mentor/users' },
     { label: 'Настройки', to: '/mentor/settings' },
+    { label: 'Заметки', to: '/mentor/notes' },
   ],
 } as const satisfies Record<UserRole, ReadonlyArray<WorkspaceNavigationItem>>
 

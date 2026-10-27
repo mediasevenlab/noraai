@@ -11,8 +11,10 @@ import { errorResponse, handleError, validationErrorHook } from './http/errors'
 import { createAuthSecurity, createInternalRateLimit } from './http/security'
 import { createAuthModule, type AuthHttpEnv } from './modules/auth'
 import { createKnowledgeModule } from './modules/knowledge'
+import { createMeetingsModule } from './modules/meetings'
 import { createMealsModule } from './modules/meals'
 import { createNewsModule } from './modules/news'
+import { createSpeechModule } from './modules/speech'
 import { createQuestionnaireProjectUser, createTelegramLinkStore, createUsersModule } from './modules/users'
 
 type CreateAppOptions = {
@@ -32,6 +34,7 @@ export function createApp({
 }: CreateAppOptions) {
   // Photos travel as Base64. Chat and a meal with several shots need more than the 64 KB account limit.
   const mealRequestBodyLimitBytes = 32 * 1024 * 1024
+  const meetingRequestBodyLimitBytes = 256 * 1024 * 1024
   const auth = createAuthModule({
     backgroundTasks,
     db: prisma,
@@ -45,6 +48,11 @@ export function createApp({
     env,
     requireAuth: auth.requireAuth,
   })
+  const meetings = createMeetingsModule({
+    db: prisma,
+    env,
+    requireAuth: auth.requireAuth,
+  })
   const meals = createMealsModule({
     backgroundTasks,
     completeTelegramLink: (code, proof, extras) => telegramLinks.complete(code, proof, extras),
@@ -53,9 +61,11 @@ export function createApp({
     requireAuth: auth.requireAuth,
     requireMentor: auth.requireMentor,
     loadKnowledge: knowledge.loadContext,
+    loadMeetings: meetings.loadForChat,
     readDocument: (name, bytes) => knowledge.readDocument(name, bytes),
     startPoller: startMealsPoller,
   })
+  const speech = createSpeechModule({ requireAuth: auth.requireAuth })
   const news = createNewsModule({
     db: prisma,
     env,
@@ -107,7 +117,7 @@ export function createApp({
   for (const middleware of createAuthSecurity({
     bodyLimitBytes: env.AUTH_BODY_LIMIT_BYTES,
     mealBodyLimitBytes: mealRequestBodyLimitBytes,
-    rateLimitMax: env.AUTH_RATE_LIMIT_MAX,
+    meetingBodyLimitBytes: meetingRequestBodyLimitBytes,
     rateLimitWindowSeconds: env.AUTH_RATE_LIMIT_WINDOW_SECONDS,
     trustProxy: env.TRUST_PROXY,
     trustedProxyClientIpHeader: env.TRUSTED_PROXY_CLIENT_IP_HEADER,
@@ -152,6 +162,8 @@ export function createApp({
   app.route('/api/users', meals.userMealsRoutes)
   app.route('/api/users', knowledge.routes)
   app.route('/api/admin', users.adminRoutes)
+  app.route('/api/users', meetings.routes)
+  app.route('/api/users', speech.routes)
   app.route('/api/mentor', users.mentorRoutes)
   app.route('/api/news', news.routes)
   app.use(

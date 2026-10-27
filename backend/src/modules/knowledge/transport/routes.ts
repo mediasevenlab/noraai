@@ -156,6 +156,14 @@ export function createKnowledgeRoutes(options: {
     const result = await execute(() => options.service.removeFile(c.var.user.id, c.req.valid('param').fileId))
     return c.json(result, 200)
   })
+  routes.get('/me/knowledge-bases/:baseId/files/:fileId/content', async (c) => {
+    const file = await execute(() => options.service.readFile(c.var.user.id, c.req.param('fileId')))
+    const ascii = file.fileName.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_') || 'file'
+    return c.body(new Uint8Array(file.bytes), 200, {
+      'Content-Type': file.mime,
+      'Content-Disposition': `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
+    })
+  })
   routes.post('/me/knowledge-bases/:baseId/files', async (c) => {
     const baseId = c.req.param('baseId')
     if (!z.string().uuid().safeParse(baseId).success) {

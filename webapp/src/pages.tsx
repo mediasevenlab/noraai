@@ -35,6 +35,8 @@ import {
 } from '@/features/auth'
 import { AuthMercuryOrb } from '@/features/auth/components/AuthMercuryOrb'
 import { DialogsPage, DialogsRuntimeProvider } from '@/features/dialogs'
+import { NotesPage } from '@/features/notes'
+import { MeetingsPage } from '@/features/meetings'
 import { homePathForRole, postAuthPath } from '@/features/navigation'
 import { NewsPage } from '@/features/news'
 import { useDismissAppBootSplash } from '@/platform/app-boot-splash'
@@ -150,9 +152,29 @@ export function UserDialogsPage() {
   return <DialogsPage />
 }
 
+export function UserMeetingsPage() {
+  useWorkspaceUser('user')
+  return <MeetingsPage />
+}
+
+export function UserNotesPage() {
+  useWorkspaceUser('user')
+  return <NotesPage />
+}
+
 export function MentorDialogsPage() {
   useWorkspaceUser('mentor')
   return <DialogsPage />
+}
+
+export function MentorMeetingsPage() {
+  useWorkspaceUser('mentor')
+  return <MeetingsPage />
+}
+
+export function MentorNotesPage() {
+  useWorkspaceUser('mentor')
+  return <NotesPage />
 }
 
 export function AdminNewsPage() {

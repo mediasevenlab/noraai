@@ -43,6 +43,24 @@ export function uploadKnowledgeFile(transport: AuthenticatedTransport, baseId: s
   })
 }
 
+export async function downloadKnowledgeFile(
+  transport: AuthenticatedTransport,
+  baseId: string,
+  fileId: string,
+  fileName: string,
+) {
+  const response = await transport.raw(`/api/users/me/knowledge-bases/${baseId}/files/${fileId}/content`)
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.append(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
 export function deleteKnowledgeFile(transport: AuthenticatedTransport, baseId: string, fileId: string) {
   return transport.request(
     `/api/users/me/knowledge-bases/${baseId}/files/${fileId}`,

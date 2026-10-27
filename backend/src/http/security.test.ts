@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 import { Hono } from 'hono'
 
-import { createAuthSecurity, isAuthWriteBudgetExemptPath, isFavoritesPath, isKnowledgeUploadPath, isMealWritePath, isMentorPlanBodyPath, isModelChatPath, isPlanLibraryPath, mealWriteRateLimitMax } from './security'
+import { createAuthSecurity, isAuthWriteBudgetExemptPath, isFavoritesPath, isKnowledgeUploadPath, isMealWritePath, isMeetingUploadPath, isMentorPlanBodyPath, isModelChatPath, isPlanLibraryPath, mealWriteRateLimitMax } from './security'
 
 test('meal write paths are distinct from account mutations', () => {
   expect(isMealWritePath('/api/users/me')).toBe(false)
@@ -17,6 +17,9 @@ test('meal write paths are distinct from account mutations', () => {
   expect(isModelChatPath('/api/users/me/model-chat')).toBe(true)
   expect(isKnowledgeUploadPath('/api/users/me/knowledge-bases/base/files')).toBe(true)
   expect(isKnowledgeUploadPath('/api/users/me/knowledge-bases')).toBe(false)
+  expect(isMeetingUploadPath('/api/users/me/meetings')).toBe(true)
+  expect(isMeetingUploadPath('/api/users/me/meetings/0196f6f8-6600-7000-8000-000000000001')).toBe(true)
+  expect(isMeetingUploadPath('/api/users/me')).toBe(false)
   expect(isModelChatPath('/api/users/me/meals')).toBe(false)
   expect(isFavoritesPath('/api/users/me/favorites')).toBe(true)
   expect(isFavoritesPath('/api/users/me')).toBe(false)

@@ -10,7 +10,7 @@ import type { AuthHttpEnv } from '../auth'
 import { AppMealComposer } from './application/app-meal-composer'
 import { MealsService } from './application/meals-service'
 import { extractMealWithGemini, refineMealWithGemini, transcribeAudioWithGemini } from './infrastructure/gemini-client'
-import { completeNoraChat, streamNoraChat } from './infrastructure/nora-chat-client'
+import { completeFollowUps, completeNoraChat, streamNoraChat } from './infrastructure/nora-chat-client'
 import { extractMealWithNora } from './infrastructure/nora-llm-client'
 import { analyzeMealWithWebhook } from './infrastructure/meal-analyze-webhook'
 import { notifyMentorMealViaWebhook } from './infrastructure/meal-mentor-notify-webhook'
@@ -50,6 +50,11 @@ type CreateMealsModuleOptions = {
   loadKnowledge: (input: {
     userId: string
     baseIds: readonly string[]
+    query: string
+  }) => Promise<string>
+  loadMeetings: (input: {
+    userId: string
+    meetingIds: readonly string[]
     query: string
   }) => Promise<string>
   readDocument?: (name: string, bytes: Buffer) => Promise<string>
@@ -98,6 +103,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
     analyzeNora: (input) =>
       extractMealWithNora(options.env, input, (audio) => transcribeAudioWithGemini(options.env, audio)),
     chatWithNora: async (userId, input) => {
+      if (input.suggestions) return completeFollowUps(options.env, input.messages)
       const prepared = await prepareNoraChat(options, userId, input)
       return completeNoraChat(options.env, prepared.messages, input.search, prepared.knowledge, undefined, input.think)
     },
@@ -167,7 +173,12 @@ function modelTurnText(message: ChatTurn) {
 async function prepareNoraChat(
   options: CreateMealsModuleOptions,
   userId: string,
-  input: { messages: readonly ChatTurn[]; knowledgeBaseIds?: readonly string[]; search?: boolean },
+  input: {
+    messages: readonly ChatTurn[]
+    knowledgeBaseIds?: readonly string[]
+    meetingIds?: readonly string[]
+    search?: boolean
+  },
 ) {
   const question = [...input.messages].reverse().find((message) => message.role === 'user')
   const files = attachedFiles(input.messages)
@@ -190,7 +201,8 @@ async function prepareNoraChat(
     }
   }
   const selected = await knowledgeForChat(options.loadKnowledge, userId, input)
-  const knowledge = combineKnowledgeContext(attached, selected)
+  const meetings = await meetingsForChat(options.loadMeetings, userId, input)
+  const knowledge = [combineKnowledgeContext(attached, selected), meetings].filter((part) => part.trim()).join('\n\n')
   const messages = input.messages.map((message) => ({
     role: message.role === 'assistant' ? 'assistant' as const : 'user' as const,
     text: modelTurnText(message),
@@ -209,6 +221,20 @@ async function knowledgeForChat(
   return loadKnowledge({
     userId,
     baseIds: input.knowledgeBaseIds,
+    query: question?.text ?? '',
+  })
+}
+
+async function meetingsForChat(
+  loadMeetings: CreateMealsModuleOptions['loadMeetings'],
+  userId: string,
+  input: { messages: ReadonlyArray<{ role: string; text: string }>; meetingIds?: readonly string[] },
+) {
+  if (!input.meetingIds?.length) return ''
+  const question = [...input.messages].reverse().find((message) => message.role === 'user')
+  return loadMeetings({
+    userId,
+    meetingIds: input.meetingIds,
     query: question?.text ?? '',
   })
 }

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 
 import { transcribeMyVoice } from '../api'
 import { dialogComposerToolClass } from '@/components/dialog-composer-tool'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { blobToVoiceWavBase64 } from './voice-wav'
 import {
   createVoiceAudioContext,
@@ -214,19 +215,28 @@ export function MealVoiceControls({
 
   return (
     <>
-      <button
-        aria-label={transcribing ? 'Расшифровка голоса' : 'Голосовой ввод'}
-        className={cn(dialogComposerToolClass(false, micDisabled), 'size-8')}
-        disabled={micDisabled}
-        onClick={() => void startRecording()}
-        type="button"
-      >
-        {transcribing ? (
-          <Loader2Icon aria-hidden className="size-[18px] animate-spin" strokeWidth={1.75} />
-        ) : (
-          <MicIcon className="size-[18px]" strokeWidth={1.75} />
-        )}
-      </button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              aria-label={transcribing ? 'Расшифровка голоса' : 'Голосовой ввод'}
+              className={cn(dialogComposerToolClass(false, micDisabled), 'size-8')}
+              disabled={micDisabled}
+              onClick={() => void startRecording()}
+              type="button"
+            />
+          }
+        >
+          {transcribing ? (
+            <Loader2Icon aria-hidden className="size-[18px] animate-spin" strokeWidth={1.75} />
+          ) : (
+            <MicIcon className="size-[18px]" strokeWidth={1.75} />
+          )}
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={8}>
+          {transcribing ? 'Расшифровка голоса' : 'Голосовой ввод'}
+        </TooltipContent>
+      </Tooltip>
       {sendButton}
     </>
   )

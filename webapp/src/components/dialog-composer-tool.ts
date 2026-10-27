@@ -1,5 +1,8 @@
 import { cn } from '@/lib/utils'
 
+/** Knowledge and meeting pickers share one width. Long names truncate inside it. */
+export const composerPickerMenuClass = 'w-56 max-w-56'
+
 /** Round tool in the composer. A pressed button stays dark on hover, so a light icon does not disappear. */
 export function dialogComposerToolClass(active: boolean, disabled = false) {
   return cn(

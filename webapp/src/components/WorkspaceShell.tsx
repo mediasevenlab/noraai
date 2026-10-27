@@ -1,4 +1,5 @@
 import {
+  BookmarkIcon,
   CalendarRangeIcon,
   ClipboardListIcon,
   Columns2Icon,
@@ -69,6 +70,7 @@ const iconsByPath = {
   '/app/profile': UserIcon,
   '/app/referrals': UsersIcon,
   '/app/settings': SettingsIcon,
+  '/app/notes': BookmarkIcon,
   '/admin': UsersIcon,
   '/admin/news': NewspaperIcon,
   '/admin/profile': UserIcon,
@@ -80,6 +82,7 @@ const iconsByPath = {
   '/mentor/profile': UserIcon,
   '/mentor/users': UsersIcon,
   '/mentor/settings': SettingsIcon,
+  '/mentor/notes': BookmarkIcon,
 } as const
 
 function getSidebarDefaultOpen() {

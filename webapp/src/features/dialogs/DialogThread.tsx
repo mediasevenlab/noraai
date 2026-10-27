@@ -5,16 +5,18 @@ import {
   ComposerPrimitive,
   MessagePartPrimitive,
   MessagePrimitive,
+  SuggestionPrimitive,
   ThreadPrimitive,
   useAui,
   useAuiState,
 } from '@assistant-ui/react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 
 import { Volume2Icon } from 'lucide-react'
 
 import {
   ArrowUpIcon,
+  ArrowUpRightIcon,
   BrainIcon,
   GlobeIcon,
   CheckIcon,
@@ -24,13 +26,17 @@ import {
   CopyIcon,
   PencilIcon,
   RefreshCwIcon,
+  Loader2Icon,
   SquareIcon,
   XIcon,
 } from '@/components/icons'
 
 import { dialogComposerToolClass } from '@/components/dialog-composer-tool'
+
+import { ComposerToolTip } from './composer/tool-tip'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
+import { dialogDayLabel } from '@/lib/ru-when'
 import { useAuth } from '@/features/auth'
 import { MercuryOrb } from '@/features/auth/mercury/mercury-orb'
 import { ComposerAttachChips } from './composer/attach-chips'
@@ -51,9 +57,12 @@ import {
 import { MealVoiceControls } from './composer/MealVoiceControls'
 import { appendVoiceTranscript } from './composer/voice-input'
 import { KnowledgeBaseMenu } from '@/features/knowledge'
+import { MeetingMenu } from '@/features/meetings'
+import { DialogNoteToggle } from './note-toggle'
 
 import { DialogMarkdown } from './markdown'
 import { internetEnabled, setInternetEnabled, subscribeInternetOpen } from './internet-open'
+import { suggestionsEnabled, subscribeSuggestionsOpen } from './suggestions-open'
 import { reasoningExpanded, setReasoningExpanded, subscribeReasoningOpen } from './reasoning-open'
 import { reasoningStatusLabel } from './reasoning-time'
 
@@ -115,6 +124,7 @@ function DialogMessageActions() {
           <CopyIcon className="size-3.5 group-data-[copied=true]:hidden" />
           <CheckIcon className="hidden size-3.5 group-data-[copied=true]:block" />
         </ActionBarPrimitive.Copy>
+        <DialogNoteToggle />
         <AuiIf condition={(state) => state.message.role === 'user'}>
           <ActionBarPrimitive.Edit aria-label="Изменить" className={MESSAGE_ACTION_CLASS}>
             <PencilIcon className="size-3.5" />
@@ -134,12 +144,12 @@ function DialogMessageActions() {
               <Volume2Icon className="size-3.5" />
             </ActionBarPrimitive.Speak>
           </AuiIf>
-          <AuiIf
-            condition={(state) =>
-              state.message.speech?.status.type === 'running'
-              || state.message.speech?.status.type === 'starting'
-            }
-          >
+          <AuiIf condition={(state) => state.message.speech?.status.type === 'starting'}>
+            <ActionBarPrimitive.StopSpeaking aria-label="Готовим озвучку" className={MESSAGE_ACTION_CLASS}>
+              <Loader2Icon className="size-3.5 animate-spin" />
+            </ActionBarPrimitive.StopSpeaking>
+          </AuiIf>
+          <AuiIf condition={(state) => state.message.speech?.status.type === 'running'}>
             <ActionBarPrimitive.StopSpeaking aria-label="Остановить озвучку" className={MESSAGE_ACTION_CLASS}>
               <SquareIcon className="size-3.5 fill-current" />
             </ActionBarPrimitive.StopSpeaking>
@@ -280,37 +290,50 @@ function DialogReasoningPart({
 function DialogInternetToggle() {
   const open = useInternetOpen()
   return (
-    <button
-      aria-label="Интернет"
-      aria-pressed={open}
-      className={cn(dialogComposerToolClass(open), 'size-8')}
-      onClick={() => setInternetEnabled(!open)}
-      type="button"
-    >
-      <GlobeIcon className="size-4" />
-    </button>
+    <ComposerToolTip label={open ? 'Выключить поиск' : 'Включить поиск'}>
+      <button
+        aria-label={open ? 'Выключить поиск' : 'Включить поиск'}
+        aria-pressed={open}
+        className={cn(dialogComposerToolClass(open), 'size-8')}
+        onClick={() => setInternetEnabled(!open)}
+        type="button"
+      >
+        <GlobeIcon className="size-4" />
+      </button>
+    </ComposerToolTip>
   )
 }
 
 function DialogReasoningToggle() {
   const open = useReasoningOpen()
   return (
-    <button
-      aria-label="Рассуждения"
-      aria-pressed={open}
-      className={cn(dialogComposerToolClass(open), 'size-8')}
-      onClick={() => setReasoningExpanded(!open)}
-      type="button"
-    >
-      <BrainIcon className="size-4" />
-    </button>
+    <ComposerToolTip label={open ? 'Выключить рассуждения' : 'Включить рассуждения'}>
+      <button
+        aria-label={open ? 'Выключить рассуждения' : 'Включить рассуждения'}
+        aria-pressed={open}
+        className={cn(dialogComposerToolClass(open), 'size-8')}
+        onClick={() => setReasoningExpanded(!open)}
+        type="button"
+      >
+        <BrainIcon className="size-4" />
+      </button>
+    </ComposerToolTip>
   )
 }
 
 function DialogMessage({ role }: { role: 'user' | 'assistant' }) {
   const mine = role === 'user'
+  const day = useAuiState((state) => {
+    const index = state.message.index
+    const previous = index > 0 ? state.thread.messages[index - 1]?.createdAt : undefined
+    return dialogDayLabel(state.message.createdAt, previous)
+  })
   return (
-    <MessagePrimitive.Root className={cn('flex w-full', mine ? 'justify-end' : 'justify-start')}>
+    <MessagePrimitive.Root className="flex w-full flex-col">
+      {day ? (
+        <p className="mb-4 w-full text-center text-[12px] leading-4 text-[var(--nora-text-secondary)]">{day}</p>
+      ) : null}
+      <div className={cn('flex w-full', mine ? 'justify-end' : 'justify-start')}>
       <div className={cn('flex min-w-0 flex-col', mine ? 'max-w-[min(100%,40rem)] items-end' : 'w-full max-w-3xl')}>
         <div className={cn('flex min-w-0 flex-col', mine ? 'items-end' : 'w-full')}>
         <div
@@ -341,6 +364,7 @@ function DialogMessage({ role }: { role: 'user' | 'assistant' }) {
         </div>
         <DialogMessageActions />
         </div>
+      </div>
       </div>
     </MessagePrimitive.Root>
   )
@@ -527,6 +551,7 @@ function DialogComposer({ placeholder = 'Сообщение…' }: { placeholder
             }}
           />
           <KnowledgeBaseMenu disabled={running} />
+          <MeetingMenu disabled={running} />
           <DialogReasoningToggle />
           <DialogInternetToggle />
           <div className="flex-1" />
@@ -537,19 +562,23 @@ function DialogComposer({ placeholder = 'Сообщение…' }: { placeholder
             }}
             sendButton={
               <>
-                <ComposerPrimitive.Cancel
-                  aria-label="Остановить"
-                  className={cn(dialogComposerSendClass('ready'), 'disabled:hidden')}
-                >
-                  <SquareIcon className="size-3.5 fill-current" />
-                </ComposerPrimitive.Cancel>
-                <AuiIf condition={(state) => !state.thread.isRunning}>
-                  <ComposerPrimitive.Send
-                    aria-label="Отправить"
-                    className={dialogComposerSendClass(tone)}
+                <ComposerToolTip label="Остановить">
+                  <ComposerPrimitive.Cancel
+                    aria-label="Остановить"
+                    className={cn(dialogComposerSendClass('ready'), 'disabled:hidden')}
                   >
-                    <ArrowUpIcon className="size-[18px]" strokeWidth={1.75} />
-                  </ComposerPrimitive.Send>
+                    <SquareIcon className="size-3.5 fill-current" />
+                  </ComposerPrimitive.Cancel>
+                </ComposerToolTip>
+                <AuiIf condition={(state) => !state.thread.isRunning}>
+                  <ComposerToolTip label="Отправить">
+                    <ComposerPrimitive.Send
+                      aria-label="Отправить"
+                      className={dialogComposerSendClass(tone)}
+                    >
+                      <ArrowUpIcon className="size-[18px]" strokeWidth={1.75} />
+                    </ComposerPrimitive.Send>
+                  </ComposerToolTip>
                 </AuiIf>
               </>
             }
@@ -558,6 +587,26 @@ function DialogComposer({ placeholder = 'Сообщение…' }: { placeholder
         </div>
       </ComposerPressSurface>
     </ComposerPrimitive.Root>
+  )
+}
+
+function DialogSuggestions() {
+  const enabled = useSyncExternalStore(subscribeSuggestionsOpen, suggestionsEnabled, () => true)
+  if (!enabled) return null
+  return (
+    <div className="flex flex-col">
+      <ThreadPrimitive.Suggestions>
+        {() => (
+          <SuggestionPrimitive.Trigger
+            send
+            className="flex w-full items-center gap-2 rounded-lg px-1 py-1.5 text-left text-[14px] leading-5 text-[var(--nora-text-secondary)] transition-colors hover:bg-[var(--nora-input-bg)] hover:text-[var(--nora-text)]"
+          >
+            <ArrowUpRightIcon className="size-3.5 shrink-0" />
+            <SuggestionPrimitive.Title className="min-w-0" />
+          </SuggestionPrimitive.Trigger>
+        )}
+      </ThreadPrimitive.Suggestions>
+    </div>
   )
 }
 
@@ -582,6 +631,7 @@ export function DialogThread() {
       <ThreadPrimitive.Viewport className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-4 px-4 py-6">
           <ThreadPrimitive.Messages components={DIALOG_MESSAGE_COMPONENTS} />
+          <DialogSuggestions />
         </div>
       </ThreadPrimitive.Viewport>
       <div className="relative mx-auto w-full max-w-3xl shrink-0 px-4 pb-4">

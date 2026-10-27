@@ -12,14 +12,19 @@ const app = createApp({
 
 const server = Bun.serve({
   port: runtime.env.PORT,
+  // Meetings accept up to 256 MB. Bun otherwise closes the socket at 128 MB.
+  maxRequestBodySize: 256 * 1024 * 1024,
   // A Qwen reply with reasoning can take longer than the default idle timeout.
   idleTimeout: 120,
   fetch(request, bunServer) {
-    // A scanned PDF is several vision calls. The global cap is 255 seconds.
+    // A scanned PDF is several vision calls. A long meeting is copied to the
+    // speech server before this response returns.
     const path = new URL(request.url).pathname
     if (
       request.method === 'POST' &&
-      (/\/knowledge-bases\/[^/]+\/files\/?$/.test(path) || /\/model-chat\/?$/.test(path))
+      (/\/knowledge-bases\/[^/]+\/files\/?$/.test(path) ||
+        /\/model-chat\/?$/.test(path) ||
+        /\/meetings\/?$/.test(path))
     ) {
       bunServer.timeout(request, 1500)
     }

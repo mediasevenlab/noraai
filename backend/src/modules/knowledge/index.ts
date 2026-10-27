@@ -5,6 +5,7 @@ import type { AppEnv } from '../../env'
 import type { AuthHttpEnv } from '../auth'
 import { createKnowledgeService } from './application/knowledge-service'
 import { extractKnowledgeDocument } from './infrastructure/extract-document'
+import { createKnowledgeFileStore } from './infrastructure/knowledge-file-store'
 import { createKnowledgeRepository } from './infrastructure/knowledge-repository'
 import { createVisionScanReader } from './infrastructure/read-scan'
 import { createKnowledgeRoutes } from './transport/routes'
@@ -27,6 +28,7 @@ export function createKnowledgeModule(options: {
   const service = createKnowledgeService({
     repository: createKnowledgeRepository(options.db),
     extract: (name, bytes) => extractKnowledgeDocument(name, bytes, readScan),
+    files: createKnowledgeFileStore(),
   })
   return {
     routes: createKnowledgeRoutes({ requireAuth: options.requireAuth, service }),

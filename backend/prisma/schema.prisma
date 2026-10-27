@@ -45,6 +45,7 @@ model User {
   telegramLinkChallenges TelegramLinkChallenge[]
   newsPosts        NewsPost[]
   knowledgeBases   KnowledgeBase[]
+  meetings         Meeting[]
   generationUsage  Json          @default("{}") @map("generation_usage")
 
   @@index([role], map: "users_role_idx")
@@ -369,4 +370,32 @@ model KnowledgeChunk {
 
   @@index([fileId, position], map: "knowledge_chunks_file_id_position_idx")
   @@map("knowledge_chunks")
+}
+
+enum MeetingStatus {
+  queued
+  running
+  ready
+  failed
+
+  @@map("meeting_status")
+}
+
+model Meeting {
+  id         String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId     String        @map("user_id") @db.Uuid
+  title      String        @db.VarChar(160)
+  fileName   String        @map("file_name") @db.VarChar(180)
+  status     MeetingStatus @default(queued)
+  jobId      String?       @map("job_id")
+  speakers   Int?
+  transcript String        @default("")
+  segments   Json          @default("[]")
+  error      String        @default("")
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade, map: "meetings_user_id_fkey")
+
+  @@index([userId, updatedAt], map: "meetings_user_id_updated_at_idx")
+  @@map("meetings")
 }

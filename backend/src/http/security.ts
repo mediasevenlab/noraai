@@ -48,6 +48,10 @@ export function isKnowledgeUploadPath(pathname: string): boolean {
   return /\/knowledge-bases\/[^/]+\/files(?:\/|$)/.test(pathname)
 }
 
+export function isMeetingUploadPath(pathname: string): boolean {
+  return /\/meetings(?:\/|$)/.test(pathname)
+}
+
 export function isFavoritesPath(pathname: string): boolean {
   return /\/favorites(?:\/|$)/.test(pathname)
 }
@@ -78,8 +82,15 @@ export function createAuthSecurity(options: AuthSecurityOptions): MiddlewareHand
     ? payloadTooLargeLimit(Math.max(options.bodyLimitBytes, options.mealBodyLimitBytes))
     : accountBodyLimit
 
+  const meetingBodyLimit = options.meetingBodyLimitBytes != null
+    ? payloadTooLargeLimit(Math.max(options.bodyLimitBytes, options.meetingBodyLimitBytes))
+    : mealBodyLimit
+
   return [
     async (c, next) => {
+      if (options.meetingBodyLimitBytes != null && isMeetingUploadPath(c.req.path)) {
+        return meetingBodyLimit(c, next)
+      }
       if (
         options.mealBodyLimitBytes != null &&
         (isMealWritePath(c.req.path) || isMentorPlanBodyPath(c.req.path) || isModelChatPath(c.req.path) || isKnowledgeUploadPath(c.req.path))

@@ -3,6 +3,7 @@ import type { UserDto } from '@web-app-demo/contracts'
 
 import { AtSignIcon, HashIcon, MailIcon, UserRoundIcon } from '@/components/icons'
 import { SettingsCanvas, SettingsEntry, SettingsReadRows } from '@/components/settings-canvas'
+import { SuggestionsSetting } from '@/features/dialogs'
 import { MentorConnectionPanel } from './MentorConnectionPanel'
 import { ProfileMobileMasthead } from './ProfileMobileMasthead'
 import { ProfilePanel } from './ProfilePanel'
@@ -71,7 +72,7 @@ export function UserSettings({
 }) {
   return (
     <SettingsCanvas
-      description="Подключение к наставнику."
+      description="Подключение к наставнику и подсказки под ответами."
       eyebrow="Аккаунт"
       meta={user.email}
       phoneSheet
@@ -79,6 +80,7 @@ export function UserSettings({
       title="Настройки"
     >
       <MentorConnectionPanel />
+      <SuggestionsSetting />
     </SettingsCanvas>
   )
 }

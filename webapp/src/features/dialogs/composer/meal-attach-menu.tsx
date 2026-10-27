@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { dialogComposerToolClass } from '@/components/dialog-composer-tool'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { pickHybridMealImage } from '@/platform/hybrid-camera'
 
@@ -156,21 +157,30 @@ export function MealAttachMenu({
       ) : null}
       {useMenu ? (
         <DropdownMenu>
-          <DropdownMenuTrigger
-            disabled={disabled}
-            nativeButton
-            render={
-              <button
-                aria-label="Добавить файл"
-                className={plusButtonClass(disabled)}
-                data-demo-pressed={pressed ? '' : undefined}
-                disabled={disabled}
-                type="button"
-              />
-            }
-          >
-            <PlusIcon className="size-[18px]" strokeWidth={1.75} />
-          </DropdownMenuTrigger>
+          <Tooltip>
+            <DropdownMenuTrigger
+              disabled={disabled}
+              nativeButton
+              render={
+                <TooltipTrigger
+                  render={
+                    <button
+                      aria-label="Добавить файл"
+                      className={plusButtonClass(disabled)}
+                      data-demo-pressed={pressed ? '' : undefined}
+                      disabled={disabled}
+                      type="button"
+                    />
+                  }
+                />
+              }
+            >
+              <PlusIcon className="size-[18px]" strokeWidth={1.75} />
+            </DropdownMenuTrigger>
+            <TooltipContent side="top" sideOffset={8}>
+              Добавить файл
+            </TooltipContent>
+          </Tooltip>
           <DropdownMenuContent
             align="start"
             className="min-w-[12.5rem] rounded-[16px]! border-[color-mix(in_srgb,var(--nora-menu-border)_45%,var(--nora-panel))] p-1! text-[16px] font-medium"
@@ -201,16 +211,25 @@ export function MealAttachMenu({
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
-        <button
-          aria-label="Добавить файл"
-          className={plusButtonClass(disabled)}
-          data-demo-pressed={pressed ? '' : undefined}
-          disabled={disabled}
-          onClick={() => fileRef.current?.click()}
-          type="button"
-        >
-          <PlusIcon className="size-[18px]" strokeWidth={1.75} />
-        </button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                aria-label="Добавить файл"
+                className={plusButtonClass(disabled)}
+                data-demo-pressed={pressed ? '' : undefined}
+                disabled={disabled}
+                onClick={() => fileRef.current?.click()}
+                type="button"
+              />
+            }
+          >
+            <PlusIcon className="size-[18px]" strokeWidth={1.75} />
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={8}>
+            Добавить файл
+          </TooltipContent>
+        </Tooltip>
       )}
     </>
   )

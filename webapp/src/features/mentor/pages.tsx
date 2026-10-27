@@ -7,6 +7,7 @@ import {
 import { SettingsCanvas, SettingsEntry, SettingsReadRows } from '@/components/settings-canvas'
 import { HashIcon, UserRoundIcon } from '@/components/icons'
 import { productFeedPageClass } from '@/components/nora/product-sheet'
+import { SuggestionsSetting } from '@/features/dialogs'
 import {
   NicknamePanel,
   ProfilePanel,
@@ -96,7 +97,7 @@ export function MentorMenteePlaceholder({ userId }: { userId: string }) {
 export function MentorSettings({ user }: { user: UserDto }) {
   return (
     <SettingsCanvas
-      description="Имя наставника."
+      description="Имя наставника и подсказки под ответами."
       editable
       eyebrow="Наставник"
       meta={user.email}
@@ -105,6 +106,7 @@ export function MentorSettings({ user }: { user: UserDto }) {
       title="Настройки"
     >
       <NicknamePanel user={user} />
+      <SuggestionsSetting />
     </SettingsCanvas>
   )
 }

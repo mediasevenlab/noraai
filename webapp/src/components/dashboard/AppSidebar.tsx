@@ -119,8 +119,7 @@ export function AppSidebar({
       <SidebarSearchProvider value={query}>
         <SidebarContent
           className={cn(
-            // 12px above first section label — same as meal-card text inset (pt-3)
-            'pt-3 group-data-[collapsible=icon]:pt-2',
+            'pt-0 group-data-[collapsible=icon]:pt-2',
             navigationLocked && 'pointer-events-none opacity-45',
           )}
         >

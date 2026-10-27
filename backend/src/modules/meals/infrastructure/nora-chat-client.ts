@@ -6,8 +6,13 @@ import { MealsFailure } from '../domain/errors'
 import { splitChatReasoning } from '../domain/chat-reasoning'
 import { consumeChatDelta, emptyChatStream, type ChatStreamState } from '../domain/chat-stream'
 import {
+  answerNeedsVisionReading,
   buildNoraChatRequest,
+  buildVisionGlance,
+  followUpLines,
+  noteVisionForText,
   NORA_WEB_SEARCH_TOOL,
+  photoLookupQuery,
   readWebSearchCalls,
   webSearchQuery,
   type NoraChatTurn,
@@ -131,8 +136,9 @@ export async function* streamNoraChat(
   signal?: AbortSignal,
   think?: boolean,
 ): AsyncGenerator<NoraChatEvent & { model?: string }> {
+  const lastUser = [...messages].reverse().find((message) => message.role === 'user')
   const ready = directKnowledgeReply(knowledge ?? '')
-  if (ready) {
+  if (ready && !lastUser?.images?.length && search !== true) {
     yield* pacedReply(ready, env.LLM_TEXT_MODEL)
     return
   }
@@ -144,21 +150,33 @@ export async function* streamNoraChat(
     )
   }
 
-  const request = buildNoraChatRequest(
-    await prepareTurns(messages),
-    {
-      text: env.LLM_TEXT_MODEL,
-      vision: env.LLM_VISION_MODEL,
-      search: search === true && Boolean(env.LLM_SEARCH_URL),
-    },
-    knowledge,
-  )
+  const models = {
+    text: env.LLM_TEXT_MODEL,
+    vision: env.LLM_VISION_MODEL,
+    search: search === true && Boolean(env.LLM_SEARCH_URL),
+  }
+  let turns = await prepareTurns(messages)
+  let photoSubject = ''
+  if (answerNeedsVisionReading(turns, models, knowledge)) {
+    const note = await readVisionNote(env, turns, signal).catch(() => '')
+    turns = noteVisionForText(turns, note)
+    if (search === true && env.LLM_SEARCH_URL && note.trim() && note.trim() !== 'Снимок разобрать не удалось.') {
+      photoSubject = await readPhotoSubject(env, lastUser?.text.trim() ?? '', note, signal).catch(() => '')
+    }
+  }
+  const request = buildNoraChatRequest(turns, models, knowledge)
   const thread: ChatMessage[] = request.messages.map((message) => ({
     role: message.role,
     content: message.content,
   }))
   if (search === true && env.LLM_SEARCH_URL) {
-    const question = [...messages].reverse().find((message) => message.role === 'user')?.text.trim() ?? ''
+    const typed = lastUser?.text.trim() ?? ''
+    const noted = turns.at(-1)?.text ?? ''
+    const marker = 'Что видно на изображении:\n'
+    const fromPhoto = noted.includes(marker) ? noted.slice(noted.indexOf(marker) + marker.length).trim() : ''
+    const readablePhoto = Boolean(fromPhoto) && !fromPhoto.startsWith('Снимок разобрать не удалось')
+    const question = readablePhoto ? photoLookupQuery(typed, photoSubject || fromPhoto) : fromPhoto ? '' : typed
+    if (fromPhoto) request.tools = false
     if (question) {
       const findings = await searchOfficeWeb(
         env.LLM_SEARCH_URL,
@@ -175,7 +193,17 @@ export async function* streamNoraChat(
   const thinking = request.model === env.LLM_TEXT_MODEL
   const thinkOn = Boolean(think) && thinking
   const writingTable = (knowledge ?? '').includes('| --- |')
-  const answerTokens = thinkOn ? THINK_MAX_TOKENS : writingTable ? 4096 : TEXT_MAX_TOKENS
+  const meetingTranscript = (knowledge ?? '').startsWith('Расшифровки выбранных встреч.')
+  const textNumCtx = meetingTranscript ? 65_536 : TEXT_NUM_CTX
+  const answerTokens = thinkOn
+    ? THINK_MAX_TOKENS
+    : writingTable
+      ? 4096
+      : meetingTranscript
+        ? 3072
+        : turns.at(-1)?.text.includes('Что видно на изображении:')
+          ? 2048
+          : TEXT_MAX_TOKENS
   let reply = ''
   for (let round = 0; round < 3; round += 1) {
     const allowTools = request.tools && round < 2
@@ -187,7 +215,7 @@ export async function* streamNoraChat(
           stream: true,
           think: thinkOn,
           options: {
-            num_ctx: thinking ? TEXT_NUM_CTX : VISION_NUM_CTX,
+            num_ctx: thinking ? textNumCtx : VISION_NUM_CTX,
             num_predict: thinking ? answerTokens : VISION_MAX_TOKENS,
             temperature: 0.4,
           },
@@ -198,7 +226,7 @@ export async function* streamNoraChat(
           max_tokens: thinking ? answerTokens : VISION_MAX_TOKENS,
           messages: thread,
           stream: true,
-          ...(thinking ? { think: thinkOn, options: { num_ctx: TEXT_NUM_CTX } } : {}),
+          ...(thinking ? { think: thinkOn, options: { num_ctx: textNumCtx } } : {}),
           ...(allowTools ? { tools: [NORA_WEB_SEARCH_TOOL] } : {}),
         }, signal)
     const roundStream = useNative ? readOllamaChat(response) : readCompletion(response, allowTools ? undefined : [])
@@ -242,7 +270,7 @@ export async function* streamNoraChat(
           ],
           stream: true,
           think: false,
-          options: { num_ctx: TEXT_NUM_CTX, num_predict: TEXT_MAX_TOKENS, temperature: 0.2 },
+          options: { num_ctx: textNumCtx, num_predict: answerTokens, temperature: 0.2 },
         }, signal)
       : await postOllamaChat(baseUrl, env.LLM_API_KEY, {
           model: request.model,
@@ -307,6 +335,95 @@ function nativeVisionMessages(messages: readonly ChatMessage[]) {
       ...(images.length > 0 ? { images } : {}),
     }
   })
+}
+
+async function readPhotoSubject(env: NoraEnv, userAsk: string, visionNote: string, signal?: AbortSignal) {
+  const baseUrl = env.LLM_BASE_URL?.replace(/\/$/, '')
+  if (!baseUrl || !env.LLM_API_KEY) return ''
+  const response = await postOllamaChat(baseUrl, env.LLM_API_KEY, {
+    model: env.LLM_TEXT_MODEL,
+    messages: [
+      {
+        role: 'system',
+        content:
+          'По разбору снимка назови предмет одной короткой фразой для поиска. Если это еда — название блюда. Если точное имя неясно, назови ближайшее похожее. Только фраза, без пояснений.',
+      },
+      { role: 'user', content: `Вопрос: ${userAsk}\n\nРазбор:\n${visionNote}` },
+    ],
+    stream: true,
+    think: false,
+    options: { num_ctx: 4096, num_predict: 64, temperature: 0.1 },
+  }, signal)
+  return (await collectReply(response)).trim()
+}
+
+export async function completeFollowUps(
+  env: NoraEnv,
+  messages: readonly NoraModelChatMessage[],
+  signal?: AbortSignal,
+) {
+  const baseUrl = env.LLM_BASE_URL?.replace(/\/$/, '')
+  if (!baseUrl || !env.LLM_API_KEY) {
+    throw new MealsFailure('misconfigured', 'Своя модель пока не настроена. Выберите Gemini или попробуйте позже.')
+  }
+  const transcript = messages
+    .slice(-4)
+    .map((message) => {
+      const text = message.text.trim()
+      if (!text) return ''
+      return `${message.role === 'user' ? 'Пользователь' : 'Nora'}: ${text.slice(0, 500)}`
+    })
+    .filter(Boolean)
+    .join('\n')
+  if (!transcript) return { reply: ' ', model: env.LLM_TEXT_MODEL }
+  const response = await postOllamaChat(baseUrl, env.LLM_API_KEY, {
+    model: env.LLM_TEXT_MODEL,
+    messages: [
+      {
+        role: 'system',
+        content:
+          'Ты пишешь три следующих сообщения пользователя. Они продолжают тему последнего ответа. Каждая строка — короткий вопрос или просьба, которую человек отправит в чат. Не пиши от лица ассистента, не предлагай настроить приложение, профиль или свои возможности. Пример, если речь о погоде в Новосибирске:\nКакая погода будет завтра в Новосибирске\nПрогноз на неделю\nА какая погода в моём городе?\nВерни ровно 3 строки, без нумерации.',
+      },
+      { role: 'user', content: transcript },
+    ],
+    stream: true,
+    think: false,
+    options: { num_ctx: 4096, num_predict: 180, temperature: 0.3 },
+  }, signal)
+  const lines = followUpLines(await collectReply(response))
+  return { reply: lines.join('\n') || ' ', model: env.LLM_TEXT_MODEL }
+}
+
+async function collectReply(response: Response) {
+  const roundStream = readOllamaChat(response)
+  let reply = ''
+  let step = await roundStream.next()
+  while (!step.done) {
+    if (step.value.reply) reply += step.value.reply
+    step = await roundStream.next()
+  }
+  return reply
+}
+
+async function readVisionNote(env: NoraEnv, turns: readonly NoraChatTurn[], signal?: AbortSignal) {
+  const baseUrl = env.LLM_BASE_URL?.replace(/\/$/, '')
+  if (!baseUrl || !env.LLM_API_KEY) return ''
+  const glance = buildVisionGlance(turns, {
+    text: env.LLM_TEXT_MODEL,
+    vision: env.LLM_VISION_MODEL,
+  })
+  const response = await postOllamaChat(baseUrl, env.LLM_API_KEY, {
+    model: glance.model,
+    messages: nativeVisionMessages(glance.messages),
+    stream: true,
+    think: false,
+    options: {
+      num_ctx: VISION_NUM_CTX,
+      num_predict: 512,
+      temperature: 0.2,
+    },
+  }, signal)
+  return (await collectReply(response)).trim()
 }
 
 function modelFailureText(status: number, raw: string) {

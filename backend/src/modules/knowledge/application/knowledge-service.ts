@@ -1,6 +1,6 @@
 import { KnowledgeFailure } from '../domain/errors'
 import { buildKnowledgeContext, chunkKnowledgeText } from '../domain/retrieve'
-import type { KnowledgeBaseRecord, KnowledgeFileRecord, KnowledgeRepository } from './ports'
+import type { KnowledgeBaseRecord, KnowledgeFileRecord, KnowledgeFileStore, KnowledgeRepository } from './ports'
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024
 const MAX_EXTRACTED_CHARS = 1_500_000
@@ -35,9 +35,24 @@ function presentFile(file: KnowledgeFileRecord) {
   }
 }
 
+function downloadMime(fileName: string) {
+  const ext = fileName.toLowerCase().split('.').pop()
+  if (ext === 'pdf') return 'application/pdf'
+  if (ext === 'txt' || ext === 'md' || ext === 'csv' || ext === 'log') return 'text/plain; charset=utf-8'
+  if (ext === 'json') return 'application/json'
+  if (ext === 'html' || ext === 'htm') return 'text/html; charset=utf-8'
+  if (ext === 'xls') return 'application/vnd.ms-excel'
+  if (ext === 'xlsx' || ext === 'xlsm') return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  if (ext === 'docx') return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  return 'application/octet-stream'
+}
+
+const missingFile = 'Файл не сохранился, загрузите его ещё раз'
+
 export function createKnowledgeService(deps: {
   repository: KnowledgeRepository
   extract: (name: string, bytes: Buffer) => Promise<string>
+  files?: KnowledgeFileStore
 }) {
   return {
     async list(userId: string) {
@@ -53,8 +68,11 @@ export function createKnowledgeService(deps: {
       return presentBase(base)
     },
     async remove(userId: string, baseId: string) {
+      const bases = await deps.repository.list(userId)
+      const base = bases.find((item) => item.id === baseId)
       const removed = await deps.repository.remove(userId, baseId)
       if (!removed) throw new KnowledgeFailure('not_found', 'База знаний не найдена')
+      if (base && deps.files) await Promise.all(base.files.map((file) => deps.files!.remove(file.id)))
       return { ok: true as const }
     },
     async addFile(userId: string, baseId: string, upload: { name: string; mime: string; bytes: Buffer }) {
@@ -80,11 +98,27 @@ export function createKnowledgeService(deps: {
         chunks,
       })
       if (!saved) throw new KnowledgeFailure('not_found', 'База знаний не найдена')
+      if (deps.files) {
+        try {
+          await deps.files.save(saved.id, upload.bytes)
+        } catch {
+          await deps.repository.removeFile(userId, saved.id)
+          throw new KnowledgeFailure('bad_request', 'Не удалось сохранить файл')
+        }
+      }
       return presentFile(saved)
+    },
+    async readFile(userId: string, fileId: string) {
+      const file = await deps.repository.findFile(userId, fileId)
+      if (!file) throw new KnowledgeFailure('not_found', 'Файл не найден')
+      const bytes = deps.files ? await deps.files.read(fileId) : null
+      if (!bytes) throw new KnowledgeFailure('bad_request', missingFile)
+      return { bytes, fileName: file.name, mime: downloadMime(file.name) }
     },
     async removeFile(userId: string, fileId: string) {
       const removed = await deps.repository.removeFile(userId, fileId)
       if (!removed) throw new KnowledgeFailure('not_found', 'Файл не найден')
+      await deps.files?.remove(fileId)
       return { ok: true as const }
     },
     async context(userId: string, baseIds: readonly string[], query: string) {

@@ -1,16 +1,17 @@
 const KEY = 'dialogs-reasoning-open'
 const listeners = new Set<() => void>()
 
-export function reasoningEnabledFrom(stored: string | null) {
-  return stored === '1'
+export function reasoningEnabledFrom(_stored: string | null) {
+  return false
 }
 
 function readOpen() {
   try {
-    return reasoningEnabledFrom(localStorage.getItem(KEY))
+    localStorage.removeItem(KEY)
   } catch {
-    return false
+    /* private mode still starts with reasoning off */
   }
+  return reasoningEnabledFrom(null)
 }
 
 let open = readOpen()
@@ -21,11 +22,6 @@ export function reasoningExpanded() {
 
 export function setReasoningExpanded(next: boolean) {
   open = next
-  try {
-    localStorage.setItem(KEY, next ? '1' : '0')
-  } catch {
-    /* the button still toggles this tab */
-  }
   for (const listener of listeners) listener()
 }
 

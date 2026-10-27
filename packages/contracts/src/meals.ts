@@ -697,11 +697,16 @@ export const noraModelChatRequestSchema = z
     messages: z.array(noraModelChatMessageSchema).min(1).max(30),
     search: z.boolean().optional(),
     knowledgeBaseIds: z.array(z.string().uuid()).max(8).optional(),
+    meetingIds: z.array(z.string().uuid()).max(1).optional(),
     stream: z.boolean().optional(),
     think: z.boolean().optional(),
+    suggestions: z.boolean().optional(),
   })
   .strict()
   .refine((value) => {
+    if (value.suggestions) {
+      return value.messages.some((message) => message.role === 'assistant' && message.text.trim())
+    }
     const last = value.messages.at(-1)
     return Boolean(
       last?.role === 'user' &&

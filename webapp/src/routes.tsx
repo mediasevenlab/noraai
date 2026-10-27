@@ -192,6 +192,19 @@ const userDialogsRoute = createRoute({
   component: lazyRouteComponent(() => import('./pages'), 'UserDialogsPage'),
 })
 
+const userMeetingsRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/meetings',
+  validateSearch: meetingSearch,
+  component: lazyRouteComponent(() => import('./pages'), 'UserMeetingsPage'),
+})
+
+const userNotesRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/notes',
+  component: lazyRouteComponent(() => import('./pages'), 'UserNotesPage'),
+})
+
 const adminWorkspaceRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'adminWorkspace',
@@ -351,6 +364,19 @@ const mentorDialogsRoute = createRoute({
   component: lazyRouteComponent(() => import('./pages'), 'MentorDialogsPage'),
 })
 
+const mentorMeetingsRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor/meetings',
+  validateSearch: meetingSearch,
+  component: lazyRouteComponent(() => import('./pages'), 'MentorMeetingsPage'),
+})
+
+const mentorNotesRoute = createRoute({
+  getParentRoute: () => mentorWorkspaceRoute,
+  path: '/mentor/notes',
+  component: lazyRouteComponent(() => import('./pages'), 'MentorNotesPage'),
+})
+
 const mentorFeedRoute = createRoute({
   getParentRoute: () => mentorWorkspaceRoute,
   path: '/mentor/feed',
@@ -390,6 +416,8 @@ const routeTree = rootRoute.addChildren([
     userReferralsRoute,
     userPaymentsRoute,
     userDialogsRoute,
+    userMeetingsRoute,
+    userNotesRoute,
   ]),
   adminWorkspaceRoute.addChildren([
     adminDashboardRoute,
@@ -419,6 +447,8 @@ const routeTree = rootRoute.addChildren([
     mentorPlanDetailRoute,
     mentorNewsRoute,
     mentorDialogsRoute,
+    mentorMeetingsRoute,
+    mentorNotesRoute,
     mentorFeedRoute,
   ]),
 ])
@@ -428,6 +458,12 @@ export const router = createRouter({ routeTree })
 function returnToSearch(search: Record<string, unknown>) {
   return {
     returnTo: typeof search.returnTo === 'string' ? search.returnTo : undefined,
+  }
+}
+
+function meetingSearch(search: Record<string, unknown>) {
+  return {
+    id: typeof search.id === 'string' && search.id ? search.id : undefined,
   }
 }
 

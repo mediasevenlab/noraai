@@ -15,14 +15,18 @@ export function chatWithNoraModel(
   search = true,
   knowledgeBaseIds: string[] = [],
   think = false,
+  meetingIds: string[] = [],
+  suggestions = false,
 ): Promise<NoraModelChatResponse> {
   return transport.request('/api/users/me/model-chat', noraModelChatResponseSchema, {
     method: 'POST',
     body: {
       messages,
-      search,
+      search: suggestions ? false : search,
       think,
+      ...(suggestions ? { suggestions: true } : {}),
       ...(knowledgeBaseIds.length > 0 ? { knowledgeBaseIds } : {}),
+      ...(meetingIds.length > 0 ? { meetingIds } : {}),
     },
     signal,
   })
@@ -35,6 +39,7 @@ export async function* streamNoraModel(
   search = true,
   knowledgeBaseIds: string[] = [],
   think = false,
+  meetingIds: string[] = [],
 ): AsyncGenerator<{ reasoning?: string; reply?: string; resetReply?: boolean; searched?: boolean }> {
   const response = await transport.raw('/api/users/me/model-chat', {
     method: 'POST',
@@ -44,6 +49,7 @@ export async function* streamNoraModel(
       stream: true,
       think,
       ...(knowledgeBaseIds.length > 0 ? { knowledgeBaseIds } : {}),
+      ...(meetingIds.length > 0 ? { meetingIds } : {}),
     },
     headers: { Accept: 'application/x-ndjson' },
     signal,
@@ -72,6 +78,14 @@ export async function* streamNoraModel(
     }
     if (chunk.done) break
   }
+}
+
+export function speakNoraReply(transport: AuthenticatedTransport, text: string, signal?: AbortSignal) {
+  return transport.raw('/api/users/me/speech', {
+    method: 'POST',
+    body: { text },
+    signal,
+  })
 }
 
 export function transcribeMyVoice(

@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { FolderIcon, PlusIcon, XIcon } from '@/components/icons'
 import { useAuth } from '@/features/auth'
+import { SidebarSection } from '@/components/dashboard/SidebarSection'
+import { sidebarTip } from '@/components/dashboard/sidebar-tip'
 import { toast } from '@/components/ui/toast'
 import {
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuButton,
@@ -19,7 +18,7 @@ import { notifyKnowledgeCatalog, subscribeKnowledgeCatalog } from './selection'
 
 export function KnowledgeNavigation({ disabled = false }: { disabled?: boolean }) {
   const query = useSidebarSearchQuery().trim().toLowerCase()
-  const visible = !query || 'база знаний'.includes(query) || 'новая база'.includes(query)
+  const sectionHit = query.length > 0 && 'база знаний'.includes(query)
   const auth = useAuth()
   const [bases, setBases] = useState<KnowledgeBase[]>([])
   const [creating, setCreating] = useState(false)
@@ -47,7 +46,9 @@ export function KnowledgeNavigation({ disabled = false }: { disabled?: boolean }
     }
   }, [auth.transport])
 
-  if (!visible) return null
+  const showNew = !query || sectionHit || 'новая база'.includes(query)
+  const shown = bases.filter((base) => !query || sectionHit || base.name.toLowerCase().includes(query))
+  if (query && !showNew && shown.length === 0 && !creating) return null
   const opened = bases.find((base) => base.id === openId) ?? null
 
   async function create() {
@@ -78,10 +79,9 @@ export function KnowledgeNavigation({ disabled = false }: { disabled?: boolean }
 
   return (
     <nav aria-label="База знаний">
-      <SidebarGroup>
-        <SidebarGroupLabel>База знаний</SidebarGroupLabel>
-        <SidebarGroupContent>
+      <SidebarSection forceOpen={query.length > 0} label="База знаний" storageKey="nora-sidebar-knowledge">
           <SidebarMenu>
+            {showNew || creating ? (
             <SidebarMenuItem>
               {creating ? (
                 <form
@@ -114,15 +114,17 @@ export function KnowledgeNavigation({ disabled = false }: { disabled?: boolean }
                 </SidebarMenuButton>
               )}
             </SidebarMenuItem>
-            {bases.map((base) => (
+            ) : null}
+            {shown.map((base) => (
               <SidebarMenuItem key={base.id}>
                 <SidebarMenuButton
+                  className="group-has-data-[sidebar=menu-action]/menu-item:!pr-10"
                   disabled={disabled}
                   onClick={() => setOpenId(base.id)}
-                  tooltip={base.name}
+                  tooltip={sidebarTip(base.name)}
                 >
                   <FolderIcon />
-                  <span className="truncate group-data-[collapsible=icon]:hidden">{base.name}</span>
+                  <span className="min-w-0 flex-1 truncate group-data-[collapsible=icon]:hidden">{base.name}</span>
                 </SidebarMenuButton>
                 {disabled ? null : (
                   <SidebarMenuAction aria-label="Удалить базу" onClick={() => void remove(base.id)} showOnHover>
@@ -132,8 +134,7 @@ export function KnowledgeNavigation({ disabled = false }: { disabled?: boolean }
               </SidebarMenuItem>
             ))}
           </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
+      </SidebarSection>
       <KnowledgeBaseDialog
         base={opened}
         onClose={() => setOpenId(null)}

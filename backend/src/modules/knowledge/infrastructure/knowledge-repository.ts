@@ -26,6 +26,13 @@ export function createKnowledgeRepository(db: DbClient): KnowledgeRepository {
         include: { files: { orderBy: { createdAt: 'asc' }, select: { id: true, name: true, bytes: true, createdAt: true } } },
       })
     },
+    async findFile(userId: string, fileId: string) {
+      const file = await db.knowledgeFile.findFirst({
+        where: { id: fileId, base: { userId } },
+        select: { id: true, baseId: true, name: true, bytes: true, createdAt: true },
+      })
+      return file
+    },
     async remove(userId: string, baseId: string) {
       const result = await db.knowledgeBase.deleteMany({ where: { id: baseId, userId } })
       return result.count > 0

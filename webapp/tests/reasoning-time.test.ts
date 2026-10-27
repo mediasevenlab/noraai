@@ -6,7 +6,7 @@ import { reasoningStatusLabel } from '../src/features/dialogs/reasoning-time'
 test('reasoning stays off until the composer button is turned on', () => {
   expect(reasoningEnabledFrom(null)).toBe(false)
   expect(reasoningEnabledFrom('0')).toBe(false)
-  expect(reasoningEnabledFrom('1')).toBe(true)
+  expect(reasoningEnabledFrom('1')).toBe(false)
 })
 
 test('reasoning time reads like a finished or running task', () => {

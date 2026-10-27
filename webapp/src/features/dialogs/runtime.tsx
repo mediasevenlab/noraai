@@ -2,15 +2,15 @@ import {
   AssistantRuntimeProvider,
   useLocalRuntime,
   useRemoteThreadListRuntime,
-  WebSpeechSynthesisAdapter,
   type ChatModelAdapter,
   type ThreadMessage,
 } from '@assistant-ui/react'
 import { createLocalStorageAdapter } from '@assistant-ui/core/react'
-import { useMemo, useRef, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 
 import { useAuth } from '@/features/auth'
 import { activeKnowledgeBases } from '@/features/knowledge'
+import { activeMeetingTranscripts } from '@/features/meetings'
 
 import { streamNoraModel } from './api'
 import { internetEnabled } from './internet-open'
@@ -19,6 +19,10 @@ import { ApiRequestError } from '@/platform/api'
 
 import { NoraImageAttachmentAdapter } from './attachments'
 import { toNoraMessages } from './nora-messages'
+import { openingThreadId, rememberOpenThread, rememberWorkspaceEntry } from './open-thread'
+import { NoraSpeechAdapter } from './speech-adapter'
+import { noraSuggestionAdapter } from './suggestions'
+import { subscribeSuggestionsOpen, suggestionsEnabled } from './suggestions-open'
 
 const browserStorage = {
   async getItem(key: string) {
@@ -111,6 +115,7 @@ function useNoraChatModel(): ChatModelAdapter {
             internetEnabled(),
             activeKnowledgeBases(),
             thinkOn,
+            activeMeetingTranscripts(),
           )) {
             if (event.resetReply) reply = ''
             if (event.searched) searched = true
@@ -152,8 +157,16 @@ export function DialogsRuntimeProvider({
   children: ReactNode
 }) {
   const chatModel = useNoraChatModel()
+  const transport = useAuth().transport
+  const transportRef = useRef(transport)
+  transportRef.current = transport
   const attachments = useMemo(() => new NoraImageAttachmentAdapter(), [])
-  const speech = useMemo(() => new WebSpeechSynthesisAdapter(), [])
+  const speech = useMemo(() => new NoraSpeechAdapter(transportRef), [])
+  const suggestionsOn = useSyncExternalStore(subscribeSuggestionsOpen, suggestionsEnabled, () => true)
+  const suggestions = useMemo(
+    () => noraSuggestionAdapter(transportRef, suggestionsOn),
+    [suggestionsOn],
+  )
   const threadList = useMemo(
     () =>
       createLocalStorageAdapter({
@@ -163,10 +176,19 @@ export function DialogsRuntimeProvider({
       }),
     [userId],
   )
+  const [initialThreadId] = useState(() => openingThreadId(userId))
+  useEffect(() => {
+    rememberWorkspaceEntry()
+  }, [])
+  const onThreadIdChange = useCallback((threadId: string | undefined) => {
+    rememberOpenThread(userId, threadId)
+  }, [userId])
   const runtime = useRemoteThreadListRuntime({
     adapter: threadList,
+    ...(initialThreadId ? { initialThreadId } : {}),
+    onThreadIdChange,
     runtimeHook() {
-      return useLocalRuntime(chatModel, { adapters: { attachments, speech } })
+      return useLocalRuntime(chatModel, { adapters: { attachments, speech, suggestion: suggestions } })
     },
   })
 

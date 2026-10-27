@@ -2,8 +2,12 @@ import { describe, expect, test } from 'bun:test'
 
 import { MealsFailure } from './errors'
 import {
+  answerNeedsVisionReading,
   buildNoraChatRequest,
+  followUpLines,
   formatWebSearchFindings,
+  noteVisionForText,
+  photoLookupQuery,
   readWebSearchCalls,
   webSearchQuery,
   type NoraChatTurn,
@@ -87,19 +91,45 @@ describe('Nora settings chat', () => {
     expect(() => buildNoraChatRequest([user('   ')], models)).toThrow(MealsFailure)
   })
 
-  test('text with search may call the web, a photo stays on vision without that tool', () => {
+  test('text with search may call the web, a photo is read and then answered with search', () => {
     const text = buildNoraChatRequest([user('Какая столица Австралии?')], { ...models, search: true })
     expect(text.tools).toBe(true)
     expect(String(text.messages[0]?.content)).toContain('Интернет для этого ответа включён')
 
-    const photo = buildNoraChatRequest(
-      [user('Что на фото?', [{ base64: 'abc' }])],
-      { ...models, search: true },
-    )
+    const turns = [user('Что на фото?', [{ base64: 'abc' }])]
+    expect(answerNeedsVisionReading(turns, { ...models, search: true })).toBe(true)
+    const photo = buildNoraChatRequest(noteVisionForText(turns, 'На снимке кружка.'), { ...models, search: true })
+    expect(photo.model).toBe('qwen2.5:7b')
+    expect(photo.tools).toBe(true)
+    expect(String(photo.messages.at(-1)?.content)).toContain('кружка')
+    expect(String(photo.messages[0]?.content)).toContain('Интернет для этого ответа включён')
+    expect(String(photo.messages[0]?.content)).toContain('Что видно на изображении')
+    expect(String(photo.messages[0]?.content)).not.toContain('интернета нет')
+  })
+
+  test('a photo alone stays on the vision model', () => {
+    const turns = [user('', [{ base64: 'abc' }])]
+    expect(answerNeedsVisionReading(turns, models)).toBe(false)
+    const photo = buildNoraChatRequest(turns, models)
     expect(photo.model).toBe('qwen2.5vl:3b')
     expect(photo.tools).toBe(false)
-    expect(String(photo.messages[0]?.content)).toContain('Интернет для этого ответа включён')
-    expect(String(photo.messages[0]?.content)).not.toContain('интернета нет')
+  })
+
+  test('a later question after a photo uses the text model, and search can be turned off', () => {
+    const thread = [
+      user('Смотри', [{ base64: 'abc' }]),
+      { role: 'assistant' as const, text: 'Это кружка.' },
+      user('Найди такую'),
+    ]
+    const searching = buildNoraChatRequest(thread, { ...models, search: true })
+    expect(searching.model).toBe('qwen2.5:7b')
+    expect(searching.tools).toBe(true)
+    expect(typeof searching.messages.at(-1)?.content).toBe('string')
+
+    const quiet = buildNoraChatRequest(thread, { ...models, search: false })
+    expect(quiet.model).toBe('qwen2.5:7b')
+    expect(quiet.tools).toBe(false)
+    expect(String(quiet.messages[0]?.content)).toContain('интернета нет')
   })
 
   test('offline does not offer the web and says the internet is off', () => {
@@ -108,6 +138,22 @@ describe('Nora settings chat', () => {
     const system = String(request.messages[0]?.content)
     expect(system).not.toContain('web_search')
     expect(system).toContain('интернета нет')
+  })
+
+  test('a selected transcript is the source when no knowledge base is on', () => {
+    const request = buildNoraChatRequest(
+      [user('Кто говорил про Луну?')],
+      { ...models, search: false },
+      'Расшифровки выбранных встреч.\n[1] «Сурдин», 00:00:04, Спикер 1\nНикто не высаживался на Луну.',
+    )
+    const system = String(request.messages[0]?.content)
+    expect(system).toContain('единственный источник')
+    expect(system).toContain('о чём она')
+    expect(system).toContain('В выбранных встречах этого нет')
+    expect(system).toContain('Спикер 1 (Михаил)')
+    expect(system).toContain('не подменяй его на «Спикер»')
+    expect(system).toContain('Никто не высаживался на Луну.')
+    expect(system).not.toContain('В выбранной базе этого нет')
   })
 
   test('a selected knowledge base outranks general knowledge in the prompt', () => {
@@ -145,6 +191,22 @@ describe('Nora settings chat', () => {
     expect(system).toContain('plan.pdf')
     expect(system).toContain('четырём неделям')
     expect(system).not.toContain('единственный источник')
+  })
+
+  test('a photo search looks up the dish from the picture, and follow-ups stay on that subject', () => {
+    expect(photoLookupQuery(
+      'Что за блюдо на фото? найди мне сайт с таким рецептом',
+      'Картофельное пюре с мясным соусом\nНа тарелке пюре и соус.',
+    )).toBe('Картофельное пюре с мясным соусом рецепт')
+    expect(followUpLines([
+      'Попробуем настроить профиль?',
+      'Хочешь узнать мои возможности?',
+      'Какая погода будет завтра в Новосибирске',
+      'Прогноз на неделю',
+    ].join('\n'))).toEqual([
+      'Какая погода будет завтра в Новосибирске',
+      'Прогноз на неделю',
+    ])
   })
 
   test('a search call keeps its query and findings stay short', () => {

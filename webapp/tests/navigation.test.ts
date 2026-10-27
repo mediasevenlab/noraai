@@ -18,9 +18,11 @@ import {
 test('role navigation exposes only the current workspace', () => {
   expect(navigationItemsForRole('user')).toEqual([
     { label: 'Диалоги', to: '/app/dialogs' },
+    { label: 'Встречи', to: '/app/meetings' },
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Рефералы', to: '/app/referrals' },
     { label: 'Настройки', to: '/app/settings' },
+    { label: 'Заметки', to: '/app/notes' },
   ])
   expect(navigationItemsForRole('admin')).toEqual([
     { label: 'Новости', to: '/admin/news' },
@@ -30,9 +32,11 @@ test('role navigation exposes only the current workspace', () => {
   ])
   expect(navigationItemsForRole('mentor')).toEqual([
     { label: 'Диалоги', to: '/mentor/dialogs' },
+    { label: 'Встречи', to: '/mentor/meetings' },
     { label: 'Профиль', to: '/mentor/profile' },
     { label: 'Пользователи', to: '/mentor/users' },
     { label: 'Настройки', to: '/mentor/settings' },
+    { label: 'Заметки', to: '/mentor/notes' },
   ])
   expect(homePathForRole('user')).toBe('/app/dialogs')
   expect(homePathForRole('admin')).toBe('/admin/users')
@@ -55,6 +59,7 @@ test('role navigation separates primary and account-menu destinations', () => {
   expect(secondaryNavigationItemsForRole('user')).toEqual([
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Настройки', to: '/app/settings' },
+    { label: 'Заметки', to: '/app/notes' },
   ])
   expect(primaryNavigationItemsForRole('admin')).toEqual([])
   expect(secondaryNavigationItemsForRole('admin')).toEqual([
@@ -66,6 +71,7 @@ test('role navigation separates primary and account-menu destinations', () => {
     { label: 'Профиль', to: '/mentor/profile' },
     { label: 'Пользователи', to: '/mentor/users' },
     { label: 'Настройки', to: '/mentor/settings' },
+    { label: 'Заметки', to: '/mentor/notes' },
   ])
   expect(primaryNavigationItemsForRole('mentor')).toEqual([])
 })
@@ -115,6 +121,10 @@ test('cross-role destinations resolve to the current role home', () => {
 
 test('return paths accept only known internal destinations for the current role', () => {
   expect(safeReturnPath('user', '/app/profile')).toBe('/app/profile')
+  expect(safeReturnPath('user', '/app/meetings')).toBe('/app/meetings')
+  expect(safeReturnPath('mentor', '/mentor/meetings?id=00000000-0000-7000-8000-000000000001')).toBe(
+    '/mentor/meetings?id=00000000-0000-7000-8000-000000000001',
+  )
   expect(safeReturnPath('user', '/app/referrals')).toBe('/app/referrals')
   expect(safeReturnPath('user', '/app/diary')).toBe('/app/dialogs')
   expect(safeReturnPath('user', '/app/diary/news')).toBe('/app/dialogs')

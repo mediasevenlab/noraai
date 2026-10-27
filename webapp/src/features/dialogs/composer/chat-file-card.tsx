@@ -1,19 +1,9 @@
+import { FileTypeIcon, fileTypeInfo } from '@/components/file-type-icon'
 import { XIcon } from '@/components/icons'
 
 import { cn } from '@/lib/utils'
 
 import { DIALOG_ATTACH_REMOVE_CLASS } from './field'
-
-export function chatFileBadge(name: string) {
-  const extension = name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] ?? ''
-  if (extension === 'pdf') return { mark: 'PDF', hint: 'Документ PDF', tone: 'bg-[#d64545] text-white' }
-  if (extension === 'xlsx' || extension === 'xlsm' || extension === 'xls') {
-    return { mark: 'XLS', hint: 'Таблица Excel', tone: 'bg-[#1f7a4d] text-white' }
-  }
-  if (extension === 'csv') return { mark: 'CSV', hint: 'Таблица CSV', tone: 'bg-[#1f7a4d] text-white' }
-  if (extension === 'docx' || extension === 'doc') return { mark: 'DOC', hint: 'Документ Word', tone: 'bg-[#2b579a] text-white' }
-  return { mark: 'TXT', hint: 'Текстовый файл', tone: 'bg-[#5c6570] text-white' }
-}
 
 export function ChatFileCard({
   name,
@@ -26,24 +16,17 @@ export function ChatFileCard({
   disabled?: boolean
   placement: 'composer' | 'bubble'
 }) {
-  const badge = chatFileBadge(name)
+  const info = fileTypeInfo(name)
   return (
     <div
       className={cn(
-        'flex min-w-0 items-center gap-2.5 rounded-xl px-2.5 py-2',
+        'flex min-w-0 items-center gap-2 rounded-lg px-2 py-1.5',
         placement === 'composer'
-          ? 'relative h-14 max-w-64 border border-[var(--nora-border)] bg-[var(--nora-surface)] pr-7'
+          ? 'relative max-w-64 border border-[var(--nora-border)] bg-[var(--nora-surface)] pr-7'
           : 'mb-2 max-w-full bg-black/10',
       )}
     >
-      <span
-        className={cn(
-          'flex h-9 w-10 shrink-0 items-center justify-center rounded-lg text-[10px] font-semibold tracking-[0.04em]',
-          badge.tone,
-        )}
-      >
-        {badge.mark}
-      </span>
+      <FileTypeIcon name={name} />
       <span className="min-w-0 flex-1">
         <span
           className={cn(
@@ -59,7 +42,7 @@ export function ChatFileCard({
             placement === 'composer' ? 'text-[var(--nora-text-secondary)]' : 'opacity-70',
           )}
         >
-          {badge.hint}
+          {info.hint}
         </span>
       </span>
       {onRemove ? (
