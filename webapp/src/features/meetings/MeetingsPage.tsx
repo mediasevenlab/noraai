@@ -9,6 +9,7 @@ import { ruRecordedAt } from '@/lib/ru-when'
 import { Spinner } from '@/components/ui/spinner'
 import { toast } from '@/components/ui/toast'
 import { useAuth } from '@/features/auth'
+import { ApiRequestError } from '@/platform/api'
 import { cn } from '@/lib/utils'
 
 import {
@@ -371,6 +372,7 @@ function NewMeetingComposer({
   sending,
   title,
   uploadName,
+  onCancel,
   onFile,
   onTitle,
 }: {
@@ -378,6 +380,7 @@ function NewMeetingComposer({
   sending: boolean
   title: string
   uploadName: string
+  onCancel: () => void
   onFile: (file: File | undefined) => void
   onTitle: (title: string) => void
 }) {
@@ -418,17 +421,28 @@ function NewMeetingComposer({
                 onFile(file)
               }}
             />
-            <button
-              aria-label="Прикрепить запись"
-              className={cn(dialogComposerToolClass(false, sending), 'size-8')}
-              disabled={sending}
-              type="button"
-              onClick={() => fileRef.current?.click()}
-            >
-              {sending ? <Spinner className="size-4 text-current" /> : <PlusIcon className="size-4" />}
-            </button>
+            {sending ? (
+              <button
+                aria-label="Отменить загрузку"
+                className={cn(dialogComposerToolClass(false), 'h-8 gap-1.5 px-3')}
+                type="button"
+                onClick={onCancel}
+              >
+                <SquareIcon className="size-3.5 fill-current" />
+                <span className="text-[13px]">Отменить</span>
+              </button>
+            ) : (
+              <button
+                aria-label="Прикрепить запись"
+                className={cn(dialogComposerToolClass(false), 'size-8')}
+                type="button"
+                onClick={() => fileRef.current?.click()}
+              >
+                <PlusIcon className="size-4" />
+              </button>
+            )}
             <span className="text-[15px] text-[var(--nora-text-secondary)]">
-              {sending ? 'Запись уходит в очередь' : 'Прикрепите запись'}
+              {sending ? 'Запись загружается' : 'Прикрепите запись'}
             </span>
           </div>
         </div>
@@ -538,6 +552,7 @@ export function MeetingsPage() {
   const [missing, setMissing] = useState(false)
   const [sending, setSending] = useState(false)
   const [uploadName, setUploadName] = useState('')
+  const uploadAbort = useRef<AbortController | null>(null)
   const [draftTitle, setDraftTitle] = useState('')
   const [acting, setActing] = useState(false)
   const [runKey, setRunKey] = useState(0)
@@ -572,20 +587,33 @@ export function MeetingsPage() {
     }
   }, [auth.transport, meetingId])
 
+  function cancelUpload() {
+    uploadAbort.current?.abort()
+  }
+
   async function upload(file: File | undefined) {
     if (!file || sending) return
+    const controller = new AbortController()
+    uploadAbort.current = controller
     setUploadName(file.name)
     setSending(true)
     try {
-      const created = await createMeeting(auth.transport, file, draftTitle)
+      const created = await createMeeting(auth.transport, file, draftTitle, controller.signal)
+      if (controller.signal.aborted) return
       setDraftTitle('')
       setMeeting(created)
       notifyMeetings()
       const to = pathname.startsWith('/mentor') ? '/mentor/meetings' : '/app/meetings'
       void navigate({ to, search: { id: created.id } })
     } catch (error) {
+      if (controller.signal.aborted || (error instanceof Error && error.name === 'AbortError')) return
+      if (error instanceof ApiRequestError && error.status === 413) {
+        toast.error('Файл слишком большой, сервер его не принял')
+        return
+      }
       toast.error(error instanceof Error ? error.message : 'Не удалось отправить запись')
     } finally {
+      if (uploadAbort.current === controller) uploadAbort.current = null
       setSending(false)
       setUploadName('')
     }
@@ -642,6 +670,7 @@ export function MeetingsPage() {
           sending={sending}
           title={draftTitle}
           uploadName={uploadName}
+          onCancel={cancelUpload}
           onFile={(file) => void upload(file)}
           onTitle={setDraftTitle}
         />

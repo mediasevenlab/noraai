@@ -78,6 +78,13 @@ export function createMeetingsRepository(db: DbClient): MeetingsRepository {
       })
       return toStored(row)
     },
+    async claimJob(userId, meetingId, jobId) {
+      const result = await db.meeting.updateMany({
+        where: { id: meetingId, userId, status: { in: ['queued', 'running'] } },
+        data: { jobId, status: 'queued', error: '' },
+      })
+      return result.count > 0
+    },
     async remove(userId, meetingId) {
       const result = await db.meeting.deleteMany({ where: { id: meetingId, userId } })
       return result.count > 0

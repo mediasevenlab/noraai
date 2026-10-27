@@ -17,8 +17,8 @@ const server = Bun.serve({
   // A Qwen reply with reasoning can take longer than the default idle timeout.
   idleTimeout: 120,
   fetch(request, bunServer) {
-    // A scanned PDF is several vision calls. A long meeting is copied to the
-    // speech server before this response returns.
+    // A scanned PDF is several vision calls. A long meeting upload is the
+    // file body itself; the speech copy continues after the response.
     const path = new URL(request.url).pathname
     if (
       request.method === 'POST' &&

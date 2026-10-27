@@ -2,9 +2,10 @@ import { useAuiState } from '@assistant-ui/react'
 import { useSyncExternalStore } from 'react'
 
 import { BookmarkIcon } from '@/components/icons'
+import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth'
-import { noteIsSaved, subscribeNotes, toggleNote } from '@/features/notes'
+import { noteIsSaved, noteMessageId, subscribeNotes, toggleNote } from '@/features/notes'
 
 import { ComposerToolTip } from './composer/tool-tip'
 
@@ -28,9 +29,10 @@ export function DialogNoteToggle() {
     const current = state.threads.threadItems.find((item) => item.id === state.threads.mainThreadId)
     return current?.title?.trim() || 'Диалог'
   })
+  const storedId = noteMessageId(messageId || '', role, text)
   const saved = useSyncExternalStore(
     subscribeNotes,
-    () => noteIsSaved(userId, messageId),
+    () => noteIsSaved(userId, storedId, text),
     () => false,
   )
   const label = saved ? 'Убрать из заметок' : 'В заметки'
@@ -41,9 +43,10 @@ export function DialogNoteToggle() {
         aria-label={label}
         aria-pressed={saved}
         className={NOTE_BUTTON_CLASS}
-        disabled={!text}
+        disabled={!userId || !text || !storedId}
         onClick={() => {
-          toggleNote(userId, { id: messageId, role, text, source })
+          const result = toggleNote(userId, { id: storedId, role, text, source })
+          if (result === 'rejected') toast.error('Не удалось сохранить заметку')
         }}
         type="button"
       >

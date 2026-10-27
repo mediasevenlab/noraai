@@ -49,6 +49,21 @@ test('a food answer does not keep weather prompts from an earlier turn', () => {
   ])
 })
 
+test('interview questions become the next thing to ask Nora', () => {
+  expect(followUpPrompts([
+    'Как тебя зовут?',
+    'Что ты хочешь обсудить сегодня?',
+    'Можно ли мне рассказать о себе подробнее?',
+  ].join('\n'), 'Привет! Я Нора. Чем могу помочь?')).toEqual([
+    'Что ты умеешь?',
+    'Расскажи о себе',
+    'С чего нам начать?',
+  ])
+  expect(followUpPrompts('Как тебя зовут?\nКакой состав у этих блинчиков?', 'На фото блинчики.')).toEqual([
+    'Какой состав у этих блинчиков?',
+  ])
+})
+
 test('suggestions stay on until they are switched off', () => {
   expect(suggestionsEnabledFrom(null)).toBe(true)
   expect(suggestionsEnabledFrom('1')).toBe(true)

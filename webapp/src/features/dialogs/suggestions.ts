@@ -10,17 +10,24 @@ type TransportSource = { current: AuthenticatedTransport }
 
 const APP_OFFER = /настро(ить|им|йки)|профил|возможност|раздел приложения|баз[аеуы] знан/i
 const ASSISTANT_OFFER = /^(хочешь|давай|попробуем|могу |я помогу|расскажу)/i
+const INTERVIEW =
+  /как тебя зовут|как вас зовут|что ты хочешь|что вы хотите|можно ли мне|о себе подробнее|тебе интересно|хочешь ли ты/i
 const WEATHER_TOPIC = /погод|температур|осадк|дожд|прогноз|пасмур|ветер|градус|\+\d/i
+const GREETING = /привет|здравствуй|чем могу помочь|я нора/i
+const GREETING_PROMPTS = ['Что ты умеешь?', 'Расскажи о себе', 'С чего нам начать?']
 
 export function followUpPrompts(raw: string, subject = '', count = 3) {
   const allowWeather = !subject || WEATHER_TOPIC.test(subject)
-  return raw
+  const lines = raw
     .split('\n')
     .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').replace(/^["«]|["»]$/g, '').trim())
     .filter((line) => line.length > 1 && line.length <= 140)
-    .filter((line) => !APP_OFFER.test(line) && !ASSISTANT_OFFER.test(line))
+    .filter((line) => !APP_OFFER.test(line) && !ASSISTANT_OFFER.test(line) && !INTERVIEW.test(line))
     .filter((line) => allowWeather || !WEATHER_TOPIC.test(line))
     .slice(0, count)
+  if (lines.length > 0) return lines
+  if (subject.trim().length < 180 && GREETING.test(subject)) return GREETING_PROMPTS.slice(0, count)
+  return []
 }
 
 export function lastExchange<T extends { role: 'user' | 'assistant'; text: string }>(messages: readonly T[]) {

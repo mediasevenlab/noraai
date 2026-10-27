@@ -61,7 +61,12 @@ export async function downloadMeetingAudio(transport: AuthenticatedTransport, me
   URL.revokeObjectURL(url)
 }
 
-export function createMeeting(transport: AuthenticatedTransport, file: File, title = '') {
+export function createMeeting(
+  transport: AuthenticatedTransport,
+  file: File,
+  title = '',
+  signal?: AbortSignal,
+) {
   const body = new FormData()
   body.set('file', file)
   const name = title.trim()
@@ -69,6 +74,7 @@ export function createMeeting(transport: AuthenticatedTransport, file: File, tit
   return transport.request('/api/users/me/meetings', meetingSchema, {
     method: 'POST',
     body,
+    signal,
   })
 }
 

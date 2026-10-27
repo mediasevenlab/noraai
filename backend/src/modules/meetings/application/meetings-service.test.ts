@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test'
 
 import type { MeetingJob } from '../domain/transcript'
 import type { MeetingAudioStore, MeetingTranscriber, MeetingsRepository, StoredMeeting } from './ports'
-import { createMeetingsService } from './meetings-service'
+import { createMeetingsService, settleMeetingTranscriptions } from './meetings-service'
 
 function job(partial: Partial<MeetingJob> & Pick<MeetingJob, 'status'>): MeetingJob {
   return {
@@ -72,6 +72,14 @@ function memoryRepository(): MeetingsRepository & { rows: StoredMeeting[] } {
       Object.assign(row, patch, { updatedAt: new Date('2026-10-26T08:05:00.000Z') })
       return row
     },
+    async claimJob(userId, meetingId, jobId) {
+      const row = rows.find((item) => item.userId === userId && item.id === meetingId)
+      if (!row || (row.status !== 'queued' && row.status !== 'running')) return false
+      row.jobId = jobId
+      row.status = 'queued'
+      row.error = ''
+      return true
+    },
     async remove(userId, meetingId) {
       const index = rows.findIndex((item) => item.userId === userId && item.id === meetingId)
       if (index < 0) return false
@@ -110,6 +118,7 @@ test('an audio file becomes a queued meeting and later the speaker text', async 
   expect(named.title).toBe('Собрание отдела')
   expect(created.status).toBe('queued')
   expect(created.speakers).toBe(2)
+  await settleMeetingTranscriptions()
   const opened = await service.get('user-1', created.id)
   expect(opened.status).toBe('ready')
   expect(opened.transcript).toBe('[00:00:01] Спикер 1: Добрый день')
@@ -164,6 +173,7 @@ test('a running transcript reports percent and remaining time without waiting fo
     },
   })
   const created = await service.submit('user-1', { name: 'a.wav', mime: 'audio/wav', bytes: Buffer.from('x') }, null)
+  await settleMeetingTranscriptions()
   const opened = await service.get('user-1', created.id)
   expect(opened.status).toBe('running')
   expect(opened.stage).toBe('transcribing')
@@ -191,6 +201,7 @@ test('a finished speaker name is replaced in every line', async () => {
     },
   })
   const created = await service.submit('user-1', { name: 'a.wav', mime: 'audio/wav', bytes: Buffer.from('x') }, null)
+  await settleMeetingTranscriptions()
   const opened = await service.get('user-1', created.id)
   const renamed = await service.renameSpeaker('user-1', opened.id, 'Спикер 1', 'Сурдин')
   expect(renamed.segments[0]?.speaker).toBe('Сурдин')
@@ -252,6 +263,7 @@ test('a saved recording can be downloaded and transcribed again', async () => {
     },
   })
   const created = await service.submit('user-1', { name: 'Планёрка.mp3', mime: 'audio/mpeg', bytes: Buffer.from('audio') }, null)
+  await settleMeetingTranscriptions()
   expect(created.hasAudio).toBe(true)
   const downloaded = await service.readAudio('user-1', created.id)
   expect(downloaded.bytes.toString()).toBe('audio')
@@ -306,10 +318,89 @@ test('stopping a running transcript marks it interrupted and asks the worker to 
     },
   })
   const created = await service.submit('user-1', { name: 'a.wav', mime: 'audio/wav', bytes: Buffer.from('x') }, null)
+  await settleMeetingTranscriptions()
   const stopped = await service.cancel('user-1', created.id)
   expect(cancelled).toEqual(['job-live'])
   expect(stopped.status).toBe('failed')
   expect(stopped.error).toBe('Расшифровка прервана')
   const opened = await service.get('user-1', created.id)
   expect(opened.status).toBe('failed')
+})
+
+test('a long upload is queued before the worker accepts the file', async () => {
+  const repository = memoryRepository()
+  let release: (jobId: string) => void = () => {}
+  const gate = new Promise<string>((resolve) => {
+    release = resolve
+  })
+  const service = createMeetingsService({
+    repository,
+    transcriber: {
+      async submit() {
+        return gate
+      },
+      async status() {
+        return job({ status: 'queued' })
+      },
+    },
+  })
+  const created = await service.submit('user-1', { name: 'long.mp3', mime: 'audio/mpeg', bytes: Buffer.from('audio') }, null)
+  expect(created.status).toBe('queued')
+  expect(repository.rows[0]?.jobId).toBeNull()
+  release('job-late')
+  await settleMeetingTranscriptions()
+  expect(repository.rows[0]?.jobId).toBe('job-late')
+})
+
+test('stopping before the worker answers still cancels that job', async () => {
+  const repository = memoryRepository()
+  let release: (jobId: string) => void = () => {}
+  const gate = new Promise<string>((resolve) => {
+    release = resolve
+  })
+  const cancelled: string[] = []
+  const service = createMeetingsService({
+    repository,
+    transcriber: {
+      async submit() {
+        return gate
+      },
+      async status() {
+        return job({ status: 'queued' })
+      },
+      async cancel(jobId) {
+        cancelled.push(jobId)
+      },
+    },
+  })
+  const created = await service.submit('user-1', { name: 'long.mp3', mime: 'audio/mpeg', bytes: Buffer.from('audio') }, null)
+  const stopped = await service.cancel('user-1', created.id)
+  expect(stopped.status).toBe('failed')
+  expect(cancelled).toEqual([])
+  release('job-late')
+  await settleMeetingTranscriptions()
+  expect(cancelled).toEqual(['job-late'])
+  expect(repository.rows[0]?.status).toBe('failed')
+  expect(repository.rows[0]?.jobId).toBeNull()
+})
+
+test('a worker that rejects the file marks the meeting failed after the upload', async () => {
+  const repository = memoryRepository()
+  const service = createMeetingsService({
+    repository,
+    transcriber: {
+      async submit() {
+        throw new Error('Сервис расшифровки не ответил')
+      },
+      async status() {
+        return job({ status: 'queued' })
+      },
+    },
+  })
+  const created = await service.submit('user-1', { name: 'long.mp3', mime: 'audio/mpeg', bytes: Buffer.from('audio') }, null)
+  expect(created.status).toBe('queued')
+  await settleMeetingTranscriptions()
+  const opened = await service.get('user-1', created.id)
+  expect(opened.status).toBe('failed')
+  expect(opened.error).toBe('Сервис расшифровки не ответил')
 })

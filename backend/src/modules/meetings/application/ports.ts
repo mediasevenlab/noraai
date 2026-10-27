@@ -34,6 +34,8 @@ export type MeetingsRepository = {
     meetingId: string,
     patch: Partial<Pick<StoredMeeting, 'status' | 'jobId' | 'title' | 'transcript' | 'segments' | 'error'>>,
   ): Promise<StoredMeeting | null>
+  /** Attach a worker id only while the meeting is still queued or running. */
+  claimJob(userId: string, meetingId: string, jobId: string): Promise<boolean>
   remove(userId: string, meetingId: string): Promise<boolean>
 }
 

@@ -135,6 +135,8 @@ const VISION_NOTE = 'Что видно на изображении:'
 
 const APP_OFFER = /настро(ить|им|йки)|профил|возможност|раздел приложения|баз[аеуы] знан/i
 const ASSISTANT_OFFER = /^(хочешь|давай|попробуем|могу |я помогу|расскажу)/i
+const INTERVIEW =
+  /как тебя зовут|как вас зовут|что ты хочешь|что вы хотите|можно ли мне|о себе подробнее|тебе интересно|хочешь ли ты/i
 
 const WEATHER_TOPIC = /погод|температур|осадк|дожд|прогноз|пасмур|ветер|градус|\+\d/i
 
@@ -167,7 +169,7 @@ export function followUpLines(raw: string, subject?: string) {
     .split('\n')
     .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').replace(/^["«]|["»]$/g, '').trim())
     .filter((line) => line.length > 1 && line.length <= 140)
-    .filter((line) => !APP_OFFER.test(line) && !ASSISTANT_OFFER.test(line))
+    .filter((line) => !APP_OFFER.test(line) && !ASSISTANT_OFFER.test(line) && !INTERVIEW.test(line))
     .filter((line) => allowWeather || !WEATHER_TOPIC.test(line))
     .slice(0, 3)
 }

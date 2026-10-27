@@ -91,6 +91,26 @@ function audioMime(fileName: string) {
 const missingRecording = 'Запись не сохранилась, загрузите её ещё раз'
 const stoppedTranscript = 'Расшифровка прервана'
 
+const pendingTranscriptions = new Set<Promise<void>>()
+
+/** Tests wait until a recording has been handed to the worker. */
+export async function settleMeetingTranscriptions() {
+  while (pendingTranscriptions.size > 0) {
+    await Promise.all([...pendingTranscriptions])
+  }
+}
+
+function trackTranscription(work: Promise<void>) {
+  const tracked = work.then(
+    () => undefined,
+    () => undefined,
+  )
+  pendingTranscriptions.add(tracked)
+  void tracked.finally(() => {
+    pendingTranscriptions.delete(tracked)
+  })
+}
+
 export function createMeetingsService(options: {
   repository: MeetingsRepository
   transcriber?: MeetingTranscriber
@@ -124,6 +144,38 @@ export function createMeetingsService(options: {
     } catch {
       return current
     }
+  }
+
+  async function stopWorker(jobId: string) {
+    try {
+      await options.transcriber?.cancel?.(jobId)
+    } catch {
+      // The card already stopped, or the meeting is gone.
+    }
+  }
+
+  function handOff(
+    userId: string,
+    meetingId: string,
+    file: { name: string; mime: string; bytes: Buffer },
+    speakers: number | null,
+  ) {
+    const transcriber = options.transcriber
+    if (!transcriber) return
+    trackTranscription((async () => {
+      let jobId = ''
+      try {
+        jobId = await transcriber.submit(file, speakers)
+      } catch (error) {
+        const latest = await options.repository.find(userId, meetingId)
+        if (!latest || latest.status === 'failed') return
+        const message = error instanceof Error ? error.message : 'Сервис расшифровки не ответил'
+        await options.repository.update(userId, meetingId, { status: 'failed', error: message })
+        return
+      }
+      const claimed = await options.repository.claimJob(userId, meetingId, jobId)
+      if (!claimed) await stopWorker(jobId)
+    })())
   }
 
   return {
@@ -284,17 +336,8 @@ export function createMeetingsService(options: {
           return present({ ...row, ...storedProgress(row) })
         }
       }
-      try {
-        const jobId = await options.transcriber.submit(file, speakers)
-        const queued = await options.repository.update(userId, created.id, { jobId, status: 'queued', error: '' })
-        const row = queued ?? { ...created, jobId, status: 'queued' as const }
-        return present({ ...row, ...storedProgress(row) })
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Сервис расшифровки не ответил'
-        const failed = await options.repository.update(userId, created.id, { status: 'failed', error: message })
-        const row = failed ?? { ...created, status: 'failed' as const, error: message }
-        return present({ ...row, ...storedProgress(row) })
-      }
+      handOff(userId, created.id, file, speakers)
+      return present({ ...created, ...storedProgress(created) })
     },
   }
 }
