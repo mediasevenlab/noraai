@@ -5,6 +5,7 @@ import {
   answerNeedsVisionReading,
   buildNoraChatRequest,
   followUpLines,
+  followUpSubject,
   formatWebSearchFindings,
   noteVisionForText,
   photoLookupQuery,
@@ -203,9 +204,27 @@ describe('Nora settings chat', () => {
       'Хочешь узнать мои возможности?',
       'Какая погода будет завтра в Новосибирске',
       'Прогноз на неделю',
-    ].join('\n'))).toEqual([
+    ].join('\n'), 'Завтра в Новосибирске пасмурно.')).toEqual([
       'Какая погода будет завтра в Новосибирске',
       'Прогноз на неделю',
+    ])
+    const thread = [
+      { role: 'user' as const, text: 'Какая погода завтра в Новосибирске?' },
+      { role: 'assistant' as const, text: 'Завтра пасмурно, около +4.' },
+      { role: 'user' as const, text: 'Что за блюдо на фото? Дай состав и ссылку на рецепт.' },
+      { role: 'assistant' as const, text: 'На фото блинчики с бананом и вареньем.' },
+    ]
+    expect(followUpSubject(thread).map((turn) => turn.text)).toEqual([
+      'Что за блюдо на фото? Дай состав и ссылку на рецепт.',
+      'На фото блинчики с бананом и вареньем.',
+    ])
+    expect(followUpLines([
+      'Какая температура сейчас в Новосибирске?',
+      'Какой состав у этих блинчиков?',
+      'Покажи похожий рецепт',
+    ].join('\n'), thread[3]?.text)).toEqual([
+      'Какой состав у этих блинчиков?',
+      'Покажи похожий рецепт',
     ])
   })
 

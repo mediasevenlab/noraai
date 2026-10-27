@@ -274,7 +274,8 @@ export function createMeetingsService(options: {
       if (options.audio) {
         try {
           await options.audio.save(created.id, file.bytes)
-        } catch {
+        } catch (error) {
+          console.error('meeting audio save failed', error instanceof Error ? error.message : error)
           const failed = await options.repository.update(userId, created.id, {
             status: 'failed',
             error: 'Не удалось сохранить запись',

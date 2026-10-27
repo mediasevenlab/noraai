@@ -136,13 +136,39 @@ const VISION_NOTE = 'Что видно на изображении:'
 const APP_OFFER = /настро(ить|им|йки)|профил|возможност|раздел приложения|баз[аеуы] знан/i
 const ASSISTANT_OFFER = /^(хочешь|давай|попробуем|могу |я помогу|расскажу)/i
 
+const WEATHER_TOPIC = /погод|температур|осадк|дожд|прогноз|пасмур|ветер|градус|\+\d/i
+
+/** The last answer, and the question that produced it. Earlier turns stay out. */
+export function followUpSubject<T extends { role: 'user' | 'assistant'; text: string }>(messages: readonly T[]) {
+  let answerAt = -1
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === 'assistant' && messages[index].text.trim()) {
+      answerAt = index
+      break
+    }
+  }
+  if (answerAt < 0) return []
+  let questionAt = -1
+  for (let index = answerAt - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === 'user' && messages[index].text.trim()) {
+      questionAt = index
+      break
+    }
+  }
+  const answer = messages[answerAt]
+  if (!answer) return []
+  return questionAt >= 0 && messages[questionAt] ? [messages[questionAt], answer] : [answer]
+}
+
 /** The next things the person might ask, about the same subject. */
-export function followUpLines(raw: string) {
+export function followUpLines(raw: string, subject?: string) {
+  const allowWeather = subject == null || WEATHER_TOPIC.test(subject)
   return raw
     .split('\n')
     .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').replace(/^["«]|["»]$/g, '').trim())
     .filter((line) => line.length > 1 && line.length <= 140)
     .filter((line) => !APP_OFFER.test(line) && !ASSISTANT_OFFER.test(line))
+    .filter((line) => allowWeather || !WEATHER_TOPIC.test(line))
     .slice(0, 3)
 }
 

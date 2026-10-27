@@ -35,6 +35,11 @@ WORKDIR /app/backend
 
 ENV NODE_ENV=production
 
+# The process runs as bun. The copied tree belongs to root, so the recording
+# folder has to exist and be writable before the user switch.
+RUN mkdir -p /app/backend/uploads/meetings /app/backend/uploads/knowledge \
+  && chown -R bun:bun /app/backend/uploads
+
 USER bun
 
 CMD ["bun", "src/index.ts"]

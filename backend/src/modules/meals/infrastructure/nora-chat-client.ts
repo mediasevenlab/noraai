@@ -10,6 +10,7 @@ import {
   buildNoraChatRequest,
   buildVisionGlance,
   followUpLines,
+  followUpSubject,
   noteVisionForText,
   NORA_WEB_SEARCH_TOOL,
   photoLookupQuery,
@@ -366,14 +367,10 @@ export async function completeFollowUps(
   if (!baseUrl || !env.LLM_API_KEY) {
     throw new MealsFailure('misconfigured', 'Своя модель пока не настроена. Выберите Gemini или попробуйте позже.')
   }
-  const transcript = messages
-    .slice(-4)
-    .map((message) => {
-      const text = message.text.trim()
-      if (!text) return ''
-      return `${message.role === 'user' ? 'Пользователь' : 'Nora'}: ${text.slice(0, 500)}`
-    })
-    .filter(Boolean)
+  const subject = followUpSubject(messages)
+  const topic = subject.at(-1)?.text ?? ''
+  const transcript = subject
+    .map((message) => `${message.role === 'user' ? 'Пользователь' : 'Nora'}: ${message.text.trim().slice(0, 700)}`)
     .join('\n')
   if (!transcript) return { reply: ' ', model: env.LLM_TEXT_MODEL }
   const response = await postOllamaChat(baseUrl, env.LLM_API_KEY, {
@@ -382,7 +379,7 @@ export async function completeFollowUps(
       {
         role: 'system',
         content:
-          'Ты пишешь три следующих сообщения пользователя. Они продолжают тему последнего ответа. Каждая строка — короткий вопрос или просьба, которую человек отправит в чат. Не пиши от лица ассистента, не предлагай настроить приложение, профиль или свои возможности. Пример, если речь о погоде в Новосибирске:\nКакая погода будет завтра в Новосибирске\nПрогноз на неделю\nА какая погода в моём городе?\nВерни ровно 3 строки, без нумерации.',
+          'Тема — только последний ответ Nora ниже. Напиши ровно 3 короткие реплики, которые пользователь отправит следом по этому ответу. Каждая строка — вопрос или просьба от лица пользователя. Не возвращайся к теме, которой нет в этом ответе. Не пиши от лица ассистента. Не предлагай настройки, профиль или возможности приложения. Без нумерации.',
       },
       { role: 'user', content: transcript },
     ],
@@ -390,7 +387,7 @@ export async function completeFollowUps(
     think: false,
     options: { num_ctx: 4096, num_predict: 180, temperature: 0.3 },
   }, signal)
-  const lines = followUpLines(await collectReply(response))
+  const lines = followUpLines(await collectReply(response), topic)
   return { reply: lines.join('\n') || ' ', model: env.LLM_TEXT_MODEL }
 }
 
