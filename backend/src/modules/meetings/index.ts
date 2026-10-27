@@ -5,6 +5,7 @@ import type { AppEnv } from '../../env'
 import type { AuthHttpEnv } from '../auth'
 import { createMeetingsService } from './application/meetings-service'
 import { createMeetingAudioStore } from './infrastructure/meeting-audio-store'
+import { createMeetingPartStore } from './infrastructure/meeting-part-store'
 import { createMeetingTranscriber } from './infrastructure/meeting-transcriber'
 import { createMeetingsRepository } from './infrastructure/meetings-repository'
 import { createMeetingRoutes } from './transport/routes'
@@ -24,6 +25,7 @@ export function createMeetingsModule(options: {
     repository: createMeetingsRepository(options.db),
     transcriber,
     audio: createMeetingAudioStore(),
+    parts: createMeetingPartStore(),
   })
   return {
     routes: createMeetingRoutes({ requireAuth: options.requireAuth, service }),

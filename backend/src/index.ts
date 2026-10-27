@@ -24,7 +24,8 @@ const server = Bun.serve({
       request.method === 'POST' &&
       (/\/knowledge-bases\/[^/]+\/files\/?$/.test(path) ||
         /\/model-chat\/?$/.test(path) ||
-        /\/meetings\/?$/.test(path))
+        /\/meetings\/?$/.test(path) ||
+        /\/meetings\/parts\/?$/.test(path))
     ) {
       bunServer.timeout(request, 1500)
     }

@@ -19,6 +19,7 @@ test('speed uses the last two seconds of the upload', () => {
     { at: 6000, loaded: 12 * MB },
   ]
   expect(bytesPerSecond(samples, 6000)).toBeCloseTo(2 * MB, -3)
+  expect(bytesPerSecond(samples, 9000)).toBe(0)
 })
 
 test('the status line shows sent, total, and speed, then the save pause', () => {

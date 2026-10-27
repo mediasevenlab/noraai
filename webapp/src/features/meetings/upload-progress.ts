@@ -30,6 +30,7 @@ export function bytesPerSecond(samples: readonly UploadSample[], now: number): n
   if (samples.length < 2) return 0
   const latest = samples[samples.length - 1]
   if (!latest) return 0
+  if (now - latest.at > 2000) return 0
   const windowStart = now - 2000
   const earliest = samples.find((sample) => sample.at >= windowStart) ?? samples[0]
   if (!earliest || earliest === latest) return 0

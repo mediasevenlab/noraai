@@ -14,7 +14,11 @@ import {
   type MeetingSegment,
   type MeetingStep,
 } from '../domain/transcript'
-import type { MeetingAudioStore, MeetingTranscriber, MeetingsRepository, StoredMeeting } from './ports'
+import {
+  assertMeetingUploadId,
+  expectedMeetingPartLength,
+} from '../domain/meeting-parts'
+import type { MeetingAudioStore, MeetingPartStore, MeetingTranscriber, MeetingsRepository, StoredMeeting } from './ports'
 
 const maxAudioBytes = 256 * 1024 * 1024
 
@@ -115,6 +119,7 @@ export function createMeetingsService(options: {
   repository: MeetingsRepository
   transcriber?: MeetingTranscriber
   audio?: MeetingAudioStore
+  parts?: MeetingPartStore
 }) {
   async function present(meeting: MeetingView) {
     return {
@@ -122,6 +127,7 @@ export function createMeetingsService(options: {
       hasAudio: options.audio ? await options.audio.has(meeting.id) : false,
     }
   }
+  const partAssembly = new Map<string, Promise<{ partial: false; meeting: Awaited<ReturnType<typeof present>> }>>()
   async function refresh(meeting: StoredMeeting): Promise<MeetingView> {
     const current = { ...meeting, ...storedProgress(meeting) }
     if (!options.transcriber || !meeting.jobId) return current
@@ -178,7 +184,16 @@ export function createMeetingsService(options: {
     })())
   }
 
-  return {
+  function requireParts() {
+    if (!options.parts) throw new MeetingFailure('unavailable', 'Загрузка по частям не настроена')
+    return options.parts
+  }
+
+  function rejectPart(error: unknown): never {
+    throw new MeetingFailure('bad_request', error instanceof Error ? error.message : 'Не удалось принять часть записи')
+  }
+
+  const service = {
     async list(userId: string) {
       const meetings = await options.repository.list(userId)
       const refreshed = await Promise.all(meetings.map((meeting) => refresh(meeting)))
@@ -339,7 +354,89 @@ export function createMeetingsService(options: {
       handOff(userId, created.id, file, speakers)
       return present({ ...created, ...storedProgress(created) })
     },
+    async acceptPart(
+      userId: string,
+      input: {
+        uploadId: string
+        index: number
+        count: number
+        fileSize: number
+        fileName: string
+        mime: string
+        title?: string
+        bytes: Buffer
+      },
+    ) {
+      const parts = requireParts()
+      try {
+        assertMeetingUploadId(input.uploadId)
+      } catch (error) {
+        rejectPart(error)
+      }
+      let expected = 0
+      try {
+        expected = expectedMeetingPartLength(input.fileSize, input.index, input.count)
+      } catch (error) {
+        rejectPart(error)
+      }
+      if (input.bytes.length !== expected) rejectPart(new Error('Часть записи повреждена'))
+      const finishedId = await parts.finishedMeetingId(userId, input.uploadId)
+      if (finishedId) {
+        const existing = await options.repository.find(userId, finishedId)
+        if (existing) return { partial: false as const, meeting: await present({ ...existing, ...storedProgress(existing) }) }
+      }
+      await parts.save(userId, input.uploadId, input.index, input.bytes)
+      if (input.index < input.count - 1) return { partial: true as const, index: input.index, count: input.count }
+      const key = `${userId}:${input.uploadId}`
+      const running = partAssembly.get(key)
+      if (running) return running
+      let assembly!: Promise<{ partial: false; meeting: Awaited<ReturnType<typeof present>> }>
+      assembly = (async () => {
+        const again = await parts.finishedMeetingId(userId, input.uploadId)
+        if (again) {
+          const existing = await options.repository.find(userId, again)
+          if (existing) return { partial: false as const, meeting: await present({ ...existing, ...storedProgress(existing) }) }
+        }
+        const pieces: Buffer[] = []
+        for (let index = 0; index < input.count; index += 1) {
+          const piece = await parts.read(userId, input.uploadId, index)
+          let pieceLength = 0
+          try {
+            pieceLength = expectedMeetingPartLength(input.fileSize, index, input.count)
+          } catch (error) {
+            rejectPart(error)
+          }
+          if (!piece || piece.length !== pieceLength) rejectPart(new Error('Не хватает части записи'))
+          pieces.push(piece)
+        }
+        const bytes = Buffer.concat(pieces)
+        const meeting = await service.submit(
+          userId,
+          { name: input.fileName, mime: input.mime, bytes },
+          null,
+          input.title,
+        )
+        await parts.markFinished(userId, input.uploadId, meeting.id)
+        await parts.removeChunks(userId, input.uploadId)
+        return { partial: false as const, meeting }
+      })().finally(() => {
+        if (partAssembly.get(key) === assembly) partAssembly.delete(key)
+      })
+      partAssembly.set(key, assembly)
+      return assembly
+    },
+    async discardPart(userId: string, uploadId: string) {
+      const parts = requireParts()
+      try {
+        assertMeetingUploadId(uploadId)
+      } catch (error) {
+        rejectPart(error)
+      }
+      await parts.discard(userId, uploadId)
+      return { ok: true as const }
+    },
   }
+  return service
 }
 
 export type MeetingsService = ReturnType<typeof createMeetingsService>

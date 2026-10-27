@@ -46,6 +46,15 @@ export type MeetingAudioStore = {
   remove(meetingId: string): Promise<void>
 }
 
+export type MeetingPartStore = {
+  save(userId: string, uploadId: string, index: number, bytes: Buffer): Promise<void>
+  read(userId: string, uploadId: string, index: number): Promise<Buffer | null>
+  finishedMeetingId(userId: string, uploadId: string): Promise<string | null>
+  markFinished(userId: string, uploadId: string, meetingId: string): Promise<void>
+  removeChunks(userId: string, uploadId: string): Promise<void>
+  discard(userId: string, uploadId: string): Promise<void>
+}
+
 export type MeetingTranscriber = {
   submit(file: { name: string; mime: string; bytes: Buffer }, speakers: number | null): Promise<string>
   status(jobId: string): Promise<MeetingJob>

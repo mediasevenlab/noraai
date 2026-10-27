@@ -12,6 +12,7 @@ import { AppError, validationErrorHook } from '../../../http/errors'
 import type { AuthHttpEnv } from '../../auth'
 import type { MeetingsService } from '../application/meetings-service'
 import { MeetingFailure } from '../domain/errors'
+import { meetingPartBytes } from '../domain/meeting-parts'
 
 const errorContent = {
   'application/json': {
@@ -110,6 +111,28 @@ const deleteRoute = createRoute({
   },
 })
 
+function headerText(value: string | undefined) {
+  return value?.trim() ?? ''
+}
+
+function headerInteger(value: string | undefined) {
+  const raw = headerText(value)
+  if (!/^\d+$/.test(raw)) throw new MeetingFailure('bad_request', 'Не удалось принять часть записи')
+  const parsed = Number(raw)
+  if (!Number.isSafeInteger(parsed)) throw new MeetingFailure('bad_request', 'Не удалось принять часть записи')
+  return parsed
+}
+
+function headerFileName(value: string | undefined) {
+  const raw = headerText(value)
+  if (!raw) return ''
+  try {
+    return decodeURIComponent(raw).replace(/^.*[\\/]/, '').slice(0, 180)
+  } catch {
+    return raw.replace(/^.*[\\/]/, '').slice(0, 180)
+  }
+}
+
 function toAppError(error: unknown) {
   if (error instanceof MeetingFailure) {
     if (error.kind === 'not_found') return new AppError(404, 'NOT_FOUND', error.message)
@@ -169,6 +192,29 @@ export function createMeetingRoutes(options: {
   })
   routes.post('/me/meetings/:meetingId/cancel', async (c) => {
     return c.json(await execute(() => options.service.cancel(c.var.user.id, c.req.param('meetingId'))), 200)
+  })
+  routes.post('/me/meetings/parts', async (c) => {
+    const result = await execute(async () => {
+      const declared = Number(c.req.header('content-length') ?? '')
+      if (Number.isFinite(declared) && declared > meetingPartBytes) {
+        throw new MeetingFailure('bad_request', 'Часть записи повреждена')
+      }
+      return options.service.acceptPart(c.var.user.id, {
+        uploadId: headerText(c.req.header('x-upload-id')),
+        index: headerInteger(c.req.header('x-part-index')),
+        count: headerInteger(c.req.header('x-part-count')),
+        fileSize: headerInteger(c.req.header('x-file-size')),
+        fileName: headerFileName(c.req.header('x-file-name')),
+        mime: headerText(c.req.header('x-file-mime')) || 'application/octet-stream',
+        title: headerFileName(c.req.header('x-meeting-title')),
+        bytes: Buffer.from(await c.req.arrayBuffer()),
+      })
+    })
+    if (result.partial) return c.json({ received: result.index, count: result.count }, 200)
+    return c.json(result.meeting, 200)
+  })
+  routes.delete('/me/meetings/parts/:uploadId', async (c) => {
+    return c.json(await execute(() => options.service.discardPart(c.var.user.id, c.req.param('uploadId'))), 200)
   })
   routes.post('/me/meetings', async (c) => {
     const result = await execute(async () => {

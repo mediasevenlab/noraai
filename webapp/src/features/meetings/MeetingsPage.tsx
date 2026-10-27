@@ -601,6 +601,18 @@ export function MeetingsPage() {
     uploadAbort.current?.abort()
   }
 
+  useEffect(() => {
+    if (!sending) return
+    const timer = window.setInterval(() => {
+      const speed = bytesPerSecond(uploadSamples.current, Date.now())
+      setUploadProgress((current) => {
+        if (!current || current.loaded >= current.total || speed === current.bytesPerSecond) return current
+        return { ...current, bytesPerSecond: speed }
+      })
+    }, 500)
+    return () => window.clearInterval(timer)
+  }, [sending])
+
   async function upload(file: File | undefined) {
     if (!file || sending) return
     const controller = new AbortController()

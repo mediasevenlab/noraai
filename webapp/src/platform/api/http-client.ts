@@ -54,7 +54,7 @@ export class HttpClient {
   async raw(path: string, options: HttpRequestOptions = {}): Promise<Response> {
     const headers = new Headers(options.headers)
     const form = typeof FormData !== 'undefined' && options.body instanceof FormData
-    if (options.body !== undefined && !form) {
+    if (options.body !== undefined && !form && !isBinaryBody(options.body)) {
       headers.set('Content-Type', 'application/json')
     }
 
@@ -121,8 +121,15 @@ function sendWithProgress(url: string, options: HttpRequestOptions, headers: Hea
   })
 }
 
+function isBinaryBody(body: unknown) {
+  if (typeof Blob !== 'undefined' && body instanceof Blob) return true
+  return typeof ArrayBuffer !== 'undefined' && body instanceof ArrayBuffer
+}
+
 function uploadBody(body: unknown): XMLHttpRequestBodyInit | null {
   if (typeof FormData !== 'undefined' && body instanceof FormData) return body
+  if (typeof Blob !== 'undefined' && body instanceof Blob) return body
+  if (typeof ArrayBuffer !== 'undefined' && body instanceof ArrayBuffer) return body
   if (typeof body === 'string') return body
   if (body === undefined || body === null) return null
   return JSON.stringify(body)
@@ -141,6 +148,7 @@ function responseHeaders(raw: string): Headers {
 function requestBody(body: unknown): BodyInit | undefined {
   if (body === undefined) return undefined
   if (typeof FormData !== 'undefined' && body instanceof FormData) return body
+  if (isBinaryBody(body)) return body as BodyInit
   return JSON.stringify(body)
 }
 

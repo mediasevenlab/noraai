@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test'
 
 import type { MeetingJob } from '../domain/transcript'
-import type { MeetingAudioStore, MeetingTranscriber, MeetingsRepository, StoredMeeting } from './ports'
+import { meetingPartBytes } from '../domain/meeting-parts'
+import type { MeetingAudioStore, MeetingPartStore, MeetingTranscriber, MeetingsRepository, StoredMeeting } from './ports'
 import { createMeetingsService, settleMeetingTranscriptions } from './meetings-service'
 
 function job(partial: Partial<MeetingJob> & Pick<MeetingJob, 'status'>): MeetingJob {
@@ -33,6 +34,37 @@ function memoryAudio(): MeetingAudioStore & { files: Map<string, Buffer> } {
     },
     async remove(meetingId) {
       files.delete(meetingId)
+    },
+  }
+}
+
+function memoryParts(): MeetingPartStore {
+  const chunks = new Map<string, Buffer>()
+  const done = new Map<string, string>()
+  const key = (userId: string, uploadId: string, index: number) => `${userId}:${uploadId}:${index}`
+  return {
+    async save(userId, uploadId, index, bytes) {
+      chunks.set(key(userId, uploadId, index), Buffer.from(bytes))
+    },
+    async read(userId, uploadId, index) {
+      return chunks.get(key(userId, uploadId, index)) ?? null
+    },
+    async finishedMeetingId(userId, uploadId) {
+      return done.get(`${userId}:${uploadId}`) ?? null
+    },
+    async markFinished(userId, uploadId, meetingId) {
+      done.set(`${userId}:${uploadId}`, meetingId)
+    },
+    async removeChunks(userId, uploadId) {
+      for (const item of [...chunks.keys()]) {
+        if (item.startsWith(`${userId}:${uploadId}:`)) chunks.delete(item)
+      }
+    },
+    async discard(userId, uploadId) {
+      for (const item of [...chunks.keys()]) {
+        if (item.startsWith(`${userId}:${uploadId}:`)) chunks.delete(item)
+      }
+      done.delete(`${userId}:${uploadId}`)
     },
   }
 }
@@ -403,4 +435,68 @@ test('a worker that rejects the file marks the meeting failed after the upload',
   const opened = await service.get('user-1', created.id)
   expect(opened.status).toBe('failed')
   expect(opened.error).toBe('Сервис расшифровки не ответил')
+})
+
+test('a long recording arrives in short pieces and a repeated last piece does not create another meeting', async () => {
+  const repository = memoryRepository()
+  const audio = memoryAudio()
+  const submitted: Buffer[] = []
+  const service = createMeetingsService({
+    repository,
+    audio,
+    parts: memoryParts(),
+    transcriber: {
+      async submit(file) {
+        submitted.push(Buffer.from(file.bytes))
+        return 'job-parts'
+      },
+      async status() {
+        return job({ status: 'queued' })
+      },
+    },
+  })
+  const uploadId = '11111111-1111-4111-8111-111111111111'
+  const head = Buffer.alloc(meetingPartBytes, 1)
+  const tail = Buffer.from('tail')
+  const fileSize = head.length + tail.length
+  const first = await service.acceptPart('user-1', {
+    uploadId,
+    index: 0,
+    count: 2,
+    fileSize,
+    fileName: '5Биотех.m4a',
+    mime: 'audio/mp4',
+    title: 'Планёрка',
+    bytes: head,
+  })
+  expect(first.partial).toBe(true)
+  const created = await service.acceptPart('user-1', {
+    uploadId,
+    index: 1,
+    count: 2,
+    fileSize,
+    fileName: '5Биотех.m4a',
+    mime: 'audio/mp4',
+    title: 'Планёрка',
+    bytes: tail,
+  })
+  expect(created.partial).toBe(false)
+  if (created.partial) return
+  expect(created.meeting.title).toBe('Планёрка')
+  expect(audio.files.get(created.meeting.id)?.equals(Buffer.concat([head, tail]))).toBe(true)
+  const repeated = await service.acceptPart('user-1', {
+    uploadId,
+    index: 1,
+    count: 2,
+    fileSize,
+    fileName: '5Биотех.m4a',
+    mime: 'audio/mp4',
+    title: 'Планёрка',
+    bytes: tail,
+  })
+  expect(repeated.partial).toBe(false)
+  expect(repository.rows).toHaveLength(1)
+  await settleMeetingTranscriptions()
+  expect(submitted).toHaveLength(1)
+  expect(submitted[0]?.equals(Buffer.concat([head, tail]))).toBe(true)
 })
