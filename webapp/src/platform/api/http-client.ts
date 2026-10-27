@@ -117,8 +117,15 @@ function sendWithProgress(url: string, options: HttpRequestOptions, headers: Hea
       return
     }
     options.signal?.addEventListener('abort', abort)
-    xhr.send(requestBody(options.body) ?? null)
+    xhr.send(uploadBody(options.body))
   })
+}
+
+function uploadBody(body: unknown): XMLHttpRequestBodyInit | null {
+  if (typeof FormData !== 'undefined' && body instanceof FormData) return body
+  if (typeof body === 'string') return body
+  if (body === undefined || body === null) return null
+  return JSON.stringify(body)
 }
 
 function responseHeaders(raw: string): Headers {
