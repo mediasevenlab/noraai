@@ -21,6 +21,7 @@ export type HttpRequestOptions = {
   headers?: HeadersInit
   credentials?: RequestCredentials
   signal?: AbortSignal
+  onUploadProgress?: (event: { loaded: number; total: number }) => void
 }
 
 export class ApiRequestError extends Error {
@@ -57,13 +58,16 @@ export class HttpClient {
       headers.set('Content-Type', 'application/json')
     }
 
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method: options.method ?? 'GET',
-      credentials: options.credentials ?? 'include',
-      headers,
-      signal: options.signal,
-      body: requestBody(options.body),
-    })
+    const url = `${this.baseUrl}${path}`
+    const response = options.onUploadProgress
+      ? await sendWithProgress(url, options, headers)
+      : await fetch(url, {
+        method: options.method ?? 'GET',
+        credentials: options.credentials ?? 'include',
+        headers,
+        signal: options.signal,
+        body: requestBody(options.body),
+      })
 
     if (!response.ok) {
       throw await toApiError(response)
@@ -71,6 +75,60 @@ export class HttpClient {
 
     return response
   }
+}
+
+function sendWithProgress(url: string, options: HttpRequestOptions, headers: Headers): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open(options.method ?? 'GET', url)
+    xhr.withCredentials = (options.credentials ?? 'include') !== 'omit'
+    const form = typeof FormData !== 'undefined' && options.body instanceof FormData
+    headers.forEach((value, key) => {
+      if (form && key.toLowerCase() === 'content-type') return
+      xhr.setRequestHeader(key, value)
+    })
+    xhr.upload.onprogress = (event) => {
+      options.onUploadProgress?.({
+        loaded: event.loaded,
+        total: event.lengthComputable ? event.total : 0,
+      })
+    }
+    const fail = (error: Error) => {
+      options.signal?.removeEventListener('abort', abort)
+      reject(error)
+    }
+    const abort = () => xhr.abort()
+    xhr.onload = () => {
+      options.signal?.removeEventListener('abort', abort)
+      if (xhr.status === 0) {
+        fail(new TypeError('Failed to fetch'))
+        return
+      }
+      resolve(new Response(xhr.responseText, {
+        status: xhr.status,
+        statusText: xhr.statusText,
+        headers: responseHeaders(xhr.getAllResponseHeaders()),
+      }))
+    }
+    xhr.onerror = () => fail(new TypeError('Failed to fetch'))
+    xhr.onabort = () => fail(new DOMException('The operation was aborted.', 'AbortError'))
+    if (options.signal?.aborted) {
+      fail(new DOMException('The operation was aborted.', 'AbortError'))
+      return
+    }
+    options.signal?.addEventListener('abort', abort)
+    xhr.send(requestBody(options.body) ?? null)
+  })
+}
+
+function responseHeaders(raw: string): Headers {
+  const headers = new Headers()
+  for (const line of raw.trim().split(/[\r\n]+/)) {
+    const index = line.indexOf(':')
+    if (index <= 0) continue
+    headers.append(line.slice(0, index).trim(), line.slice(index + 1).trim())
+  }
+  return headers
 }
 
 function requestBody(body: unknown): BodyInit | undefined {

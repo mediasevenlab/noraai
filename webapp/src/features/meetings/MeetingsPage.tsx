@@ -22,6 +22,7 @@ import {
   retryMeeting,
 } from './api'
 import { notifyMeetings, subscribeMeetings } from './selection'
+import { bytesPerSecond, uploadStatusLine, type UploadProgress, type UploadSample } from './upload-progress'
 
 function clock(seconds: number) {
   const total = Math.max(0, Math.floor(seconds))
@@ -369,6 +370,7 @@ function NewMeetingHeading({
 
 function NewMeetingComposer({
   fileRef,
+  progress,
   sending,
   title,
   uploadName,
@@ -377,6 +379,7 @@ function NewMeetingComposer({
   onTitle,
 }: {
   fileRef: RefObject<HTMLInputElement | null>
+  progress: UploadProgress | null
   sending: boolean
   title: string
   uploadName: string
@@ -441,9 +444,14 @@ function NewMeetingComposer({
                 <PlusIcon className="size-4" />
               </button>
             )}
-            <span className="text-[15px] text-[var(--nora-text-secondary)]">
-              {sending ? 'Запись загружается' : 'Прикрепите запись'}
-            </span>
+            <div className="min-w-0">
+              <p className="text-[15px] text-[var(--nora-text-secondary)]">
+                {sending ? 'Запись загружается' : 'Прикрепите запись'}
+              </p>
+              {sending && progress ? (
+                <p className="text-[13px] text-[var(--nora-text-secondary)]">{uploadStatusLine(progress)}</p>
+              ) : null}
+            </div>
           </div>
         </div>
       </form>
@@ -552,7 +560,9 @@ export function MeetingsPage() {
   const [missing, setMissing] = useState(false)
   const [sending, setSending] = useState(false)
   const [uploadName, setUploadName] = useState('')
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null)
   const uploadAbort = useRef<AbortController | null>(null)
+  const uploadSamples = useRef<UploadSample[]>([])
   const [draftTitle, setDraftTitle] = useState('')
   const [acting, setActing] = useState(false)
   const [runKey, setRunKey] = useState(0)
@@ -595,10 +605,23 @@ export function MeetingsPage() {
     if (!file || sending) return
     const controller = new AbortController()
     uploadAbort.current = controller
+    uploadSamples.current = []
     setUploadName(file.name)
+    setUploadProgress({ loaded: 0, total: file.size, bytesPerSecond: 0 })
     setSending(true)
     try {
-      const created = await createMeeting(auth.transport, file, draftTitle, controller.signal)
+      const created = await createMeeting(auth.transport, file, draftTitle, controller.signal, (event) => {
+        const now = Date.now()
+        const total = event.total > 0 ? event.total : file.size
+        const next = [...uploadSamples.current, { at: now, loaded: event.loaded }]
+          .filter((sample) => sample.at >= now - 5000)
+        uploadSamples.current = next
+        setUploadProgress({
+          loaded: event.loaded,
+          total,
+          bytesPerSecond: bytesPerSecond(next, now),
+        })
+      })
       if (controller.signal.aborted) return
       setDraftTitle('')
       setMeeting(created)
@@ -614,8 +637,10 @@ export function MeetingsPage() {
       toast.error(error instanceof Error ? error.message : 'Не удалось отправить запись')
     } finally {
       if (uploadAbort.current === controller) uploadAbort.current = null
+      uploadSamples.current = []
       setSending(false)
       setUploadName('')
+      setUploadProgress(null)
     }
   }
 
@@ -667,6 +692,7 @@ export function MeetingsPage() {
       {!meetingId && !meeting ? (
         <NewMeetingComposer
           fileRef={fileRef}
+          progress={uploadProgress}
           sending={sending}
           title={draftTitle}
           uploadName={uploadName}

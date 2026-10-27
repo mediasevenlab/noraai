@@ -249,6 +249,13 @@ export const STEP_ITEMS: ReadonlyArray<StepItem> = [
     description:
       'Новой встрече можно сразу дать своё имя. Если оставить заголовок пустым, название возьмётся из файла записи.',
   },
+  {
+    category: 'Версия · v0.35',
+    title: 'Ход загрузки встречи',
+    badge: 'Meetings',
+    description:
+      'Пока большая запись уходит на сервер, видно общий вес, сколько уже отправлено и скорость.',
+  },
 ]
 
 export function stepVersion(item: StepItem): string {

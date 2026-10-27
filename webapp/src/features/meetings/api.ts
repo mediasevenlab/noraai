@@ -66,6 +66,7 @@ export function createMeeting(
   file: File,
   title = '',
   signal?: AbortSignal,
+  onUploadProgress?: (event: { loaded: number; total: number }) => void,
 ) {
   const body = new FormData()
   body.set('file', file)
@@ -75,6 +76,7 @@ export function createMeeting(
     method: 'POST',
     body,
     signal,
+    onUploadProgress,
   })
 }
 
