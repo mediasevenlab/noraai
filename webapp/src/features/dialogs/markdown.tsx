@@ -23,11 +23,13 @@ import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import 'katex/dist/katex.min.css'
 
-import { CheckIcon, CopyIcon } from '@/components/icons'
+import { FileTypeIcon } from '@/components/file-type-icon'
+import { CheckIcon, CopyIcon, Maximize2Icon, XIcon } from '@/components/icons'
+import { useAuth } from '@/features/auth'
 import { cn } from '@/lib/utils'
 
 import { prepareDialogMarkdown } from './markdown-prepare'
-import { bannerSpans, fitColumnWidths, modalTableWidth } from './table-layout'
+import { bannerSpans, sheetColumnWidths, tableHeading } from './table-layout'
 
 const remarkPlugins: Options['remarkPlugins'] = [
   remarkGfm,
@@ -52,6 +54,7 @@ const cellClass =
   'relative border-r border-[var(--nora-border)] px-3 py-2 align-top last:border-r-0'
 
 const ModalCellClip = createContext(false)
+const SchemeLayout = createContext<'single' | 'row'>('single')
 
 function DialogCell({
   tag: Tag,
@@ -72,7 +75,7 @@ function DialogCell({
   const body = parts.filter((part) => !handle.includes(part))
   return (
     <Tag className={`${className} min-w-0 overflow-hidden`} {...props}>
-      <div className="max-w-full overflow-hidden" style={{ overflowWrap: 'anywhere' }}>
+      <div className="max-w-full" style={{ overflowWrap: 'break-word' }}>
         {body}
       </div>
       {handle}
@@ -92,6 +95,30 @@ function rowCells(row: ReactElement) {
   return Children.toArray((row.props as { children?: ReactNode }).children).filter(isValidElement)
 }
 
+const CHAT_TABLE_ROWS = 14
+
+function clipTable(children: ReactNode, limit: number) {
+  let seen = 0
+  let hidden = 0
+  const walk = (node: ReactNode): ReactNode =>
+    Children.map(node, (child) => {
+      if (!isValidElement(child)) return child
+      if (child.type === 'tr') {
+        seen += 1
+        if (seen > limit) {
+          hidden += 1
+          return null
+        }
+        return child
+      }
+      const nested = (child.props as { children?: ReactNode }).children
+      if (nested == null) return child
+      return cloneElement(child as ReactElement<{ children?: ReactNode }>, {}, walk(nested))
+    })
+  const node = walk(children)
+  return { node, hidden }
+}
+
 function tableRows(children: ReactNode) {
   const rows: ReactElement[] = []
   const visit = (node: ReactNode) => {
@@ -103,24 +130,6 @@ function tableRows(children: ReactNode) {
   }
   visit(children)
   return rows
-}
-
-function columnSamples(rows: readonly ReactElement[], columns: number) {
-  const samples = Array.from({ length: columns }, () => '')
-  for (const row of rows) {
-    const cells = rowCells(row)
-    const texts = cells.map((cell) => nodeText((cell.props as { children?: ReactNode }).children))
-    if (bannerSpans(texts, columns)) continue
-    texts.forEach((text, index) => {
-      if (text.trim().length > (samples[index]?.length ?? 0)) samples[index] = text.trim()
-    })
-  }
-  if (samples.every((sample) => !sample) && rows[0]) {
-    rowCells(rows[0]).forEach((cell, index) => {
-      samples[index] = nodeText((cell.props as { children?: ReactNode }).children).trim()
-    })
-  }
-  return samples
 }
 
 function withSpans(children: ReactNode, columns: number): ReactNode {
@@ -187,23 +196,19 @@ function withResizeHandles(
 
 function DialogTable({ children }: { children?: ReactNode }) {
   const [open, setOpen] = useState(false)
-  const [panelWidth, setPanelWidth] = useState(640)
   const [widths, setWidths] = useState<number[]>([])
-  const [resized, setResized] = useState(false)
   const closeRef = useRef<HTMLButtonElement>(null)
-  const chatTableRef = useRef<HTMLTableElement>(null)
   const drag = useRef<{ column: number; x: number; width: number } | null>(null)
 
   const rows = tableRows(children)
   const columns = Math.max(1, ...rows.map((row) => rowCells(row).length))
-  const chatBody = withSpans(children, columns)
+  const preview = clipTable(children, CHAT_TABLE_ROWS)
+  const chatBody = withSpans(preview.node, columns)
+  const matrix = rows.map((row) => rowCells(row).map((cell) => nodeText(cell)))
+  const title = tableHeading(matrix)
 
   const openViewer = () => {
-    const chatWidth = chatTableRef.current?.getBoundingClientRect().width ?? 640
-    const width = modalTableWidth({ columns, chatWidth, viewport: window.innerWidth })
-    setPanelWidth(width)
-    setWidths(fitColumnWidths(columnSamples(rows, columns), width))
-    setResized(false)
+    setWidths(sheetColumnWidths(matrix))
     setOpen(true)
   }
 
@@ -236,71 +241,75 @@ function DialogTable({ children }: { children?: ReactNode }) {
   }, [open])
 
   const beginResize = (column: number, clientX: number) => {
-    setResized(true)
     drag.current = { column, x: clientX, width: widths[column] ?? 80 }
   }
   const tableWidth = widths.reduce((sum, width) => sum + width, 0)
 
   return (
     <div className="my-3 max-w-full">
-      <div className="mb-1 flex justify-end">
+      <div className="mb-1.5 flex justify-end">
         <button
-          className="rounded-md px-2 py-1 text-[12px] leading-4 text-[var(--nora-text-secondary)] hover:bg-[var(--nora-input-bg)] hover:text-[var(--nora-text)]"
+          className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 font-[family-name:var(--nora-font)] text-[13px] leading-none text-[var(--nora-text-secondary)] transition-colors hover:bg-[var(--nora-input-bg)] hover:text-[var(--nora-text)]"
           type="button"
           onClick={openViewer}
         >
+          <Maximize2Icon className="size-3.5" />
           Открыть
         </button>
       </div>
       <div className="max-w-full overflow-x-auto rounded-xl border border-[var(--nora-border)]">
-        <table ref={chatTableRef} className="w-full border-collapse text-left text-[13px] leading-5">
+        <table className="w-max min-w-full border-collapse text-left text-[13px] leading-5 [&_td]:min-w-[4.5rem] [&_td]:max-w-[280px] [&_th]:min-w-[4.5rem] [&_th]:max-w-[280px]">
           {chatBody}
         </table>
       </div>
+      {preview.hidden > 0 ? (
+        <p className="mt-1 font-[family-name:var(--nora-font)] text-[12px] leading-4 font-normal text-[var(--nora-text-secondary)]">
+          В чате первые строки. Весь лист открывается кнопкой выше.
+        </p>
+      ) : null}
       {open && typeof document !== 'undefined'
         ? createPortal(
-            <div
-              className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-3"
-              onMouseDown={() => setOpen(false)}
-            >
+            <div className="fixed inset-0 z-[70] bg-black/40 p-3 md:p-5" role="presentation">
               <div
-                aria-label="Таблица"
+                aria-label={title}
                 aria-modal="true"
-                className="flex max-h-[calc(100vh-1.5rem)] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl bg-[var(--nora-modal)] text-[var(--nora-text)] shadow-[var(--nora-shadow-modal)]"
+                className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-lg bg-[var(--nora-modal)] text-[var(--nora-text)] shadow-[var(--nora-shadow-modal)]"
                 role="dialog"
-                style={{ width: panelWidth }}
-                onMouseDown={(event) => event.stopPropagation()}
               >
-                <div className="flex shrink-0 items-center justify-between gap-4 border-b border-[var(--nora-border)] px-4 py-2.5">
-                  <span className="text-[13px] leading-5">Таблица</span>
+                <div className="flex shrink-0 items-center gap-2 border-b border-[var(--nora-border)] px-3 py-2.5">
+                  <FileTypeIcon name="sheet.xlsx" />
+                  <span className="min-w-0 flex-1 truncate font-[family-name:var(--nora-font)] text-[12px] leading-4 font-normal">
+                    {title}
+                  </span>
                   <button
                     ref={closeRef}
-                    className="rounded-md px-2 py-1 text-[13px] leading-5 hover:bg-[var(--nora-input-bg)]"
+                    aria-label="Закрыть"
+                    className="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-[var(--nora-surface)] text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]"
                     type="button"
                     onClick={() => setOpen(false)}
                   >
-                    Закрыть
+                    <XIcon className="size-4" />
                   </button>
                 </div>
-                <div className={resized ? 'min-h-0 overflow-auto' : 'min-h-0 overflow-x-hidden overflow-y-auto'}>
+                <div className="min-h-0 flex-1 overflow-auto bg-[#ececec]">
+                  <div className="mx-auto my-4 w-max min-w-[calc(100%-32px)] bg-white px-6 py-6 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
                   <table
-                    className="border-collapse text-left text-[13px] leading-5 [&_td]:max-w-0 [&_th]:max-w-0"
-                    style={{ width: resized ? tableWidth || panelWidth : '100%', tableLayout: 'fixed' }}
+                    className="border-collapse text-left text-[13px] leading-5"
+                    style={{ width: tableWidth || undefined, tableLayout: 'fixed' }}
                   >
                     <ModalCellClip.Provider value={true}>
                       <colgroup>
                         {widths.map((width, index) => (
                           <col
                             key={index}
-                            style={{
-                              width: resized ? width : `${(width / (tableWidth || panelWidth)) * 100}%`,
-                            }}
+                            style={{ width }}
                           />
                         ))}
                       </colgroup>
                       {withResizeHandles(withSpans(children, columns), beginResize)}
                     </ModalCellClip.Provider>
                   </table>
+                  </div>
                 </div>
               </div>
             </div>,
@@ -334,6 +343,84 @@ function DialogCodeHeader({ language, code }: CodeHeaderProps) {
   )
 }
 
+function schemeSource(node: ReactNode) {
+  if (!isValidElement(node)) return ''
+  const src = (node.props as { src?: unknown }).src
+  return typeof src === 'string' && src.startsWith('/api/users/me/knowledge-schemes/') ? src : ''
+}
+
+function SchemeBlock({ children }: { children?: ReactNode }) {
+  const parts = Children.toArray(children).filter((child) => typeof child !== 'string' || child.trim())
+  const schemes = parts.filter((child) => schemeSource(child))
+  if (schemes.length === 0 || schemes.length !== parts.length) return <p>{children}</p>
+  if (schemes.length === 1) {
+    return (
+      <SchemeLayout.Provider value="single">
+        <div className="mb-3 max-w-full">{schemes}</div>
+      </SchemeLayout.Provider>
+    )
+  }
+  return (
+    <SchemeLayout.Provider value="row">
+      <div className="mb-3 flex w-full min-w-0 max-w-full items-stretch gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1">
+        {schemes}
+      </div>
+    </SchemeLayout.Provider>
+  )
+}
+
+function SchemeImage({ src, alt }: { src: string; alt: string }) {
+  const auth = useAuth()
+  const row = useContext(SchemeLayout) === 'row'
+  const [url, setUrl] = useState('')
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    let objectUrl = ''
+    void (async () => {
+      try {
+        const response = await auth.transport.raw(src)
+        if (cancelled) return
+        const blob = await response.blob()
+        if (cancelled) return
+        objectUrl = URL.createObjectURL(blob)
+        setUrl(objectUrl)
+      } catch {
+        if (!cancelled) setFailed(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [auth.transport, src])
+  if (!url) {
+    if (failed) return null
+    return (
+      <span
+        className={
+          row
+            ? 'inline-flex h-64 shrink-0 items-center px-3 text-[13px] text-[var(--nora-text-secondary)]'
+            : 'my-2 block text-[13px] text-[var(--nora-text-secondary)]'
+        }
+      >
+        Открываем схему…
+      </span>
+    )
+  }
+  return (
+    <img
+      alt={alt}
+      className={
+        row
+          ? 'h-64 w-auto max-w-none shrink-0 rounded-lg border border-[var(--nora-border)] bg-white'
+          : 'max-h-[28rem] max-w-full rounded-lg border border-[var(--nora-border)] bg-white'
+      }
+      src={url}
+    />
+  )
+}
+
 export function DialogMarkdown() {
   return (
     <MarkdownTextPrimitive
@@ -356,6 +443,12 @@ export function DialogMarkdown() {
         a: ({ node: _node, ...props }: MarkdownTag<'a'>) => (
           <a {...props} rel="noreferrer" target="_blank" />
         ),
+        p: ({ children }: { children?: ReactNode }) => <SchemeBlock>{children}</SchemeBlock>,
+        img: ({ node: _node, src, alt }: MarkdownTag<'img'>) => {
+          const source = typeof src === 'string' ? src : ''
+          if (!source.startsWith('/api/users/me/knowledge-schemes/')) return null
+          return <SchemeImage alt={typeof alt === 'string' ? alt : 'Схема'} src={source} />
+        },
         table: ({ node: _node, children }: MarkdownTag<'table'>) => (
           <DialogTable>{children}</DialogTable>
         ),
@@ -379,7 +472,7 @@ export function DialogMarkdown() {
       preprocess={prepareDialogMarkdown}
       rehypePlugins={rehypePlugins}
       remarkPlugins={remarkPlugins}
-      smooth={{ drainMs: 700, maxCharIntervalMs: 18, maxCharsPerFrame: 4 }}
+      smooth={false}
     />
   )
 }

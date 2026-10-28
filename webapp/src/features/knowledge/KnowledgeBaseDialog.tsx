@@ -92,14 +92,18 @@ export function KnowledgeBaseDialog({
           <>
             <DialogHeader>
               <DialogTitle className="sr-only">База знаний</DialogTitle>
-              <input
-                aria-label="Название базы знаний"
-                className="h-8 w-full border-0 bg-transparent pr-6 text-[15px] font-medium text-[var(--nora-text)] outline-none"
-                key={base.id}
-                maxLength={80}
-                onBlur={(event) => void saveName(event.target.value)}
-                defaultValue={base.name}
-              />
+              {base.builtin ? (
+                <p className="pr-6 text-[15px] font-medium text-[var(--nora-text)]">{base.name}</p>
+              ) : (
+                <input
+                  aria-label="Название базы знаний"
+                  className="h-8 w-full border-0 bg-transparent pr-6 text-[15px] font-medium text-[var(--nora-text)] outline-none"
+                  key={base.id}
+                  maxLength={80}
+                  onBlur={(event) => void saveName(event.target.value)}
+                  defaultValue={base.name}
+                />
+              )}
             </DialogHeader>
             <div className="flex flex-col gap-2 px-[15px] pt-2 pb-[15px]">
               {base.files.length === 0 ? (
@@ -121,14 +125,16 @@ export function KnowledgeBaseDialog({
                       >
                         <DownloadIcon className="size-3.5" />
                       </button>
-                      <button
-                        aria-label="Удалить файл"
-                        className="inline-flex size-6 items-center justify-center rounded-md text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]"
-                        onClick={() => void removeFile(file.id)}
-                        type="button"
-                      >
-                        <XIcon className="size-3.5" />
-                      </button>
+                      {base.builtin ? null : (
+                        <button
+                          aria-label="Удалить файл"
+                          className="inline-flex size-6 items-center justify-center rounded-md text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]"
+                          onClick={() => void removeFile(file.id)}
+                          type="button"
+                        >
+                          <XIcon className="size-3.5" />
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -136,6 +142,11 @@ export function KnowledgeBaseDialog({
               {downloadError ? (
                 <p className="text-[13px] text-[var(--nora-text-secondary)]">{downloadError}</p>
               ) : null}
+              {base.builtin ? (
+                <p className="text-[13px] text-[var(--nora-text-secondary)]">
+                  Эта база входит в программу. Схемы из неё открываются в ответе чата.
+                </p>
+              ) : (
               <label className="mt-1 inline-flex h-8 cursor-pointer items-center justify-center rounded-full bg-[var(--nora-text)] px-3 text-[13px] text-[var(--nora-panel)]">
                 {busy ? 'Добавляем…' : 'Добавить файлы'}
                 <input
@@ -151,6 +162,7 @@ export function KnowledgeBaseDialog({
                   type="file"
                 />
               </label>
+              )}
             </div>
           </>
         ) : null}

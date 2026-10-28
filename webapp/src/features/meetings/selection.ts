@@ -39,15 +39,9 @@ export function activeMeetingTranscripts() {
   return activeMeetingIds
 }
 
-export function bindThreadMeetings(userId: string, threadId: string, previousThreadId: string | null) {
-  if (previousThreadId && previousThreadId !== threadId) {
-    const carried = readThreadMeetings(userId, previousThreadId)
-    const current = readThreadMeetings(userId, threadId)
-    if (carried.length > 0 && current.length === 0) {
-      writeThreadMeetings(userId, threadId, carried)
-      return carried
-    }
-  }
+/** Only the meeting chosen in this dialog is on. A switch of dialogs does not copy it. */
+export function bindThreadMeetings(userId: string, threadId: string) {
+  if (!userId || !threadId) return [...activeMeetingIds]
   const ids = readThreadMeetings(userId, threadId)
   activeMeetingIds = ids
   return ids

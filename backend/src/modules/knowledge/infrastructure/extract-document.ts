@@ -37,9 +37,39 @@ function extension(name: string) {
   return match?.[1] ?? ''
 }
 
+function htmlText(raw: string) {
+  const marker = raw.search(/class="WordSection1"/i)
+  const tagEnd = marker >= 0 ? raw.indexOf('>', marker) : -1
+  let text = tagEnd >= 0 ? raw.slice(tagEnd + 1) : marker >= 0 ? raw.slice(marker) : raw
+  const footer = text.search(/footer\.js/i)
+  if (footer > 0) text = text.slice(0, footer)
+  return text
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<img\b[^>]*>/gi, (tag) => {
+      const src = tag.match(/\ssrc\s*=\s*["']([^"']+)["']/i)?.[1] ?? ''
+      const name = src.split(/[/\\]/).pop() ?? ''
+      if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,64}$/.test(name) || !/\.(gif|jpe?g|png|webp)$/i.test(name)) return '\n'
+      return `\n[[схема:${name}]]\n`
+    })
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|h[1-6]|tr|li|table|blockquote)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#(\d+);/g, (_, code: string) => {
+      const value = Number(code)
+      return value > 0 && value < 0x110000 ? String.fromCodePoint(value) : ' '
+    })
+}
+
 function plainText(bytes: Buffer, ext: string) {
   const text = bytes.toString('utf8').replace(/^\uFEFF/, '')
-  if (ext === 'html' || ext === 'htm' || ext === 'xml') {
+  if (ext === 'html' || ext === 'htm') return htmlText(text)
+  if (ext === 'xml') {
     return text.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ')
   }
   if (ext === 'rtf') {
@@ -127,7 +157,7 @@ export async function extractKnowledgeDocument(name: string, bytes: Buffer, read
   if (ext === 'pdf') {
     const pdf = await getDocumentProxy(new Uint8Array(bytes))
     const extracted = await extractText(pdf, { mergePages: true })
-    const text = Array.isArray(extracted.text) ? extracted.text.join('\n') : extracted.text
+    const text = Array.isArray(extracted.text) ? extracted.text.join('\f') : extracted.text
     return resolveDocumentText(text, () => scanPages(bytes), readScan)
   }
   if (ext === 'docx') {

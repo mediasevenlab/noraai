@@ -1,7 +1,7 @@
 import type { NoraModelChatMessage } from '@web-app-demo/contracts'
 
 import type { AppEnv } from '../../../env'
-import { directKnowledgeReply } from '../../knowledge'
+import { directKnowledgeReply, schemeAnswer } from '../../knowledge'
 import { MealsFailure } from '../domain/errors'
 import { splitChatReasoning } from '../domain/chat-reasoning'
 import { consumeChatDelta, emptyChatStream, type ChatStreamState } from '../domain/chat-stream'
@@ -19,6 +19,7 @@ import {
   type NoraChatTurn,
   type NoraWebSearchCall,
 } from '../domain/nora-chat'
+import { DOCUMENT_COMPARE_SYSTEM, documentComparePrompt } from '../domain/document-compare'
 import { SEARCH_UNAVAILABLE, searchOfficeWeb } from './nora-office'
 import { encodeJpeg } from './sharp-meal-image'
 
@@ -106,9 +107,14 @@ function pause(ms: number) {
 }
 
 /** A ready table list used to arrive as one block. Words and rows now print in order. */
-async function* pacedReply(text: string, model: string): AsyncGenerator<NoraChatEvent & { model?: string }> {
+async function* pacedReply(
+  text: string,
+  model: string,
+  signal?: AbortSignal,
+): AsyncGenerator<NoraChatEvent & { model?: string }> {
   const lines = text.split('\n')
   for (let index = 0; index < lines.length; index += 1) {
+    if (signal?.aborted) return
     const line = lines[index] ?? ''
     const newline = index === lines.length - 1 ? '' : '\n'
     if (line.startsWith('|')) {
@@ -125,6 +131,7 @@ async function* pacedReply(text: string, model: string): AsyncGenerator<NoraChat
       const last = wordIndex === words.length - 1
       yield { reply: `${words[wordIndex] ?? ''}${last ? newline : ''}`, model }
       await pause(WORD_PAUSE_MS)
+      if (signal?.aborted) return
     }
   }
 }
@@ -140,7 +147,7 @@ export async function* streamNoraChat(
   const lastUser = [...messages].reverse().find((message) => message.role === 'user')
   const ready = directKnowledgeReply(knowledge ?? '')
   if (ready && !lastUser?.images?.length && search !== true) {
-    yield* pacedReply(ready, env.LLM_TEXT_MODEL)
+    yield* pacedReply(withSchemes(ready, knowledge), env.LLM_TEXT_MODEL, signal)
     return
   }
   const baseUrl = env.LLM_BASE_URL?.replace(/\/$/, '')
@@ -292,7 +299,19 @@ export async function* streamNoraChat(
       step = await roundStream.next()
     }
   }
+  const figures = schemeAnswer(knowledge ?? '')
+    .split('\n\n')
+    .filter((line) => line && !reply.includes(line))
+  if (figures.length > 0 && !signal?.aborted) yield { reply: `\n\n${figures.join('\n\n')}` }
   yield { model: request.model }
+}
+
+function withSchemes(answer: string, knowledge?: string) {
+  const figures = schemeAnswer(knowledge ?? '')
+    .split('\n\n')
+    .filter((line) => line && !answer.includes(line))
+  if (figures.length === 0) return answer
+  return `${answer}\n\n${figures.join('\n\n')}`
 }
 
 function visibleChatEvent(event: NoraChatEvent, thinkOn: boolean): NoraChatEvent | null {
@@ -389,6 +408,30 @@ export async function completeFollowUps(
   }, signal)
   const lines = followUpLines(await collectReply(response), topic)
   return { reply: lines.join('\n') || ' ', model: env.LLM_TEXT_MODEL }
+}
+
+export async function completeDocumentCompare(
+  env: NoraEnv,
+  input: { leftName: string; leftText: string; rightName: string; rightText: string },
+  signal?: AbortSignal,
+) {
+  const baseUrl = env.LLM_BASE_URL?.replace(/\/$/, '')
+  if (!baseUrl || !env.LLM_API_KEY) {
+    throw new MealsFailure('misconfigured', 'Своя модель пока не настроена. Выберите Gemini или попробуйте позже.')
+  }
+  const response = await postOllamaChat(baseUrl, env.LLM_API_KEY, {
+    model: env.LLM_TEXT_MODEL,
+    messages: [
+      { role: 'system', content: DOCUMENT_COMPARE_SYSTEM },
+      { role: 'user', content: documentComparePrompt(input) },
+    ],
+    stream: true,
+    think: false,
+    options: { num_ctx: 16_384, num_predict: 800, temperature: 0.2 },
+  }, signal)
+  const reply = (await collectReply(response)).trim()
+  if (!reply) throw new MealsFailure('upstream', 'Модель ничего не ответила. Попробуйте ещё раз.')
+  return reply
 }
 
 async function collectReply(response: Response) {

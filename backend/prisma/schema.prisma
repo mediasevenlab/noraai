@@ -336,14 +336,16 @@ model NewsPost {
 
 model KnowledgeBase {
   id        String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  userId    String          @map("user_id") @db.Uuid
+  userId    String?         @map("user_id") @db.Uuid
   name      String          @db.VarChar(80)
+  builtin   Boolean         @default(false)
   createdAt DateTime        @default(now()) @map("created_at")
   updatedAt DateTime        @updatedAt @map("updated_at")
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade, map: "knowledge_bases_user_id_fkey")
+  user      User?           @relation(fields: [userId], references: [id], onDelete: Cascade, map: "knowledge_bases_user_id_fkey")
   files     KnowledgeFile[]
 
   @@index([userId, updatedAt], map: "knowledge_bases_user_id_updated_at_idx")
+  @@index([builtin], map: "knowledge_bases_builtin_idx")
   @@map("knowledge_bases")
 }
 

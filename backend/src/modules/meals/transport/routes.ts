@@ -39,6 +39,7 @@ import type { MiddlewareHandler } from 'hono'
 import { validationErrorHook } from '../../../http/errors'
 import type { AuthHttpEnv } from '../../auth'
 import type { MealsService } from '../application/meals-service'
+import { MealsFailure } from '../domain/errors'
 import type { AppMealComposer } from '../application/app-meal-composer'
 import { executeMeals } from './errors'
 import { createRequireServiceToken } from './service-token'
@@ -614,6 +615,16 @@ type CreateMealsRoutesOptions = {
   composer: AppMealComposer
   analyzeNora: (input: MealsNoraRequest) => Promise<MealsGeminiResponse>
   chatWithNora: (userId: string, input: NoraModelChatRequest) => Promise<NoraModelChatResponse>
+  compareDocuments: (
+    left: { name: string; bytes: Buffer },
+    right: { name: string; bytes: Buffer },
+  ) => Promise<{
+    leftName: string
+    rightName: string
+    leftText: string
+    rightText: string
+    summary: string
+  }>
   streamChatWithNora: (
     userId: string,
     input: NoraModelChatRequest,
@@ -641,6 +652,7 @@ export function createMealsRoutes({
   composer: _composer,
   analyzeNora,
   chatWithNora,
+  compareDocuments,
   streamChatWithNora,
   internalServiceToken,
   requireAuth,
@@ -718,6 +730,21 @@ export function createMealsRoutes({
         'X-Accel-Buffering': 'no',
       },
     })
+  })
+  userMealsRoutes.post('/me/document-compare', async (c) => {
+    const result = await executeMeals(async () => {
+      const body = await c.req.parseBody()
+      const left = body.left
+      const right = body.right
+      if (!(left instanceof File) || !(right instanceof File)) {
+        throw new MealsFailure('bad_request', 'Нужны два документа')
+      }
+      return compareDocuments(
+        { name: left.name, bytes: Buffer.from(await left.arrayBuffer()) },
+        { name: right.name, bytes: Buffer.from(await right.arrayBuffer()) },
+      )
+    })
+    return c.json(result, 200)
   })
   userMealsRoutes.openapi(modelChatRoute, async (c) => {
     const result = await executeMeals(() => chatWithNora(c.var.user.id, c.req.valid('json')))

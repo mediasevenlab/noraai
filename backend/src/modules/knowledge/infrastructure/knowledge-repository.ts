@@ -6,8 +6,8 @@ export function createKnowledgeRepository(db: DbClient): KnowledgeRepository {
   return {
     list(userId: string) {
       return db.knowledgeBase.findMany({
-        where: { userId },
-        orderBy: { updatedAt: 'desc' },
+        where: { OR: [{ userId }, { builtin: true }] },
+        orderBy: [{ builtin: 'desc' }, { updatedAt: 'desc' }],
         include: { files: { orderBy: { createdAt: 'asc' }, select: { id: true, name: true, bytes: true, createdAt: true } } },
       })
     },
@@ -28,10 +28,25 @@ export function createKnowledgeRepository(db: DbClient): KnowledgeRepository {
     },
     async findFile(userId: string, fileId: string) {
       const file = await db.knowledgeFile.findFirst({
-        where: { id: fileId, base: { userId } },
-        select: { id: true, baseId: true, name: true, bytes: true, createdAt: true },
+        where: { id: fileId, base: { OR: [{ userId }, { builtin: true }] } },
+        select: {
+          id: true,
+          baseId: true,
+          name: true,
+          bytes: true,
+          createdAt: true,
+          base: { select: { builtin: true } },
+        },
       })
-      return file
+      if (!file) return null
+      return {
+        id: file.id,
+        baseId: file.baseId,
+        name: file.name,
+        bytes: file.bytes,
+        createdAt: file.createdAt,
+        builtin: file.base.builtin,
+      }
     },
     async remove(userId: string, baseId: string) {
       const result = await db.knowledgeBase.deleteMany({ where: { id: baseId, userId } })
@@ -67,7 +82,7 @@ export function createKnowledgeRepository(db: DbClient): KnowledgeRepository {
     async passages(userId: string, baseIds: readonly string[]): Promise<KnowledgePassage[]> {
       if (baseIds.length === 0) return []
       const chunks = await db.knowledgeChunk.findMany({
-        where: { file: { baseId: { in: [...baseIds] }, base: { userId } } },
+        where: { file: { baseId: { in: [...baseIds] }, base: { OR: [{ userId }, { builtin: true }] } } },
         select: {
           position: true,
           text: true,

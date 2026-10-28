@@ -24,12 +24,13 @@ function memoryRepository(): KnowledgeRepository & { rows: KnowledgeBaseRecord[]
   return {
     rows,
     async list(userId) {
-      return rows.filter((row) => row.id.startsWith(userId))
+      return rows.filter((row) => row.builtin || row.id.startsWith(userId))
     },
     async create(userId, name) {
       const row: KnowledgeBaseRecord = {
         id: `${userId}-base`,
         name,
+        builtin: false,
         updatedAt: new Date('2026-10-27T00:00:00.000Z'),
         files: [],
       }
@@ -41,9 +42,9 @@ function memoryRepository(): KnowledgeRepository & { rows: KnowledgeBaseRecord[]
     },
     async findFile(userId, fileId) {
       for (const row of rows) {
-        if (!row.id.startsWith(userId)) continue
+        if (!row.builtin && !row.id.startsWith(userId)) continue
         const file = row.files.find((item) => item.id === fileId)
-        if (file) return { ...file, baseId: row.id }
+        if (file) return { ...file, baseId: row.id, builtin: row.builtin }
       }
       return null
     },
@@ -120,4 +121,35 @@ test('a file uploaded before copies were kept cannot be downloaded', async () =>
     bytes: Buffer.from('pdf'),
   })
   await expect(service.readFile('user-1', saved.id)).rejects.toThrow('не сохранился')
+})
+
+test('the shipped handbook cannot be deleted or changed', async () => {
+  const repository = memoryRepository()
+  const service = createKnowledgeService({
+    repository,
+    async extract() {
+      return 'Текст справочника'
+    },
+  })
+  repository.rows.push({
+    id: '019a2c3d-7e4b-7000-8000-000000000001',
+    name: 'Схемы операционного контроля',
+    builtin: true,
+    updatedAt: new Date('2026-10-28T00:00:00.000Z'),
+    files: [{ id: 'file-1', name: 'a.html', bytes: 10, createdAt: new Date('2026-10-28T00:00:00.000Z') }],
+  })
+  const listed = await service.list('user-1')
+  expect(listed.bases[0]?.builtin).toBe(true)
+  await expect(service.remove('user-1', repository.rows[0]!.id)).rejects.toThrow('нельзя удалить')
+  await expect(service.rename('user-1', repository.rows[0]!.id, 'Другое')).rejects.toThrow('нельзя изменить')
+  await expect(
+    service.addFile('user-1', repository.rows[0]!.id, {
+      name: 'extra.txt',
+      mime: 'text/plain',
+      bytes: Buffer.from('ещё текст справочника'),
+    }),
+  ).rejects.toThrow('нельзя изменить')
+  await expect(service.removeFile('user-1', 'file-1')).rejects.toThrow('нельзя изменить')
+  expect(repository.rows).toHaveLength(1)
+  expect(repository.rows[0]?.files).toHaveLength(1)
 })

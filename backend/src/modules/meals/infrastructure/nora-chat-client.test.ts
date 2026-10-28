@@ -367,6 +367,35 @@ describe('Nora settings chat request', () => {
     expect(chunks.every((chunk) => chunk.length < 40)).toBe(true)
   })
 
+  test('stopping a table print ends the stream', async () => {
+    const knowledge = [
+      'NORA_TABLE_SHEET',
+      '| Статья | Сумма |',
+      '| --- | --- |',
+      '| Аренда | 10 |',
+      '| Ремонт | 20 |',
+      '| Итог | 30 |',
+    ].join('\n')
+    const controller = new AbortController()
+    const chunks: string[] = []
+    const stream = streamNoraChat(
+      env,
+      [{ role: 'user', text: 'построй таблицу' }],
+      false,
+      knowledge,
+      controller.signal,
+    )
+    const first = await stream.next()
+    if (first.value && 'reply' in first.value && first.value.reply) chunks.push(first.value.reply)
+    controller.abort()
+    for await (const event of stream) {
+      if (event.reply) chunks.push(event.reply)
+    }
+    const printed = chunks.join('')
+    expect(printed.length).toBeGreaterThan(0)
+    expect(printed).not.toContain('30')
+  })
+
   test('streams reasoning tokens before the answer', async () => {
     const original = globalThis.fetch
     const sse = [

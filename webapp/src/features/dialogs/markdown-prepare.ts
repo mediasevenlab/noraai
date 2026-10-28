@@ -24,7 +24,22 @@ function breakPlainLines(part: string) {
   return result
 }
 
+const SCHEME_IMAGE = /!\[[^\]]*\]\((\/api\/users\/me\/knowledge-schemes\/[^)\s]+)\)/g
+const SCHEME_RUN = /(?:!\[[^\]]*\]\(\/api\/users\/me\/knowledge-schemes\/[^)\s]+\)[ \t]*\n*){2,}/g
+
+/** Several scheme drawings that follow one another stay under the text, on one line. */
+function groupSchemeImages(text: string) {
+  return text.replace(SCHEME_RUN, (run) => {
+    const sources: string[] = []
+    for (const match of run.matchAll(SCHEME_IMAGE)) {
+      const src = match[1]
+      if (src && !sources.includes(src)) sources.push(src)
+    }
+    return `${sources.map((src) => `![Схема](${src})`).join(' ')}\n`
+  })
+}
+
 /** LaTeX brackets become dollar math, and prices stay prices. */
 export function prepareDialogMarkdown(text: string) {
-  return keepPlainLineBreaks(escapeCurrencyDollars(normalizeMathDelimiters(text)))
+  return groupSchemeImages(keepPlainLineBreaks(escapeCurrencyDollars(normalizeMathDelimiters(text))))
 }

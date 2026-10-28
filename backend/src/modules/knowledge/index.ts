@@ -10,7 +10,8 @@ import { createKnowledgeRepository } from './infrastructure/knowledge-repository
 import { createVisionScanReader } from './infrastructure/read-scan'
 import { createKnowledgeRoutes } from './transport/routes'
 
-export { attachedFileContext, chooseAttachedFile, combineKnowledgeContext, copiedKnowledgeTable, directKnowledgeReply } from './domain/retrieve'
+export { attachedFileContext, chooseAttachedFile, combineKnowledgeContext, copiedKnowledgeTable, directKnowledgeReply, schemeAnswer } from './domain/retrieve'
+export { ensureBuiltinHandbook } from './infrastructure/builtin-handbook'
 
 export function createKnowledgeModule(options: {
   db: DbClient

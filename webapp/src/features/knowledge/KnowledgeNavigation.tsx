@@ -126,7 +126,7 @@ export function KnowledgeNavigation({ disabled = false }: { disabled?: boolean }
                   <FolderIcon />
                   <span className="min-w-0 flex-1 truncate group-data-[collapsible=icon]:hidden">{base.name}</span>
                 </SidebarMenuButton>
-                {disabled ? null : (
+                {disabled || base.builtin ? null : (
                   <SidebarMenuAction aria-label="Удалить базу" onClick={() => void remove(base.id)} showOnHover>
                     <XIcon />
                   </SidebarMenuAction>

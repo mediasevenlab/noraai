@@ -10,7 +10,7 @@ import type { AuthHttpEnv } from '../auth'
 import { AppMealComposer } from './application/app-meal-composer'
 import { MealsService } from './application/meals-service'
 import { extractMealWithGemini, refineMealWithGemini, transcribeAudioWithGemini } from './infrastructure/gemini-client'
-import { completeFollowUps, completeNoraChat, streamNoraChat } from './infrastructure/nora-chat-client'
+import { completeDocumentCompare, completeFollowUps, completeNoraChat, streamNoraChat } from './infrastructure/nora-chat-client'
 import { extractMealWithNora } from './infrastructure/nora-llm-client'
 import { analyzeMealWithWebhook } from './infrastructure/meal-analyze-webhook'
 import { notifyMentorMealViaWebhook } from './infrastructure/meal-mentor-notify-webhook'
@@ -106,6 +106,41 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
       if (input.suggestions) return completeFollowUps(options.env, input.messages)
       const prepared = await prepareNoraChat(options, userId, input)
       return completeNoraChat(options.env, prepared.messages, input.search, prepared.knowledge, undefined, input.think)
+    },
+    compareDocuments: async (
+      left: { name: string; bytes: Buffer },
+      right: { name: string; bytes: Buffer },
+    ) => {
+      if (!options.readDocument) throw new MealsFailure('misconfigured', 'Чтение документов не настроено')
+      const read = options.readDocument
+      async function side(file: { name: string; bytes: Buffer }) {
+        if (file.bytes.length === 0) throw new MealsFailure('bad_request', 'Файл пустой')
+        if (file.bytes.length > 20 * 1024 * 1024) throw new MealsFailure('bad_request', 'Файл больше 20 МБ')
+        let text = ''
+        try {
+          text = await read(file.name, file.bytes)
+        } catch (error) {
+          const message = error instanceof Error && error.message.trim() ? error.message : 'Не удалось прочитать файл'
+          throw new MealsFailure('bad_request', message)
+        }
+        const trimmed = text.replace(/\u0000/g, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().slice(0, 200_000)
+        if (!trimmed) throw new MealsFailure('bad_request', `В файле «${file.name}» не нашлось текста`)
+        return { name: file.name.slice(0, 180), text: trimmed }
+      }
+      const [leftSide, rightSide] = await Promise.all([side(left), side(right)])
+      const summary = await completeDocumentCompare(options.env, {
+        leftName: leftSide.name,
+        leftText: leftSide.text,
+        rightName: rightSide.name,
+        rightText: rightSide.text,
+      })
+      return {
+        leftName: leftSide.name,
+        rightName: rightSide.name,
+        leftText: leftSide.text,
+        rightText: rightSide.text,
+        summary,
+      }
     },
     streamChatWithNora: async (userId, input, signal) => {
       const prepared = await prepareNoraChat(options, userId, input)

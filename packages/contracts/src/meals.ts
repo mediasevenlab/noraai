@@ -722,6 +722,16 @@ export const noraModelChatResponseSchema = z
     reasoning: z.string().max(20_000).optional(),
   })
   .strict()
+export const documentCompareResponseSchema = z
+  .object({
+    leftName: z.string().min(1).max(180),
+    rightName: z.string().min(1).max(180),
+    leftText: z.string().min(1).max(200_000),
+    rightText: z.string().min(1).max(200_000),
+    summary: z.string().min(1).max(20_000),
+  })
+  .strict()
+export type DocumentCompareResponse = z.infer<typeof documentCompareResponseSchema>
 export type NoraModelChatMessage = z.infer<typeof noraModelChatMessageSchema>
 export type NoraModelChatRequest = z.infer<typeof noraModelChatRequestSchema>
 export type NoraModelChatResponse = z.infer<typeof noraModelChatResponseSchema>

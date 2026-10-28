@@ -35,6 +35,8 @@ export function createApp({
   // Photos travel as Base64. Chat and a meal with several shots need more than the 64 KB account limit.
   const mealRequestBodyLimitBytes = 32 * 1024 * 1024
   const meetingRequestBodyLimitBytes = 256 * 1024 * 1024
+  // Two documents, each up to 20 MB, plus the multipart envelope.
+  const documentCompareBodyLimitBytes = 42 * 1024 * 1024
   const auth = createAuthModule({
     backgroundTasks,
     db: prisma,
@@ -116,6 +118,7 @@ export function createApp({
   }
   for (const middleware of createAuthSecurity({
     bodyLimitBytes: env.AUTH_BODY_LIMIT_BYTES,
+    documentCompareBodyLimitBytes,
     mealBodyLimitBytes: mealRequestBodyLimitBytes,
     meetingBodyLimitBytes: meetingRequestBodyLimitBytes,
     rateLimitWindowSeconds: env.AUTH_RATE_LIMIT_WINDOW_SECONDS,

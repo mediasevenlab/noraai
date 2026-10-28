@@ -8,6 +8,8 @@ import { errorResponse } from './errors'
 type AuthSecurityOptions = {
   bodyLimitBytes: number
   mealBodyLimitBytes?: number
+  meetingBodyLimitBytes?: number
+  documentCompareBodyLimitBytes?: number
   rateLimitMax: number
   rateLimitWindowSeconds: number
   mealRateLimitMax?: number
@@ -52,6 +54,10 @@ export function isMeetingUploadPath(pathname: string): boolean {
   return /\/meetings(?:\/|$)/.test(pathname)
 }
 
+export function isDocumentComparePath(pathname: string): boolean {
+  return /\/document-compare(?:\/|$)/.test(pathname)
+}
+
 export function isFavoritesPath(pathname: string): boolean {
   return /\/favorites(?:\/|$)/.test(pathname)
 }
@@ -86,10 +92,17 @@ export function createAuthSecurity(options: AuthSecurityOptions): MiddlewareHand
     ? payloadTooLargeLimit(Math.max(options.bodyLimitBytes, options.meetingBodyLimitBytes))
     : mealBodyLimit
 
+  const documentCompareBodyLimit = options.documentCompareBodyLimitBytes != null
+    ? payloadTooLargeLimit(Math.max(options.bodyLimitBytes, options.documentCompareBodyLimitBytes))
+    : accountBodyLimit
+
   return [
     async (c, next) => {
       if (options.meetingBodyLimitBytes != null && isMeetingUploadPath(c.req.path)) {
         return meetingBodyLimit(c, next)
+      }
+      if (options.documentCompareBodyLimitBytes != null && isDocumentComparePath(c.req.path)) {
+        return documentCompareBodyLimit(c, next)
       }
       if (
         options.mealBodyLimitBytes != null &&

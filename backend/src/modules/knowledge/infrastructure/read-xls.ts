@@ -170,11 +170,20 @@ function sheetName(data: Buffer, codePage: number) {
 
 function cellGrid(cells: Map<number, Map<number, string>>) {
   const rows = [...cells.keys()].sort((left, right) => left - right).slice(0, 300)
-  const used = new Set<number>()
+  let min = Number.POSITIVE_INFINITY
+  let max = -1
   for (const row of rows) {
-    for (const column of cells.get(row)?.keys() ?? []) used.add(column)
+    for (const column of cells.get(row)?.keys() ?? []) {
+      if (column < min) min = column
+      if (column > max) max = column
+    }
   }
-  const columns = [...used].sort((left, right) => left - right).slice(0, 40)
+  if (max < min) return []
+  // Keep the empty columns between the first and last used cell, so a value
+  // stays in the same place as in the workbook.
+  const end = Math.min(max, min + 39)
+  const columns: number[] = []
+  for (let column = min; column <= end; column += 1) columns.push(column)
   return rows
     .map((row) => {
       const line = cells.get(row)

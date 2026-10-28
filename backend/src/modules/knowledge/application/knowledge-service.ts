@@ -1,5 +1,5 @@
 import { KnowledgeFailure } from '../domain/errors'
-import { buildKnowledgeContext, chunkKnowledgeText } from '../domain/retrieve'
+import { buildKnowledgeContext, chunkKnowledgeText, spreadSchemeMarkers } from '../domain/retrieve'
 import type { KnowledgeBaseRecord, KnowledgeFileRecord, KnowledgeFileStore, KnowledgeRepository } from './ports'
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024
@@ -21,6 +21,7 @@ function presentBase(base: KnowledgeBaseRecord) {
   return {
     id: base.id,
     name: base.name,
+    builtin: base.builtin,
     updatedAt: base.updatedAt.toISOString(),
     files: base.files.map(presentFile),
   }
@@ -63,6 +64,8 @@ export function createKnowledgeService(deps: {
       return presentBase(await deps.repository.create(userId, cleanName(name)))
     },
     async rename(userId: string, baseId: string, name: string) {
+      const current = (await deps.repository.list(userId)).find((item) => item.id === baseId)
+      if (current?.builtin) throw new KnowledgeFailure('bad_request', 'Эту базу нельзя изменить')
       const base = await deps.repository.rename(userId, baseId, cleanName(name))
       if (!base) throw new KnowledgeFailure('not_found', 'База знаний не найдена')
       return presentBase(base)
@@ -70,12 +73,17 @@ export function createKnowledgeService(deps: {
     async remove(userId: string, baseId: string) {
       const bases = await deps.repository.list(userId)
       const base = bases.find((item) => item.id === baseId)
+      if (!base) throw new KnowledgeFailure('not_found', 'База знаний не найдена')
+      if (base.builtin) throw new KnowledgeFailure('bad_request', 'Эту базу нельзя удалить')
       const removed = await deps.repository.remove(userId, baseId)
       if (!removed) throw new KnowledgeFailure('not_found', 'База знаний не найдена')
       if (base && deps.files) await Promise.all(base.files.map((file) => deps.files!.remove(file.id)))
       return { ok: true as const }
     },
     async addFile(userId: string, baseId: string, upload: { name: string; mime: string; bytes: Buffer }) {
+      const base = (await deps.repository.list(userId)).find((item) => item.id === baseId)
+      if (!base) throw new KnowledgeFailure('not_found', 'База знаний не найдена')
+      if (base.builtin) throw new KnowledgeFailure('bad_request', 'Эту базу нельзя изменить')
       if (upload.bytes.length === 0) throw new KnowledgeFailure('bad_request', 'Файл пустой')
       if (upload.bytes.length > MAX_FILE_BYTES) {
         throw new KnowledgeFailure('bad_request', 'Файл больше 20 МБ')
@@ -89,7 +97,7 @@ export function createKnowledgeService(deps: {
         throw new KnowledgeFailure('bad_request', 'Не удалось прочитать файл')
       }
       const text = extracted.replace(/\u0000/g, '').trim().slice(0, MAX_EXTRACTED_CHARS)
-      const chunks = chunkKnowledgeText(text)
+      const chunks = spreadSchemeMarkers(chunkKnowledgeText(text))
       if (chunks.length === 0) throw new KnowledgeFailure('bad_request', 'В файле не нашлось текста')
       const saved = await deps.repository.addFile(userId, baseId, {
         name,
@@ -116,6 +124,9 @@ export function createKnowledgeService(deps: {
       return { bytes, fileName: file.name, mime: downloadMime(file.name) }
     },
     async removeFile(userId: string, fileId: string) {
+      const file = await deps.repository.findFile(userId, fileId)
+      if (!file) throw new KnowledgeFailure('not_found', 'Файл не найден')
+      if (file.builtin) throw new KnowledgeFailure('bad_request', 'Эту базу нельзя изменить')
       const removed = await deps.repository.removeFile(userId, fileId)
       if (!removed) throw new KnowledgeFailure('not_found', 'Файл не найден')
       await deps.files?.remove(fileId)

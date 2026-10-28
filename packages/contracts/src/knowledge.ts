@@ -13,6 +13,7 @@ const knowledgeBaseSchema = z
   .object({
     id: z.string().uuid(),
     name: knowledgeNameSchema,
+    builtin: z.boolean(),
     updatedAt: z.string(),
     files: z.array(knowledgeFileSchema),
   })

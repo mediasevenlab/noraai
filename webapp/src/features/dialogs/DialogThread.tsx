@@ -58,6 +58,19 @@ import { MealVoiceControls } from './composer/MealVoiceControls'
 import { appendVoiceTranscript } from './composer/voice-input'
 import { KnowledgeBaseMenu } from '@/features/knowledge'
 import { MeetingMenu } from '@/features/meetings'
+import { CompareAnswer } from './compare/CompareAnswer'
+import { CompareDocumentsButton } from './compare/CompareUpload'
+import { placeFragment } from './compare/place'
+import { readCompareMessage } from './compare/message'
+import { CompareSelectionBar, selectedMessageId } from './compare/selection-bar'
+import {
+  COMPOSER_FRAGMENT_EVENT,
+  quoteFromCustom,
+  quoteOrigin,
+  readFragmentQuote,
+  REVEAL_FRAGMENT_EVENT,
+} from './fragment'
+import { FragmentCard } from './fragment-card'
 import { DialogNoteToggle } from './note-toggle'
 
 import { DialogMarkdown } from './markdown'
@@ -102,7 +115,9 @@ function DialogText() {
   )
 }
 
-function DialogAssistantText() {
+function DialogAssistantText({ text }: { text: string }) {
+  const compare = readCompareMessage(text)
+  if (compare) return <CompareAnswer head={compare} />
   return (
     <div>
       <DialogMarkdown />
@@ -323,6 +338,8 @@ function DialogReasoningToggle() {
 
 function DialogMessage({ role }: { role: 'user' | 'assistant' }) {
   const mine = role === 'user'
+  const messageId = useAuiState((state) => state.message.id)
+  const quote = useAuiState((state) => (mine ? quoteFromCustom(state.message.metadata.custom) : null))
   const day = useAuiState((state) => {
     const index = state.message.index
     const previous = index > 0 ? state.thread.messages[index - 1]?.createdAt : undefined
@@ -333,7 +350,7 @@ function DialogMessage({ role }: { role: 'user' | 'assistant' }) {
       {day ? (
         <p className="mb-4 w-full text-center text-[12px] leading-4 text-[var(--nora-text-secondary)]">{day}</p>
       ) : null}
-      <div className={cn('flex w-full', mine ? 'justify-end' : 'justify-start')}>
+      <div className={cn('flex w-full', mine ? 'justify-end' : 'justify-start')} data-message-id={messageId}>
       <div className={cn('flex min-w-0 flex-col', mine ? 'max-w-[min(100%,40rem)] items-end' : 'w-full max-w-3xl')}>
         <div className={cn('flex min-w-0 flex-col', mine ? 'items-end' : 'w-full')}>
         <div
@@ -348,6 +365,11 @@ function DialogMessage({ role }: { role: 'user' | 'assistant' }) {
           <MessagePrimitive.Attachments>
             {({ attachment }) => <DialogAttachmentView attachment={attachment} />}
           </MessagePrimitive.Attachments>
+          {quote ? (
+            <div className={mine ? 'mb-2' : 'mb-3'}>
+              <FragmentCard quote={quote} tone={mine ? 'bubble' : 'field'} />
+            </div>
+          ) : null}
           {mine ? null : <DialogThinking />}
           <MessagePrimitive.Parts
             components={{
@@ -495,6 +517,19 @@ function DialogComposer({ placeholder = 'Сообщение…' }: { placeholder
   const running = useAuiState((state) => state.thread.isRunning)
   const textRef = useRef(text)
   textRef.current = text
+  const quote = useAuiState((state) => state.composer.quote)
+  useEffect(() => {
+    const onFragment = (event: Event) => {
+      const fragment = readFragmentQuote(event)
+      if (!fragment) return
+      aui.composer.setQuote({ text: fragment.text.slice(0, 2000), messageId: fragment.messageId })
+      window.setTimeout(() => {
+        document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Сообщение"]')?.focus()
+      }, 50)
+    }
+    window.addEventListener(COMPOSER_FRAGMENT_EVENT, onFragment)
+    return () => window.removeEventListener(COMPOSER_FRAGMENT_EVENT, onFragment)
+  }, [aui])
   const tone = dialogComposerSendTone({
     sending: running,
     hasDraft: text.trim().length > 0 || attachmentCount > 0,
@@ -531,6 +566,15 @@ function DialogComposer({ placeholder = 'Сообщение…' }: { placeholder
     <ComposerPrimitive.Root>
       <ComposerPressSurface className={DIALOG_COMPOSER_FIELD_CLASS}>
         <DialogComposerChips disabled={running} />
+        {quote?.text ? (
+          <div className="mb-2">
+            <FragmentCard
+              onClear={() => aui.composer.setQuote(undefined)}
+              quote={{ text: quote.text, messageId: quote.messageId }}
+              tone="field"
+            />
+          </div>
+        ) : null}
         <ComposerPrimitive.Input
           aria-label="Сообщение"
           className={COMPOSER_INPUT_CLASS}
@@ -552,6 +596,7 @@ function DialogComposer({ placeholder = 'Сообщение…' }: { placeholder
           />
           <KnowledgeBaseMenu disabled={running} />
           <MeetingMenu disabled={running} />
+          <CompareDocumentsButton disabled={running} />
           <DialogReasoningToggle />
           <DialogInternetToggle />
           <div className="flex-1" />
@@ -562,15 +607,18 @@ function DialogComposer({ placeholder = 'Сообщение…' }: { placeholder
             }}
             sendButton={
               <>
-                <ComposerToolTip label="Остановить">
-                  <ComposerPrimitive.Cancel
-                    aria-label="Остановить"
-                    className={cn(dialogComposerSendClass('ready'), 'disabled:hidden')}
-                  >
-                    <SquareIcon className="size-3.5 fill-current" />
-                  </ComposerPrimitive.Cancel>
-                </ComposerToolTip>
-                <AuiIf condition={(state) => !state.thread.isRunning}>
+                {running ? (
+                  <ComposerToolTip label="Остановить">
+                    <button
+                      aria-label="Остановить"
+                      className={dialogComposerSendClass('ready')}
+                      onClick={() => aui.thread().cancelRun()}
+                      type="button"
+                    >
+                      <SquareIcon className="size-3.5 fill-current" />
+                    </button>
+                  </ComposerToolTip>
+                ) : (
                   <ComposerToolTip label="Отправить">
                     <ComposerPrimitive.Send
                       aria-label="Отправить"
@@ -579,7 +627,7 @@ function DialogComposer({ placeholder = 'Сообщение…' }: { placeholder
                       <ArrowUpIcon className="size-[18px]" strokeWidth={1.75} />
                     </ComposerPrimitive.Send>
                   </ComposerToolTip>
-                </AuiIf>
+                )}
               </>
             }
             transport={auth.transport}
@@ -612,21 +660,30 @@ function DialogSuggestions() {
 
 export function DialogThread() {
   const empty = useAuiState((state) => state.thread.isEmpty)
+  const threadRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const onReveal = (event: Event) => {
+      const quote = readFragmentQuote(event)
+      const origin = quote ? quoteOrigin(quote.messageId) : null
+      if (!quote || !origin || origin.source !== 'chat' || !origin.messageId) return
+      const node = document.querySelector(`[data-message-id="${CSS.escape(origin.messageId)}"]`)
+      if (!(node instanceof HTMLElement)) return
+      if (!placeFragment(node, quote.text)) node.scrollIntoView({ block: 'center', inline: 'nearest' })
+    }
+    window.addEventListener(REVEAL_FRAGMENT_EVENT, onReveal)
+    return () => window.removeEventListener(REVEAL_FRAGMENT_EVENT, onReveal)
+  }, [])
 
-  if (empty) {
-    return (
-      <ThreadPrimitive.Root className="flex h-full min-h-0 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 pb-16">
-          <DialogWelcome />
-          <div className="mt-8 w-full max-w-3xl">
-            <DialogComposer placeholder="Начните печатать" />
-          </div>
+  const thread = empty ? (
+    <ThreadPrimitive.Root className="flex h-full min-h-0 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 pb-16">
+        <DialogWelcome />
+        <div className="mt-8 w-full max-w-3xl">
+          <DialogComposer placeholder="Начните печатать" />
         </div>
-      </ThreadPrimitive.Root>
-    )
-  }
-
-  return (
+      </div>
+    </ThreadPrimitive.Root>
+  ) : (
     <ThreadPrimitive.Root className="flex h-full min-h-0 flex-col">
       <ThreadPrimitive.Viewport className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-4 px-4 py-6">
@@ -644,5 +701,21 @@ export function DialogThread() {
         <DialogComposer />
       </div>
     </ThreadPrimitive.Root>
+  )
+
+  return (
+    <div className="flex h-full min-h-0 flex-col" ref={threadRef}>
+      {thread}
+      <CompareSelectionBar
+        onAsk={(fragment) => {
+          window.dispatchEvent(
+            new CustomEvent(COMPOSER_FRAGMENT_EVENT, {
+              detail: { text: fragment, messageId: selectedMessageId() },
+            }),
+          )
+        }}
+        rootRef={threadRef}
+      />
+    </div>
   )
 }

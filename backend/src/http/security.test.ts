@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 import { Hono } from 'hono'
 
-import { createAuthSecurity, isAuthWriteBudgetExemptPath, isFavoritesPath, isKnowledgeUploadPath, isMealWritePath, isMeetingUploadPath, isMentorPlanBodyPath, isModelChatPath, isPlanLibraryPath, mealWriteRateLimitMax } from './security'
+import { createAuthSecurity, isAuthWriteBudgetExemptPath, isDocumentComparePath, isFavoritesPath, isKnowledgeUploadPath, isMealWritePath, isMeetingUploadPath, isMentorPlanBodyPath, isModelChatPath, isPlanLibraryPath, mealWriteRateLimitMax } from './security'
 
 test('meal write paths are distinct from account mutations', () => {
   expect(isMealWritePath('/api/users/me')).toBe(false)
@@ -126,6 +126,25 @@ test('model chat accepts a photo that account routes reject', async () => {
   expect(await limited.json()).toMatchObject({
     error: { code: 'PAYLOAD_TOO_LARGE' },
   })
+})
+
+test('document compare accepts a workbook pair that the account limit rejects', async () => {
+  const app = new Hono()
+  for (const middleware of createAuthSecurity({
+    bodyLimitBytes: 64,
+    documentCompareBodyLimitBytes: 4_000,
+    rateLimitMax: 20,
+    rateLimitWindowSeconds: 60,
+    trustProxy: false,
+  })) {
+    app.use('/api/users/*', middleware)
+  }
+  app.post('/api/users/me/document-compare', (c) => c.json({ ok: true }))
+  app.patch('/api/users/me', (c) => c.json({ ok: true }))
+  const pair = 'x'.repeat(200)
+  expect((await app.request('/api/users/me/document-compare', { method: 'POST', body: pair })).status).toBe(200)
+  const account = await app.request('/api/users/me', { method: 'PATCH', body: pair })
+  expect(account.status).toBe(413)
 })
 
 test('meal write burst uses a higher dedicated budget', async () => {

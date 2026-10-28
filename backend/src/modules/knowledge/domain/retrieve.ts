@@ -21,8 +21,49 @@ export type KnowledgePassage = {
   text: string
 }
 
+const SCHEME_MARK = /\[\[схема:([A-Za-z0-9][A-Za-z0-9._-]{0,64})\]\]/g
+
+/** A drawing sits on the boundary of two text pieces. Keep its mark on both. */
+export function spreadSchemeMarkers(chunks: readonly string[]) {
+  const found = chunks.map((chunk) => [...chunk.matchAll(SCHEME_MARK)].map((match) => match[1] ?? ''))
+  return chunks.map((chunk, index) => {
+    const names = new Set<string>()
+    for (const name of [...(found[index - 1] ?? []), ...(found[index] ?? []), ...(found[index + 1] ?? [])]) {
+      if (name) names.add(name)
+    }
+    const missing = [...names].filter((name) => !chunk.includes(`[[схема:${name}]]`))
+    if (missing.length === 0) return chunk
+    return `${chunk}\n${missing.map((name) => `[[схема:${name}]]`).join('\n')}`
+  })
+}
+
+function schemeNames(text: string) {
+  const names: string[] = []
+  for (const match of text.matchAll(SCHEME_MARK)) {
+    const name = match[1]
+    if (!name || names.includes(name)) continue
+    names.push(name)
+  }
+  return names
+}
+
+/** Drawings from the excerpts that answer the question. The file opening stays out when a later excerpt has its own scheme. */
+export function schemeAnswer(knowledge: string) {
+  const excerpts = knowledge.split(/\n(?=\[\d+\] )/).filter((block) => /^\[\d+\] /.test(block))
+  const later = excerpts.slice(1).flatMap(schemeNames)
+  const named = later.length > 0 ? later : excerpts.flatMap(schemeNames)
+  const names = named.length > 0 ? named : schemeNames(knowledge)
+  const unique: string[] = []
+  for (const name of names) {
+    if (unique.includes(name)) continue
+    unique.push(name)
+    if (unique.length >= 4) break
+  }
+  return unique.map((name) => `![Схема](/api/users/me/knowledge-schemes/${name})`).join('\n\n')
+}
+
 export function chunkKnowledgeText(raw: string) {
-  const text = raw.replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+  const text = raw.replace(/\f/g, '\n\n').replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
   if (!text) return []
   if (text.length <= CHUNK_SIZE) return [text]
   const chunks: string[] = []
@@ -43,14 +84,14 @@ export function chunkKnowledgeText(raw: string) {
 }
 
 function tokens(value: string) {
-  return (value.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).filter(
+  return (value.toLowerCase().match(/\d+(?:[.,]\d+)+(?:-\d+)?|[\p{L}\p{N}]+/gu) ?? []).filter(
     (token) => token.length > 2 && !STOP_WORDS.has(token),
   )
 }
 
-/** Same key for «просмотров» and «просмотра»: Russian endings sit past the first five letters. */
+/** Same key for «просмотров» and «просмотра»: Russian endings sit past the first five letters. A clause number stays whole. */
 function stem(token: string) {
-  if (token.length <= 5) return token
+  if (/\d/.test(token) || token.length <= 5) return token
   return token.slice(0, 5)
 }
 
@@ -73,10 +114,21 @@ function asksForReasoning(query: string) {
   return /(о ч[её]м|сколько|почему|зачем|посчита|сумм|итог|разниц|сравни|объясни|расскаж|вывод|заключ)/i.test(query)
 }
 
-/** «Построй таблицу» asks for a grid. «О чём эта таблица» does not. */
+/** «Построй таблицу» asks for a grid. «Что это за таблица» does not. */
 function asksToReproduce(query: string) {
   if (asksForReasoning(query)) return false
-  return /таблиц|содержим|как в базе|в базе знаний|из базы|весь файл|весь документ/.test(query.toLowerCase())
+  const lower = query.toLowerCase()
+  if (/как в базе|в базе знаний|из базы|весь файл|весь документ|содержим/.test(lower)) return true
+  if (/какие.{0,40}таблиц|список таблиц|перечень таблиц|все таблиц|кажд(?:ую|ой) таблиц|повтор\p{L}*.{0,24}таблиц/u.test(lower)) return true
+  if (/(?:построй|извлеки|выведи|покажи|отобраз|нарисуй)/.test(lower) && /таблиц|лист|форм/.test(lower)) return true
+  return false
+}
+
+/** «Что это», «о чём» and «расскажи» ask for an answer, not a grid. */
+function asksWhatItIs(query: string) {
+  return /что это|что за|о ч[её]м|расскаж|объясни|про что|что в файле|что в таблиц|какой файл|какая таблиц/.test(
+    query.toLowerCase(),
+  )
 }
 
 /** The model should see the workbook, not only the first sheet, when the question is about the file. */
@@ -462,12 +514,67 @@ function acronymPositions(query: string, passages: readonly KnowledgePassage[]) 
   return positions
 }
 
+/** «пп. 1.11, 3.1 - 3.6, 3.29» is one citation. A document number such as 3.02.01-87 is not. */
+function citationSets(text: string) {
+  const compact = text.replace(/\s+/g, ' ')
+  const sets: string[][] = []
+  const re = /пп?\.\s*(\d{1,2}\.\d{1,3}(?:\s*[-–—]\s*\d{1,2}\.\d{1,3})?(?:\s*,\s*\d{1,2}\.\d{1,3}(?:\s*[-–—]\s*\d{1,2}\.\d{1,3})?)*)/gi
+  for (const match of compact.matchAll(re)) {
+    const points = [...new Set(match[1]?.match(/\d{1,2}\.\d{1,3}/g) ?? [])]
+    if (points.length > 0) sets.push(points)
+  }
+  return sets
+}
+
+function sameClauses(left: readonly string[], right: readonly string[]) {
+  if (left.length !== right.length || left.length === 0) return false
+  const wanted = new Set(right)
+  return left.every((point) => wanted.has(point))
+}
+
+/**
+ * The handbook repeats one SNiP number on many sheets. When the question names a
+ * citation, keep that sheet and the lines that follow it, until the next citation.
+ */
+function focusOnCitedSection(query: string, passages: readonly KnowledgePassage[]) {
+  const wanted = citationSets(query)[0]
+  if (!wanted || wanted.length < 2) return null
+  const anchors = passages.filter((passage) =>
+    citationSets(passage.text).some((set) => sameClauses(set, wanted)),
+  )
+  if (anchors.length === 0) return null
+  const byFile = new Map<string, KnowledgePassage[]>()
+  for (const passage of passages) {
+    const key = fileKey(passage)
+    const group = byFile.get(key) ?? []
+    group.push(passage)
+    byFile.set(key, group)
+  }
+  const kept = new Set<string>()
+  const id = (passage: KnowledgePassage) => `${fileKey(passage)}:${passage.position}`
+  for (const anchor of anchors) {
+    const group = [...(byFile.get(fileKey(anchor)) ?? [])].sort((left, right) => left.position - right.position)
+    const start = group.findIndex((passage) => passage.position === anchor.position)
+    if (start < 0) continue
+    kept.add(id(anchor))
+    for (let index = start + 1; index < group.length && index <= start + 3; index += 1) {
+      const next = group[index]
+      const previous = group[index - 1]
+      if (!next || !previous || next.position !== previous.position + 1) break
+      const sets = citationSets(next.text)
+      if (sets.some((set) => !sameClauses(set, wanted))) break
+      kept.add(id(next))
+    }
+  }
+  return kept
+}
+
 /** Keyword rank, the precise half of how large chats search long files. */
 export function selectKnowledgePassages(query: string, passages: readonly KnowledgePassage[]) {
   if (passages.length === 0) return []
   const queryTokens = tokens(query)
   if (queryTokens.length === 0) {
-    if (asksToReproduce(query) || tableOrdinal(query) !== null || asksForEveryTable(query)) {
+    if (asksToReproduce(query) || tableOrdinal(query) !== null || asksForEveryTable(query) || asksWhatItIs(query)) {
       return passagesInBudget(passages)
     }
     return []
@@ -509,8 +616,22 @@ export function selectKnowledgePassages(query: string, passages: readonly Knowle
     if (spelledOut.has(passage.position)) score += 8
     return { passage, score, specific }
   })
-  const relevant = scored.filter((item) => item.specific && item.score > 0)
-  if (relevant.length === 0 && (asksToReproduce(query) || tableOrdinal(query) !== null || asksForEveryTable(query))) {
+  const matched = scored.filter((item) => item.specific && item.score > 0)
+  const cited = focusOnCitedSection(query, passages)
+  const passageId = (passage: KnowledgePassage) => `${fileKey(passage)}:${passage.position}`
+  const focused = cited
+    ? [
+        ...matched.filter((item) => cited.has(passageId(item.passage))),
+        ...passages
+          .filter((passage) => cited.has(passageId(passage)) && !matched.some((item) => item.passage === passage))
+          .map((passage) => ({ passage, score: 0, specific: true })),
+      ]
+    : matched
+  const relevant = focused.length > 0 ? focused : matched
+  if (
+    relevant.length === 0
+    && (asksToReproduce(query) || tableOrdinal(query) !== null || asksForEveryTable(query) || asksWhatItIs(query))
+  ) {
     return passagesInBudget(passages)
   }
   if (relevant.length === 0 && !aboutDocument) return []
@@ -659,10 +780,16 @@ function namedSheet(query: string, tables: readonly PlainTable[]) {
 }
 
 function sheetPreview(markdown: string) {
-  return markdown
+  const lines = markdown
     .split('\n')
     .filter((line) => line.startsWith('|') && !/^\|\s*-{3,}/.test(line))
-    .slice(0, 4)
+  const header = lines[0]
+  const numbered = lines.slice(1).filter((line) => /\d/.test(line))
+  const picked = [header, ...(numbered.length > 0 ? numbered : lines.slice(1))].filter(
+    (line): line is string => Boolean(line),
+  )
+  return picked
+    .slice(0, 8)
     .map((line) => (line.length > 240 ? `${line.slice(0, 240)}…` : line))
     .join('\n')
 }
@@ -670,8 +797,8 @@ function sheetPreview(markdown: string) {
 /** Enough of every worksheet for a conclusion, without pasting the whole workbook. */
 function sheetDigest(fileName: string, tables: readonly PlainTable[]) {
   const sheets = tables.filter((table) => table.sheet && table.markdown)
-  if (sheets.length < 2) return ''
-  let text = `Прикреплённый файл «${fileName}». Начало листов, чтобы ответить на вопрос.\n`
+  if (sheets.length === 0) return ''
+  let text = `Выдержки из включённых баз знаний.\nФайл «${fileName}». Строки листов, чтобы ответить на вопрос. Таблицу строй только если её прямо просят построить или показать.\n`
   for (const table of sheets) {
     const block = `\nЛист «${table.sheet}»\n${sheetPreview(table.markdown)}\n`
     if (text.length + block.length > 9000) {

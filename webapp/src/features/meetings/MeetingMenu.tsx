@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuiState } from '@assistant-ui/react'
 import { FileTextIcon } from '@/components/icons'
 import { useAuth } from '@/features/auth'
@@ -22,11 +22,9 @@ export function MeetingMenu({ disabled = false }: { disabled?: boolean }) {
   const threadId = useAuiState((state) => state.threads.mainThreadId)
   const [meetings, setMeetings] = useState<MeetingSummary[]>([])
   const [selected, setSelected] = useState<string[]>([])
-  const previousThread = useRef<string | null>(null)
 
   useEffect(() => {
-    setSelected(bindThreadMeetings(userId, threadId, previousThread.current))
-    previousThread.current = threadId
+    setSelected(bindThreadMeetings(userId, threadId ?? ''))
   }, [threadId, userId])
 
   useEffect(() => {

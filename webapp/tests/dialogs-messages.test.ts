@@ -59,6 +59,18 @@ test('sends one attached document and keeps it on an earlier turn', () => {
   ])
 })
 
+test('sends a quoted passage ahead of the question', () => {
+  expect(
+    toNoraMessages([
+      {
+        role: 'user',
+        content: [{ type: 'text', text: 'Что это значит?' }],
+        metadata: { custom: { quote: { text: 'срок оплаты', messageId: 'm1' } } },
+      },
+    ]),
+  ).toEqual([{ role: 'user', text: '«срок оплаты»\n\nЧто это значит?' }])
+})
+
 test('sends a photo without text and ignores a trailing empty assistant turn', () => {
   expect(
     toNoraMessages([

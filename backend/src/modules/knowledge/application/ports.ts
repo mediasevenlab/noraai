@@ -10,6 +10,7 @@ export type KnowledgeFileRecord = {
 export type KnowledgeBaseRecord = {
   id: string
   name: string
+  builtin: boolean
   updatedAt: Date
   files: KnowledgeFileRecord[]
 }
@@ -24,7 +25,7 @@ export type KnowledgeRepository = {
   list(userId: string): Promise<KnowledgeBaseRecord[]>
   create(userId: string, name: string): Promise<KnowledgeBaseRecord>
   rename(userId: string, baseId: string, name: string): Promise<KnowledgeBaseRecord | null>
-  findFile(userId: string, fileId: string): Promise<(KnowledgeFileRecord & { baseId: string }) | null>
+  findFile(userId: string, fileId: string): Promise<(KnowledgeFileRecord & { baseId: string; builtin: boolean }) | null>
   remove(userId: string, baseId: string): Promise<boolean>
   addFile(
     userId: string,

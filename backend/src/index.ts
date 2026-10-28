@@ -1,8 +1,12 @@
 import { createApp } from './app'
+import { ensureBuiltinHandbook } from './modules/knowledge'
 import { createBackendRuntime } from './runtime'
 import { shutdownBackend } from './shutdown'
 
 const runtime = createBackendRuntime()
+await ensureBuiltinHandbook(runtime.prisma).catch((error: unknown) => {
+  console.error('Handbook knowledge base was not prepared', error)
+})
 const app = createApp({
   backgroundTasks: runtime.backgroundTasks,
   env: runtime.env,
@@ -24,6 +28,7 @@ const server = Bun.serve({
       request.method === 'POST' &&
       (/\/knowledge-bases\/[^/]+\/files\/?$/.test(path) ||
         /\/model-chat\/?$/.test(path) ||
+        /\/document-compare\/?$/.test(path) ||
         /\/meetings\/?$/.test(path) ||
         /\/meetings\/parts\/?$/.test(path))
     ) {

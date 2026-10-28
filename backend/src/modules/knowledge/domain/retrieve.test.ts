@@ -8,7 +8,9 @@ import {
   directKnowledgeReply,
   chunkKnowledgeText,
   formatKnowledgeContext,
+  schemeAnswer,
   selectKnowledgePassages,
+  spreadSchemeMarkers,
   tableOrdinal,
 } from './retrieve'
 
@@ -358,10 +360,78 @@ test('every excel sheet is listed, and naming one returns its rows', () => {
   expect(directKnowledgeReply(about)).toBeNull()
   expect(about).toContain('Лист «РС»')
   expect(about).toContain('Лист «Форма 12»')
+  expect(about).toContain('100.50')
   expect(about).not.toContain('Напишите номер')
+  const what = attachedFileContext('что это за таблица', 'смета.xls', text)
+  expect(directKnowledgeReply(what)).toBeNull()
+  expect(what).toContain('100.50')
+  expect(what).not.toContain('Напишите номер')
+  const more = attachedFileContext('расскажи подробнее о чем она', 'смета.xls', text)
+  expect(directKnowledgeReply(more)).toBeNull()
+  expect(more).toContain('Кронштейн')
+  expect(more).not.toContain('Напишите номер')
   const fileQuestion = attachedFileContext('что в файле?', 'смета.xls', text)
   expect(directKnowledgeReply(fileQuestion)).toBeNull()
   expect(fileQuestion).not.toContain('Напишите номер')
+})
+
+test('a clause number finds the passage that states those points', () => {
+  const decoy = 'Технические требования. СНиП 3.02.01-87 упоминается среди нормативных документов на земляные работы.'
+  const real = 'Технические требования\nСНиП 3.02.01-87 пп. 1.11, 3.1 - 3.6, 3.29\nРазмеры выемок по дну в натуре должны быть не менее установленных проектом.'
+  const passages = [
+    { baseName: 'Схемы', fileName: 'a.html', position: 0, text: decoy },
+    ...Array.from({ length: 9 }, (_, index) => ({
+      baseName: 'Схемы',
+      fileName: 'a.html',
+      position: index + 1,
+      text: `${decoy} Повтор ${index}.`,
+    })),
+    { baseName: 'Схемы', fileName: 'a.html', position: 20, text: real },
+  ]
+  const selected = selectKnowledgePassages(
+    'Дай Технические требования СНиП 3.02.01-87 пп. 1.11, 3.1 - 3.6, 3.29',
+    passages,
+  )
+  expect(selected.some((passage) => passage.text.includes('Размеры выемок'))).toBe(true)
+})
+
+test('a citation keeps that sheet and drops the neighbouring drawings', () => {
+  const passages = [
+    { baseName: 'Схемы', fileName: 'a.html', position: 0, text: '[[схема:x220.jpg]] Схемы операционного контроля' },
+    {
+      baseName: 'Схемы',
+      fileName: 'a.html',
+      position: 42,
+      text: 'Технические требования\nСНиП 3.02.01-87 пп. 1.11, 3.1 - 3.6, 3.29\n[[схема:x003.gif]]\nРазмеры выемок по дну',
+    },
+    {
+      baseName: 'Схемы',
+      fileName: 'a.html',
+      position: 43,
+      text: 'при окончательной разработке не должны превышать ± 5 см',
+    },
+    {
+      baseName: 'Схемы',
+      fileName: 'a.html',
+      position: 50,
+      text: 'Технические требования\nСНиП 3.02.01-87 пп. 1.11, 3.29\n[[схема:x006.gif]]\nДопускаемые отклонения отметок дна траншей ± 5 см',
+    },
+    {
+      baseName: 'Схемы',
+      fileName: 'a.html',
+      position: 51,
+      text: 'Указания по производству работ\nСНиП 3.02.01-87 пп. 3.1, 3.3, 3.6\n[[схема:x008.gif]]\nМинимальная ширина траншей',
+    },
+  ]
+  const trench = selectKnowledgePassages('Технические требования СНиП 3.02.01-87 пп. 1.11, 3.29', passages)
+  expect(trench.map((passage) => passage.position)).toEqual([0, 50])
+  expect(schemeAnswer(formatKnowledgeContext(trench))).toBe('![Схема](/api/users/me/knowledge-schemes/x006.gif)')
+  const excavation = selectKnowledgePassages(
+    'Технические требования СНиП 3.02.01-87 пп. 1.11, 3.1 - 3.6, 3.29',
+    passages,
+  )
+  expect(excavation.map((passage) => passage.position)).toEqual([0, 42, 43])
+  expect(schemeAnswer(formatKnowledgeContext(excavation))).toBe('![Схема](/api/users/me/knowledge-schemes/x003.gif)')
 })
 
 test('a question the file does not cover returns no passages', () => {
@@ -374,4 +444,28 @@ test('a question the file does not cover returns no passages', () => {
     },
   ]
   expect(selectKnowledgePassages('дай ссылки на пять сайтов с рецептами', passages)).toEqual([])
+})
+
+test('a scheme mark stays with the neighbouring text and becomes a drawing in the answer', () => {
+  const chunks = spreadSchemeMarkers([
+    'Таблица операций',
+    'Технические требования\n[[схема:x003.gif]]',
+    'Отклонения отметок дна не должны превышать 5 см.',
+  ])
+  expect(chunks[0]).toContain('[[схема:x003.gif]]')
+  expect(chunks[2]).toContain('[[схема:x003.gif]]')
+  const answer = schemeAnswer(`${chunks[2]}\n[[схема:../secret.gif]]\n[[схема:x220.jpg]]`)
+  expect(answer).toContain('/api/users/me/knowledge-schemes/x003.gif')
+  expect(answer).toContain('/api/users/me/knowledge-schemes/x220.jpg')
+  expect(answer).not.toContain('secret')
+  const knowledge = [
+    '[1] База «Схемы», файл «a.html»',
+    '[[схема:x220.jpg]]',
+    'СХЕМЫ ОПЕРАЦИОННОГО КОНТРОЛЯ',
+    '',
+    '[2] База «Схемы», файл «a.html»',
+    'Отклонения отметок дна',
+    '[[схема:x003.gif]]',
+  ].join('\n')
+  expect(schemeAnswer(knowledge)).toBe('![Схема](/api/users/me/knowledge-schemes/x003.gif)')
 })

@@ -1,5 +1,7 @@
 import type { NoraModelChatMessage } from '@web-app-demo/contracts'
 
+import { quoteFromCustom, textWithPassage } from './fragment'
+
 const MAX_TURNS = 30
 const MAX_TEXT = 8000
 const MAX_IMAGES = 8
@@ -17,6 +19,7 @@ type DialogTurn = {
   role: string
   content: readonly DialogPart[]
   attachments?: readonly { content?: readonly DialogPart[] }[]
+  metadata?: { custom?: Record<string, unknown> }
 }
 
 function turnParts(message: DialogTurn) {
@@ -63,7 +66,7 @@ function toTurn(message: DialogTurn): NoraModelChatMessage | null {
   }
   if (message.role !== 'user') return null
 
-  const text = texts.join('\n').slice(0, MAX_TEXT)
+  const text = textWithPassage(texts.join('\n'), quoteFromCustom(message.metadata?.custom)?.text ?? '').slice(0, MAX_TEXT)
   const kept = images.slice(0, MAX_IMAGES)
   const file = files[0]
   if (!text && kept.length === 0 && !file) return null

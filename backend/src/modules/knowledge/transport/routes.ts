@@ -11,6 +11,7 @@ import type { MiddlewareHandler } from 'hono'
 import { AppError, validationErrorHook } from '../../../http/errors'
 import type { AuthHttpEnv } from '../../auth'
 import { KnowledgeFailure } from '../domain/errors'
+import { readHandbookScheme } from '../infrastructure/handbook-schemes'
 import type { KnowledgeService } from '../application/knowledge-service'
 
 const errorContent = {
@@ -134,6 +135,14 @@ export function createKnowledgeRoutes(options: {
 }) {
   const routes = new OpenAPIHono<AuthHttpEnv>({ defaultHook: validationErrorHook })
   routes.use('*', options.requireAuth)
+  routes.get('/me/knowledge-schemes/:name', async (c) => {
+    const scheme = await readHandbookScheme(c.req.param('name'))
+    if (!scheme) throw new AppError(404, 'NOT_FOUND', 'Схема не найдена')
+    return c.body(new Uint8Array(scheme.bytes), 200, {
+      'Content-Type': scheme.mime,
+      'Cache-Control': 'private, max-age=86400',
+    })
+  })
   routes.openapi(listRoute, async (c) => {
     const result = await execute(() => options.service.list(c.var.user.id))
     return c.json(result, 200)

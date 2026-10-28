@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test'
 import sharp from 'sharp'
 
 import { KnowledgeFailure } from '../domain/errors'
-import { chooseScanRotation, hasTextLayer, resolveDocumentText, type ScanPage } from './extract-document'
+import { chooseScanRotation, extractKnowledgeDocument, hasTextLayer, resolveDocumentText, type ScanPage } from './extract-document'
 import { collapseRepeatedLines } from './read-scan'
 
 const page: ScanPage = { page: 1, jpeg: Buffer.from('jpeg') }
@@ -60,4 +60,19 @@ test('a repeated scan line is kept twice', () => {
 test('a scan without a reader explains that recognition is not configured', async () => {
   await expect(resolveDocumentText(' ', async () => [page])).rejects.toThrow(KnowledgeFailure)
   await expect(resolveDocumentText(' ', async () => [page])).rejects.toThrow('Распознавание сканов не настроено')
+})
+
+test('handbook html keeps the scheme file and drops the site chrome', async () => {
+  const html = [
+    '<html><div>МЕГАНОРМ меню</div>',
+    '<div class="WordSection1"><p>Отклонения отметок дна выемок</p>',
+    '<img src="./files/x003.gif">',
+    '<p>не должны превышать 5 см</p></div>',
+    '<script src="./footer.js"></script><div>МЕГАНОРМ 2014</div></html>',
+  ].join('')
+  const text = await extractKnowledgeDocument('book.html', Buffer.from(html))
+  expect(text).toContain('Отклонения отметок')
+  expect(text).toContain('[[схема:x003.gif]]')
+  expect(text).toContain('5 см')
+  expect(text).not.toContain('МЕГАНОРМ')
 })
