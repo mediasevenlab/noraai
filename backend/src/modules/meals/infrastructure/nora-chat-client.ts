@@ -15,6 +15,7 @@ import {
   NORA_WEB_SEARCH_TOOL,
   calmVisionReading,
   seatVisionReading,
+  screenTable,
   photoLookupQuery,
   readWebSearchCalls,
   turnForVision,
@@ -156,6 +157,11 @@ export async function* streamNoraChat(
   let photoSubject = ''
   if (answerNeedsVisionReading(turns, models, knowledge)) {
     const note = await readVisionNote(env, turns, signal).catch(() => '')
+    const table = /таблиц/i.test(lastUser?.text ?? '') ? screenTable(note) : ''
+    if (table) {
+      yield* pacedReply(table, env.LLM_TEXT_MODEL, signal)
+      return
+    }
     turns = noteVisionForText(turns, note)
     if (search === true && env.LLM_SEARCH_URL && note.trim() && note.trim() !== 'Снимок разобрать не удалось.') {
       photoSubject = await readPhotoSubject(env, lastUser?.text.trim() ?? '', note, signal).catch(() => '')

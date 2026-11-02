@@ -1,4 +1,4 @@
-import { ListTreeIcon } from 'lucide-react'
+import { ListTreeIcon, Loader2Icon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 
 import { cn } from '@/lib/utils'
@@ -352,8 +352,21 @@ function waitForPaint(delay = 32) {
   })
 }
 
-/** Folio only paints the pages on screen, so the list is gathered by walking the scroller once. */
+const outlines = new WeakMap<HTMLElement, OutlineItem[]>()
+
+function coverPane(host: HTMLElement) {
+  const pane = host.parentElement?.parentElement
+  if (!pane) return null
+  const cover = document.createElement('div')
+  cover.style.cssText = 'position:absolute;inset:0;z-index:20;background:#ececec;'
+  pane.appendChild(cover)
+  return cover
+}
+
+/** Folio only paints the pages on screen, so the list is gathered once, under a cover, and then kept. */
 async function collectOutline(host: HTMLElement) {
+  const cached = outlines.get(host)
+  if (cached) return cached
   const seen = new Map<string, OutlineItem>()
   const take = (top: number) => {
     for (const item of paintedHeadings(host, top)) if (!seen.has(item.id)) seen.set(item.id, item)
@@ -361,10 +374,13 @@ async function collectOutline(host: HTMLElement) {
   const scroller = folioScroller(host)
   if (!scroller) {
     take(0)
-    return [...seen.values()]
+    const ready = [...seen.values()]
+    outlines.set(host, ready)
+    return ready
   }
   const previous = scroller.scrollTop
   const step = Math.max(320, scroller.clientHeight * 0.55)
+  const cover = coverPane(host)
   try {
     for (let top = 0; top < scroller.scrollHeight; top += step) {
       scroller.scrollTop = top
@@ -373,8 +389,12 @@ async function collectOutline(host: HTMLElement) {
     }
   } finally {
     scroller.scrollTop = previous
+    await waitForPaint()
+    cover?.remove()
   }
-  return [...seen.values()]
+  const ready = [...seen.values()]
+  outlines.set(host, ready)
+  return ready
 }
 
 async function revealHeading(host: HTMLElement, item: OutlineItem) {
@@ -427,40 +447,40 @@ function scrollToHeading(host: HTMLElement, heading: HTMLElement) {
 
 function SectionMenu({ hostRef }: { hostRef: RefObject<HTMLDivElement | null> }) {
   const [open, setOpen] = useState(false)
-  const [ready, setReady] = useState(false)
+  const [busy, setBusy] = useState(false)
   const [headings, setHeadings] = useState<OutlineItem[]>([])
-  const request = useRef(0)
   return (
     <div className="absolute top-3 left-3 z-30">
       <button
+        aria-busy={busy}
         aria-expanded={open}
-        aria-label={open ? 'Скрыть разделы' : 'Разделы документа'}
-        className="flex size-8 cursor-pointer items-center justify-center rounded-full border border-[var(--nora-border)] bg-white text-[var(--nora-text-secondary)] shadow-sm hover:text-[var(--nora-text)]"
+        aria-label={busy ? 'Собираем разделы' : open ? 'Скрыть разделы' : 'Разделы документа'}
+        className="flex size-8 cursor-pointer items-center justify-center rounded-full border border-[var(--nora-border)] bg-white text-[var(--nora-text-secondary)] shadow-sm hover:text-[var(--nora-text)] disabled:cursor-wait"
+        disabled={busy}
         onClick={() => {
+          if (busy) return
           if (open) {
-            request.current += 1
             setOpen(false)
             return
           }
           const host = hostRef.current
-          const ticket = request.current + 1
-          request.current = ticket
-          setHeadings([])
-          setReady(false)
-          setOpen(true)
-          if (!host) {
-            setReady(true)
+          const cached = host ? outlines.get(host) : undefined
+          if (cached) {
+            setHeadings(cached)
+            setOpen(true)
             return
           }
+          if (!host) return
+          setBusy(true)
           void collectOutline(host).then((items) => {
-            if (request.current !== ticket) return
             setHeadings(items)
-            setReady(true)
+            setBusy(false)
+            setOpen(true)
           })
         }}
         type="button"
       >
-        <ListTreeIcon className="size-4" />
+        {busy ? <Loader2Icon className="size-4 animate-spin" /> : <ListTreeIcon className="size-4" />}
       </button>
       {open ? (
         <div className="mt-2 max-h-[min(24rem,calc(100vh-8rem))] w-72 overflow-auto rounded-xl border border-[var(--nora-border)] bg-white p-1 shadow-sm">
@@ -479,8 +499,7 @@ function SectionMenu({ hostRef }: { hostRef: RefObject<HTMLDivElement | null> })
               {heading.text}
             </button>
           ))}
-          {!ready ? <p className="px-2 py-1.5 text-[13px] leading-5 text-[var(--nora-text-secondary)]">Собираем разделы</p> : null}
-          {ready && headings.length === 0 ? (
+          {headings.length === 0 ? (
             <p className="px-2 py-1.5 text-[13px] leading-5 text-[var(--nora-text-secondary)]">Разделов нет</p>
           ) : null}
         </div>

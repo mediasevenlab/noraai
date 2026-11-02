@@ -186,17 +186,17 @@ describe('Nora settings chat request', () => {
       const result = await completeNoraChat(env, [
         { role: 'user', text: 'Построй таблицу по изображению.', images: [{ base64: photo.toString('base64'), mime: 'image/png' }] },
       ])
-      expect(result.reply).toBe('Таблица готова.')
+      expect(result.reply).toContain('5202')
+      expect(result.reply).toContain('Рейс')
+      expect(result.reply.startsWith('|')).toBe(true)
     } finally {
       globalThis.fetch = original
     }
+    expect(bodies).toHaveLength(1)
     const glance = JSON.parse(bodies[0] ?? '{}') as { options?: { num_predict?: number }; messages: Array<{ content?: string }> }
     expect(glance.options?.num_predict).toBe(2048)
     expect(String(glance.messages[0]?.content)).toContain('ШАПКА:')
     expect(String(glance.messages[0]?.content)).not.toContain('двумя-тремя предложениями')
-    const answer = JSON.parse(bodies[1] ?? '{}') as { messages: Array<{ content?: string }> }
-    expect(JSON.stringify(answer.messages)).toContain('5202')
-    expect(JSON.stringify(answer.messages)).toContain('выведи её целиком')
   })
 
   test('a tall screenshot is read in bands and the bands reach the answer', async () => {

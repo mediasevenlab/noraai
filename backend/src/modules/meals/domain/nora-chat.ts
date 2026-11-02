@@ -259,6 +259,26 @@ export function seatVisionReading(text: string) {
   return [...before, head, rule, ...seated].join('\n').trim()
 }
 
+function isTableRule(line: string) {
+  const cells = pipeCells(line)
+  return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell))
+}
+
+/** The grid already aligned from the photo. A later model must not rebuild these cells. */
+export function screenTable(note: string) {
+  const lines = note
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('|'))
+  const header = lines.find((line) => !isTableRule(line))
+  if (!header) return ''
+  const width = pipeCells(header).length
+  if (width < 2) return ''
+  const rows = lines.filter((line) => line !== header && !isTableRule(line))
+  if (rows.length === 0 || rows.some((line) => pipeCells(line).length !== width)) return ''
+  return [header, `| ${Array.from({ length: width }, () => '---').join(' | ')} |`, ...rows].join('\n')
+}
+
 export const VISION_FRAGMENT_SYSTEM =
   'Ты переписываешь один фрагмент длинного изображения. Фрагменты идут сверху вниз и это одна таблица. Если видна шапка, напиши «ШАПКА:» и названия столбцов через « | ». Каждую строку пиши как «СТРОКА:» с тем же числом ячеек. Ячейку, где только значок или пустое место, пиши словом пусто. Не пропускай её и не ставь вместо неё прочерк. Прочерк копируй только если он нарисован, целиком, например «—:—». Одинаковое время повтори. Кнопку напиши один раз. Не описывай цвета и рамки. Если текст нечитаем, ответь «не разобрать». Если текста нет, ответь «пусто».'
 

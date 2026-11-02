@@ -10,6 +10,7 @@ import {
   formatWebSearchFindings,
   calmVisionReading,
   seatVisionReading,
+  screenTable,
   noteVisionForText,
   photoLookupQuery,
   readWebSearchCalls,
@@ -183,6 +184,15 @@ describe('Nora settings chat', () => {
     expect(system).toContain('выведи её целиком')
     expect(system).toContain('не сдвигай строку влево')
     expect(system).toContain('Одинаковое время в соседних столбцах')
+  })
+
+  test('a table read from the photo is the answer, with the same cells', () => {
+    const note = seatVisionReading('ШАПКА: Рейс | План | Отчет\nСТРОКА: пусто | 02.11 09:05 | Назначить')
+    const table = screenTable(note)
+    expect(table.split('\n')[0]).toBe('| Рейс | План | Отчет |')
+    expect(screenTable(table).split('\n').at(-1)).toContain('02.11 09:05')
+    expect(screenTable(table).split('\n').at(-1)).toContain('Назначить')
+    expect(screenTable('На снимке таблица рейсов, строки не прочитались.')).toBe('')
   })
 
   test('a question about the picture just sent is read from that picture', () => {
