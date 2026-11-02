@@ -6,8 +6,8 @@ import { cn } from '@/lib/utils'
 import { sheetColumnWidths } from '../table-layout'
 
 import { compareDocumentTexts, type DiffPiece } from './diff'
-import { applyMarkVisibility, closeHeadingGaps, paintPage, pieceAppearance, type ShownMarks } from './paint'
-import { lineParts, pdfPages, sheetRowCells, sheetTabs, tableCells, takePieces, workbookPages, type ChangeKind, type LinePart, type SheetPage, type SheetTab } from './sheets'
+import { applyMarkVisibility, closeHeadingGaps, paintDocumentPage, pieceAppearance, settleLayout, type ShownMarks } from './paint'
+import { flowPdfBlocks, lineParts, pdfPages, sheetRowCells, sheetTabs, tableCells, takePieces, workbookPages, type ChangeKind, type LinePart, type SheetPage, type SheetTab } from './sheets'
 
 export function pageKind(name: string) {
   const lower = name.toLowerCase()
@@ -61,6 +61,85 @@ function isRule(line: string) {
   return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell))
 }
 
+function blocksOf(partLines: LinePart[][]) {
+  const blocks: Array<{ kind: 'text' | 'table'; lines: LinePart[][] }> = []
+  for (const parts of partLines) {
+    const text = parts.map((part) => part.text).join('').trim()
+    if (!text || /^Лист «/.test(text)) continue
+    if (text.startsWith('|') && isRule(text)) continue
+    const table = text.startsWith('|')
+    const last = blocks.at(-1)
+    const lastText = last?.lines[0]?.map((part) => part.text).join('') ?? ''
+    if (table && last?.kind === 'table' && cellsOf(lastText).length === cellsOf(text).length) last.lines.push(parts)
+    else blocks.push({ kind: table ? 'table' : 'text', lines: [parts] })
+  }
+  return blocks
+}
+
+function SheetBody({ blocks, shown }: { blocks: ReturnType<typeof blocksOf>; shown: ShownMarks }) {
+  return blocks.map((block, blockIndex) => {
+    if (block.kind === 'text') {
+      return (
+        <p className="mb-2 text-[14px] leading-6 whitespace-pre-wrap" key={blockIndex}>
+          {block.lines.map((parts, lineIndex) => (
+            <span key={lineIndex}>
+              <MarkText parts={parts} shown={shown} />
+              {lineIndex < block.lines.length - 1 ? '\n' : ''}
+            </span>
+          ))}
+        </p>
+      )
+    }
+    const rowCells = block.lines.map((parts) => tableCells(parts))
+    const parsed = rowCells.map((cells) => cells.map((cell) => cell.map((part) => part.text).join('')))
+    const gridRows = parsed.filter((cells) => cells.filter((cell) => cell.trim()).length !== 1)
+    const widths = sheetColumnWidths(gridRows.length > 0 ? gridRows : parsed)
+    const tableWidth = widths.reduce((sum, width) => sum + width, 0)
+    let gridStarted = false
+    return (
+      <table
+        className="mb-3 border-collapse text-left text-[13px] leading-5"
+        key={blockIndex}
+        style={{ width: tableWidth || undefined, tableLayout: 'fixed' }}
+      >
+        <colgroup>
+          {widths.map((width, index) => (
+            <col key={index} style={{ width }} />
+          ))}
+        </colgroup>
+        <tbody>
+          {parsed.map((cells, rowIndex) => {
+            const laid = sheetRowCells(cells, gridStarted)
+            if (cells.filter((cell) => cell.trim()).length >= 4) gridStarted = true
+            const source = rowCells[rowIndex] ?? []
+            return (
+              <tr key={rowIndex}>
+                {laid.map((cell, cellIndex) => {
+                  const parts = cell.span > 1 ? (source.find((item) => item.some((part) => part.text.trim())) ?? []) : (source[cellIndex] ?? [])
+                  return (
+                    <td
+                      className={cn('px-2 py-1 align-top', cell.span === 1 && 'border border-[#e6e6e6]')}
+                      colSpan={cell.span > 1 ? widths.length : undefined}
+                      key={cellIndex}
+                      style={{
+                        overflowWrap: 'break-word',
+                        textAlign: cell.span > 1 ? cell.align : undefined,
+                        whiteSpace: 'normal',
+                      }}
+                    >
+                      <MarkText parts={parts} shown={shown} />
+                    </td>
+                  )
+                })}
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    )
+  })
+}
+
 function SheetPages({
   name,
   pages,
@@ -69,6 +148,7 @@ function SheetPages({
   sheet,
   onSheet,
   pairText,
+  flow = false,
 }: {
   name: string
   pages: SheetPage[]
@@ -77,6 +157,8 @@ function SheetPages({
   sheet?: string | null
   onSheet?: (name: string) => void
   pairText?: string
+  /** PDF pages stack and scroll, the way Word pages do. Excel keeps one sheet and its tabs. */
+  flow?: boolean
 }) {
   const pairPages = useMemo(() => {
     if (pairText == null) return null
@@ -107,17 +189,38 @@ function SheetPages({
   }
   const page = pages[Math.max(0, ownTitles.indexOf(selected))]
   const shownMarks = shown ?? { removed: true, changed: true, added: true }
-  const partLines = lineParts(activePieces ?? [{ kind: 'same', text: missing ? '' : (page?.text ?? '') }])
-  const blocks: Array<{ kind: 'text' | 'table'; lines: LinePart[][] }> = []
-  for (const parts of partLines) {
-    const text = parts.map((part) => part.text).join('').trim()
-    if (!text || /^Лист «/.test(text)) continue
-    if (text.startsWith('|') && isRule(text)) continue
-    const table = text.startsWith('|')
-    const last = blocks.at(-1)
-    if (table && last?.kind === 'table') last.lines.push(parts)
-    else blocks.push({ kind: table ? 'table' : 'text', lines: [parts] })
+  if (flow) {
+    const pairPages = pairText != null ? pdfPages(pairText) : null
+    let carry: string[] | null = null
+    const sheets = pages.map((item, index) => {
+      const source = pairPages
+        ? compareDocumentTexts(pairPages[index]?.text ?? '', item.text)
+        : [{ kind: 'same' as const, text: item.text }]
+      const continued = flowPdfBlocks(blocksOf(lineParts(source)), carry)
+      carry = continued.carry
+      return continued.blocks
+    })
+    return (
+      <div className="h-full min-h-0 overflow-auto bg-[#ececec]" data-folio-scroll>
+        {sheets.map((blocks, index) => (
+          <article
+            className="mx-auto my-4 w-max min-w-[calc(100%-32px)] bg-white px-8 py-7 shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
+            key={index}
+          >
+            <p
+              className="mb-4 font-[family-name:var(--nora-font)] text-[14px] leading-5 font-normal"
+              style={{ color: 'rgba(109,109,109,0.5)' }}
+            >
+              {name}
+            </p>
+            <SheetBody blocks={blocks} shown={shownMarks} />
+          </article>
+        ))}
+      </div>
+    )
   }
+  const partLines = lineParts(activePieces ?? [{ kind: 'same', text: missing ? '' : (page?.text ?? '') }])
+  const blocks = blocksOf(partLines)
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-auto bg-[#ececec]" data-folio-scroll>
@@ -130,70 +233,9 @@ function SheetPages({
             </p>
             {missing ? (
               <p className="text-[14px] leading-6 text-[var(--nora-text-secondary)]">Этого листа нет в первом файле.</p>
-            ) : null}
-            {missing
-              ? null
-              : blocks.map((block, blockIndex) => {
-              if (block.kind === 'text') {
-                return (
-                  <p className="mb-2 text-[14px] leading-6 whitespace-pre-wrap" key={blockIndex}>
-                    {block.lines.map((parts, lineIndex) => (
-                      <span key={lineIndex}>
-                        <MarkText parts={parts} shown={shownMarks} />
-                        {lineIndex < block.lines.length - 1 ? '\n' : ''}
-                      </span>
-                    ))}
-                  </p>
-                )
-              }
-              const rowCells = block.lines.map((parts) => tableCells(parts))
-              const parsed = rowCells.map((cells) => cells.map((cell) => cell.map((part) => part.text).join('')))
-              const gridRows = parsed.filter((cells) => cells.filter((cell) => cell.trim()).length !== 1)
-              const widths = sheetColumnWidths(gridRows.length > 0 ? gridRows : parsed)
-              const tableWidth = widths.reduce((sum, width) => sum + width, 0)
-              let gridStarted = false
-              return (
-                <table
-                  className="mb-3 border-collapse text-left text-[13px] leading-5"
-                  key={blockIndex}
-                  style={{ width: tableWidth || undefined, tableLayout: 'fixed' }}
-                >
-                  <colgroup>
-                    {widths.map((width, index) => (
-                      <col key={index} style={{ width }} />
-                    ))}
-                  </colgroup>
-                  <tbody>
-                    {parsed.map((cells, rowIndex) => {
-                      const laid = sheetRowCells(cells, gridStarted)
-                      if (cells.filter((cell) => cell.trim()).length >= 4) gridStarted = true
-                      const source = rowCells[rowIndex] ?? []
-                      return (
-                        <tr key={rowIndex}>
-                          {laid.map((cell, cellIndex) => {
-                            const parts = cell.span > 1 ? (source.find((item) => item.some((part) => part.text.trim())) ?? []) : (source[cellIndex] ?? [])
-                            return (
-                              <td
-                                className={cn('px-2 py-1 align-top', cell.span === 1 && 'border border-[#e6e6e6]')}
-                                colSpan={cell.span > 1 ? widths.length : undefined}
-                                key={cellIndex}
-                                style={{
-                                  overflowWrap: 'break-word',
-                                  textAlign: cell.span > 1 ? cell.align : undefined,
-                                  whiteSpace: 'normal',
-                                }}
-                              >
-                                <MarkText parts={parts} shown={shownMarks} />
-                              </td>
-                            )
-                          })}
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              )
-            })}
+            ) : (
+              <SheetBody blocks={blocks} shown={shownMarks} />
+            )}
           </article>
       </div>
       {bar.length > 1 ? (
@@ -339,20 +381,19 @@ function SectionMenu({ hostRef }: { hostRef: RefObject<HTMLDivElement | null> })
   )
 }
 
-/** Grown pages stay inside Folio's own scroller. The section menu beside it does not scroll away. */
-function releaseInnerScroll(host: HTMLElement) {
-  const pages = [...host.querySelectorAll('.layout-page')].filter((node): node is HTMLElement => node instanceof HTMLElement)
-  let bottom = 48
-  for (const page of pages) bottom = Math.max(bottom, page.offsetTop + page.offsetHeight + 24)
-  host.querySelectorAll('*').forEach((node) => {
-    if (!(node instanceof HTMLElement)) return
-    if (node.classList.contains('layout-page') || node.closest('.layout-page')) return
-    if (node.closest('.folio-outline') || node.hasAttribute('data-folio-scroll')) return
+/** A page that grew around a deletion stays inside Folio's scroller. Ancestors only: a full tree walk stalls scrolling. */
+function releaseGrownPage(page: HTMLElement) {
+  const content = page.querySelector('.layout-page-content')
+  let bottom = page.offsetTop + page.offsetHeight + 24
+  if (content instanceof HTMLElement) bottom = Math.max(bottom, page.offsetTop + content.offsetHeight + 24)
+  let node = page.parentElement
+  while (node && !node.classList.contains('nora-folio')) {
     const inlineHeight = Number.parseFloat(node.style.height)
     if (Number.isFinite(inlineHeight) && inlineHeight > 200 && inlineHeight < bottom) {
       node.style.setProperty('height', `${Math.ceil(bottom)}px`, 'important')
     }
-  })
+    node = node.parentElement
+  }
 }
 
 function fitFolio(frame: HTMLElement, host: HTMLElement, setZoom: (zoom: number) => void, naturalWidth: { current: number }) {
@@ -423,28 +464,70 @@ export function DocumentPane({
       event.stopPropagation()
     }
     host.addEventListener('mousedown', allowSelect, true)
-    let paintTimer = 0
-    const settle = () => {
+    let frameId = 0
+    const seen = new Map<HTMLElement, number>()
+    const paintReadyPages = () => {
+      frameId = 0
       if (cancel) return
       if (host.querySelector('.layout-page')) setReady(true)
-      hideLetterheadPictures(host)
-      if (!pieces) closeHeadingGaps(host)
       stampFileName(host, name)
-      releaseInnerScroll(host)
-      if (editor) fitFolio(frame, host, (zoom) => editor?.setZoom(zoom), naturalWidth)
-      if (!pieces || host.querySelector('[data-diff]')) return
-      window.clearTimeout(paintTimer)
-      paintTimer = window.setTimeout(() => {
-        if (cancel || host.querySelector('[data-diff]') || !host.querySelector('.layout-page-content')) return
-        try {
-          paintPage(host, pieces)
-          if (shownRef.current) applyMarkVisibility(host, shownRef.current)
-          stampFileName(host, name)
-          releaseInnerScroll(host)
-        } catch {
-          // The page stays readable when a mark cannot be placed.
+      const contents = [...host.querySelectorAll('.layout-page-content')].filter((node): node is HTMLElement => node instanceof HTMLElement)
+      let again = false
+      for (const content of contents) {
+        const length = content.textContent?.length ?? 0
+        if (content.dataset.noraPainted === '1' || content.dataset.noraGaps === '1') {
+          const paintedLength = Number(content.dataset.noraLength ?? length)
+          if (Math.abs(length - paintedLength) < 80) continue
+          delete content.dataset.noraPainted
+          delete content.dataset.noraGaps
+          delete content.dataset.noraLength
+          content.querySelectorAll('[data-nora-box], [data-nora-line]').forEach((node) => {
+            if (!(node instanceof HTMLElement)) return
+            if (node.dataset.noraBox !== undefined) node.style.height = node.dataset.noraBox
+            if (node.dataset.noraTop) node.style.top = node.dataset.noraTop
+            if (node.dataset.noraLine !== undefined) node.style.height = node.dataset.noraLine
+            delete node.dataset.noraBox
+            delete node.dataset.noraTop
+            delete node.dataset.noraLine
+          })
         }
-      }, 300)
+        if (length < 12) continue
+        if (seen.get(content) !== length) {
+          seen.set(content, length)
+          again = true
+          continue
+        }
+        seen.delete(content)
+        const page = content.closest('.layout-page')
+        if (page instanceof HTMLElement) hideLetterheadPictures(page)
+        if (!pieces) {
+          content.dataset.noraGaps = '1'
+          closeHeadingGaps(content)
+          content.dataset.noraLength = String(content.textContent?.length ?? 0)
+          continue
+        }
+        try {
+          paintDocumentPage(content, pieces)
+        } catch {
+          content.dataset.noraPainted = '1'
+        }
+      }
+      if (pieces && shownRef.current) applyMarkVisibility(host, shownRef.current)
+      for (const content of contents) {
+        if (content.dataset.noraFlow !== '1') continue
+        delete content.dataset.noraFlow
+        settleLayout(content)
+        const page = content.closest('.layout-page')
+        if (page instanceof HTMLElement) releaseGrownPage(page)
+      }
+      if (again) frameId = window.requestAnimationFrame(paintReadyPages)
+    }
+    const schedule = () => {
+      if (cancel || frameId) return
+      frameId = window.requestAnimationFrame(paintReadyPages)
+    }
+    const fit = () => {
+      if (editor) fitFolio(frame, host, (zoom) => editor?.setZoom(zoom), naturalWidth)
     }
     void Promise.all([import('@stll/folio-react'), import('@stll/folio-react/editor.css')])
       .then(async ([{ renderAsync }]) => {
@@ -454,9 +537,16 @@ export function DocumentPane({
         editor = await renderAsync(buffer, host, {
           locale: 'ru',
           readOnly: true,
+          showToolbar: false,
+          showZoomControl: false,
+          showOutline: false,
+          showReviewControls: false,
+          showHeaderFooterEditing: false,
+          autoOpenReviewSidebar: false,
           onFontsLoaded: () => {
             naturalWidth.current = 0
-            settle()
+            fit()
+            schedule()
           },
         })
         if (cancel) {
@@ -464,26 +554,20 @@ export function DocumentPane({
           editor = null
           return
         }
-        settle()
+        fit()
+        schedule()
       })
       .catch(() => {
         if (!cancel) setFailed(true)
       })
-    const pages = new MutationObserver(() => {
-      if (!host.querySelector('.layout-page')) return
-      setReady(true)
-      stampFileName(host, name)
-      if (pieces && !host.querySelector('[data-diff]')) settle()
-    })
+    const pages = new MutationObserver(() => schedule())
     pages.observe(host, { childList: true, subtree: true })
-    const observer = new ResizeObserver(() => {
-      if (editor) fitFolio(frame, host, (zoom) => editor?.setZoom(zoom), naturalWidth)
-    })
+    const observer = new ResizeObserver(() => fit())
     observer.observe(frame)
     return () => {
       cancel = true
       host.removeEventListener('mousedown', allowSelect, true)
-      window.clearTimeout(paintTimer)
+      window.cancelAnimationFrame(frameId)
       pages.disconnect()
       observer.disconnect()
       editor?.destroy()
@@ -494,6 +578,12 @@ export function DocumentPane({
     const host = hostRef.current
     if (!host || !shown) return
     applyMarkVisibility(host, shown)
+    host.querySelectorAll('.layout-page-content').forEach((node) => {
+      if (!(node instanceof HTMLElement) || node.dataset.noraPainted !== '1') return
+      settleLayout(node)
+      const page = node.closest('.layout-page')
+      if (page instanceof HTMLElement) releaseGrownPage(page)
+    })
   }, [shown])
 
   if (file === undefined) {
@@ -502,6 +592,7 @@ export function DocumentPane({
   if (kind === 'pdf' || kind === 'sheet') {
     return (
       <SheetPages
+        flow={kind === 'pdf'}
         name={name}
         onSheet={onSheet}
         pages={pages}

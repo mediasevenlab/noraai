@@ -210,6 +210,153 @@ function trimCell(parts: LinePart[]): LinePart[] {
   return next.filter((part) => part.text.length > 0)
 }
 
+function lineFromCells(cells: LinePart[][]): LinePart[] {
+  const line: LinePart[] = []
+  cells.forEach((cell, index) => {
+    line.push({ kind: 'same', text: index === 0 ? '| ' : ' | ' })
+    if (cell.length === 0) line.push({ kind: 'same', text: ' ' })
+    else line.push(...cell)
+  })
+  line.push({ kind: 'same', text: ' |' })
+  return line
+}
+
+type FlowBlock = { kind: 'text' | 'table'; lines: LinePart[][] }
+
+function joinedCell(parts: readonly LinePart[]) {
+  return parts.map((part) => part.text).join('').trim()
+}
+
+/** A row of underscored signature lines is text under the grid, not another table row. */
+function formRow(line: readonly LinePart[]) {
+  const filled = tableCells(line).map(joinedCell).filter(Boolean)
+  return filled.length > 0 && filled.every((cell) => /_{3,}/.test(cell))
+}
+
+function formText(line: readonly LinePart[]): LinePart[] {
+  const parts: LinePart[] = []
+  tableCells(line)
+    .filter((cell) => joinedCell(cell))
+    .forEach((cell, index) => {
+      if (index > 0) parts.push({ kind: 'same', text: '    ' })
+      parts.push(...cell)
+    })
+  return parts
+}
+
+/** Pull signature lines out of a grid so they read as text beside each other. */
+export function liftFormLines(blocks: readonly FlowBlock[]): FlowBlock[] {
+  const next: FlowBlock[] = []
+  for (const block of blocks) {
+    if (block.kind !== 'table') {
+      next.push(block)
+      continue
+    }
+    let table: LinePart[][] = []
+    let form: LinePart[][] = []
+    const flushTable = () => {
+      if (table.length === 0) return
+      next.push({ kind: 'table', lines: table })
+      table = []
+    }
+    const flushForm = () => {
+      if (form.length === 0) return
+      next.push({ kind: 'text', lines: form.map(formText) })
+      form = []
+    }
+    for (const line of block.lines) {
+      if (formRow(line)) {
+        flushTable()
+        form.push(line)
+      } else {
+        flushForm()
+        table.push(line)
+      }
+    }
+    flushForm()
+    flushTable()
+  }
+  return next
+}
+
+/** A later PDF page keeps drawing the columns of the table it continues, even when those cells are empty. */
+export function continuePdfGrid(blocks: readonly FlowBlock[], carry: string[] | null) {
+  let header = carry
+  const next = blocks.map((block) => {
+    if (block.kind !== 'table') return block
+    const rows = block.lines.map((line) => tableCells(line).map((cell) => cell.map((part) => part.text).join('').trim()))
+    const width = Math.max(0, ...rows.map((row) => row.length))
+    const first = rows[0] ?? []
+    if (header && header.length >= 3 && width < header.length) {
+      const lines = block.lines.map((line) => {
+        const cells = tableCells(line)
+        while (cells.length < header!.length) cells.push([])
+        return lineFromCells(cells)
+      })
+      const titled = first.length === header.length && first.every((cell, index) => cell === header![index])
+      return {
+        kind: 'table' as const,
+        lines: titled ? lines : [[{ kind: 'same' as const, text: `| ${header.join(' | ')} |` }], ...lines],
+      }
+    }
+    if (first.filter(Boolean).length >= 3) header = first
+    return block
+  })
+  return { blocks: next, carry: header }
+}
+
+function columnCount(block: FlowBlock) {
+  return tableCells(block.lines[0] ?? []).length
+}
+
+/** Text that a diff dropped between rows of one grid is read under that grid. */
+function gatherPlainAfter(blocks: readonly FlowBlock[]): FlowBlock[] {
+  const next: FlowBlock[] = []
+  let index = 0
+  while (index < blocks.length) {
+    const block = blocks[index]
+    if (!block || block.kind !== 'table') {
+      if (block) next.push(block)
+      index += 1
+      continue
+    }
+    const width = columnCount(block)
+    const tables: FlowBlock[] = [block]
+    const texts: FlowBlock[] = []
+    let cursor = index + 1
+    while (cursor < blocks.length) {
+      const item = blocks[cursor]
+      if (!item) break
+      if (item.kind === 'text') {
+        texts.push(item)
+        cursor += 1
+        continue
+      }
+      if (columnCount(item) === width) {
+        tables.push(item)
+        cursor += 1
+        continue
+      }
+      break
+    }
+    if (texts.length === 0) {
+      next.push(block)
+      index += 1
+      continue
+    }
+    next.push({ kind: 'table', lines: tables.flatMap((item) => item.lines) })
+    next.push(...texts)
+    index = cursor
+  }
+  return next
+}
+
+/** PDF pages keep a continued grid, and signature lines stay text under it. */
+export function flowPdfBlocks(blocks: readonly FlowBlock[], carry: string[] | null) {
+  const continued = continuePdfGrid(liftFormLines(blocks), carry)
+  return { blocks: gatherPlainAfter(continued.blocks), carry: continued.carry }
+}
+
 /** Markdown cells of one sheet row, with the edits that belong to each cell. */
 export function tableCells(parts: readonly LinePart[]): LinePart[][] {
   const cells: LinePart[][] = [[]]

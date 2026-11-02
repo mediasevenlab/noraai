@@ -61,7 +61,7 @@ function FileSlot({
   onClear: () => void
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-[var(--nora-border)] bg-[var(--nora-surface)] px-3 py-2.5">
+    <label className="flex w-full min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-xl border border-dashed border-[var(--nora-border)] bg-[var(--nora-surface)] px-3 py-2.5">
       <input
         accept={ACCEPT}
         className="sr-only"
@@ -76,7 +76,9 @@ function FileSlot({
       {file ? <FileTypeIcon name={file.name} /> : <Columns2Icon className="size-4 text-[var(--nora-text-secondary)]" />}
       <span className="min-w-0 flex-1">
         <span className="block text-[12px] leading-4 text-[var(--nora-text-secondary)]">{label}</span>
-        <span className="block truncate text-[13px] leading-5 font-medium">{file ? file.name : 'Выбрать файл'}</span>
+        <span className="block truncate text-[13px] leading-5 font-medium" title={file ? file.name : undefined}>
+          {file ? file.name : 'Выбрать файл'}
+        </span>
       </span>
       {file ? (
         <button
@@ -171,14 +173,16 @@ export function CompareDocumentsButton({ disabled = false }: { disabled?: boolea
         </button>
       </ComposerToolTip>
       <Dialog onOpenChange={close} open={open}>
-        <DialogContent className="md:!max-w-[28rem]" showCloseButton={!sending}>
+        <DialogContent className="min-w-0 md:!max-w-[28rem]" showCloseButton={!sending}>
           <DialogHeader>
-            <DialogTitle>Сравнение документов</DialogTitle>
-            <DialogDescription className="pt-1 text-[13px] leading-5">
+            <DialogTitle className="font-[family-name:var(--nora-font)] !text-[16px] !leading-6 !font-semibold">
+              Сравнение документов
+            </DialogTitle>
+            <DialogDescription className="pt-1 font-[family-name:var(--nora-font)] !text-[13px] !leading-5 !font-normal text-[var(--nora-text-secondary)]">
               Прикрепите две версии. Первый файл сравнивается со вторым.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-2 px-[15px] pt-3">
+          <div className="flex min-w-0 flex-col gap-2 px-[15px] pt-3">
             <FileSlot disabled={sending} file={left} label="Первый документ" onClear={() => setLeft(null)} onPick={setLeft} />
             <FileSlot disabled={sending} file={right} label="Второй документ" onClear={() => setRight(null)} onPick={setRight} />
           </div>

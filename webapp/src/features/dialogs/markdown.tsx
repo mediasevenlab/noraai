@@ -50,8 +50,7 @@ function withoutNode<Tag extends keyof JSX.IntrinsicElements>({
   return props
 }
 
-const cellClass =
-  'relative border-r border-[var(--nora-border)] px-3 py-2 align-top last:border-r-0'
+const cellClass = 'border-r border-b border-[var(--nora-border)] px-3 py-2 align-top'
 
 const ModalCellClip = createContext(false)
 const SchemeLayout = createContext<'single' | 'row'>('single')
@@ -74,7 +73,7 @@ function DialogCell({
   )
   const body = parts.filter((part) => !handle.includes(part))
   return (
-    <Tag className={`${className} min-w-0 overflow-hidden`} {...props}>
+    <Tag className={`${className} relative min-w-0 overflow-hidden`} {...props}>
       <div className="max-w-full" style={{ overflowWrap: 'break-word' }}>
         {body}
       </div>
@@ -258,7 +257,7 @@ function DialogTable({ children }: { children?: ReactNode }) {
         </button>
       </div>
       <div className="max-w-full overflow-x-auto rounded-xl border border-[var(--nora-border)]">
-        <table className="w-max min-w-full border-collapse text-left text-[13px] leading-5 [&_td]:min-w-[4.5rem] [&_td]:max-w-[280px] [&_th]:min-w-[4.5rem] [&_th]:max-w-[280px]">
+        <table className="w-max min-w-full border-separate border-spacing-0 text-left text-[13px] leading-5 [&_td]:min-w-[4.5rem] [&_td]:whitespace-nowrap [&_th]:min-w-[4.5rem] [&_th]:whitespace-nowrap [&_tbody_tr:last-child>*]:border-b-0 [&_tr>*:last-child]:border-r-0">
           {chatBody}
         </table>
       </div>
@@ -294,7 +293,7 @@ function DialogTable({ children }: { children?: ReactNode }) {
                 <div className="min-h-0 flex-1 overflow-auto bg-[#ececec]">
                   <div className="mx-auto my-4 w-max min-w-[calc(100%-32px)] bg-white px-6 py-6 shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
                   <table
-                    className="border-collapse text-left text-[13px] leading-5"
+                    className="border-separate border-spacing-0 text-left text-[13px] leading-5 [&_tr:first-child>*]:border-t [&_tr>*:first-child]:border-l"
                     style={{ width: tableWidth || undefined, tableLayout: 'fixed' }}
                   >
                     <ModalCellClip.Provider value={true}>
@@ -456,10 +455,10 @@ export function DialogMarkdown() {
           <thead className="bg-[var(--nora-input-bg)]" {...withoutNode(props)} />
         ),
         th: (props: MarkdownTag<'th'>) => (
-          <DialogCell tag="th" className={`${cellClass} border-b font-medium`} {...withoutNode(props)} />
+          <DialogCell tag="th" className={`${cellClass} font-medium`} {...withoutNode(props)} />
         ),
         td: (props: MarkdownTag<'td'>) => (
-          <DialogCell tag="td" className={`${cellClass} border-t`} {...withoutNode(props)} />
+          <DialogCell tag="td" className={cellClass} {...withoutNode(props)} />
         ),
         pre: ({ node: _node, ...props }: MarkdownTag<'pre'>) => (
           <pre

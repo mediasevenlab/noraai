@@ -1,8 +1,9 @@
 import mammoth from 'mammoth'
 import sharp from 'sharp'
-import { extractImages, extractText, getDocumentProxy } from 'unpdf'
+import { extractImages, extractTextItems, getDocumentProxy } from 'unpdf'
 
 import { KnowledgeFailure } from '../domain/errors'
+import { layoutPdfPages } from './read-pdf'
 import { readXlsText } from './read-xls'
 import { readXlsxText } from './read-xlsx'
 
@@ -155,9 +156,8 @@ export async function extractKnowledgeDocument(name: string, bytes: Buffer, read
   if (ext === 'xls') return readXlsText(bytes)
   if (ext === 'xlsx' || ext === 'xlsm') return readXlsxText(bytes)
   if (ext === 'pdf') {
-    const pdf = await getDocumentProxy(new Uint8Array(bytes))
-    const extracted = await extractText(pdf, { mergePages: true })
-    const text = Array.isArray(extracted.text) ? extracted.text.join('\f') : extracted.text
+    const extracted = await extractTextItems(new Uint8Array(bytes))
+    const text = layoutPdfPages(extracted.items)
     return resolveDocumentText(text, () => scanPages(bytes), readScan)
   }
   if (ext === 'docx') {

@@ -1,12 +1,82 @@
 import { expect, test } from 'bun:test'
 
-import { markedLines, pageDiff, pdfPages, sheetRowCells, sheetTabs, tableCells, takePieces, workbookPages } from './sheets'
+import { continuePdfGrid, flowPdfBlocks, markedLines, pageDiff, pdfPages, sheetRowCells, sheetTabs, tableCells, takePieces, workbookPages } from './sheets'
 
 test('a workbook is one page per sheet and the pages still add up', () => {
   const text = 'Лист «РС»\n| N | Имя |\n| --- | --- |\n| 1 | Кронштейн |\n\nЛист «Форма 12»\n| Смета | 10 |\n'
   const pages = workbookPages(text)
   expect(pages.map((page) => page.title)).toEqual(['РС', 'Форма 12'])
   expect(pages.map((page) => page.text).join('')).toBe(text)
+})
+
+test('a later pdf page keeps the empty columns of the table it continues', () => {
+  const first = continuePdfGrid(
+    [{
+      kind: 'table',
+      lines: [
+        [{ kind: 'same', text: '| Наименование | Загружено | Примечание |' }],
+        [{ kind: 'same', text: '| Тележка SU | 1 |  |' }],
+      ],
+    }],
+    null,
+  )
+  const next = continuePdfGrid(
+    [{
+      kind: 'table',
+      lines: [
+        [{ kind: 'same', text: '| Телега 1/1 Атлас ПЛ | 1 |' }],
+        [{ kind: 'removed', text: '| Печь | 2 |' }],
+      ],
+    }],
+    first.carry,
+  )
+  const lines = next.blocks[0]?.lines.map((line) => line.map((part) => part.text).join('')) ?? []
+  expect(lines[0]).toContain('Наименование')
+  expect(lines[0]).toContain('Примечание')
+  expect(lines[1]).toContain('Телега 1/1 Атлас ПЛ')
+  expect(lines[1]?.split('|').length).toBe(lines[0]?.split('|').length)
+  expect(lines[2]).toContain('Печь')
+  expect(next.blocks[0]?.lines[2]?.some((part) => part.kind === 'removed')).toBe(true)
+})
+
+test('signature lines leave the inventory grid and stay side by side', () => {
+  const flowed = flowPdfBlocks(
+    [{
+      kind: 'table',
+      lines: [
+        [{ kind: 'same', text: '| Наименование | Загружено | Примечание |' }],
+        [{ kind: 'same', text: '| Вилка десертная | 1 |  |' }],
+        [{ kind: 'same', text: '| Сдал экспедитор_________________________ |  | Принял б/п______________________________ |' }],
+        [{ kind: 'same', text: '| Сдал б/п________________________________ |  | Принял экспедитор_______________________ |' }],
+      ],
+    }],
+    null,
+  )
+  const table = flowed.blocks[0]
+  const text = flowed.blocks[1]
+  expect(table?.kind).toBe('table')
+  expect(table?.lines).toHaveLength(2)
+  expect(text?.kind).toBe('text')
+  const lines = text?.lines.map((line) => line.map((part) => part.text).join('')) ?? []
+  expect(lines[0]).toContain('Сдал экспедитор')
+  expect(lines[0]).toContain('Принял б/п')
+  expect(lines[0]?.includes('|')).toBe(false)
+  expect(lines[1]).toContain('Принял экспедитор')
+})
+
+test('signature lines that land between table rows are read under the grid', () => {
+  const flowed = flowPdfBlocks(
+    [
+      { kind: 'table', lines: [[{ kind: 'removed', text: '| Контейнер 2/3 S7 | 1 |  |' }]] },
+      { kind: 'text', lines: [[{ kind: 'added', text: 'Сдал экспедитор_________________________    Принял б/п______________________________' }]] },
+      { kind: 'table', lines: [[{ kind: 'removed', text: '| Чайник с крышкой GB,S7 | 1 |  |' }]] },
+      { kind: 'text', lines: [[{ kind: 'added', text: 'По эстафете сдал б/п______________________    По эстафете принял б/п____________________' }]] },
+    ],
+    null,
+  )
+  expect(flowed.blocks.map((block) => block.kind)).toEqual(['table', 'text', 'text'])
+  expect(flowed.blocks[0]?.lines).toHaveLength(2)
+  expect(flowed.blocks[1]?.lines[0]?.map((part) => part.text).join('')).toContain('Сдал экспедитор')
 })
 
 test('a text pdf keeps a page per form feed', () => {

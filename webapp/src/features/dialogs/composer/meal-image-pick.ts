@@ -13,6 +13,9 @@ export function isChatDocumentFile(file: { name: string }) {
 export const MEAL_IMAGE_MAX_BYTES = 5 * 1024 * 1024
 /** Long edge for stored/upload photos: sharp enough for meal analysis, small on the wire. */
 export const MEAL_IMAGE_MAX_EDGE = 1280
+/** A chat screenshot keeps a long page. A meal photo stays small. */
+export const CHAT_IMAGE_MAX_EDGE = 8192
+export const CHAT_IMAGE_TARGET_BYTES = 2 * 1024 * 1024
 export const MEAL_IMAGE_TARGET_BYTES = 180 * 1024
 export const MEAL_IMAGE_JPEG_QUALITY = 0.82
 
@@ -134,15 +137,20 @@ export async function mealImageFromUrl(
   }
 }
 
-export async function fileToMealImage(file: File): Promise<{ base64: string; mime: MealImageMime }> {
+export async function fileToMealImage(
+  file: File,
+  limits?: { maxEdge?: number; targetBytes?: number },
+): Promise<{ base64: string; mime: MealImageMime }> {
   if (!isAllowedMealImageFile(file)) {
     return Promise.reject(new Error('Можно добавить только JPEG, PNG, WebP или HEIC'))
   }
+  const maxEdge = limits?.maxEdge ?? MEAL_IMAGE_MAX_EDGE
+  const targetBytes = limits?.targetBytes ?? MEAL_IMAGE_TARGET_BYTES
   if (typeof document === 'undefined' || typeof createImageBitmap !== 'function') {
     return readFileAsMealImage(file)
   }
   try {
-    return await compressMealImage(file)
+    return await compressMealImage(file, maxEdge, targetBytes)
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('Можно добавить')) throw error
     if (MEAL_IMAGE_MIMES.includes(file.type as MealImageMime) && file.size <= MEAL_IMAGE_MAX_BYTES) {
@@ -152,9 +160,13 @@ export async function fileToMealImage(file: File): Promise<{ base64: string; mim
   }
 }
 
-async function compressMealImage(file: File): Promise<{ base64: string; mime: MealImageMime }> {
+async function compressMealImage(
+  file: File,
+  maxEdge: number,
+  targetBytes: number,
+): Promise<{ base64: string; mime: MealImageMime }> {
   const bitmap = await decodeMealImage(file)
-  const size = mealImageOutputSize(bitmap.width, bitmap.height)
+  const size = mealImageOutputSize(bitmap.width, bitmap.height, maxEdge)
   const canvas = document.createElement('canvas')
   canvas.width = size.width
   canvas.height = size.height
@@ -169,7 +181,7 @@ async function compressMealImage(file: File): Promise<{ base64: string; mime: Me
   let quality = MEAL_IMAGE_JPEG_QUALITY
   let blob = await canvasToJpeg(canvas, quality)
   let next = nextJpegQuality(quality)
-  while (blob.size > MEAL_IMAGE_TARGET_BYTES && next !== null) {
+  while (blob.size > targetBytes && next !== null) {
     quality = next
     blob = await canvasToJpeg(canvas, quality)
     next = nextJpegQuality(quality)

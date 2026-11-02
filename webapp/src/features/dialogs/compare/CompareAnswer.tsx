@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointer
 import { createPortal } from 'react-dom'
 
 import { FileTypeIcon } from '@/components/file-type-icon'
-import { ChevronLeftIcon, ChevronRightIcon, XIcon } from '@/components/icons'
+import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, XIcon } from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 import {
@@ -17,6 +17,7 @@ import { DocumentPane, pageKind } from './DocumentPane'
 import { compareDocumentTexts } from './diff'
 import { DocumentFind } from './find-bar'
 import { readCompareFile } from './files'
+import { listChangeMarks, rightScroller, scrollChangeIntoView, type ChangeKind } from './marks'
 import { type CompareMessageHead } from './message'
 import type { ShownMarks } from './paint'
 import { clearFragmentMark, placeFragment } from './place'
@@ -191,6 +192,43 @@ function CompareReader({
   const [collapsed, setCollapsed] = useState<'left' | 'right' | null>(null)
   const [split, setSplit] = useState(0.5)
   const rowRef = useRef<HTMLDivElement>(null)
+  const changeCursor = useRef<Record<ChangeKind, number>>({ removed: -1, changed: -1, added: -1 })
+  const stepToken = useRef(0)
+  const stepChange = (kind: ChangeKind, delta: number) => {
+    const token = stepToken.current + 1
+    stepToken.current = token
+    setShown((value) => (value[kind] ? value : { ...value, [kind]: true }))
+    const run = (attempt: number) => {
+      if (stepToken.current !== token) return
+      const root = dialogRef.current
+      if (!root) return
+      const marks = listChangeMarks(root, kind)
+      const next = changeCursor.current[kind] + delta
+      if (next >= 0 && next < marks.length) {
+        changeCursor.current[kind] = next
+        scrollChangeIntoView(marks[next]!)
+        return
+      }
+      const scroller = rightScroller(root)
+      const roomBelow = Boolean(scroller && scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 8)
+      const roomAbove = Boolean(scroller && scroller.scrollTop > 8)
+      if (delta > 0 && roomBelow && scroller && attempt < 8) {
+        scroller.scrollTop += Math.max(120, scroller.clientHeight * 0.85)
+        window.setTimeout(() => run(attempt + 1), 160)
+        return
+      }
+      if (delta < 0 && roomAbove && marks.length === 0 && scroller && attempt < 8) {
+        scroller.scrollTop = Math.max(0, scroller.scrollTop - scroller.clientHeight * 0.85)
+        window.setTimeout(() => run(attempt + 1), 160)
+        return
+      }
+      if (marks.length === 0) return
+      const index = delta > 0 ? 0 : marks.length - 1
+      changeCursor.current[kind] = index
+      scrollChangeIntoView(marks[index]!)
+    }
+    window.requestAnimationFrame(() => run(0))
+  }
   useEffect(() => {
     let cancel = false
     void Promise.all([readCompareFile(head.id, 'left'), readCompareFile(head.id, 'right')]).then(([left, right]) => {
@@ -254,23 +292,41 @@ function CompareReader({
             <FileTypeIcon name={head.rightName} />
           ) : null}
           <span aria-hidden className="h-5 w-px shrink-0 bg-[var(--nora-border)]" />
-          <div className="flex min-w-0 items-center gap-1">
-            {MARKS.map((mark) => {
+          <div className="flex min-w-0 items-center overflow-x-auto">
+            {MARKS.map((mark, index) => {
               const pressed = shown[mark.id]
               return (
-                <button
-                  aria-pressed={pressed}
-                  className={cn(
-                    'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg py-0 pl-2.5 pr-3 font-[family-name:var(--nora-font)] text-[12px] font-normal leading-4',
-                    pressed ? mark.on : 'bg-[var(--nora-surface)] text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]',
-                  )}
-                  key={mark.id}
-                  onClick={() => setShown((value) => ({ ...value, [mark.id]: !value[mark.id] }))}
-                  type="button"
-                >
-                  <span className={cn('size-1.5 shrink-0 rounded-full', pressed ? mark.dot : 'bg-current opacity-35')} />
-                  {mark.label}
-                </button>
+                <div className="flex shrink-0 items-center" key={mark.id}>
+                  {index > 0 ? <span aria-hidden className="mx-1.5 h-5 w-px shrink-0 bg-[var(--nora-border)]" /> : null}
+                  <button
+                    aria-pressed={pressed}
+                    className={cn(
+                      'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg py-0 pl-2.5 pr-3 font-[family-name:var(--nora-font)] text-[12px] font-normal leading-4',
+                      pressed ? mark.on : 'bg-[var(--nora-surface)] text-[var(--nora-text-secondary)] hover:text-[var(--nora-text)]',
+                    )}
+                    onClick={() => setShown((value) => ({ ...value, [mark.id]: !value[mark.id] }))}
+                    type="button"
+                  >
+                    <span className={cn('size-1.5 shrink-0 rounded-full', pressed ? mark.dot : 'bg-current opacity-35')} />
+                    {mark.label}
+                  </button>
+                  <button
+                    aria-label={`Предыдущее «${mark.label}»`}
+                    className="ml-0.5 inline-flex size-6 cursor-pointer items-center justify-center rounded-md text-[var(--nora-text-secondary)] hover:bg-[var(--nora-surface)] hover:text-[var(--nora-text)]"
+                    onClick={() => stepChange(mark.id, -1)}
+                    type="button"
+                  >
+                    <ChevronUpIcon className="size-3" />
+                  </button>
+                  <button
+                    aria-label={`Следующее «${mark.label}»`}
+                    className="inline-flex size-6 cursor-pointer items-center justify-center rounded-md text-[var(--nora-text-secondary)] hover:bg-[var(--nora-surface)] hover:text-[var(--nora-text)]"
+                    onClick={() => stepChange(mark.id, 1)}
+                    type="button"
+                  >
+                    <ChevronDownIcon className="size-3" />
+                  </button>
+                </div>
               )
             })}
           </div>
@@ -394,7 +450,7 @@ export function CompareAnswer({ head }: { head: CompareMessageHead }) {
     <div>
       <button
         aria-label={`Открыть сравнение ${head.leftName} и ${head.rightName}`}
-        className="mb-3 flex w-full max-w-xl cursor-pointer items-stretch overflow-hidden rounded-xl border border-[var(--nora-border)] bg-[var(--nora-surface)] text-left"
+        className="mb-3 flex w-full cursor-pointer items-stretch overflow-hidden rounded-xl border border-[var(--nora-border)] bg-[var(--nora-surface)] text-left"
         onClick={() => {
           setFocusText(null)
           setFocusSide(null)

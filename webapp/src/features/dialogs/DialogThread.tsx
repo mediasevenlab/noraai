@@ -37,6 +37,7 @@ import { ComposerToolTip } from './composer/tool-tip'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { dialogDayLabel } from '@/lib/ru-when'
+import { ImageLightbox } from './ImageLightbox'
 import { useAuth } from '@/features/auth'
 import { MercuryOrb } from '@/features/auth/mercury/mercury-orb'
 import { ComposerAttachChips } from './composer/attach-chips'
@@ -94,11 +95,19 @@ const MESSAGE_ACTION_CLASS =
   'group inline-flex size-7 items-center justify-center rounded-md text-[var(--nora-text-secondary)] transition-colors hover:bg-[var(--nora-input-bg)] hover:text-[var(--nora-text)] disabled:pointer-events-none disabled:opacity-40'
 
 function DialogImage() {
+  const [src, setSrc] = useState('')
   return (
-    <MessagePartPrimitive.Image
-      alt=""
-      className="mb-2 max-h-52 max-w-full rounded-2xl object-cover"
-    />
+    <>
+      <MessagePartPrimitive.Image
+        alt=""
+        className="mb-2 max-h-80 w-full cursor-zoom-in rounded-xl object-contain object-top"
+        onClick={(event) => {
+          const image = event.currentTarget
+          if (image instanceof HTMLImageElement && image.src) setSrc(image.currentSrc || image.src)
+        }}
+      />
+      {src ? <ImageLightbox alt="Изображение" onClose={() => setSrc('')} src={src} /> : null}
+    </>
   )
 }
 
@@ -196,14 +205,22 @@ function DialogAttachmentView({
 }: {
   attachment: { name: string; content?: ReadonlyArray<{ type: string; image?: string; filename?: string }> }
 }) {
+  const [open, setOpen] = useState(false)
   const image = attachment.content?.find((part) => part.type === 'image' && part.image)
   if (image?.image) {
+    const name = attachment.name || 'Фото'
     return (
-      <img
-        alt={attachment.name || 'Фото'}
-        className="mb-2 max-h-52 max-w-full rounded-2xl object-cover"
-        src={image.image}
-      />
+      <>
+        <button
+          aria-label={`Открыть изображение ${name}`}
+          className="mb-2 block max-h-80 w-[min(100%,40rem)] cursor-zoom-in overflow-y-auto rounded-xl"
+          onClick={() => setOpen(true)}
+          type="button"
+        >
+          <img alt={name} className="block h-auto w-full" src={image.image} />
+        </button>
+        {open ? <ImageLightbox alt={name} onClose={() => setOpen(false)} src={image.image} /> : null}
+      </>
     )
   }
   const fileName = attachment.content?.find((part) => part.type === 'file')?.filename || attachment.name

@@ -4,6 +4,8 @@ export function bannerSpans(texts: readonly string[], columns: number): number[]
   const last = texts.reduce((index, value, at) => (value.trim() ? at : index), -1)
   if (last < 0 || last >= columns - 1 || last > 2) return null
   if (texts.slice(0, last + 1).some((value) => !value.trim())) return null
+  // A quantity stays in its column. Empty cells after it are still columns.
+  if (texts.some((value) => /^\d+(?:[.,]\d+)?$/.test(value.trim()))) return null
   return Array.from({ length: last + 1 }, (_, index) => (index === last ? columns - last : 1))
 }
 

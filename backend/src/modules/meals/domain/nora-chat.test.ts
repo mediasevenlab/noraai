@@ -3,10 +3,13 @@ import { describe, expect, test } from 'bun:test'
 import { MealsFailure } from './errors'
 import {
   answerNeedsVisionReading,
+  turnForVision,
   buildNoraChatRequest,
   followUpLines,
   followUpSubject,
   formatWebSearchFindings,
+  calmVisionReading,
+  seatVisionReading,
   noteVisionForText,
   photoLookupQuery,
   readWebSearchCalls,
@@ -114,6 +117,82 @@ describe('Nora settings chat', () => {
     const photo = buildNoraChatRequest(turns, models)
     expect(photo.model).toBe('qwen2.5vl:3b')
     expect(photo.tools).toBe(false)
+  })
+
+  test('a repeated button in a vision reading is kept once', () => {
+    const text = calmVisionReading('Диспетчер | Рейс | Назначить | Назначить | Назначить | Назначить')
+    expect(text).toBe('Диспетчер | Рейс | Назначить')
+  })
+
+  test('the same time in two columns stays in both', () => {
+    const text = calmVisionReading('02.11 09:05 | 02.11 08:41 | 02.11 08:41 | 51 | — | — | — | Назначить')
+    expect(text).toBe('02.11 09:05 | 02.11 08:41 | 02.11 08:41 | 51 | — | — | — | Назначить')
+  })
+
+  test('an icon cell stays empty at the start of the row', () => {
+    const text = calmVisionReading('| пусто | 5202 | 73412 | —:— | пусто | пусто | Назначить |')
+    const cells = text.replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim())
+    expect(cells).toEqual(['', '5202', '73412', '—:—', '', '', 'Назначить'])
+  })
+
+  test('empty columns named by the vision model go back to their places', () => {
+    const text = seatVisionReading(
+      [
+        'Диспетчер',
+        'ШАПКА: Рейс | № рейса | № борта | Выезд | А/Л | Экспедитор | Отчет',
+        'ПУСТО: Рейс | А/Л | Экспедитор',
+        'СТРОКА: 5202 | 73412 | —:— | Назначить',
+      ].join('\n'),
+    )
+    expect(text).toContain('| Рейс | № рейса | № борта | Выезд | А/Л | Экспедитор | Отчет |')
+    const row = text.split('\n').find((line) => line.includes('5202')) ?? ''
+    const cells = row.replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim())
+    expect(cells).toEqual(['', '5202', '73412', '—:—', '', '', 'Назначить'])
+    expect(text).not.toContain('ШАПКА')
+  })
+
+  test('an icon column the model skipped comes back empty and filler dashes do not fill the blank columns', () => {
+    const text = seatVisionReading(
+      [
+        'ШАПКА: Рейс | № рейса | Ст. | Выезд | А/Л | Экспедитор | Отчет',
+        'СТРОКА: 5202 | 51 | — | — | — | Назначить',
+      ].join('\n'),
+    )
+    const row = text.split('\n').find((line) => line.includes('5202')) ?? ''
+    const cells = row.replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim())
+    expect(cells).toEqual(['', '5202', '51', '—', '', '', 'Назначить'])
+  })
+  test('a blank word in a full row stays an empty cell', () => {
+    const text = seatVisionReading('ШАПКА: Рейс | № рейса | Отчет\nСТРОКА: пусто | 5202 | Назначить')
+    const row = text.split('\n').find((line) => line.includes('5202')) ?? ''
+    const cells = row.replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim())
+    expect(cells).toEqual(['', '5202', 'Назначить'])
+  })
+  test('a row that does not match the header is left as the model wrote it', () => {
+    const raw = 'ШАПКА: Рейс | № | Отчет\nПУСТО: Рейс\nСТРОКА: 5202'
+    expect(seatVisionReading(raw)).toBe(raw)
+  })
+
+  test('a screen table is one table and an icon stays an empty cell', () => {
+    const request = buildNoraChatRequest(
+      noteVisionForText([user('Построй таблицу по этому изображению.', [{ base64: 'abc' }])], 'Рейс | №\n | 5202'),
+      { ...models, search: false },
+    )
+    const system = String(request.messages[0]?.content)
+    expect(system).toContain('одна таблица на все столбцы')
+    expect(system).toContain('не сдвигай строку влево')
+    expect(system).toContain('Одинаковое время в соседних столбцах')
+  })
+
+  test('a question about the picture just sent is read from that picture', () => {
+    const thread = [
+      user('Построй таблицу по этому изображению.', [{ base64: 'abc' }]),
+      { role: 'assistant' as const, text: 'Вот таблица.' },
+      user('что на этом изображении?'),
+    ]
+    expect(answerNeedsVisionReading(thread, models)).toBe(true)
+    expect(turnForVision(thread)?.images?.[0]?.base64).toBe('abc')
+    expect(turnForVision(thread)?.text).toContain('изображении')
   })
 
   test('a later question after a photo uses the text model, and search can be turned off', () => {

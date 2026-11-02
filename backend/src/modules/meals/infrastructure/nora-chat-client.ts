@@ -13,15 +13,19 @@ import {
   followUpSubject,
   noteVisionForText,
   NORA_WEB_SEARCH_TOOL,
+  calmVisionReading,
+  seatVisionReading,
   photoLookupQuery,
   readWebSearchCalls,
+  turnForVision,
+  VISION_FRAGMENT_SYSTEM,
   webSearchQuery,
   type NoraChatTurn,
   type NoraWebSearchCall,
 } from '../domain/nora-chat'
 import { DOCUMENT_COMPARE_SYSTEM, documentComparePrompt } from '../domain/document-compare'
 import { SEARCH_UNAVAILABLE, searchOfficeWeb } from './nora-office'
-import { encodeJpeg } from './sharp-meal-image'
+import { chatVisionTiles } from './chat-image-tiles'
 
 type NoraEnv = Pick<
   AppEnv,
@@ -36,7 +40,6 @@ type ChatMessage = {
 }
 
 const REQUEST_TIMEOUT_MS = 240_000
-const VISION_EDGE = 448
 
 const REASONING_LIMIT = 20_000
 const TEXT_MAX_TOKENS = 1024
@@ -47,27 +50,12 @@ const VISION_MAX_TOKENS = 2048
 
 export type NoraChatEvent = { reasoning?: string; reply?: string; resetReply?: boolean; searched?: boolean }
 
-async function shrinkChatImage(image: { base64: string; mime?: string }) {
-  try {
-    const bytes = Buffer.from(image.base64, 'base64')
-    if (bytes.length === 0) return image
-    const jpeg = await encodeJpeg(bytes, { maxEdge: VISION_EDGE, quality: 72 })
-    return { base64: jpeg.toString('base64'), mime: 'image/jpeg' }
-  } catch {
-    return image
-  }
-}
-
 async function prepareTurns(messages: readonly NoraModelChatMessage[]): Promise<NoraChatTurn[]> {
-  return Promise.all(
-    messages.map(async (message) => ({
-      role: message.role,
-      text: message.text,
-      images: message.images
-        ? await Promise.all(message.images.map((image) => shrinkChatImage(image)))
-        : undefined,
-    })),
-  )
+  return messages.map((message) => ({
+    role: message.role,
+    text: message.text,
+    images: message.images,
+  }))
 }
 
 export async function completeNoraChat(
@@ -210,7 +198,7 @@ export async function* streamNoraChat(
       : meetingTranscript
         ? 3072
         : turns.at(-1)?.text.includes('Что видно на изображении:')
-          ? 2048
+          ? (turns.at(-1)!.text.length > 1800 ? 4096 : 2048)
           : TEXT_MAX_TOKENS
   let reply = ''
   for (let round = 0; round < 3; round += 1) {
@@ -445,25 +433,75 @@ async function collectReply(response: Response) {
   return reply
 }
 
-async function readVisionNote(env: NoraEnv, turns: readonly NoraChatTurn[], signal?: AbortSignal) {
+async function postVision(
+  env: NoraEnv,
+  messages: ChatMessage[],
+  predict: number,
+  signal?: AbortSignal,
+) {
   const baseUrl = env.LLM_BASE_URL?.replace(/\/$/, '')
   if (!baseUrl || !env.LLM_API_KEY) return ''
-  const glance = buildVisionGlance(turns, {
-    text: env.LLM_TEXT_MODEL,
-    vision: env.LLM_VISION_MODEL,
-  })
   const response = await postOllamaChat(baseUrl, env.LLM_API_KEY, {
-    model: glance.model,
-    messages: nativeVisionMessages(glance.messages),
+    model: env.LLM_VISION_MODEL,
+    messages: nativeVisionMessages(messages),
     stream: true,
     think: false,
-    options: {
-      num_ctx: VISION_NUM_CTX,
-      num_predict: 512,
-      temperature: 0.2,
-    },
+    options: { num_ctx: VISION_NUM_CTX, num_predict: predict, temperature: 0.2 },
   }, signal)
   return (await collectReply(response)).trim()
+}
+
+async function readVisionNote(env: NoraEnv, turns: readonly NoraChatTurn[], signal?: AbortSignal) {
+  const source = turnForVision(turns)
+  const images = source?.images?.filter((image) => image.base64.trim()) ?? []
+  const last = source
+  if (!last || images.length === 0) return ''
+  const notes: string[] = []
+  for (const image of images) {
+    let tiles: Buffer[]
+    try {
+      tiles = await chatVisionTiles(Buffer.from(image.base64, 'base64'))
+    } catch {
+      tiles = []
+    }
+    const frames = tiles.length > 0 ? tiles : [Buffer.from(image.base64, 'base64')]
+    if (frames.length === 1) {
+      const glance = buildVisionGlance(
+        [{ role: 'user', text: last.text, images: [{ base64: frames[0]!.toString('base64'), mime: 'image/jpeg' }] }],
+        { text: env.LLM_TEXT_MODEL, vision: env.LLM_VISION_MODEL },
+      )
+      const predict = /таблиц/i.test(last.text) ? 1024 : 512
+      notes.push(seatVisionReading(calmVisionReading(await postVision(env, glance.messages, predict, signal))))
+      continue
+    }
+    const parts: string[] = []
+    for (let index = 0; index < frames.length; index += 1) {
+      const ask = [
+        last.text.trim(),
+        `Фрагмент ${index + 1} из ${frames.length} одного длинного изображения. Строки идут сверху вниз, столбцы те же.`,
+      ]
+        .filter(Boolean)
+        .join('\n\n')
+      const part = await postVision(
+        env,
+        [
+          { role: 'system', content: VISION_FRAGMENT_SYSTEM },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: ask },
+              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${frames[index]!.toString('base64')}` } },
+            ],
+          },
+        ],
+        1024,
+        signal,
+      )
+      if (part && part !== 'пусто' && part !== 'не разобрать') parts.push(seatVisionReading(calmVisionReading(part)))
+    }
+    if (parts.length > 0) notes.push(parts.filter(Boolean).join('\n'))
+  }
+  return notes.filter(Boolean).join('\n\n')
 }
 
 function modelFailureText(status: number, raw: string) {

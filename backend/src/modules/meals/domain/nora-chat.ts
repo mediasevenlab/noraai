@@ -133,6 +133,132 @@ function userContent(text: string, images: NoraChatImage[]) {
 
 const VISION_NOTE = 'Что видно на изображении:'
 
+export const VISION_GLANCE_SYSTEM =
+  'Ты разбираешь изображение для другого ответа. Первой строкой напиши короткое название того, что на снимке. Если это еда — название блюда, а если точное имя неясно — ближайшее похожее блюдо. Дальше двумя-тремя предложениями опиши, что видно. Если на снимке таблица или экран программы, напиши «ШАПКА:» и названия столбцов слева направо через « | ». Затем каждую видимую строку как «СТРОКА:» с тем же числом ячеек, по порядку. Ячейку, где только значок, картинка или пустое место, пиши словом пусто. Не пропускай её и не ставь вместо неё прочерк. Прочерк копируй только если он нарисован в ячейке, и копируй его целиком, например «—:—». Одинаковое время в соседних столбцах повтори. Кнопку напиши один раз. Если спрашивают калорийность или КБЖУ, добавь оценку порции и числа. Не ищи в интернете.'
+
+const BLANK_CELL = /^(пусто|·)$/i
+const NO_BLANK_COLUMN = /^(нет|нету|—|-|пусто)$/i
+
+function pipeCells(line: string) {
+  const trimmed = line.trim()
+  const fenced = trimmed.startsWith('|')
+  let cells = trimmed.split('|').map((cell) => cell.trim())
+  if (fenced) cells = cells.slice(1)
+  if (trimmed.endsWith('|') && cells.length > 0) cells = cells.slice(0, -1)
+  return cells
+}
+
+function labeledLine(line: string) {
+  return /^(шапка|пусто|строка)\s*:/i.test(line.trim())
+}
+
+/** Drops a button or word the vision model printed dozens of times in a row. Keeps an empty cell. */
+export function calmVisionReading(text: string) {
+  return text
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.trim()
+      if (!trimmed.includes('|')) return trimmed
+      const labeled = labeledLine(trimmed)
+      const fenced = trimmed.startsWith('|')
+      const kept: string[] = []
+      let previous = ''
+      let run = 0
+      for (const raw of pipeCells(trimmed)) {
+        const cell = !labeled && BLANK_CELL.test(raw) ? '' : raw
+        if (cell && cell === previous && /\p{L}/u.test(cell) && !/\d/.test(cell)) {
+          run += 1
+          if (run <= 1) kept.push(cell)
+          continue
+        }
+        previous = cell
+        run = cell ? 1 : 0
+        kept.push(cell)
+      }
+      const body = kept.join(' | ').replace(/\s+\|\s+/g, ' | ').trim()
+      return fenced ? `| ${body} |` : body
+    })
+    .filter(Boolean)
+    .join('\n')
+    .trim()
+}
+
+function softenFillerDashes(cells: string[]) {
+  const next = [...cells]
+  let index = 0
+  while (index < next.length) {
+    const cell = next[index] ?? ''
+    if (!/^[-—–]+$/.test(cell)) {
+      index += 1
+      continue
+    }
+    let end = index + 1
+    while (end < next.length && next[end] === cell) end += 1
+    if (end - index > 1) {
+      for (let cursor = index + 1; cursor < end; cursor += 1) next[cursor] = ''
+    }
+    index = end
+  }
+  return next
+}
+
+function namedCells(line: string) {
+  return pipeCells(line)
+    .map((cell) => cell.trim())
+    .filter((cell) => cell && !NO_BLANK_COLUMN.test(cell))
+}
+
+/**
+ * A screen table names its empty columns, then the filled cells in order.
+ * Those empty columns go back where they were, so an icon does not pull the row left.
+ */
+export function seatVisionReading(text: string) {
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+  const headerAt = lines.findIndex((line) => /^шапка\s*:/i.test(line))
+  if (headerAt < 0) return text.trim()
+  const headers = namedCells(lines[headerAt]!.replace(/^шапка\s*:/i, ''))
+  if (headers.length < 2) return text.trim()
+  const blankLine = lines.find((line) => /^пусто\s*:/i.test(line))
+  const blanks = new Set(blankLine ? namedCells(blankLine.replace(/^пусто\s*:/i, '')).map((cell) => cell.toLowerCase()) : [])
+  const rows = lines
+    .filter((line) => /^строка\s*:/i.test(line))
+    .map((line) => pipeCells(line.replace(/^строка\s*:/i, '')).map((cell) => cell.trim()))
+  if (rows.length === 0) return text.trim()
+  const written = rows.map((row) => row.map((cell) => (BLANK_CELL.test(cell) ? '' : cell)))
+  let aligned = written
+  const missingIcon =
+    written.every((row) => row.length === headers.length - 1) && written.every((row) => /\d/.test(row[0] ?? ''))
+  if (missingIcon) aligned = written.map((row) => softenFillerDashes(['', ...row]))
+  const head = `| ${headers.join(' | ')} |`
+  const rule = `| ${headers.map(() => '---').join(' | ')} |`
+  const before = lines
+    .slice(0, headerAt)
+    .filter((line) => !/^пусто\s*:/i.test(line) && !/^строка\s*:/i.test(line))
+  const paint = (cells: string[]) => `| ${cells.join(' | ')} |`.replace(/\s+\|\s+/g, ' | ').replace(/\| \|/g, '|  |')
+  if (aligned.every((row) => row.length === headers.length)) {
+    return [...before, head, rule, ...aligned.map(paint)].join('\n').trim()
+  }
+  if ([...blanks].some((name) => !headers.some((header) => header.toLowerCase() === name))) return text.trim()
+  const compact = rows.map((row) => row.filter((cell) => cell && !BLANK_CELL.test(cell)))
+  const holes = headers.filter((header) => blanks.has(header.toLowerCase())).length
+  if (compact.some((row) => row.length + holes !== headers.length)) return text.trim()
+  const seated = compact.map((row) => {
+    const cells: string[] = []
+    let cursor = 0
+    for (const header of headers) {
+      cells.push(blanks.has(header.toLowerCase()) ? '' : (row[cursor++] ?? ''))
+    }
+    return paint(cells)
+  })
+  return [...before, head, rule, ...seated].join('\n').trim()
+}
+
+export const VISION_FRAGMENT_SYSTEM =
+  'Ты переписываешь один фрагмент длинного изображения. Фрагменты идут сверху вниз и это одна таблица. Если видна шапка, напиши «ШАПКА:» и названия столбцов через « | ». Каждую строку пиши как «СТРОКА:» с тем же числом ячеек. Ячейку, где только значок или пустое место, пиши словом пусто. Не пропускай её и не ставь вместо неё прочерк. Прочерк копируй только если он нарисован, целиком, например «—:—». Одинаковое время повтори. Кнопку напиши один раз. Не описывай цвета и рамки. Если текст нечитаем, ответь «не разобрать». Если текста нет, ответь «пусто».'
+
 const APP_OFFER = /настро(ить|им|йки)|профил|возможност|раздел приложения|баз[аеуы] знан/i
 const ASSISTANT_OFFER = /^(хочешь|давай|попробуем|могу |я помогу|расскажу)/i
 const INTERVIEW =
@@ -184,15 +310,34 @@ export function photoLookupQuery(userAsk: string, visionNote: string) {
   return (wantsRecipe ? `${subject} рецепт` : subject).slice(0, 300)
 }
 
+const ABOUT_IMAGE = /изображен|снимок|снимк|фото|картин|на этом|на фото|что на/i
+
+/** The picture to read: the one just sent, or the latest one when the question is about it. */
+export function turnForVision(turns: readonly NoraChatTurn[]): NoraChatTurn | null {
+  const last = turns.at(-1)
+  if (!last || last.role !== 'user') return null
+  if (turnImages(last).length > 0) return last
+  if (!ABOUT_IMAGE.test(last.text)) return null
+  for (let index = turns.length - 2; index >= 0; index -= 1) {
+    const turn = turns[index]
+    if (turn?.role === 'user' && turnImages(turn).length > 0) {
+      return { role: 'user', text: last.text, images: turn.images }
+    }
+  }
+  return null
+}
+
 /** A photo together with a question, a file, or search is read first, then answered as text. */
 export function answerNeedsVisionReading(
   turns: readonly NoraChatTurn[],
   models: NoraChatModels,
   knowledge?: string,
 ) {
+  const source = turnForVision(turns)
   const last = turns.at(-1)
-  if (!last || last.role !== 'user' || turnImages(last).length === 0) return false
-  return Boolean(last.text.trim() || models.search || knowledge?.trim())
+  if (!source || !last || last.role !== 'user') return false
+  if (turnImages(last).length > 0 && !last.text.trim() && !models.search && !knowledge?.trim()) return false
+  return true
 }
 
 /** The vision model only describes the latest photo. The text model writes the reply. */
@@ -207,8 +352,7 @@ export function buildVisionGlance(turns: readonly NoraChatTurn[], models: NoraCh
     messages: [
       {
         role: 'system' as const,
-        content:
-          'Ты разбираешь изображение для другого ответа. Первой строкой напиши короткое название того, что на снимке. Если это еда — название блюда, а если точное имя неясно — ближайшее похожее блюдо. Дальше двумя-тремя предложениями опиши, что видно. Если спрашивают калорийность или КБЖУ, добавь оценку порции и числа. Не ищи в интернете.',
+        content: VISION_GLANCE_SYSTEM,
       },
       { role: 'user' as const, content: userContent(last.text.trim(), images) },
     ],
@@ -256,8 +400,8 @@ export function buildNoraChatRequest(
     ? ' Если на фото еда и спрашивают калорийность или КБЖУ, оцени по снимку блюдо, примерную порцию и числа: калории, белки, жиры, углеводы. Напиши, что это оценка по фото. Не отказывайся из-за того, что порцию нельзя взвесить. Такая оценка не требует страницы из сети.'
     : glance
       ? internet
-        ? ' В последнем сообщении блок «Что видно на изображении» — разбор снимка другой моделью. Сначала напиши, что на фото, по этому блоку. Потом дай рецепт или страницы из результатов поиска и назови ссылку. Если точное блюдо неясно, возьми похожее и так и скажи. Не представляйся. Не пиши, что не видишь изображение, и не предлагай другие сервисы распознавания.'
-        : ' В последнем сообщении блок «Что видно на изображении» — разбор снимка. Ответь на вопрос по этому разбору. Не пиши, что не видишь изображение. Если на снимке еда и спрашивают калорийность или КБЖУ, оцени порцию и числа и напиши, что это оценка по фото.'
+        ? ' В последнем сообщении блок «Что видно на изображении» — разбор снимка другой моделью. Сначала напиши, что на фото, по этому блоку. Потом дай рецепт или страницы из результатов поиска и назови ссылку. Если точное блюдо неясно, возьми похожее и так и скажи. Не представляйся. Не предлагай другие сервисы распознавания. Таблицу строй только из строк этого блока. Если конкретных ячеек в блоке нет, не выдумывай столбцы и пустые строки. Одна шапка на экране — одна таблица на все столбцы: не дели её на две и не выноси правые столбцы отдельно. Значок без букв оставь пустой ячейкой и не сдвигай строку влево. Одинаковое время в соседних столбцах оставь в обоих. Пустая ячейка остаётся на своём месте: не собирай пустые ячейки в конце строки и не заполняй их прочерком.'
+        : ' В последнем сообщении блок «Что видно на изображении» — единственный источник того, что на снимке. Ответь по нему словами. Таблицу Markdown строй только если в блоке уже есть строки с ячейками: те же названия столбцов и те же значения. Если строк с числами и кодами нет, не придумывай столбцы вроде цены или статуса и не рисуй пустые строки: перескажи, что разобрано, и прямо скажи, что отдельные строки таблицы с экрана не прочитались. Одна шапка на экране — одна таблица на все столбцы: не дели её на две и не выноси правые столбцы отдельно. Значок без букв оставь пустой ячейкой и не сдвигай строку влево. Одинаковое время в соседних столбцах оставь в обоих. Пустая ячейка остаётся на своём месте: не собирай пустые ячейки в конце строки и не заполняй их прочерком. Если на снимке еда и спрашивают калорийность или КБЖУ, оцени порцию и числа и напиши, что это оценка по фото.'
       : ''
   const meetingOnly = knowledgeText.startsWith('Расшифровки выбранных встреч.')
   const meetingRules = internet

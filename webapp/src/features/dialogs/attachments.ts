@@ -1,6 +1,6 @@
 import type { AttachmentAdapter, PendingAttachment } from '@assistant-ui/react'
 
-import { CHAT_FILE_ACCEPT, fileToMealImage, isChatDocumentFile } from './composer/meal-image-pick'
+import { CHAT_FILE_ACCEPT, CHAT_IMAGE_MAX_EDGE, CHAT_IMAGE_TARGET_BYTES, fileToMealImage, isChatDocumentFile } from './composer/meal-image-pick'
 
 const DOCUMENT_BYTES = 20 * 1024 * 1024
 
@@ -40,7 +40,7 @@ export class NoraImageAttachmentAdapter implements AttachmentAdapter {
         content: [{ type: 'file', data, mimeType: file.type || 'application/octet-stream', filename: file.name }],
       }
     }
-    const image = await fileToMealImage(file)
+    const image = await fileToMealImage(file, { maxEdge: CHAT_IMAGE_MAX_EDGE, targetBytes: CHAT_IMAGE_TARGET_BYTES })
     const id = crypto.randomUUID()
     return {
       id,

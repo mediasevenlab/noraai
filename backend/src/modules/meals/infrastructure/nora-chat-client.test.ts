@@ -163,6 +163,45 @@ describe('Nora settings chat request', () => {
     expect(JSON.stringify(answer.messages)).toContain('Это яблоко.')
   })
 
+  test('a tall screenshot is read in bands and the bands reach the answer', async () => {
+    const page = await sharp({
+      create: { width: 200, height: 3000, channels: 3, background: { r: 250, g: 250, b: 250 } },
+    })
+      .png()
+      .toBuffer()
+    const original = globalThis.fetch
+    const bodies: string[] = []
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      bodies.push(String(init?.body ?? ''))
+      const vision = bodies.length === 1
+      return new Response(
+        `${JSON.stringify({
+          message: { role: 'assistant', content: vision ? 'Колонка | 1' : 'Таблица готова.' },
+          done: true,
+        })}\n`,
+        { status: 200 },
+      )
+    }) as typeof fetch
+    try {
+      const result = await completeNoraChat(env, [
+        { role: 'user', text: 'Построй таблицу по этому изображению.', images: [{ base64: page.toString('base64'), mime: 'image/png' }] },
+      ])
+      expect(result.reply).toBe('Таблица готова.')
+    } finally {
+      globalThis.fetch = original
+    }
+    expect(bodies.length).toBeGreaterThan(2)
+    const first = JSON.parse(bodies[0] ?? '{}') as { messages: Array<{ content?: string; images?: string[] }> }
+    expect(String(first.messages[0]?.content)).toContain('фрагмент')
+    expect(first.messages[1]?.images).toHaveLength(1)
+    const sent = Buffer.from(first.messages[1]?.images?.[0] ?? '', 'base64')
+    const meta = await sharp(sent).metadata()
+    expect(meta.width).toBe(200)
+    expect(meta.height ?? 0).toBeGreaterThan(400)
+    const answer = JSON.parse(bodies.at(-1) ?? '{}') as { messages: Array<{ content?: string }> }
+    expect(JSON.stringify(answer.messages)).toContain('Колонка | 1')
+  })
+
   test('reasoning on a photo still uses the vision window and does not ask the vision model to think', async () => {
     const photo = await sharp({
       create: { width: 32, height: 32, channels: 3, background: { r: 200, g: 40, b: 20 } },

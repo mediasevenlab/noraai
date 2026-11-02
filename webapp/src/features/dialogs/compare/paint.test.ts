@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 
 import { compareDocumentTexts } from './diff'
-import { locateMarks, pieceAppearance, withBreaks } from './paint'
+import { locateMarks, pageTextParts, pieceAppearance, piecesForPage, withBreaks } from './paint'
 
 test('a replacement is marked on the page, after the letterhead', () => {
   const haystack = 'Колонтитул SMART CONTROL\nПёс сидел на окне дома'
@@ -59,6 +59,43 @@ test('a deleted line is written into the gap in the same type', () => {
   const haystack = 'Первая\nТретья'
   const marks = locateMarks(haystack, compareDocumentTexts('Первая\nВторая\nТретья', 'Первая\nТретья'))
   expect(marks).toEqual([{ type: 'insert', at: haystack.indexOf('Третья'), text: 'Вторая ' }])
+})
+
+test('a page keeps its own replacement and not a deletion from another page', () => {
+  const lines = Array.from({ length: 30 }, (_, index) => `Абзац ${index} остаётся на месте.`)
+  const left = ['Удалить этот абзац целиком.', ...lines, 'Старая формулировка пункта.']
+  const right = [...lines, 'Новая формулировка пункта.']
+  const pieces = compareDocumentTexts(left.join('\n'), right.join('\n'))
+  const page = right.slice(12, 18).join('\n')
+  const slice = piecesForPage(page, pieces)
+  expect(slice.some((piece) => piece.text.includes('Удалить'))).toBe(false)
+  expect(slice.some((piece) => piece.text.includes('Новая формулировка'))).toBe(false)
+  expect(slice.some((piece) => piece.kind === 'same' && piece.text.includes('Абзац 14'))).toBe(true)
+  const changedPage = piecesForPage(right.slice(-2).join('\n'), pieces)
+  expect(changedPage.some((piece) => piece.kind === 'changed' && piece.text.includes('Новая'))).toBe(true)
+  expect(changedPage.some((piece) => piece.text.includes('Удалить'))).toBe(false)
+})
+
+test('a word split across two runs still matches the extracted line', () => {
+  const parts = pageTextParts([
+    { text: 'Краткое р', paragraph: 1 },
+    { text: 'езюме', paragraph: 1 },
+    { text: 'Завод №1 входит в новый контур.', paragraph: 2 },
+  ])
+  const stream = withBreaks(parts)
+  expect(stream.text.startsWith('Краткое резюме')).toBe(true)
+  const slice = piecesForPage(stream.text, compareDocumentTexts(
+    'Краткое резюме\nЗавод №1 входит в старый контур.',
+    'Краткое резюме\nЗавод №1 входит в новый контур.',
+  ))
+  expect(slice.some((piece) => piece.kind === 'changed' && piece.text.includes('новый'))).toBe(true)
+})
+
+test('a one-letter word between anchors still finds the replacement', () => {
+  const left = 'Завод №1 входит в старый контур и выпускает продукты на линию.'
+  const right = 'Завод №1 входит в новый контур и выпускает продукты на линию.'
+  const slice = piecesForPage(right, compareDocumentTexts(left, right))
+  expect(slice.some((piece) => piece.kind === 'changed' && piece.text.includes('новый'))).toBe(true)
 })
 
 test('turning a correction off drops a deletion and keeps the new words plain', () => {

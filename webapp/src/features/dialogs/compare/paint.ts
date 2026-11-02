@@ -46,6 +46,76 @@ function core(haystack: string, start: number, end: number) {
  * Colors words on the right-hand page.
  * Removed words are written at the gap, in the same type, with a strike.
  */
+type RightSpan = { start: number; end: number; index: number }
+
+function rightMap(pieces: readonly DiffPiece[]) {
+  let text = ''
+  const spans: RightSpan[] = []
+  for (let index = 0; index < pieces.length; index += 1) {
+    const piece = pieces[index]!
+    if (piece.kind === 'removed') {
+      spans.push({ start: text.length, end: text.length, index })
+      continue
+    }
+    const start = text.length
+    text += piece.text
+    spans.push({ start, end: text.length, index })
+  }
+  return { text, spans }
+}
+
+/**
+ * The part of the comparison that this page shows.
+ * A deletion from another page stays there: the page is matched by its first and last words.
+ */
+export function piecesForPage(pageText: string, pieces: readonly DiffPiece[]) {
+  const mapped = rightMap(pieces)
+  // Keep short words. Dropping "в" makes the words on either side look adjacent, and the page no longer matches.
+  const words = wordsOfNeedle(pageText)
+  if (words.length === 0 || !mapped.text) return []
+  const head = words.slice(0, Math.min(12, words.length)).join(' ')
+  const tail = words.slice(-Math.min(8, words.length)).join(' ')
+  let from = 0
+  let start = 0
+  let end = 0
+  let placed = false
+  while (from < mapped.text.length) {
+    const headAt = findFlexible(mapped.text, head, from)
+    if (!headAt) break
+    const horizon = Math.min(mapped.text.length, headAt.start + pageText.length * 4 + 800)
+    let tailAt: { start: number; end: number } | null = null
+    let cursor = headAt.start
+    while (cursor < horizon) {
+      const found = findFlexible(mapped.text, tail, cursor)
+      if (!found || found.start > horizon) break
+      tailAt = found
+      cursor = found.end > cursor ? found.end : cursor + 1
+    }
+    if (tailAt) {
+      start = headAt.start
+      end = Math.max(tailAt.end, headAt.end)
+      placed = true
+      break
+    }
+    from = headAt.end > from ? headAt.end : from + 1
+  }
+  if (!placed) return []
+  const slice: DiffPiece[] = []
+  for (const span of mapped.spans) {
+    const piece = pieces[span.index]!
+    if (piece.kind === 'removed') {
+      if (span.start >= start && span.start < end) slice.push(piece)
+      continue
+    }
+    if (span.end <= start || span.start >= end) continue
+    const from = Math.max(0, start - span.start)
+    const to = Math.min(piece.text.length, end - span.start)
+    const text = piece.text.slice(from, to)
+    if (text) slice.push({ kind: piece.kind, text })
+  }
+  return slice
+}
+
 export function locateMarks(haystack: string, pieces: readonly DiffPiece[]): CompareMark[] {
   const marks: CompareMark[] = []
   let cursor = 0
@@ -137,35 +207,10 @@ export function applyMarkVisibility(root: HTMLElement, shown: ShownMarks) {
     const kind = node.dataset.diff === 'added' ? 'added' : 'changed'
     paintTone(node, kind, kind === 'added' ? shown.added : shown.changed)
   })
-  const blocks = [...root.querySelectorAll('[data-diff="removed"]')].filter((node): node is HTMLElement => {
-    return node instanceof HTMLElement && node.style.position === 'absolute'
-  })
-  for (const block of blocks) {
-    const parent = block.parentElement
-    if (!parent) continue
-    const hidden = block.dataset.noraHidden === '1'
-    if (!shown.removed && !hidden) {
-      const extra = block.offsetHeight
-      block.dataset.noraSpan = String(extra)
-      block.dataset.noraHidden = '1'
-      block.style.setProperty('display', 'none', 'important')
-      shiftBelow(parent, paragraphTop(block) - 1, -extra, block)
-    } else if (shown.removed && hidden) {
-      const extra = Number(block.dataset.noraSpan) || 0
-      block.style.removeProperty('display')
-      delete block.dataset.noraHidden
-      shiftBelow(parent, paragraphTop(block) - 1, extra, block)
-    }
-  }
   root.querySelectorAll('[data-diff="removed"]').forEach((node) => {
-    if (!(node instanceof HTMLElement) || node.style.position === 'absolute') return
-    if (!shown.removed) {
-      node.dataset.noraFold = '1'
-      node.style.setProperty('display', 'none', 'important')
-    } else if (node.dataset.noraFold === '1') {
-      delete node.dataset.noraFold
-      node.style.removeProperty('display')
-    }
+    if (!(node instanceof HTMLElement)) return
+    if (!shown.removed) node.style.setProperty('display', 'none', 'important')
+    else node.style.removeProperty('display')
   })
 }
 
@@ -218,6 +263,152 @@ function growPage(page: HTMLElement, content: HTMLElement) {
   page.style.overflow = 'visible'
 }
 
+function rememberBox(el: HTMLElement) {
+  if (el.dataset.noraBox !== undefined) return
+  el.dataset.noraBox = el.style.height
+  el.dataset.noraTop = el.style.top
+}
+
+function restoreBox(el: HTMLElement) {
+  if (el.dataset.noraBox === undefined) return
+  el.style.height = el.dataset.noraBox
+  if (el.dataset.noraTop) el.style.top = el.dataset.noraTop
+}
+
+/** A struck word wraps onto the next line. The line's own height has to follow, or it paints over the line below. */
+function releaseLine(line: HTMLElement) {
+  if (line.dataset.noraLine === undefined) line.dataset.noraLine = line.style.height
+  else line.style.height = line.dataset.noraLine
+  const visible = [...line.querySelectorAll('[data-diff="removed"]')].some((node) => node instanceof HTMLElement && getComputedStyle(node).display !== 'none')
+  if (!visible) {
+    line.style.removeProperty('white-space')
+    line.style.removeProperty('overflow')
+    line.style.removeProperty('max-width')
+    return
+  }
+  line.style.setProperty('height', 'auto', 'important')
+  line.style.setProperty('white-space', 'pre-wrap', 'important')
+  line.style.setProperty('overflow', 'visible', 'important')
+  line.style.maxWidth = '100%'
+}
+
+/** How far the real text hangs out of the box Folio measured before the deletion was inserted. */
+function stickOut(el: HTMLElement) {
+  const base = Number.parseFloat(el.dataset.noraBox ?? '')
+  const box = Number.isFinite(base) ? base : el.getBoundingClientRect().height
+  const top = el.getBoundingClientRect().top
+  let bottom = top + box
+  el.querySelectorAll('.layout-line, [data-diff="removed"]').forEach((node) => {
+    if (!(node instanceof HTMLElement) || getComputedStyle(node).display === 'none') return
+    bottom = Math.max(bottom, node.getBoundingClientRect().bottom)
+  })
+  const overflow = Math.ceil(bottom - top - box)
+  return overflow > 0 ? overflow + 4 : 0
+}
+
+function fitTable(table: HTMLElement) {
+  const rows = [...table.children].filter((node): node is HTMLElement => node instanceof HTMLElement && node.classList.contains('layout-table-row'))
+  rows.sort((left, right) => paragraphTop(left) - paragraphTop(right))
+  let extra = 0
+  for (const row of rows) {
+    rememberBox(row)
+    restoreBox(row)
+    const baseTop = Number.parseFloat(row.dataset.noraTop ?? '') || 0
+    row.style.top = `${baseTop + extra}px`
+    row.querySelectorAll('.layout-line').forEach((line) => {
+      if (line instanceof HTMLElement) releaseLine(line)
+    })
+    row.querySelectorAll('[data-nora-insert="1"]').forEach((block) => {
+      if (!(block instanceof HTMLElement) || !block.parentElement) return
+      const push = getComputedStyle(block).display === 'none' ? 0 : block.offsetHeight
+      block.parentElement.querySelectorAll(':scope > .layout-paragraph').forEach((para) => {
+        if (para instanceof HTMLElement) para.style.marginTop = push > 0 ? `${push}px` : ''
+      })
+    })
+    const grow = stickOut(row)
+    if (grow > 0) {
+      const base = Number.parseFloat(row.dataset.noraBox ?? '') || row.offsetHeight
+      const height = `${base + grow}px`
+      row.style.height = height
+      row.querySelectorAll(':scope > .layout-table-cell').forEach((cell) => {
+        if (!(cell instanceof HTMLElement)) return
+        cell.style.height = height
+        cell.style.overflow = 'visible'
+        const content = cell.querySelector(':scope > .layout-table-cell-content')
+        if (content instanceof HTMLElement) content.style.height = height
+      })
+    }
+    extra += grow
+  }
+  return extra
+}
+
+/** The page footer keeps its own top. Grown text would otherwise run through it, so the footer drops below the text. */
+function placeFooter(page: HTMLElement, content: HTMLElement) {
+  const footer = page.querySelector(':scope > .layout-page-footer')
+  if (!(footer instanceof HTMLElement)) return
+  if (footer.dataset.noraFoot === undefined) footer.dataset.noraFoot = footer.style.top
+  const home = Number.parseFloat(footer.dataset.noraFoot || '')
+  const contentTop = Number.parseFloat(content.style.top) || 0
+  let bottom = contentTop
+  for (const child of content.children) {
+    if (!(child instanceof HTMLElement) || getComputedStyle(child).display === 'none') continue
+    bottom = Math.max(bottom, contentTop + paragraphTop(child) + child.offsetHeight)
+  }
+  const needed = bottom + 28
+  footer.style.top = `${Math.max(Number.isFinite(home) ? home : needed, needed)}px`
+  const pageBottom = paragraphTop(footer) + footer.offsetHeight + 24
+  const pageHeight = Number.parseFloat(page.style.height) || page.offsetHeight
+  if (pageBottom <= pageHeight) return
+  page.style.height = `${pageBottom}px`
+  page.style.minHeight = `${pageBottom}px`
+  page.style.overflow = 'visible'
+}
+
+/**
+ * Folio pins every paragraph and table row to a fixed top.
+ * Deleted text is extra, so the box has to grow and everything below has to move by the same amount.
+ */
+export function settleLayout(content: HTMLElement) {
+  const blocks = [...content.children].filter((node): node is HTMLElement => node instanceof HTMLElement && Boolean(node.style.top))
+  blocks.sort((left, right) => paragraphTop(left) - paragraphTop(right) || (left.dataset.noraInsert === '1' ? -1 : right.dataset.noraInsert === '1' ? 1 : 0))
+  let extra = 0
+  for (const block of blocks) {
+    rememberBox(block)
+    if (block.dataset.noraInsert === '1') {
+      const baseTop = Number.parseFloat(block.dataset.noraTop ?? '') || 0
+      block.style.top = `${baseTop + extra}px`
+      extra += getComputedStyle(block).display === 'none' ? 0 : Math.ceil(block.offsetHeight)
+      continue
+    }
+    restoreBox(block)
+    const baseTop = Number.parseFloat(block.dataset.noraTop ?? '') || 0
+    if (extra > 0) block.style.top = `${baseTop + extra}px`
+    let grow = 0
+    if (block.classList.contains('layout-table')) {
+      grow = fitTable(block)
+      if (grow > 0) {
+        const base = Number.parseFloat(block.dataset.noraBox ?? '') || block.offsetHeight
+        block.style.height = `${base + grow}px`
+      }
+    } else if (block.classList.contains('layout-paragraph')) {
+      block.querySelectorAll('.layout-line').forEach((line) => {
+        if (line instanceof HTMLElement) releaseLine(line)
+      })
+      grow = stickOut(block)
+      if (grow > 0) {
+        const base = Number.parseFloat(block.dataset.noraBox ?? '') || block.offsetHeight
+        block.style.height = `${base + grow}px`
+      }
+    }
+    extra += grow
+  }
+  const page = content.closest('.layout-page')
+  if (!(page instanceof HTMLElement)) return
+  if (extra > 0) growPage(page, content)
+  placeFooter(page, content)
+}
+
 function placeInline(target: Text, text: string, where: 'before' | 'after' = 'before') {
   const span = paintSpan('removed')
   span.textContent = /\s$/.test(text) ? text : `${text} `
@@ -225,33 +416,6 @@ function placeInline(target: Text, text: string, where: 'before' | 'after' = 'be
   const anchor: ChildNode = parentDiff ?? target
   if (where === 'after') anchor.after(span)
   else anchor.before(span)
-  const line = target.parentElement?.closest('.layout-line')
-  if (line instanceof HTMLElement) openLine(line)
-}
-
-function shiftBelow(parent: HTMLElement, origin: number, extra: number, exclude: HTMLElement) {
-  for (const item of parent.children) {
-    if (!(item instanceof HTMLElement) || item === exclude || !item.style.top) continue
-    if (paragraphTop(item) > origin + 0.5) item.style.top = `${paragraphTop(item) + extra}px`
-  }
-}
-
-/** A struck word stays in the sentence. Only the wrapped line grows, so the heading above it stays put. */
-function openLine(line: HTMLElement) {
-  line.style.setProperty('user-select', 'text', 'important')
-  line.style.setProperty('overflow', 'visible', 'important')
-  const before = line.getBoundingClientRect().height
-  line.style.setProperty('white-space', 'pre-wrap', 'important')
-  line.style.setProperty('height', 'auto', 'important')
-  line.style.maxWidth = '100%'
-  const extra = line.getBoundingClientRect().height - before
-  const paragraph = line.closest('.layout-paragraph')
-  if (!(paragraph instanceof HTMLElement) || !paragraph.parentElement || extra <= 1) return
-  const height = Number.parseFloat(paragraph.style.height)
-  paragraph.style.height = `${(Number.isFinite(height) ? height : paragraph.getBoundingClientRect().height) + extra}px`
-  shiftBelow(paragraph.parentElement, paragraphTop(paragraph), extra, paragraph)
-  const page = paragraph.closest('.layout-page')
-  if (page instanceof HTMLElement) growPage(page, paragraph.parentElement)
 }
 
 /** A deleted list keeps one line per item, the body font, and a bullet. A deleted word stays in the sentence. */
@@ -311,12 +475,8 @@ function placeRemoved(target: Text, text: string) {
     list.appendChild(row)
   }
   if (items.length > 0) block.appendChild(list)
+  block.dataset.noraInsert = '1'
   paragraph.parentElement.appendChild(block)
-  const extra = block.offsetHeight
-  const origin = paragraphTop(paragraph)
-  shiftBelow(paragraph.parentElement, origin - 1, extra, block)
-  const page = paragraph.closest('.layout-page')
-  if (page instanceof HTMLElement) growPage(page, paragraph.parentElement)
 }
 
 function insertRemoved(root: HTMLElement, at: number, text: string) {
@@ -401,22 +561,78 @@ function rawAt(map: readonly number[], index: number) {
   return map[cursor] ?? 0
 }
 
-export function paintPage(root: HTMLElement, pieces: readonly DiffPiece[]) {
-  const nodes = textNodes(root)
-  const stream = withBreaks(nodes.map((node) => node.data))
-  const marks = locateMarks(stream.text, pieces).map((mark) =>
+/** Folio splits a word across runs. Join runs of one paragraph before matching it to the extracted text. */
+export function pageTextParts(nodes: readonly { text: string; paragraph: number }[]) {
+  const parts: string[] = []
+  let bucket = ''
+  let paragraph: number | null = null
+  for (const node of nodes) {
+    if (paragraph === null) paragraph = node.paragraph
+    else if (node.paragraph !== paragraph) {
+      parts.push(bucket)
+      bucket = ''
+      paragraph = node.paragraph
+    }
+    bucket += node.text
+  }
+  if (bucket) parts.push(bucket)
+  return parts
+}
+
+function placedMarks(stream: { text: string; map: number[] }, pieces: readonly DiffPiece[]) {
+  return locateMarks(stream.text, pieces).map((mark) =>
     mark.type === 'insert'
       ? { ...mark, at: rawAt(stream.map, mark.at) }
       : { ...mark, start: rawAt(stream.map, mark.start), end: rawAt(stream.map, mark.end) },
   )
-  applyMarks(root, marks)
+}
+
+export function paintPage(root: HTMLElement, pieces: readonly DiffPiece[]) {
+  const stream = withBreaks(textNodes(root).map((node) => node.data))
+  applyMarks(root, placedMarks(stream, pieces))
   closeHeadingGaps(root)
+}
+
+/** Colors one Folio page from the comparison slice that page actually shows. */
+export function paintDocumentPage(content: HTMLElement, pieces: readonly DiffPiece[]) {
+  if (content.dataset.noraPainted === '1') return false
+  const nodes = textNodes(content)
+  let paragraphId = 0
+  const paragraphKey = new Map<Element, number>()
+  const described = nodes.map((node) => {
+    const paragraph = node.parentElement?.closest('.layout-paragraph') ?? null
+    let id = paragraph ? paragraphKey.get(paragraph) : undefined
+    if (id === undefined) {
+      id = paragraphId
+      paragraphId += 1
+      if (paragraph) paragraphKey.set(paragraph, id)
+    }
+    return { text: node.data, paragraph: id }
+  })
+  const stream = withBreaks(pageTextParts(described))
+  if (stream.text.trim().length < 12) return false
+  const slice = piecesForPage(stream.text, pieces)
+  content.dataset.noraPainted = '1'
+  if (slice.length === 0) {
+    content.dataset.noraLength = String(content.textContent?.length ?? 0)
+    return false
+  }
+  applyMarks(content, placedMarks(stream, slice))
+  content.dataset.noraFlow = '1'
+  if (content.dataset.noraGaps !== '1') {
+    content.dataset.noraGaps = '1'
+    closeHeadingGaps(content)
+  }
+  content.dataset.noraLength = String(content.textContent?.length ?? 0)
+  return content.querySelector('[data-diff="removed"]') instanceof HTMLElement
 }
 
 /** Empty paragraphs under a section heading are spacing from the file. Pull the next text up to the heading. */
 export function closeHeadingGaps(root: HTMLElement) {
-  root.querySelectorAll('.layout-page-content').forEach((content) => {
-    if (!(content instanceof HTMLElement)) return
+  const contents = root.classList.contains('layout-page-content')
+    ? [root]
+    : [...root.querySelectorAll('.layout-page-content')].filter((node): node is HTMLElement => node instanceof HTMLElement)
+  for (const content of contents) {
     const rows = [...content.children]
       .filter((node): node is HTMLElement => node instanceof HTMLElement && Boolean(node.style.top))
       .map((item) => ({ item, top: paragraphTop(item) }))
@@ -438,5 +654,5 @@ export function closeHeadingGaps(root: HTMLElement) {
       if (row.item.dataset.styleId === '2' && row.item.textContent?.trim()) heading = true
       else if (row.item.textContent?.trim()) heading = false
     }
-  })
+  }
 }

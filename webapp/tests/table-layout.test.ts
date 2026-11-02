@@ -7,6 +7,7 @@ test('a title row spans the sheet and a data row keeps its columns', () => {
   expect(bannerSpans(['по', 'ООО Электромагнитные системы', '', ''], 4)).toEqual([1, 3])
   expect(bannerSpans(['№', 'Наименование', '10', '12'], 4)).toBeNull()
   expect(bannerSpans(['1', '', 'Амортизация', ''], 4)).toBeNull()
+  expect(bannerSpans(['Полуконтейнер Атлас SU', '1', '', '', '', ''], 6)).toBeNull()
 })
 
 test('the sheet heading is the form name, not the word table', () => {
