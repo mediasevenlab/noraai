@@ -163,6 +163,22 @@ describe('Nora settings chat', () => {
     const cells = row.replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim())
     expect(cells).toEqual(['', '5202', '51', '—', '', '', 'Назначить'])
   })
+  test('a full row that packed its empty cells at the end puts the icon back and keeps the button last', () => {
+    const headers = 'Рейс | № рейса | № борта | Авиакомпания | Тип ВС | План | Расчет | Факт | Ст. | Выезд | А/Л | Экспедитор | Отчет'
+    const shifted = '5202 | 73412 | Сибирь | Б-737-800 | 02.11 09:05 | 02.11 08:41 | 02.11 08:41 | 51 | — | — | Назначить | |'
+    const text = seatVisionReading(`ШАПКА: ${headers}\nСТРОКА: ${shifted}`)
+    const row = text.split('\n').find((line) => line.includes('5202')) ?? ''
+    const cells = row.replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim())
+    expect(cells).toEqual(['', '5202', '73412', 'Сибирь', 'Б-737-800', '02.11 09:05', '02.11 08:41', '02.11 08:41', '51', '—', '', '', 'Назначить'])
+    const markdown = screenTable(`| ${headers} |\n| ${shifted} |`)
+    const again = markdown.split('\n').find((line) => line.includes('5202')) ?? ''
+    const markdownCells = again.replace(/^\|/, '').replace(/\|$/, '').split('|').map((cell) => cell.trim())
+    expect(markdownCells).toEqual(cells)
+  })
+  test('a number in the first column keeps a genuinely empty last cell', () => {
+    const note = '| № | Название | Примечание |\n| 1 | Хлеб |  |'
+    expect(screenTable(note)).toBe('| № | Название | Примечание |\n| --- | --- | --- |\n| 1 | Хлеб |  |')
+  })
   test('a blank word in a full row stays an empty cell', () => {
     const text = seatVisionReading('ШАПКА: Рейс | № рейса | Отчет\nСТРОКА: пусто | 5202 | Назначить')
     const row = text.split('\n').find((line) => line.includes('5202')) ?? ''

@@ -147,7 +147,7 @@ function pipeCells(line: string) {
   const fenced = trimmed.startsWith('|')
   let cells = trimmed.split('|').map((cell) => cell.trim())
   if (fenced) cells = cells.slice(1)
-  if (trimmed.endsWith('|') && cells.length > 0) cells = cells.slice(0, -1)
+  if (fenced && trimmed.endsWith('|') && cells.length > 0) cells = cells.slice(0, -1)
   return cells
 }
 
@@ -211,6 +211,33 @@ function namedCells(line: string) {
     .filter((cell) => cell && !NO_BLANK_COLUMN.test(cell))
 }
 
+function trailingEmptyCount(cells: readonly string[]) {
+  let count = 0
+  for (let index = cells.length - 1; index >= 0; index -= 1) {
+    if (cells[index] !== '') break
+    count += 1
+  }
+  return count
+}
+
+/** The icon column was skipped and the spare empty cells were packed at the end of a full row. */
+function rowLooksPacked(cells: readonly string[]) {
+  const pad = trailingEmptyCount(cells)
+  if (pad < 1 || cells.length - pad < 3) return false
+  const body = cells.slice(0, cells.length - pad)
+  if (!/\d/.test(body[0] ?? '')) return false
+  return /^[-—–]+$/.test(body[body.length - 2] ?? '')
+}
+
+function unpackRow(cells: readonly string[]) {
+  if (!rowLooksPacked(cells)) return [...cells]
+  const pad = trailingEmptyCount(cells)
+  const body = cells.slice(0, cells.length - pad)
+  const last = body[body.length - 1] ?? ''
+  const kept = body.slice(0, -1)
+  return softenFillerDashes(['', ...kept, ...Array.from({ length: pad - 1 }, () => ''), last])
+}
+
 /**
  * A screen table names its empty columns, then the filled cells in order.
  * Those empty columns go back where they were, so an icon does not pull the row left.
@@ -234,7 +261,9 @@ export function seatVisionReading(text: string) {
   let aligned = written
   const missingIcon =
     written.every((row) => row.length === headers.length - 1) && written.every((row) => /\d/.test(row[0] ?? ''))
+  const packed = written.every((row) => row.length === headers.length) && written.every((row) => rowLooksPacked(row))
   if (missingIcon) aligned = written.map((row) => softenFillerDashes(['', ...row]))
+  else if (packed) aligned = written.map((row) => unpackRow(row))
   const head = `| ${headers.join(' | ')} |`
   const rule = `| ${headers.map(() => '---').join(' | ')} |`
   const before = lines
@@ -264,8 +293,41 @@ function isTableRule(line: string) {
   return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell))
 }
 
+function paintRow(cells: readonly string[]) {
+  return `| ${cells.join(' | ')} |`.replace(/\s+\|\s+/g, ' | ').replace(/\| \|/g, '|  |')
+}
+
+/** A markdown grid the vision model already widened by padding empty cells at the end. */
+function reseatMarkdown(note: string) {
+  const lines = note
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+  const header = lines.find((line) => line.startsWith('|') && !isTableRule(line))
+  if (!header) return ''
+  const headers = pipeCells(header)
+  if (headers.length < 2) return ''
+  const rows = lines
+    .filter((line) => line.startsWith('|') && line !== header && !isTableRule(line))
+    .map((line) => pipeCells(line).map((cell) => (BLANK_CELL.test(cell) ? '' : cell)))
+  if (rows.length === 0) return ''
+  const missingIcon =
+    rows.every((row) => row.length === headers.length - 1) && rows.every((row) => /\d/.test(row[0] ?? ''))
+  const packed = rows.every((row) => row.length === headers.length) && rows.every((row) => rowLooksPacked(row))
+  const aligned = missingIcon
+    ? rows.map((row) => softenFillerDashes(['', ...row]))
+    : packed
+      ? rows.map((row) => unpackRow(row))
+      : null
+  if (!aligned || aligned.some((row) => row.length !== headers.length)) return ''
+  const rule = `| ${headers.map(() => '---').join(' | ')} |`
+  return [header, rule, ...aligned.map((row) => paintRow(row))].join('\n')
+}
+
 /** The grid already aligned from the photo. A later model must not rebuild these cells. */
 export function screenTable(note: string) {
+  const reseated = reseatMarkdown(note)
+  if (reseated) return reseated
   const lines = note
     .split('\n')
     .map((line) => line.trim())
