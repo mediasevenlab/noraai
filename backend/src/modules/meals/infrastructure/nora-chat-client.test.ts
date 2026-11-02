@@ -163,6 +163,42 @@ describe('Nora settings chat request', () => {
     expect(JSON.stringify(answer.messages)).toContain('Это яблоко.')
   })
 
+  test('a request to build a table asks the vision model for the grid itself', async () => {
+    const photo = await sharp({
+      create: { width: 64, height: 40, channels: 3, background: { r: 250, g: 250, b: 250 } },
+    })
+      .png()
+      .toBuffer()
+    const original = globalThis.fetch
+    const bodies: string[] = []
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      bodies.push(String(init?.body ?? ''))
+      const vision = bodies.length === 1
+      return new Response(
+        `${JSON.stringify({
+          message: { role: 'assistant', content: vision ? 'ШАПКА: Рейс | №\nСТРОКА: пусто | 5202' : 'Таблица готова.' },
+          done: true,
+        })}\n`,
+        { status: 200 },
+      )
+    }) as typeof fetch
+    try {
+      const result = await completeNoraChat(env, [
+        { role: 'user', text: 'Построй таблицу по изображению.', images: [{ base64: photo.toString('base64'), mime: 'image/png' }] },
+      ])
+      expect(result.reply).toBe('Таблица готова.')
+    } finally {
+      globalThis.fetch = original
+    }
+    const glance = JSON.parse(bodies[0] ?? '{}') as { options?: { num_predict?: number }; messages: Array<{ content?: string }> }
+    expect(glance.options?.num_predict).toBe(2048)
+    expect(String(glance.messages[0]?.content)).toContain('ШАПКА:')
+    expect(String(glance.messages[0]?.content)).not.toContain('двумя-тремя предложениями')
+    const answer = JSON.parse(bodies[1] ?? '{}') as { messages: Array<{ content?: string }> }
+    expect(JSON.stringify(answer.messages)).toContain('5202')
+    expect(JSON.stringify(answer.messages)).toContain('выведи её целиком')
+  })
+
   test('a tall screenshot is read in bands and the bands reach the answer', async () => {
     const page = await sharp({
       create: { width: 200, height: 3000, channels: 3, background: { r: 250, g: 250, b: 250 } },

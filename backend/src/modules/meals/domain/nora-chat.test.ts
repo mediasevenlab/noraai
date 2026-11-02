@@ -180,6 +180,7 @@ describe('Nora settings chat', () => {
     )
     const system = String(request.messages[0]?.content)
     expect(system).toContain('одна таблица на все столбцы')
+    expect(system).toContain('выведи её целиком')
     expect(system).toContain('не сдвигай строку влево')
     expect(system).toContain('Одинаковое время в соседних столбцах')
   })

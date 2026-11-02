@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 import { sheetColumnWidths } from '../table-layout'
 
-import { compareDocumentTexts, type DiffPiece } from './diff'
+import { compareDocumentTexts, keepKnownLines, type DiffPiece } from './diff'
 import { applyMarkVisibility, closeHeadingGaps, paintDocumentPage, pieceAppearance, settleLayout, type ShownMarks } from './paint'
 import { flowPdfBlocks, lineParts, pdfPages, sheetRowCells, sheetTabs, tableCells, takePieces, workbookPages, type ChangeKind, type LinePart, type SheetPage, type SheetTab } from './sheets'
 
@@ -192,9 +192,10 @@ function SheetPages({
   if (flow) {
     const pairPages = pairText != null ? pdfPages(pairText) : null
     let carry: string[] | null = null
+    const leftText = pairPages ? pairPages.map((page) => page.text).join('\n') : ''
     const sheets = pages.map((item, index) => {
       const source = pairPages
-        ? compareDocumentTexts(pairPages[index]?.text ?? '', item.text)
+        ? keepKnownLines(compareDocumentTexts(pairPages[index]?.text ?? '', item.text), leftText)
         : [{ kind: 'same' as const, text: item.text }]
       const continued = flowPdfBlocks(blocksOf(lineParts(source)), carry)
       carry = continued.carry
@@ -318,22 +319,105 @@ function hideLetterheadPictures(host: HTMLElement) {
   })
 }
 
-function sectionHeadings(host: HTMLElement) {
-  const pages = [...host.querySelectorAll('.layout-page')]
-  const headings: HTMLElement[] = []
-  for (const page of pages) {
-    const items = [...page.querySelectorAll('.layout-paragraph')].filter((node): node is HTMLElement => {
-      return node instanceof HTMLElement && node.dataset.styleId === '2' && Boolean(node.textContent?.trim())
-    })
-    items.sort((left, right) => (Number.parseFloat(left.style.top) || 0) - (Number.parseFloat(right.style.top) || 0))
-    headings.push(...items)
+/** Word writes a Russian heading as a bare number: «1» is heading 1, «2» is heading 2. */
+const HEADING_STYLE = /^(?:[1-9]|heading[1-9]?)$/i
+
+type OutlineItem = { id: string; text: string; level: number; top: number }
+
+function folioScroller(host: HTMLElement) {
+  return (
+    [...host.querySelectorAll('*')].find((node): node is HTMLElement => {
+      if (!(node instanceof HTMLElement)) return false
+      const overflow = getComputedStyle(node).overflowY
+      return (overflow === 'auto' || overflow === 'scroll') && node.scrollHeight > node.clientHeight + 8
+    }) ?? null
+  )
+}
+
+function paintedHeadings(host: HTMLElement, top: number) {
+  const items: OutlineItem[] = []
+  for (const node of host.querySelectorAll('.layout-paragraph')) {
+    if (!(node instanceof HTMLElement) || !HEADING_STYLE.test(node.dataset.styleId ?? '')) continue
+    const text = node.textContent?.trim() ?? ''
+    if (!text) continue
+    const level = Number.parseInt(node.dataset.styleId ?? '', 10)
+    items.push({ id: node.dataset.paraId || text, text, level: Number.isFinite(level) ? level : 1, top })
   }
-  return headings
+  return items
+}
+
+function waitForPaint(delay = 32) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, delay)
+  })
+}
+
+/** Folio only paints the pages on screen, so the list is gathered by walking the scroller once. */
+async function collectOutline(host: HTMLElement) {
+  const seen = new Map<string, OutlineItem>()
+  const take = (top: number) => {
+    for (const item of paintedHeadings(host, top)) if (!seen.has(item.id)) seen.set(item.id, item)
+  }
+  const scroller = folioScroller(host)
+  if (!scroller) {
+    take(0)
+    return [...seen.values()]
+  }
+  const previous = scroller.scrollTop
+  const step = Math.max(320, scroller.clientHeight * 0.55)
+  try {
+    for (let top = 0; top < scroller.scrollHeight; top += step) {
+      scroller.scrollTop = top
+      await waitForPaint()
+      take(top)
+    }
+  } finally {
+    scroller.scrollTop = previous
+  }
+  return [...seen.values()]
+}
+
+async function revealHeading(host: HTMLElement, item: OutlineItem) {
+  const scroller = folioScroller(host)
+  if (scroller) {
+    scroller.scrollTop = item.top
+    await waitForPaint(80)
+  }
+  const heading = [...host.querySelectorAll('.layout-paragraph')].find((node): node is HTMLElement => {
+    return node instanceof HTMLElement && (node.dataset.paraId === item.id || node.textContent?.trim() === item.id)
+  })
+  if (heading) scrollToHeading(host, heading)
+}
+
+function scrollingAncestor(node: HTMLElement) {
+  let current = node.parentElement
+  while (current) {
+    const overflow = getComputedStyle(current).overflowY
+    if ((overflow === 'auto' || overflow === 'scroll') && current.scrollHeight > current.clientHeight + 8) return current
+    current = current.parentElement
+  }
+  return null
+}
+
+/** Grown pages stay inside Folio's scroller. Only nodes that already have a height are stretched. */
+function releaseInnerScroll(host: HTMLElement) {
+  const pages = [...host.querySelectorAll('.layout-page')].filter((node): node is HTMLElement => node instanceof HTMLElement)
+  let bottom = 48
+  for (const page of pages) bottom = Math.max(bottom, page.offsetTop + page.offsetHeight + 24)
+  host.querySelectorAll<HTMLElement>('[style*="height"]').forEach((node) => {
+    if (node.classList.contains('layout-page') || node.closest('.layout-page')) return
+    if (node.closest('.folio-outline') || node.hasAttribute('data-folio-scroll')) return
+    const inlineHeight = Number.parseFloat(node.style.height)
+    if (Number.isFinite(inlineHeight) && inlineHeight > 200 && inlineHeight < bottom) {
+      node.style.setProperty('height', `${Math.ceil(bottom)}px`, 'important')
+    }
+  })
 }
 
 function scrollToHeading(host: HTMLElement, heading: HTMLElement) {
-  const scroller = host.querySelector('[data-folio-scroll]')
-  if (!(scroller instanceof HTMLElement)) {
+  releaseInnerScroll(host)
+  const scroller = scrollingAncestor(heading)
+  if (!scroller) {
     heading.scrollIntoView({ block: 'start' })
     return
   }
@@ -343,7 +427,9 @@ function scrollToHeading(host: HTMLElement, heading: HTMLElement) {
 
 function SectionMenu({ hostRef }: { hostRef: RefObject<HTMLDivElement | null> }) {
   const [open, setOpen] = useState(false)
-  const [headings, setHeadings] = useState<HTMLElement[]>([])
+  const [ready, setReady] = useState(false)
+  const [headings, setHeadings] = useState<OutlineItem[]>([])
+  const request = useRef(0)
   return (
     <div className="absolute top-3 left-3 z-30">
       <button
@@ -351,30 +437,52 @@ function SectionMenu({ hostRef }: { hostRef: RefObject<HTMLDivElement | null> })
         aria-label={open ? 'Скрыть разделы' : 'Разделы документа'}
         className="flex size-8 cursor-pointer items-center justify-center rounded-full border border-[var(--nora-border)] bg-white text-[var(--nora-text-secondary)] shadow-sm hover:text-[var(--nora-text)]"
         onClick={() => {
+          if (open) {
+            request.current += 1
+            setOpen(false)
+            return
+          }
           const host = hostRef.current
-          setHeadings(host ? sectionHeadings(host) : [])
-          setOpen((value) => !value)
+          const ticket = request.current + 1
+          request.current = ticket
+          setHeadings([])
+          setReady(false)
+          setOpen(true)
+          if (!host) {
+            setReady(true)
+            return
+          }
+          void collectOutline(host).then((items) => {
+            if (request.current !== ticket) return
+            setHeadings(items)
+            setReady(true)
+          })
         }}
         type="button"
       >
         <ListTreeIcon className="size-4" />
       </button>
-      {open && headings.length > 0 ? (
-        <div className="mt-2 max-h-[min(24rem,calc(100vh-8rem))] w-64 overflow-auto rounded-xl border border-[var(--nora-border)] bg-white p-1 shadow-sm">
+      {open ? (
+        <div className="mt-2 max-h-[min(24rem,calc(100vh-8rem))] w-72 overflow-auto rounded-xl border border-[var(--nora-border)] bg-white p-1 shadow-sm">
           {headings.map((heading) => (
             <button
-              className="block w-full cursor-pointer truncate rounded-lg px-2 py-1.5 text-left text-[13px] leading-5 hover:bg-[var(--nora-surface)]"
-              key={heading.dataset.paraId ?? heading.textContent}
+              className="block w-full cursor-pointer truncate rounded-lg py-1.5 text-left text-[13px] leading-5 hover:bg-[var(--nora-surface)]"
+              key={heading.id}
               onClick={() => {
                 const host = hostRef.current
-                if (host) scrollToHeading(host, heading)
+                if (host) void revealHeading(host, heading)
                 setOpen(false)
               }}
+              style={{ paddingLeft: 8 + (heading.level - 1) * 12, paddingRight: 8 }}
               type="button"
             >
-              {heading.textContent?.trim()}
+              {heading.text}
             </button>
           ))}
+          {!ready ? <p className="px-2 py-1.5 text-[13px] leading-5 text-[var(--nora-text-secondary)]">Собираем разделы</p> : null}
+          {ready && headings.length === 0 ? (
+            <p className="px-2 py-1.5 text-[13px] leading-5 text-[var(--nora-text-secondary)]">Разделов нет</p>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -461,6 +569,7 @@ export function DocumentPane({
     const allowSelect = (event: Event) => {
       const target = event.target
       if (!(target instanceof Element) || !target.closest('.layout-page-content, [data-diff]')) return
+      if (target.closest('a, button, .folio-outline')) return
       event.stopPropagation()
     }
     host.addEventListener('mousedown', allowSelect, true)
@@ -513,6 +622,7 @@ export function DocumentPane({
         }
       }
       if (pieces && shownRef.current) applyMarkVisibility(host, shownRef.current)
+      releaseInnerScroll(host)
       for (const content of contents) {
         if (content.dataset.noraFlow !== '1') continue
         delete content.dataset.noraFlow

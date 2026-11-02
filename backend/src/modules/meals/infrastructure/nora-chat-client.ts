@@ -19,6 +19,7 @@ import {
   readWebSearchCalls,
   turnForVision,
   VISION_FRAGMENT_SYSTEM,
+  VISION_TABLE_SYSTEM,
   webSearchQuery,
   type NoraChatTurn,
   type NoraWebSearchCall,
@@ -470,8 +471,12 @@ async function readVisionNote(env: NoraEnv, turns: readonly NoraChatTurn[], sign
         [{ role: 'user', text: last.text, images: [{ base64: frames[0]!.toString('base64'), mime: 'image/jpeg' }] }],
         { text: env.LLM_TEXT_MODEL, vision: env.LLM_VISION_MODEL },
       )
-      const predict = /таблиц/i.test(last.text) ? 1024 : 512
-      notes.push(seatVisionReading(calmVisionReading(await postVision(env, glance.messages, predict, signal))))
+      const table = /таблиц/i.test(last.text)
+      const messages = table
+        ? [{ role: 'system' as const, content: VISION_TABLE_SYSTEM }, glance.messages[1]!]
+        : glance.messages
+      const predict = table ? 2048 : 512
+      notes.push(seatVisionReading(calmVisionReading(await postVision(env, messages, predict, signal))))
       continue
     }
     const parts: string[] = []

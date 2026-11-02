@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 
-import { compareDocumentTexts } from './diff'
+import { compareDocumentTexts, keepKnownLines } from './diff'
 
 function kinds(left: string, right: string) {
   return compareDocumentTexts(left, right).map((piece) => `${piece.kind}:${piece.text}`)
@@ -59,6 +59,15 @@ test('a signature line stays text when a table row is what it stands next to', (
   expect(text.includes('Контейнерэстафете')).toBe(false)
 })
 
+test('a line that already exists in the source file is not marked added', () => {
+  const source = 'Сдал экспедитор____    Принял б/п____\n| Бокал большой | 1 |'
+  const page = compareDocumentTexts('Другая страница', 'Сдал экспедитор________    Принял б/п________\n| Новая позиция | 2 |')
+  const kept = keepKnownLines(page, source)
+  const signature = kept.find((piece) => piece.text.includes('Сдал экспедитор'))
+  const added = kept.find((piece) => piece.text.includes('Новая позиция'))
+  expect(signature?.kind).toBe('same')
+  expect(added?.kind).toBe('added')
+})
 test('a deleted line stays visible as removed text', () => {
   const pieces = compareDocumentTexts('Первая\nВторая\nТретья', 'Первая\nТретья')
   expect(pieces.some((piece) => piece.kind === 'removed' && piece.text.includes('Вторая'))).toBe(true)

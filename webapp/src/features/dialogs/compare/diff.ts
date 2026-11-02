@@ -235,6 +235,30 @@ function paintHunk(removed: string, added: string): DiffPiece[] {
   return paint(diffSequences(wordsOf(removed), wordsOf(added)))
 }
 
+function lineKey(line: string) {
+  return line.replace(/\f/g, '').replace(/_{2,}/g, '_').replace(/\s+/g, ' ').trim()
+}
+
+/** A line the other file already has is not an addition, even when it sits on another page. */
+export function keepKnownLines(pieces: readonly DiffPiece[], source: string): DiffPiece[] {
+  const known = new Set(source.split('\n').map((line) => lineKey(line)).filter((line) => line.length >= 12))
+  const next: DiffPiece[] = []
+  for (const piece of pieces) {
+    if (piece.kind !== 'added') {
+      next.push(piece)
+      continue
+    }
+    const bits = piece.text.split('\n')
+    bits.forEach((bit, index) => {
+      const text = index < bits.length - 1 ? `${bit}\n` : bit
+      if (!text) return
+      const key = lineKey(bit)
+      next.push({ kind: key.length >= 12 && known.has(key) ? 'same' : 'added', text })
+    })
+  }
+  return mergePieces(next)
+}
+
 /** The right document, with deletions from the left kept inline. */
 export function compareDocumentTexts(left: string, right: string): DiffPiece[] {
   const edits = diffSequences(linesOf(left), linesOf(right))
