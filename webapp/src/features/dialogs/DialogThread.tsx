@@ -10,7 +10,7 @@ import {
   useAui,
   useAuiState,
 } from '@assistant-ui/react'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 
 import { Volume2Icon } from 'lucide-react'
 
@@ -31,6 +31,7 @@ import {
   XIcon,
 } from '@/components/icons'
 
+import { setComposerDockHeight } from '@/components/dashboard/composer-dock'
 import { dialogComposerToolClass } from '@/components/dialog-composer-tool'
 
 import { ComposerToolTip } from './composer/tool-tip'
@@ -762,6 +763,22 @@ function DialogSuggestions() {
 export function DialogThread() {
   const empty = useAuiState((state) => state.thread.isEmpty)
   const threadRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (empty) {
+      setComposerDockHeight(0)
+      return
+    }
+    const dock = threadRef.current?.querySelector('[data-composer-dock]')
+    if (!(dock instanceof HTMLElement)) return
+    const sync = () => setComposerDockHeight(dock.getBoundingClientRect().height)
+    sync()
+    const observer = new ResizeObserver(sync)
+    observer.observe(dock)
+    return () => {
+      observer.disconnect()
+      setComposerDockHeight(0)
+    }
+  }, [empty])
   useEffect(() => {
     const onReveal = (event: Event) => {
       const quote = readFragmentQuote(event)
@@ -792,7 +809,7 @@ export function DialogThread() {
           <DialogSuggestions />
         </div>
       </ThreadPrimitive.Viewport>
-      <div className="relative mx-auto w-full max-w-3xl shrink-0 px-4 pb-4">
+      <div className="relative mx-auto w-full max-w-3xl shrink-0 px-4 pb-4" data-composer-dock="">
         <ThreadPrimitive.ScrollToBottom
           aria-label="К последнему сообщению"
           className="absolute -top-11 left-1/2 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border border-[var(--nora-border)] bg-[var(--nora-surface)] text-[var(--nora-text)] shadow-sm disabled:hidden"

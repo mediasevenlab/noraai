@@ -10,7 +10,7 @@ import {
   UserIcon,
   XIcon,
 } from '@/components/icons'
-import * as React from 'react'
+import { lazy, Suspense, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useTheme } from 'next-themes'
 
 import {
@@ -20,10 +20,28 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { composerDockHeight, subscribeComposerDock } from '@/components/dashboard/composer-dock'
+import {
+  dialogNavPath,
+  meetingNavPath,
+  mobileNavSection,
+  notesNavPath,
+  type MobileNavSection,
+} from '@/components/dashboard/mobile-nav-section'
 import type { WorkspaceRoutePath } from '@/features/navigation'
 import { useMentorUsersQuery } from '@/features/mentor'
 import { useCurrentUserMentorQuery } from '@/features/users'
 import { cn } from '@/lib/utils'
+
+const MobileDialogList = lazy(() =>
+  import('@/features/dialogs').then((mod) => ({ default: mod.MobileDialogList })),
+)
+const MobileMeetingList = lazy(() =>
+  import('@/features/meetings').then((mod) => ({ default: mod.MobileMeetingList })),
+)
+const MobileNoteList = lazy(() =>
+  import('@/features/notes').then((mod) => ({ default: mod.MobileNoteList })),
+)
 
 export type MobileNavItem = {
   /** Highlight as a call-to-action, even when the route is not active. */
@@ -39,7 +57,7 @@ export type MobileNavItem = {
   to: WorkspaceRoutePath
 }
 
-type Panel = 'root' | 'mentor-users'
+type Panel = 'root' | 'mentor-users' | MobileNavSection
 
 function MobileNavGlassButton({
   ariaLabel,
@@ -48,7 +66,7 @@ function MobileNavGlassButton({
   onClick,
 }: {
   ariaLabel: string
-  children: React.ReactNode
+  children: ReactNode
   danger?: boolean
   onClick: () => void
 }) {
@@ -126,8 +144,13 @@ export function MobileNavFab({
   user: UserDto
   workspaceLabel: string
 }) {
-  const [open, setOpen] = React.useState(false)
-  const [panel, setPanel] = React.useState<Panel>('root')
+  const [open, setOpen] = useState(false)
+  const [panel, setPanel] = useState<Panel>('root')
+  function closeMenu() {
+    setOpen(false)
+    setPanel('root')
+  }
+  const dockHeight = useSyncExternalStore(subscribeComposerDock, composerDockHeight, () => 0)
   const pathname = useRouterState({ select: (state) => state.location.pathname })
   const mentorQuery = useCurrentUserMentorQuery(user.role === 'user')
   const hasMentor = user.role !== 'user' || Boolean(mentorQuery.data?.mentor)
@@ -137,13 +160,32 @@ export function MobileNavFab({
   const { resolvedTheme, setTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  const title = panel === 'mentor-users' ? 'Пользователи' : 'Меню'
+  const sectionTo = items.find((item) => mobileNavSection(item.to) === panel)?.to ?? ''
+  const dialogsTo = dialogNavPath(sectionTo)
+  const meetingsTo = meetingNavPath(sectionTo)
+  const notesTo = notesNavPath(sectionTo)
+  const title =
+    panel === 'mentor-users'
+      ? 'Пользователи'
+      : panel === 'dialogs'
+        ? 'Диалоги'
+        : panel === 'meetings'
+          ? 'Встречи'
+          : panel === 'notes'
+            ? 'Заметки'
+            : 'Меню'
   const subtitle =
     panel === 'mentor-users'
       ? mentorUsers.isPending
         ? 'Загрузка…'
         : `${mentorUsers.data?.items.length ?? 0} подопечных`
-      : `${workspaceLabel} · ${displayName}`
+      : panel === 'dialogs'
+        ? 'Выберите разговор'
+        : panel === 'meetings'
+          ? 'Выберите встречу'
+          : panel === 'notes'
+            ? 'Сохранённые сообщения'
+            : `${workspaceLabel} · ${displayName}`
 
   return (
     <>
@@ -152,10 +194,14 @@ export function MobileNavFab({
           type="button"
           aria-label="Открыть меню"
           onClick={() => setOpen(true)}
+          style={dockHeight > 0 ? { bottom: `calc(${dockHeight}px + 0.75rem)` } : undefined}
           className={cn(
             'ios-float-pill ios-float-pill-dock',
             'fixed z-40 md:hidden',
-            'right-4 bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]',
+            'right-4',
+            dockHeight > 0
+              ? ''
+              : 'bottom-[max(1rem,var(--app-safe-bottom,env(safe-area-inset-bottom)))]',
             'inline-flex size-12 cursor-pointer items-center justify-center rounded-full',
             'outline-none transition-[transform,opacity] active:scale-95',
             'focus-visible:shadow-[var(--nora-shadow-focus)]',
@@ -172,8 +218,8 @@ export function MobileNavFab({
       <Sheet
         open={open}
         onOpenChange={(nextOpen) => {
-          setOpen(nextOpen)
-          if (!nextOpen) setPanel('root')
+          if (nextOpen) setOpen(true)
+          else closeMenu()
         }}
       >
         <SheetContent
@@ -183,6 +229,7 @@ export function MobileNavFab({
             'bg-[var(--nora-modal)] md:hidden gap-0 overflow-hidden p-0 shadow-none antialiased',
             'data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0',
             'data-[side=bottom]:max-h-[min(84dvh,620px)] data-[side=bottom]:rounded-t-[var(--modal-sheet-radius)] data-[side=bottom]:rounded-b-none',
+            panel === 'root' ? '' : 'data-[side=bottom]:h-[min(84dvh,620px)]',
             'data-[side=bottom]:border-x-0 data-[side=bottom]:border-b-0',
             'data-starting-style:opacity-100 data-ending-style:opacity-100',
             'data-[side=bottom]:data-starting-style:translate-y-0 data-[side=bottom]:data-ending-style:translate-y-0',
@@ -190,7 +237,7 @@ export function MobileNavFab({
         >
           <SheetHeader className="gap-0 px-5 pt-3 pr-5 pb-3 text-left">
             <div className="flex items-center justify-between gap-2">
-              {panel === 'mentor-users' ? (
+              {panel !== 'root' ? (
                 <MobileNavGlassButton
                   ariaLabel="Назад"
                   onClick={() => setPanel('root')}
@@ -202,7 +249,7 @@ export function MobileNavFab({
                   ariaLabel="Выйти"
                   danger
                   onClick={() => {
-                    setOpen(false)
+                    closeMenu()
                     void onLogout()
                   }}
                 >
@@ -222,7 +269,7 @@ export function MobileNavFab({
                 </MobileNavGlassButton>
                 <MobileNavGlassButton
                   ariaLabel="Закрыть меню"
-                  onClick={() => setOpen(false)}
+                  onClick={closeMenu}
                 >
                   <XIcon className="size-4" strokeWidth={2} />
                 </MobileNavGlassButton>
@@ -245,6 +292,7 @@ export function MobileNavFab({
                 {items.map((item) => {
                   const isMentorUsers =
                     isMentor && item.to === '/mentor/users'
+                  const section = mobileNavSection(item.to)
                   const locked =
                     navigationLocked ||
                     Boolean(item.disabled) ||
@@ -289,12 +337,21 @@ export function MobileNavFab({
                         >
                           {tileBody}
                         </button>
+                      ) : section ? (
+                        <button
+                          type="button"
+                          aria-current={active ? 'page' : undefined}
+                          onClick={() => setPanel(section)}
+                          className={mobileNavTileClass(item.accent, false, active)}
+                        >
+                          {tileBody}
+                        </button>
                       ) : item.onSelect ? (
                         <button
                           type="button"
                           aria-current={active ? 'page' : undefined}
                           onClick={() => {
-                            setOpen(false)
+                            closeMenu()
                             item.onSelect?.()
                           }}
                           className={mobileNavTileClass(item.accent, false, active)}
@@ -305,7 +362,7 @@ export function MobileNavFab({
                         <Link
                           to={item.to}
                           aria-current={active ? 'page' : undefined}
-                          onClick={() => setOpen(false)}
+                          onClick={closeMenu}
                           className={mobileNavTileClass(item.accent, false, active)}
                         >
                           {tileBody}
@@ -316,7 +373,7 @@ export function MobileNavFab({
                 })}
               </ul>
             </nav>
-          ) : (
+          ) : panel === 'mentor-users' ? (
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               {mentorUsers.isPending ? (
                 <p className="px-1 py-6 text-center text-[13px] text-[var(--nora-text-tertiary)]">
@@ -334,7 +391,7 @@ export function MobileNavFab({
                           to="/mentor/users/$userId"
                           params={{ userId: mentee.id }}
                           search={{ view: 'profile' }}
-                          onClick={() => setOpen(false)}
+                          onClick={closeMenu}
                           className={cn(
                             'nora-press-grow flex h-14 items-center gap-3 rounded-[14px] px-3 outline-none',
                             active
@@ -372,6 +429,26 @@ export function MobileNavFab({
                   Пока нет подопечных
                 </p>
               )}
+            </div>
+          ) : (
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <Suspense
+                fallback={(
+                  <p className="px-1 py-6 text-center text-[13px] text-[var(--nora-text-tertiary)]">
+                    Загрузка…
+                  </p>
+                )}
+              >
+                {panel === 'dialogs' && dialogsTo ? (
+                  <MobileDialogList to={dialogsTo} userId={user.id} onOpen={closeMenu} />
+                ) : null}
+                {panel === 'meetings' && meetingsTo ? (
+                  <MobileMeetingList to={meetingsTo} onOpen={closeMenu} />
+                ) : null}
+                {panel === 'notes' && notesTo ? (
+                  <MobileNoteList to={notesTo} userId={user.id} onOpen={closeMenu} />
+                ) : null}
+              </Suspense>
             </div>
           )}
         </SheetContent>

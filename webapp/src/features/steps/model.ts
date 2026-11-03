@@ -340,6 +340,13 @@ export const STEP_ITEMS: ReadonlyArray<StepItem> = [
     description:
       'Нора называет клиентов, успешные звонки и закрытые сделки и ставит встречу в календарь на названный день.',
   },
+  {
+    category: 'Версия · v0.48',
+    title: 'Меню телефона',
+    badge: 'Mobile',
+    description:
+      'На телефоне «Диалоги», «Встречи» и «Заметки» открывают свои списки. В начатом чате кнопка меню стоит над полем ввода и не закрывает отправку.',
+  },
 ]
 
 export function stepVersion(item: StepItem): string {
