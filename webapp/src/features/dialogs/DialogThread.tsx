@@ -75,6 +75,7 @@ import { FragmentCard } from './fragment-card'
 import { DialogNoteToggle } from './note-toggle'
 
 import { DialogMarkdown } from './markdown'
+import { bitrixEnabled, setBitrixEnabled, subscribeBitrixOpen } from './bitrix-open'
 import { internetEnabled, setInternetEnabled, subscribeInternetOpen } from './internet-open'
 import { suggestionsEnabled, subscribeSuggestionsOpen } from './suggestions-open'
 import { reasoningExpanded, setReasoningExpanded, subscribeReasoningOpen } from './reasoning-open'
@@ -200,6 +201,24 @@ function DialogMessageActions() {
   )
 }
 
+function DialogDownload({
+  filename,
+  data,
+  mimeType,
+}: {
+  filename?: string
+  data: string
+  mimeType: string
+}) {
+  const name = filename || 'Файл'
+  const href = data.startsWith('data:') ? data : `data:${mimeType || 'application/octet-stream'};base64,${data}`
+  return (
+    <a aria-label={`Скачать ${name}`} className="mb-3 inline-flex w-fit max-w-full no-underline" download={name} href={href}>
+      <ChatFileCard action="download" name={name} placement="bubble" />
+    </a>
+  )
+}
+
 function DialogAttachmentView({
   attachment,
 }: {
@@ -290,10 +309,11 @@ function DialogReasoningPart({
 }: {
   text: string
   timing?: { startedAt: number; completedAt?: number }
-  providerMetadata?: { nora?: { searched?: boolean } }
+  providerMetadata?: { nora?: { searched?: boolean; portal?: boolean } }
 }) {
   const body = text.trim()
-  const live = timing?.completedAt == null
+  const messageRunning = useAuiState((state) => state.message.status?.type === 'running')
+  const live = messageRunning && timing?.completedAt == null
   const now = useNow(live && timing != null)
   const spent = timing ? Math.max(0, (timing.completedAt ?? now) - timing.startedAt) : 0
   const scroller = useRef<HTMLParagraphElement>(null)
@@ -305,7 +325,12 @@ function DialogReasoningPart({
     <div className="mb-2">
       <p className="inline-flex items-center gap-1 text-[13px] leading-5 text-[var(--nora-text-secondary)]">
         <ChevronRightIcon className="size-3.5 shrink-0 rotate-90" />
-        {reasoningStatusLabel(spent, live, providerMetadata?.nora?.searched === true)}
+        {reasoningStatusLabel(
+          spent,
+          live,
+          providerMetadata?.nora?.searched === true,
+          providerMetadata?.nora?.portal === true,
+        )}
       </p>
       {body ? (
         <p
@@ -316,6 +341,59 @@ function DialogReasoningPart({
         </p>
       ) : null}
     </div>
+  )
+}
+
+function useBitrixOpen() {
+  const [open, setOpen] = useState(bitrixEnabled)
+  useEffect(() => {
+    const unsubscribe = subscribeBitrixOpen(() => setOpen(bitrixEnabled()))
+    return () => {
+      unsubscribe()
+    }
+  }, [])
+  return open
+}
+
+function BitrixMark({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden className={className} fill="none" viewBox="0 0 24 24">
+      <path
+        d="M8.2 6.2h4.4a2.6 2.6 0 0 1 0 5.2H8.2V6.2Z"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M8.2 11.4h5.2a2.7 2.7 0 0 1 0 5.4H8.2v-5.4Z"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path d="M8.2 5.2v13.6" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+    </svg>
+  )
+}
+
+function DialogBitrixToggle() {
+  const open = useBitrixOpen()
+  return (
+    <ComposerToolTip label={open ? 'Выключить Битрикс' : 'Включить Битрикс'}>
+      <button
+        aria-label={open ? 'Выключить Битрикс' : 'Включить Битрикс'}
+        aria-pressed={open}
+        className={cn(
+          'inline-flex size-8 shrink-0 items-center justify-center rounded-full border-0 outline-none',
+          open
+            ? 'cursor-pointer bg-[#2FC6F6] text-white shadow-[inset_0_1px_0_color-mix(in_srgb,white_45%,transparent)] hover:bg-[#1BB7EA]'
+            : dialogComposerToolClass(false),
+        )}
+        onClick={() => setBitrixEnabled(!open)}
+        type="button"
+      >
+        <BitrixMark className="size-4" />
+      </button>
+    </ComposerToolTip>
   )
 }
 
@@ -393,6 +471,7 @@ function DialogMessage({ role }: { role: 'user' | 'assistant' }) {
               Text: mine ? DialogText : DialogAssistantText,
               Image: DialogImage,
               Reasoning: DialogReasoningPart,
+              File: DialogDownload,
             }}
           />
           <MessagePrimitive.Error>
@@ -531,7 +610,11 @@ function DialogComposer({ placeholder = 'Сообщение…' }: { placeholder
   const auth = useAuth()
   const text = useAuiState((state) => state.composer.text)
   const attachmentCount = useAuiState((state) => state.composer.attachments.length)
-  const running = useAuiState((state) => state.thread.isRunning)
+  const running = useAuiState((state) => {
+    if (state.thread.isRunning) return true
+    const last = state.thread.messages.at(-1)
+    return last?.role === 'assistant' && last.status.type === 'running'
+  })
   const textRef = useRef(text)
   textRef.current = text
   const quote = useAuiState((state) => state.composer.quote)
@@ -616,6 +699,7 @@ function DialogComposer({ placeholder = 'Сообщение…' }: { placeholder
           <CompareDocumentsButton disabled={running} />
           <DialogReasoningToggle />
           <DialogInternetToggle />
+          <DialogBitrixToggle />
           <div className="flex-1" />
           <MealVoiceControls
             disabled={running}

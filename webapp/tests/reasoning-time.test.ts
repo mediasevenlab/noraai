@@ -19,4 +19,5 @@ test('reasoning time reads like a finished or running task', () => {
   expect(reasoningStatusLabel(14_000, false, true)).toBe('Думала 14 с · искала в интернете')
   expect(reasoningStatusLabel(3_000, false, false)).toBe('Думала 3 с')
   expect(reasoningStatusLabel(5_000, true, true)).toBe('Думает · 5 с · искала в интернете')
+  expect(reasoningStatusLabel(4_000, false, false, true)).toBe('Думала 4 с · смотрела Битрикс')
 })

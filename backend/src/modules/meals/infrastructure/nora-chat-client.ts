@@ -1,10 +1,35 @@
 import type { NoraModelChatMessage } from '@web-app-demo/contracts'
 
 import type { AppEnv } from '../../../env'
-import { directKnowledgeReply, schemeAnswer } from '../../knowledge'
+import { attachedFileContext, directKnowledgeReply, schemeAnswer } from '../../knowledge'
 import { MealsFailure } from '../domain/errors'
 import { splitChatReasoning } from '../domain/chat-reasoning'
 import { consumeChatDelta, emptyChatStream, type ChatStreamState } from '../domain/chat-stream'
+import { askBitrix, createBitrixDocument, createBitrixMeeting, deleteBitrixMeeting, locateBitrixMeeting, placeBitrixFile, readBitrixClients, readBitrixOutcomes, readBitrixTree, takeBitrixFile } from './bitrix-client'
+import {
+  bitrixPrefetch,
+  clientAsk,
+  contentAsk,
+  documentRequest,
+  downloadAsk,
+  fileTargetInThread,
+  folderHint,
+  meetingPlaceAsk,
+  meetingPlaceReply,
+  meetingPlaceTarget,
+  meetingRequest,
+  meetingsAsk,
+  meetingToDelete,
+  outcomeAsk,
+  placeAsk,
+  spreadsheetAsk,
+  taskToDelete,
+  treeAsk,
+  treeDeep,
+  NORA_BITRIX_TOOL,
+  portalReached,
+  readBitrixCall,
+} from '../domain/bitrix'
 import {
   answerNeedsVisionReading,
   buildNoraChatRequest,
@@ -31,7 +56,7 @@ import { chatVisionTiles } from './chat-image-tiles'
 
 type NoraEnv = Pick<
   AppEnv,
-  'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_TEXT_MODEL' | 'LLM_VISION_MODEL' | 'LLM_SEARCH_URL'
+  'LLM_BASE_URL' | 'LLM_API_KEY' | 'LLM_TEXT_MODEL' | 'LLM_VISION_MODEL' | 'LLM_SEARCH_URL' | 'BITRIX_WEBHOOK_URL'
 >
 
 type ChatMessage = {
@@ -50,7 +75,14 @@ const TEXT_NUM_CTX = 32_768
 const VISION_NUM_CTX = 16_384
 const VISION_MAX_TOKENS = 2048
 
-export type NoraChatEvent = { reasoning?: string; reply?: string; resetReply?: boolean; searched?: boolean }
+export type NoraChatEvent = {
+  reasoning?: string
+  reply?: string
+  resetReply?: boolean
+  searched?: boolean
+  portal?: boolean
+  file?: { name: string; mime: string; data: string }
+}
 
 async function prepareTurns(messages: readonly NoraModelChatMessage[]): Promise<NoraChatTurn[]> {
   return messages.map((message) => ({
@@ -67,11 +99,12 @@ export async function completeNoraChat(
   knowledge?: string,
   signal?: AbortSignal,
   think?: boolean,
+  bitrix?: boolean,
 ) {
   let reply = ''
   let reasoning = ''
   let model = ''
-  for await (const event of streamNoraChat(env, messages, search, knowledge, signal, think)) {
+  for await (const event of streamNoraChat(env, messages, search, knowledge, signal, think, bitrix)) {
     if (event.resetReply) reply = ''
     if (event.reasoning) reasoning += event.reasoning
     if (event.reply) reply += event.reply
@@ -133,10 +166,11 @@ export async function* streamNoraChat(
   knowledge?: string,
   signal?: AbortSignal,
   think?: boolean,
+  bitrix?: boolean,
 ): AsyncGenerator<NoraChatEvent & { model?: string }> {
   const lastUser = [...messages].reverse().find((message) => message.role === 'user')
   const ready = directKnowledgeReply(knowledge ?? '')
-  if (ready && !lastUser?.images?.length && search !== true) {
+  if (ready && !lastUser?.images?.length && search !== true && bitrix !== true) {
     yield* pacedReply(withSchemes(ready, knowledge), env.LLM_TEXT_MODEL, signal)
     return
   }
@@ -148,10 +182,134 @@ export async function* streamNoraChat(
     )
   }
 
+  const bitrixMode = bitrix === true ? (env.BITRIX_WEBHOOK_URL ? 'ready' as const : 'missing' as const) : undefined
+  const say = (text: string) => pacedReply(text, env.LLM_TEXT_MODEL, signal)
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL && downloadAsk(lastUser?.text ?? '')) {
+    const query = fileTargetInThread(messages.map((message) => message.text))
+    if (!query) {
+      yield { reply: 'Назовите файл, который нужно скачать.' }
+      return
+    }
+    const taken = await takeBitrixFile(env.BITRIX_WEBHOOK_URL, query, signal)
+    yield { portal: true }
+    if ('error' in taken) {
+      yield { reply: taken.error }
+      return
+    }
+    yield { file: { name: taken.name, mime: taken.mime, data: taken.bytes.toString('base64') } }
+    yield { reply: `Файл «${taken.name}» приложен. Его можно скачать.` }
+    return
+  }
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL && placeAsk(lastUser?.text ?? '')) {
+    const query = fileTargetInThread(messages.map((message) => message.text))
+    if (!query) {
+      yield { reply: 'Назовите файл, расположение которого нужно найти.' }
+      return
+    }
+    const placed = await placeBitrixFile(env.BITRIX_WEBHOOK_URL, query, signal)
+    yield { portal: true }
+    yield { reply: placed }
+    return
+  }
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL && contentAsk(lastUser?.text ?? '')) {
+    const query = fileTargetInThread(messages.map((message) => message.text))
+    if (!query) {
+      yield { reply: 'Назовите файл, который нужно прочитать.' }
+      return
+    }
+    const text = await askBitrix(env.BITRIX_WEBHOOK_URL, { action: 'file', query }, signal)
+    yield { portal: true }
+    yield* say(text)
+    return
+  }
+  const asked = lastUser?.text ?? ''
+  const located = meetingPlaceTarget(messages)
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL && meetingPlaceAsk(asked)) {
+    if (located) {
+      const fresh = await locateBitrixMeeting(env.BITRIX_WEBHOOK_URL, located.id, signal)
+      yield { portal: true }
+      yield* say(fresh || meetingPlaceReply(messages))
+      return
+    }
+    const listed = await askBitrix(env.BITRIX_WEBHOOK_URL, { action: 'events', query: 'planned' }, signal)
+    yield { portal: true }
+    yield* say(`Эти встречи в календаре Битрикс24. Откройте раздел «Календарь».\n${listed}`)
+    return
+  }
+  const drop = meetingToDelete(messages)
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL && drop) {
+    yield { portal: true }
+    yield* say(drop.id ? await deleteBitrixMeeting(env.BITRIX_WEBHOOK_URL, drop.id, signal) : 'Назовите номер встречи.')
+    return
+  }
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL && meetingsAsk(asked)) {
+    const query = /прошл|уже |прошед/i.test(asked) ? 'past' : 'planned'
+    const text = await askBitrix(env.BITRIX_WEBHOOK_URL, { action: 'events', query }, signal)
+    yield { portal: true }
+    yield* say(text)
+    return
+  }
+  const meeting = meetingRequest(asked)
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL && meeting) {
+    const text = await createBitrixMeeting(env.BITRIX_WEBHOOK_URL, meeting, signal)
+    yield { portal: true }
+    yield* say(text)
+    return
+  }
+  const sheetFile = spreadsheetAsk(asked)
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL && sheetFile) {
+    const text = await askBitrix(env.BITRIX_WEBHOOK_URL, { action: 'file', query: sheetFile }, signal)
+    yield { portal: true }
+    const opened = text.match(/^Файл «([^»]*)»:\n([\s\S]*)$/)
+    const ready = opened ? directKnowledgeReply(attachedFileContext(asked, opened[1] || sheetFile, opened[2] ?? '')) : ''
+    yield* say(ready || text)
+    return
+  }
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL && clientAsk(asked)) {
+    const text = await readBitrixClients(env.BITRIX_WEBHOOK_URL, signal)
+    yield { portal: true }
+    yield* say(text)
+    return
+  }
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL && outcomeAsk(asked)) {
+    const text = await readBitrixOutcomes(env.BITRIX_WEBHOOK_URL, signal)
+    yield { portal: true }
+    yield* say(text)
+    return
+  }
+  const removal = taskToDelete(asked)
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL && removal) {
+    const text = await askBitrix(env.BITRIX_WEBHOOK_URL, { action: 'delete_task', title: removal.title, taskId: removal.taskId }, signal)
+    yield { portal: true }
+    yield* say(text)
+    return
+  }
+  const document = documentRequest(asked)
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL && document) {
+    const text = await createBitrixDocument(env.BITRIX_WEBHOOK_URL, document, signal)
+    yield { portal: true }
+    yield* say(text)
+    return
+  }
+  const deep = treeDeep(asked)
+  const folder = folderHint(asked)
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL && folder) {
+    const text = await askBitrix(env.BITRIX_WEBHOOK_URL, { action: 'files', query: folder, deep }, signal)
+    yield { portal: true }
+    yield { reply: text }
+    return
+  }
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL && (treeAsk(asked) || deep)) {
+    const text = await readBitrixTree(env.BITRIX_WEBHOOK_URL, signal, deep)
+    yield { portal: true }
+    yield { reply: text }
+    return
+  }
   const models = {
     text: env.LLM_TEXT_MODEL,
     vision: env.LLM_VISION_MODEL,
     search: search === true && Boolean(env.LLM_SEARCH_URL),
+    bitrix: bitrixMode,
   }
   let turns = await prepareTurns(messages)
   let photoSubject = ''
@@ -193,6 +351,27 @@ export async function* streamNoraChat(
       if (findings !== SEARCH_UNAVAILABLE) yield { searched: true }
     }
   }
+  if (bitrixMode === 'ready' && env.BITRIX_WEBHOOK_URL) {
+    const lines: string[] = []
+    for (const call of bitrixPrefetch(lastUser?.text ?? '')) {
+      const text = await askBitrix(env.BITRIX_WEBHOOK_URL, call, signal).catch((error: unknown) => {
+        if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
+        return 'Битрикс сейчас не отвечает.'
+      })
+      lines.push(text)
+    }
+    if (lines.length > 0) {
+      const system = thread.find((message) => message.role === 'system')
+      if (system && typeof system.content === 'string') {
+        system.content += `\n\nДанные Битрикса:\n${lines.join('\n\n')}`
+      }
+      if (lines.some(portalReached)) yield { portal: true }
+    }
+  }
+  const chatTools = [
+    ...(models.search ? [NORA_WEB_SEARCH_TOOL] : []),
+    ...(bitrixMode === 'ready' ? [NORA_BITRIX_TOOL] : []),
+  ]
   const thinking = request.model === env.LLM_TEXT_MODEL
   const thinkOn = Boolean(think) && thinking
   const writingTable = (knowledge ?? '').includes('| --- |')
@@ -209,7 +388,7 @@ export async function* streamNoraChat(
           : TEXT_MAX_TOKENS
   let reply = ''
   for (let round = 0; round < 3; round += 1) {
-    const allowTools = request.tools && round < 2
+    const allowTools = request.tools && chatTools.length > 0 && round < 2
     const useNative = !allowTools
     const response = useNative
       ? await postOllamaChat(baseUrl, env.LLM_API_KEY, {
@@ -230,7 +409,7 @@ export async function* streamNoraChat(
           messages: thread,
           stream: true,
           ...(thinking ? { think: thinkOn, options: { num_ctx: textNumCtx } } : {}),
-          ...(allowTools ? { tools: [NORA_WEB_SEARCH_TOOL] } : {}),
+          ...(allowTools ? { tools: chatTools } : {}),
         }, signal)
     const roundStream = useNative ? readOllamaChat(response) : readCompletion(response, allowTools ? undefined : [])
     let step = await roundStream.next()
@@ -255,6 +434,22 @@ export async function* streamNoraChat(
     reply = ''
     yield { resetReply: true }
     for (const call of calls) {
+      if (call.name === 'bitrix') {
+        const parsed = readBitrixCall(call)
+        const content = !parsed
+          ? 'Этот инструмент недоступен.'
+          : 'error' in parsed
+            ? parsed.error
+            : env.BITRIX_WEBHOOK_URL
+              ? await askBitrix(env.BITRIX_WEBHOOK_URL, parsed, signal).catch((error: unknown) => {
+                  if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
+                  return 'Битрикс сейчас не отвечает.'
+                })
+              : 'Портал не подключён.'
+        if (portalReached(content)) yield { portal: true }
+        thread.push({ role: 'tool', tool_call_id: call.id, content })
+        continue
+      }
       const query = webSearchQuery(call)
       const content = query
         ? await searchOfficeWeb(env.LLM_SEARCH_URL!, query, env.LLM_API_KEY).catch(() => SEARCH_UNAVAILABLE)

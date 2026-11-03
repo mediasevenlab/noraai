@@ -28,6 +28,7 @@ import { CheckIcon, CopyIcon, Maximize2Icon, XIcon } from '@/components/icons'
 import { useAuth } from '@/features/auth'
 import { cn } from '@/lib/utils'
 
+import { DiskTreeBlock } from './disk-tree'
 import { prepareDialogMarkdown } from './markdown-prepare'
 import { bannerSpans, sheetColumnWidths, tableHeading } from './table-layout'
 
@@ -467,6 +468,12 @@ export function DialogMarkdown() {
           />
         ),
         CodeHeader: DialogCodeHeader,
+      }}
+      componentsByLanguage={{
+        'nora-disk': {
+          CodeHeader: () => null,
+          SyntaxHighlighter: ({ code }) => <DiskTreeBlock code={code} />,
+        },
       }}
       preprocess={prepareDialogMarkdown}
       rehypePlugins={rehypePlugins}

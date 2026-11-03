@@ -7,9 +7,10 @@ export function reasoningClock(ms: number) {
   return rest === 0 ? `${minutes} мин` : `${minutes} мин ${rest} с`
 }
 
-export function reasoningStatusLabel(ms: number, running: boolean, searched = false) {
+export function reasoningStatusLabel(ms: number, running: boolean, searched = false, portal = false) {
   const base = reasoningStatusBase(ms, running)
-  return searched ? `${base} · искала в интернете` : base
+  const notes = [searched ? 'искала в интернете' : '', portal ? 'смотрела Битрикс' : ''].filter(Boolean)
+  return notes.length > 0 ? `${base} · ${notes.join(' · ')}` : base
 }
 
 function reasoningStatusBase(ms: number, running: boolean) {

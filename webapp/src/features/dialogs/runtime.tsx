@@ -13,6 +13,7 @@ import { activeKnowledgeBases } from '@/features/knowledge'
 import { activeMeetingTranscripts } from '@/features/meetings'
 
 import { streamNoraModel } from './api'
+import { bitrixEnabled } from './bitrix-open'
 import { internetEnabled } from './internet-open'
 import { reasoningExpanded } from './reasoning-open'
 import { ApiRequestError } from '@/platform/api'
@@ -64,17 +65,20 @@ function chatParts(input: {
   startedAt: number
   reasoningDoneAt?: number
   searched?: boolean
+  portal?: boolean
+  files?: ReadonlyArray<{ name: string; mime: string; data: string }>
 }) {
   const content: Array<
     | {
         type: 'reasoning'
         text: string
         timing: { startedAt: number; completedAt?: number }
-        providerMetadata?: { nora: { searched: true } }
+        providerMetadata?: { nora: { searched?: true; portal?: true } }
       }
     | { type: 'text'; text: string }
+    | { type: 'file'; filename: string; mimeType: string; data: string }
   > = []
-  if (input.reasoning || input.reasoningDoneAt || input.searched) {
+  if (input.reasoning || input.reasoningDoneAt || input.searched || input.portal) {
     content.push({
       type: 'reasoning',
       text: input.reasoning,
@@ -82,8 +86,20 @@ function chatParts(input: {
         startedAt: input.startedAt,
         ...(input.reasoningDoneAt ? { completedAt: input.reasoningDoneAt } : {}),
       },
-      ...(input.searched ? { providerMetadata: { nora: { searched: true as const } } } : {}),
+      ...(input.searched || input.portal
+        ? {
+            providerMetadata: {
+              nora: {
+                ...(input.searched ? { searched: true as const } : {}),
+                ...(input.portal ? { portal: true as const } : {}),
+              },
+            },
+          }
+        : {}),
     })
+  }
+  for (const file of input.files ?? []) {
+    content.push({ type: 'file', filename: file.name, mimeType: file.mime, data: file.data })
   }
   if (input.reply) content.push({ type: 'text', text: input.reply })
   return { content }
@@ -106,6 +122,8 @@ function useNoraChatModel(): ChatModelAdapter {
         let reasoning = ''
         let reply = ''
         let searched = false
+        let portal = false
+        const files: Array<{ name: string; mime: string; data: string }> = []
         let reasoningDoneAt: number | undefined
         try {
           for await (const event of streamNoraModel(
@@ -116,16 +134,19 @@ function useNoraChatModel(): ChatModelAdapter {
             activeKnowledgeBases(),
             thinkOn,
             activeMeetingTranscripts(),
+            bitrixEnabled(),
           )) {
             if (event.resetReply) reply = ''
             if (event.searched) searched = true
+            if (event.portal) portal = true
+            if (event.file) files.push(event.file)
             if (event.reasoning && thinkOn) reasoning += event.reasoning
             if (event.reply) {
               if (!reasoningDoneAt) reasoningDoneAt = Date.now()
               reply += event.reply
             }
-            if (!reasoning && !reply && !searched) continue
-            yield chatParts({ reasoning, reply, startedAt, reasoningDoneAt, searched })
+            if (!reasoning && !reply && !searched && !portal && files.length === 0) continue
+            yield chatParts({ reasoning, reply, startedAt, reasoningDoneAt, searched, portal, files })
           }
         } catch (error) {
           if (abortSignal.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
@@ -142,6 +163,8 @@ function useNoraChatModel(): ChatModelAdapter {
           startedAt,
           reasoningDoneAt: reasoningDoneAt ?? Date.now(),
           searched,
+          portal,
+          files,
         })
       },
     }),

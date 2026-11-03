@@ -10,6 +10,7 @@ import type { AuthHttpEnv } from '../auth'
 import { AppMealComposer } from './application/app-meal-composer'
 import { MealsService } from './application/meals-service'
 import { extractMealWithGemini, refineMealWithGemini, transcribeAudioWithGemini } from './infrastructure/gemini-client'
+import { takeBitrixFile } from './infrastructure/bitrix-client'
 import { completeDocumentCompare, completeFollowUps, completeNoraChat, streamNoraChat } from './infrastructure/nora-chat-client'
 import { extractMealWithNora } from './infrastructure/nora-llm-client'
 import { analyzeMealWithWebhook } from './infrastructure/meal-analyze-webhook'
@@ -105,7 +106,15 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
     chatWithNora: async (userId, input) => {
       if (input.suggestions) return completeFollowUps(options.env, input.messages)
       const prepared = await prepareNoraChat(options, userId, input)
-      return completeNoraChat(options.env, prepared.messages, input.search, prepared.knowledge, undefined, input.think)
+      return completeNoraChat(
+        options.env,
+        prepared.messages,
+        input.search,
+        prepared.knowledge,
+        undefined,
+        input.think,
+        input.bitrix,
+      )
     },
     compareDocuments: async (
       left: { name: string; bytes: Buffer },
@@ -144,7 +153,22 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
     },
     streamChatWithNora: async (userId, input, signal) => {
       const prepared = await prepareNoraChat(options, userId, input)
-      return streamNoraChat(options.env, prepared.messages, input.search, prepared.knowledge, signal, input.think)
+      return streamNoraChat(
+        options.env,
+        prepared.messages,
+        input.search,
+        prepared.knowledge,
+        signal,
+        input.think,
+        input.bitrix,
+      )
+    },
+    openBitrixFile: async (id: string) => {
+      const webhook = options.env.BITRIX_WEBHOOK_URL
+      if (!webhook) throw new MealsFailure('misconfigured', 'Портал не подключён.')
+      const taken = await takeBitrixFile(webhook, id)
+      if ('error' in taken) throw new MealsFailure('bad_request', taken.error)
+      return { name: taken.name, mime: taken.mime, data: taken.bytes.toString('base64') }
     },
     internalServiceToken: options.env.INTERNAL_SERVICE_TOKEN,
     requireAuth: options.requireAuth,

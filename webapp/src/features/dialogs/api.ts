@@ -40,12 +40,21 @@ export async function* streamNoraModel(
   knowledgeBaseIds: string[] = [],
   think = false,
   meetingIds: string[] = [],
-): AsyncGenerator<{ reasoning?: string; reply?: string; resetReply?: boolean; searched?: boolean }> {
+  bitrix = false,
+): AsyncGenerator<{
+  reasoning?: string
+  reply?: string
+  resetReply?: boolean
+  searched?: boolean
+  portal?: boolean
+  file?: { name: string; mime: string; data: string }
+}> {
   const response = await transport.raw('/api/users/me/model-chat', {
     method: 'POST',
     body: {
       messages,
       search,
+      bitrix,
       stream: true,
       think,
       ...(knowledgeBaseIds.length > 0 ? { knowledgeBaseIds } : {}),
@@ -71,6 +80,8 @@ export async function* streamNoraModel(
         reply?: string
         resetReply?: boolean
         searched?: boolean
+        portal?: boolean
+        file?: { name: string; mime: string; data: string }
         error?: string
       }
       if (event.error) throw new Error(event.error)

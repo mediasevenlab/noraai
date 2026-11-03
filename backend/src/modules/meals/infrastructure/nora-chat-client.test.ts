@@ -576,4 +576,659 @@ describe('Nora settings chat request', () => {
       globalThis.fetch = original
     }
   })
+
+  test('the bitrix button reads tasks and does not show the webhook to the model', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    const prompts: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      calls.push(url)
+      if (url.endsWith('/tasks.task.list.json')) {
+        return new Response(
+          JSON.stringify({
+            result: { tasks: [{ id: '15', title: 'Проверить отчёт', status: '3', responsibleId: '10' }] },
+          }),
+          { status: 200 },
+        )
+      }
+      prompts.push(String(init?.body ?? ''))
+      return new Response(
+        JSON.stringify({ choices: [{ message: { content: 'Есть задача 15: Проверить отчёт.' } }] }),
+        { status: 200 },
+      )
+    }) as typeof fetch
+    const events: Array<{ portal?: boolean; reply?: string }> = []
+    try {
+      for await (const event of streamNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [{ role: 'user', text: 'Какие у меня задачи?' }],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )) {
+        if (event.portal || event.reply) events.push(event)
+      }
+    } finally {
+      globalThis.fetch = original
+    }
+    expect(events.some((event) => event.portal)).toBe(true)
+    expect(events.map((event) => event.reply ?? '').join('')).toContain('Проверить отчёт')
+    expect(calls.some((url) => url.endsWith('/tasks.task.list.json'))).toBe(true)
+    expect(prompts.join('')).toContain('Проверить отчёт')
+    expect(prompts.join('')).not.toContain('secret')
+  })
+
+  test('the bitrix button off does not call the portal', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      calls.push(String(input))
+      return new Response(`${JSON.stringify({ message: { content: 'Отвечаю без портала.' }, done: true })}\n`, {
+        status: 200,
+      })
+    }) as typeof fetch
+    try {
+      const result = await completeNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [{ role: 'user', text: 'Какие у меня задачи?' }],
+        false,
+      )
+      expect(result.reply).toBe('Отвечаю без портала.')
+    } finally {
+      globalThis.fetch = original
+    }
+    expect(calls.some((url) => url.includes('portal.test'))).toBe(false)
+  })
+
+  test('creating a task goes through the bitrix tool', async () => {
+    const original = globalThis.fetch
+    const created: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.endsWith('/tasks.task.add.json')) {
+        created.push(String(init?.body ?? ''))
+        return new Response(JSON.stringify({ result: { task: { id: '77' } } }), { status: 200 })
+      }
+      const body = JSON.parse(String(init?.body ?? '{}')) as { messages?: Array<{ role?: string }> }
+      const asked = body.messages?.some((message) => message.role === 'tool')
+      return new Response(
+        JSON.stringify(
+          asked
+            ? { choices: [{ message: { content: 'Задача создана, номер 77.' } }] }
+            : {
+                choices: [
+                  {
+                    message: {
+                      content: '',
+                      tool_calls: [
+                        {
+                          id: 'call_1',
+                          function: {
+                            name: 'bitrix',
+                            arguments: '{"action":"create_task","title":"Проверить отчёт"}',
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+        ),
+        { status: 200 },
+      )
+    }) as typeof fetch
+    try {
+      const result = await completeNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [{ role: 'user', text: 'Создай задачу проверить отчёт' }],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )
+      expect(result.reply).toBe('Задача создана, номер 77.')
+    } finally {
+      globalThis.fetch = original
+    }
+    expect(created[0]).toContain('Проверить отчёт')
+    expect(created[0]).not.toContain('secret')
+  })
+
+  test('a request to download a bitrix file attaches it and does not ask the model', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      calls.push(url)
+      if (url.endsWith('/disk.storage.getlist.json')) {
+        return new Response(JSON.stringify({ result: [{ ID: '1', NAME: 'Диск', ROOT_OBJECT_ID: '3' }] }), { status: 200 })
+      }
+      if (url.endsWith('/disk.folder.getchildren.json')) {
+        return new Response(JSON.stringify({ result: [{ ID: '294', NAME: 'Список недостающих моделей.docx', TYPE: 'file' }] }), { status: 200 })
+      }
+      if (url.endsWith('/disk.file.get.json')) {
+        return new Response(JSON.stringify({
+          result: { ID: '294', NAME: 'Список недостающих моделей.docx', DOWNLOAD_URL: 'https://files.test/294/secret/download' },
+        }), { status: 200 })
+      }
+      if (url.startsWith('https://files.test/')) return new Response('docx-bytes', { status: 200 })
+      return new Response('model should not be called', { status: 500 })
+    }) as typeof fetch
+    const events: Array<{ portal?: boolean; reply?: string; file?: { name: string; data: string } }> = []
+    try {
+      for await (const event of streamNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [
+          { role: 'assistant', text: 'Файл 294 — это «Список недостающих моделей.docx»' },
+          { role: 'user', text: 'дай этот файл для скачивания' },
+        ],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )) {
+        events.push(event)
+      }
+    } finally {
+      globalThis.fetch = original
+    }
+    const file = events.find((event) => event.file)?.file
+    expect(file?.name).toBe('Список недостающих моделей.docx')
+    expect(file?.data).toBe(Buffer.from('docx-bytes').toString('base64'))
+    expect(events.some((event) => event.portal)).toBe(true)
+    expect(events.map((event) => event.reply ?? '').join('')).toContain('приложен')
+    expect(calls.some((url) => url.includes('llm.test'))).toBe(false)
+    expect(JSON.stringify(events)).not.toContain('secret')
+  })
+
+  test('a question about where a bitrix file sits answers with the folder path', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      calls.push(url)
+      const body = JSON.parse(String(init?.body ?? '{}')) as { id?: number | string }
+      if (url.endsWith('/disk.storage.getlist.json')) {
+        return new Response(JSON.stringify({ result: [{ ID: '1', NAME: 'Общий диск', ROOT_OBJECT_ID: '3' }] }), { status: 200 })
+      }
+      if (url.endsWith('/disk.folder.getchildren.json')) {
+        return new Response(JSON.stringify({ result: [{ ID: '254', NAME: 'Заявление на отпуск.docx', TYPE: 'file' }] }), { status: 200 })
+      }
+      if (url.endsWith('/disk.file.get.json')) {
+        return new Response(JSON.stringify({
+          result: { ID: '254', NAME: 'Заявление на отпуск.docx', STORAGE_ID: '1', PARENT_ID: '252' },
+        }), { status: 200 })
+      }
+      if (url.endsWith('/disk.storage.get.json')) {
+        return new Response(JSON.stringify({ result: { ID: '1', NAME: 'Общий диск', ROOT_OBJECT_ID: '3', ENTITY_TYPE: 'common' } }), { status: 200 })
+      }
+      if (url.endsWith('/disk.folder.get.json') && String(body.id) === '252') {
+        return new Response(JSON.stringify({ result: { ID: '252', NAME: 'ООО Смарт Контрол', PARENT_ID: '3' } }), { status: 200 })
+      }
+      return new Response('model should not be called', { status: 500 })
+    }) as typeof fetch
+    const events: Array<{ portal?: boolean; reply?: string }> = []
+    try {
+      for await (const event of streamNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [
+          { role: 'assistant', text: 'Файл «Заявление на отпуск.docx» приложен.' },
+          { role: 'user', text: 'где расположен этот документ?' },
+        ],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )) {
+        events.push(event)
+      }
+    } finally {
+      globalThis.fetch = original
+    }
+    const reply = events.map((event) => event.reply ?? '').join('')
+    expect(reply).toContain('Путь в Битриксе: Диск «Общий диск» / ООО Смарт Контрол / Заявление на отпуск.docx')
+    expect(events.some((event) => event.portal)).toBe(true)
+    expect(calls.some((url) => url.includes('llm.test'))).toBe(false)
+    expect(JSON.stringify(events)).not.toContain('secret')
+  })
+
+  test('a follow-up for the file text reads the nested file and does not ask the model', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      calls.push(url)
+      const body = JSON.parse(String(init?.body ?? '{}')) as { id?: number | string }
+      if (url.endsWith('/disk.storage.getlist.json')) {
+        return new Response(JSON.stringify({ result: [{ ID: '1', NAME: 'Роман', ROOT_OBJECT_ID: '1' }] }), { status: 200 })
+      }
+      if (url.endsWith('/disk.folder.getchildren.json') && String(body.id) === '1') {
+        return new Response(JSON.stringify({ result: [{ ID: '284', NAME: 'РШП 2024', TYPE: 'folder' }] }), { status: 200 })
+      }
+      if (url.endsWith('/disk.folder.getchildren.json') && String(body.id) === '284') {
+        return new Response(JSON.stringify({ result: [{ ID: '294', NAME: 'Список недостающих моделей.docx', TYPE: 'file' }] }), { status: 200 })
+      }
+      if (url.endsWith('/disk.file.get.json')) {
+        return new Response(JSON.stringify({
+          result: { ID: '294', NAME: 'Список недостающих моделей.txt', DOWNLOAD_URL: 'https://files.test/294/secret/download' },
+        }), { status: 200 })
+      }
+      if (url.startsWith('https://files.test/')) return new Response('текст из учебника', { status: 200 })
+      return new Response('model should not be called', { status: 500 })
+    }) as typeof fetch
+    const events: Array<{ portal?: boolean; reply?: string }> = []
+    try {
+      for await (const event of streamNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [
+          { role: 'assistant', text: 'Файл «Список недостающих моделей.docx» приложен. Его можно скачать.' },
+          { role: 'user', text: 'напиши содержимое этого файла' },
+        ],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )) {
+        events.push(event)
+      }
+    } finally {
+      globalThis.fetch = original
+    }
+    const reply = events.map((event) => event.reply ?? '').join('')
+    expect(reply).toContain('текст из учебника')
+    expect(reply).not.toContain('не могу найти')
+    expect(events.some((event) => event.portal)).toBe(true)
+    expect(calls.some((url) => url.includes('llm.test'))).toBe(false)
+    expect(JSON.stringify(events)).not.toContain('secret')
+  })
+
+  test('a numbered file mention is read by its number', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      calls.push(url)
+      if (url.endsWith('/disk.file.get.json')) {
+        return new Response(JSON.stringify({
+          result: { ID: '294', NAME: 'Список недостающих моделей.txt', TYPE: 'file', DOWNLOAD_URL: 'https://files.test/294/secret/download' },
+        }), { status: 200 })
+      }
+      if (url.startsWith('https://files.test/')) return new Response('текст из учебника', { status: 200 })
+      return new Response('model should not be called', { status: 500 })
+    }) as typeof fetch
+    const events: Array<{ reply?: string }> = []
+    try {
+      for await (const event of streamNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [
+          { role: 'assistant', text: 'Откройте файл «294. Список недостающих моделей.docx».' },
+          { role: 'user', text: 'напиши содержимое этого файла' },
+        ],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )) {
+        events.push(event)
+      }
+    } finally {
+      globalThis.fetch = original
+    }
+    expect(events.map((event) => event.reply ?? '').join('')).toContain('текст из учебника')
+    expect(calls.some((url) => url.includes('llm.test'))).toBe(false)
+    expect(calls.some((url) => url.includes('disk.storage.getlist'))).toBe(false)
+  })
+
+  test('a folder question returns the nested tree and does not ask the model', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      calls.push(url)
+      const body = JSON.parse(String(init?.body ?? '{}')) as { id?: number | string }
+      if (url.endsWith('/disk.storage.getlist.json')) {
+        return new Response(JSON.stringify({ result: [{ ID: '1', NAME: 'Роман', ROOT_OBJECT_ID: '1' }] }), { status: 200 })
+      }
+      if (String(body.id) === '1') {
+        return new Response(JSON.stringify({ result: [{ ID: '284', NAME: 'РШП 2024', TYPE: 'folder' }] }), { status: 200 })
+      }
+      if (String(body.id) === '284') {
+        return new Response(JSON.stringify({ result: [{ ID: '294', NAME: 'Список.docx', TYPE: 'file' }, { ID: '382', NAME: 'Загруженные файлы', TYPE: 'folder' }] }), { status: 200 })
+      }
+      if (String(body.id) === '382') {
+        return new Response(JSON.stringify({ result: [{ ID: '400', NAME: 'Frame.png', TYPE: 'file' }] }), { status: 200 })
+      }
+      return new Response('model should not be called', { status: 500 })
+    }) as typeof fetch
+    const events: Array<{ reply?: string }> = []
+    try {
+      for await (const event of streamNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [{ role: 'user', text: 'что есть в 284. РШП 2024?' }],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )) {
+        events.push(event)
+      }
+    } finally {
+      globalThis.fetch = original
+    }
+    const reply = events.map((event) => event.reply ?? '').join('')
+    expect(reply).toContain('В папке «РШП 2024», номер 284:')
+    expect(reply).toContain('```nora-disk')
+    expect(reply).toContain('Список.docx')
+    expect(reply).toContain('Загруженные файлы')
+    expect(reply).not.toContain('Frame.png')
+    expect(calls.some((url) => url.includes('llm.test'))).toBe(false)
+  })
+
+  test('a disk tree starts at the top and opens every file only when asked', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      calls.push(url)
+      const body = JSON.parse(String(init?.body ?? '{}')) as { id?: number | string }
+      if (url.endsWith('/disk.storage.getlist.json')) {
+        return new Response(JSON.stringify({ result: [{ ID: '1', NAME: 'Роман', ROOT_OBJECT_ID: '1' }] }), { status: 200 })
+      }
+      if (String(body.id) === '1') {
+        return new Response(JSON.stringify({ result: [{ ID: '284', NAME: 'РШП 2024', TYPE: 'folder' }, { ID: '244', NAME: 'Список.xlsx', TYPE: 'file' }] }), { status: 200 })
+      }
+      if (String(body.id) === '284') {
+        return new Response(JSON.stringify({ result: [{ ID: '294', NAME: 'Список.docx', TYPE: 'file' }] }), { status: 200 })
+      }
+      return new Response('model should not be called', { status: 500 })
+    }) as typeof fetch
+    const ask = async (text: string) => {
+      const events: Array<{ reply?: string }> = []
+      for await (const event of streamNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [{ role: 'user', text }],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )) {
+        events.push(event)
+      }
+      return events.map((event) => event.reply ?? '').join('')
+    }
+    try {
+      calls.length = 0
+      const overview = await ask('дай дерево диска')
+      expect(overview).toContain('```nora-disk')
+      expect(overview).toContain('общее дерево')
+      expect(overview).toContain('Список.xlsx')
+      expect(overview).not.toContain('Список.docx')
+      expect(calls.some((url) => url.includes('llm.test'))).toBe(false)
+      calls.length = 0
+      const full = await ask('покажи дерево со всеми вложениями')
+      expect(full).toContain('Список.docx')
+      expect(full).not.toContain('общее дерево')
+      expect(calls.some((url) => url.includes('llm.test'))).toBe(false)
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+
+  test('deleting a task is reported as done and the model does not retell it', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      calls.push(url)
+      const body = JSON.parse(String(init?.body ?? '{}')) as { taskId?: number }
+      if (url.endsWith('/tasks.task.list.json')) {
+        return new Response(JSON.stringify({ result: { tasks: [{ id: '292', title: 'Тестовая задача 3' }] } }), { status: 200 })
+      }
+      if (url.endsWith('/tasks.task.delete.json')) {
+        expect(body.taskId).toBe(292)
+        return new Response(JSON.stringify({ result: true }), { status: 200 })
+      }
+      return new Response('model should not be called', { status: 500 })
+    }) as typeof fetch
+    const events: Array<{ reply?: string }> = []
+    try {
+      for await (const event of streamNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [{ role: 'user', text: 'удали Тестовая задача 3' }],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )) {
+        events.push(event)
+      }
+    } finally {
+      globalThis.fetch = original
+    }
+    const reply = events.map((event) => event.reply ?? '').join('')
+    expect(reply).toBe('Задача «Тестовая задача 3» удалена, номер 292.')
+    expect(reply).not.toContain('ранее')
+    expect(calls.some((url) => url.includes('llm.test'))).toBe(false)
+  })
+
+  test('creating a document with an approval chain does not ask the model', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      calls.push(url)
+      if (url.endsWith('/disk.storage.getlist.json')) {
+        return new Response(JSON.stringify({ result: [{ ID: '2', NAME: 'Общий диск', ENTITY_TYPE: 'common', ROOT_OBJECT_ID: '3' }] }), { status: 200 })
+      }
+      if (url.endsWith('/disk.folder.uploadfile.json')) {
+        return new Response(JSON.stringify({ result: { ID: '394', NAME: 'Тестовый документ.txt' } }), { status: 200 })
+      }
+      if (url.endsWith('/user.get.json')) {
+        return new Response(JSON.stringify({ result: [{ ID: '12', NAME: 'Юлия', LAST_NAME: 'Фатеева' }] }), { status: 200 })
+      }
+      if (url.endsWith('/tasks.task.add.json')) {
+        return new Response(JSON.stringify({ result: { task: { id: '411' } } }), { status: 200 })
+      }
+      return new Response('model should not be called', { status: 500 })
+    }) as typeof fetch
+    const events: Array<{ reply?: string }> = []
+    try {
+      for await (const event of streamNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [{ role: 'user', text: 'Создай тестовый документ и цепочку согласования нашими сотрудниками' }],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )) {
+        events.push(event)
+      }
+    } finally {
+      globalThis.fetch = original
+    }
+    const reply = events.map((event) => event.reply ?? '').join('')
+    expect(reply).toContain('номер 394')
+    expect(reply).toContain('Юлия Фатеева — задача №411')
+    expect(reply).not.toContain('Документы:')
+    expect(calls.some((url) => url.includes('llm.test'))).toBe(false)
+  })
+
+  test('a meeting, the client list and successful deals do not ask the model', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      calls.push(url)
+      if (url.endsWith('/crm.company.list.json')) return new Response(JSON.stringify({ result: [{ ID: '4', TITLE: 'Сибирь Девелопмент' }], total: 1 }), { status: 200 })
+      if (url.endsWith('/crm.contact.list.json')) return new Response(JSON.stringify({ result: [], total: 0 }), { status: 200 })
+      if (url.endsWith('/crm.deal.list.json')) return new Response(JSON.stringify({ result: [{ ID: '1836', TITLE: 'продление Монолит' }], total: 1 }), { status: 200 })
+      if (url.endsWith('/voximplant.statistic.get.json')) return new Response(JSON.stringify({ result: [], total: 2 }), { status: 200 })
+      if (url.endsWith('/calendar.section.get.json')) return new Response(JSON.stringify({ result: [{ ID: '12', NAME: 'Календарь' }] }), { status: 200 })
+      if (url.endsWith('/calendar.event.add.json')) return new Response(JSON.stringify({ result: 77 }), { status: 200 })
+      if (url.endsWith('/calendar.event.getbyid.json')) {
+        return new Response(JSON.stringify({ result: { ID: '77', NAME: 'Встреча: Дмитрий Резанов', DATE_FROM: '04.11.2026 12:00:00' } }), { status: 200 })
+      }
+      return new Response('model should not be called', { status: 500 })
+    }) as typeof fetch
+    const ask = async (text: string) => {
+      const events: Array<{ reply?: string }> = []
+      for await (const event of streamNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [{ role: 'user', text }],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )) events.push(event)
+      return events.map((event) => event.reply ?? '').join('')
+    }
+    try {
+      expect(await ask('дай список наших клиентов')).toContain('№4 Сибирь Девелопмент')
+      expect(await ask('у нас есть успешные дозвоны или успешные заключенные договора?')).toContain('№1836 продление Монолит')
+      const meeting = await ask('создай на завтра встречу с ООО Ромашка')
+      expect(meeting).toContain('номер 77')
+      expect(meeting).not.toContain('Откройте Битрикс24')
+      expect(meeting).not.toContain('is not defined')
+      expect(calls.some((url) => url.includes('llm.test'))).toBe(false)
+      const events: Array<{ reply?: string }> = []
+      for await (const event of streamNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [
+          { role: 'user', text: 'запланируй встречу для дмитрия резанова на завтра на 12 часов' },
+          { role: 'assistant', text: meeting },
+          { role: 'user', text: 'где ее найти?' },
+        ],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )) events.push(event)
+      const located = events.map((event) => event.reply ?? '').join('')
+      expect(located).toContain('Календарь → 04.11.2026')
+      expect(located).toContain('Встреча: Дмитрий Резанов')
+      expect(located).toContain('12:00')
+      expect(located).toContain('номер 77')
+      expect(calls.some((url) => url.includes('llm.test'))).toBe(false)
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+
+  test('a question about planned meetings lists them and does not create one', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      calls.push(url)
+      if (url.endsWith('/calendar.event.get.json')) {
+        return new Response(JSON.stringify({ result: [{ ID: '3746', NAME: 'Встреча: Дмитрий Резанов', DATE_FROM: '04.11.2026 12:00:00' }] }), { status: 200 })
+      }
+      return new Response('model should not be called', { status: 500 })
+    }) as typeof fetch
+    const events: Array<{ reply?: string }> = []
+    try {
+      for await (const event of streamNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [{ role: 'user', text: 'Какие запланированные встречи есть?' }],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )) events.push(event)
+    } finally {
+      globalThis.fetch = original
+    }
+    const reply = events.map((event) => event.reply ?? '').join('')
+    expect(reply).toContain('04.11.2026 12:00')
+    expect(reply).toContain('Дмитрий Резанов')
+    expect(reply).not.toContain('создана')
+    expect(reply).not.toContain('Откройте Битрикс24')
+    expect(calls.some((url) => url.includes('calendar.event.add'))).toBe(false)
+    expect(calls.some((url) => url.includes('llm.test'))).toBe(false)
+  })
+
+  test('deleting the meeting just created does not list the calendar', async () => {
+    const original = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      calls.push(url)
+      if (url.endsWith('/calendar.event.getbyid.json')) {
+        return new Response(JSON.stringify({ result: { ID: '3750', NAME: 'Встреча с ООО Hjvfirf', DATE_FROM: '03.11.2026 05:00:00' } }), { status: 200 })
+      }
+      if (url.endsWith('/calendar.event.delete.json')) return new Response(JSON.stringify({ result: true }), { status: 200 })
+      return new Response('model should not be called', { status: 500 })
+    }) as typeof fetch
+    const events: Array<{ reply?: string }> = []
+    try {
+      for await (const event of streamNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [
+          { role: 'assistant', text: 'Встреча «Встреча с ООО Hjvfirf» создана на 03.11.2026, 05:00–06:00, номер 3750. Компании «ООО Hjvfirf» в CRM нет.' },
+          { role: 'user', text: 'удали эту встречу' },
+        ],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )) events.push(event)
+    } finally {
+      globalThis.fetch = original
+    }
+    const reply = events.map((event) => event.reply ?? '').join('')
+    expect(reply).toContain('удалена, номер 3750')
+    expect(reply).not.toContain('События:')
+    expect(calls.some((url) => url.includes('calendar.event.delete'))).toBe(true)
+    expect(calls.some((url) => url.includes('llm.test'))).toBe(false)
+  })
+
+  test('asking where the meetings are stays in the calendar', async () => {
+    const original = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/calendar.event.get.json')) {
+        return new Response(JSON.stringify({ result: [{ ID: '3746', NAME: 'Встреча: Дмитрий Резанов', DATE_FROM: '04.11.2026 12:00:00' }] }), { status: 200 })
+      }
+      return new Response('model should not be called', { status: 500 })
+    }) as typeof fetch
+    const events: Array<{ reply?: string }> = []
+    try {
+      for await (const event of streamNoraChat(
+        { ...env, BITRIX_WEBHOOK_URL: 'https://portal.test/rest/10/secret/' },
+        [
+          { role: 'assistant', text: 'Файл «Функционал для клиентов..xlsx», номер 188. Путь в Битриксе: Диск «Юлия Фатеева» / Функционал для клиентов..xlsx.' },
+          { role: 'assistant', text: 'События:\n1. 04.11.2026 12:00. Встреча: Дмитрий Резанов' },
+          { role: 'user', text: 'Где найти эти встречи?' },
+        ],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+      )) events.push(event)
+    } finally {
+      globalThis.fetch = original
+    }
+    const reply = events.map((event) => event.reply ?? '').join('')
+    expect(reply).toContain('Календарь')
+    expect(reply).toContain('Дмитрий Резанов')
+    expect(reply).not.toContain('xlsx')
+    expect(reply).not.toContain('Юлия')
+  })
 })

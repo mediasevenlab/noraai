@@ -11,6 +11,7 @@ import { createVisionScanReader } from './infrastructure/read-scan'
 import { createKnowledgeRoutes } from './transport/routes'
 
 export { attachedFileContext, chooseAttachedFile, combineKnowledgeContext, copiedKnowledgeTable, directKnowledgeReply, schemeAnswer } from './domain/retrieve'
+export { extractKnowledgeDocument as readOfficeText } from './infrastructure/extract-document'
 export { ensureBuiltinHandbook } from './infrastructure/builtin-handbook'
 
 export function createKnowledgeModule(options: {

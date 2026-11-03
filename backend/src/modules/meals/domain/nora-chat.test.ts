@@ -239,6 +239,17 @@ describe('Nora settings chat', () => {
     expect(String(quiet.messages[0]?.content)).toContain('интернета нет')
   })
 
+  test('the bitrix button offers the portal tool only when the webhook is configured', () => {
+    const ready = buildNoraChatRequest([user('Какие задачи?')], { ...models, search: false, bitrix: 'ready' })
+    expect(ready.tools).toBe(true)
+    expect(String(ready.messages[0]?.content)).toContain('инструмент bitrix')
+    const missing = buildNoraChatRequest([user('Какие задачи?')], { ...models, search: false, bitrix: 'missing' })
+    expect(missing.tools).toBe(false)
+    expect(String(missing.messages[0]?.content)).toContain('портал не подключён')
+    const quiet = buildNoraChatRequest([user('Какие задачи?')], { ...models, search: false })
+    expect(String(quiet.messages[0]?.content)).not.toContain('bitrix')
+  })
+
   test('offline does not offer the web and says the internet is off', () => {
     const request = buildNoraChatRequest([user('Что на официальном сайте?')], { ...models, search: false })
     expect(request.tools).toBe(false)

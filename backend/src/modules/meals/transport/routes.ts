@@ -629,7 +629,8 @@ type CreateMealsRoutesOptions = {
     userId: string,
     input: NoraModelChatRequest,
     signal: AbortSignal,
-  ) => Promise<AsyncIterable<{ reasoning?: string; reply?: string; resetReply?: boolean; searched?: boolean }>>
+  ) => Promise<AsyncIterable<{ reasoning?: string; reply?: string; resetReply?: boolean; searched?: boolean; portal?: boolean; file?: { name: string; mime: string; data: string } }>>
+  openBitrixFile: (id: string) => Promise<{ name: string; mime: string; data: string }>
   internalServiceToken: string | undefined
   requireAuth: MiddlewareHandler<AuthHttpEnv>
   requireMentor: MiddlewareHandler<AuthHttpEnv>
@@ -654,6 +655,7 @@ export function createMealsRoutes({
   chatWithNora,
   compareDocuments,
   streamChatWithNora,
+  openBitrixFile,
   internalServiceToken,
   requireAuth,
   requireMentor,
@@ -710,9 +712,10 @@ export function createMealsRoutes({
         try {
           const events = await streamChatWithNora(c.var.user.id, input, c.req.raw.signal)
           for await (const event of events) {
-            if (event.reasoning || event.reply || event.resetReply || event.searched) write(event)
+            if (event.reasoning || event.reply || event.resetReply || event.searched || event.portal || event.file) write(event)
           }
         } catch (error) {
+          if (c.req.raw.signal.aborted) return
           const message = error instanceof Error && error.message.trim()
             ? error.message
             : 'Не удалось получить ответ.'
@@ -730,6 +733,15 @@ export function createMealsRoutes({
         'X-Accel-Buffering': 'no',
       },
     })
+  })
+  userMealsRoutes.post('/me/bitrix-file', async (c) => {
+    const body = await c.req.json().catch(() => null) as { id?: unknown } | null
+    const id = typeof body?.id === 'string' ? body.id.trim() : ''
+    if (!/^\d{1,12}$/.test(id)) {
+      return c.json({ error: { code: 'BAD_REQUEST', message: 'Нужен номер файла.' } }, 400)
+    }
+    const result = await executeMeals(() => openBitrixFile(id))
+    return c.json(result, 200)
   })
   userMealsRoutes.post('/me/document-compare', async (c) => {
     const result = await executeMeals(async () => {

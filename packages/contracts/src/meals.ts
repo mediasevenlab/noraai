@@ -696,6 +696,7 @@ export const noraModelChatRequestSchema = z
   .object({
     messages: z.array(noraModelChatMessageSchema).min(1).max(30),
     search: z.boolean().optional(),
+    bitrix: z.boolean().optional(),
     knowledgeBaseIds: z.array(z.string().uuid()).max(8).optional(),
     meetingIds: z.array(z.string().uuid()).max(1).optional(),
     stream: z.boolean().optional(),
