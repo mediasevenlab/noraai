@@ -14,6 +14,7 @@ import { createKnowledgeModule } from './modules/knowledge'
 import { createMeetingsModule } from './modules/meetings'
 import { createMealsModule } from './modules/meals'
 import { createNewsModule } from './modules/news'
+import { createProcurementsModule } from './modules/procurements'
 import { createSpeechModule } from './modules/speech'
 import { createQuestionnaireProjectUser, createTelegramLinkStore, createUsersModule } from './modules/users'
 
@@ -68,6 +69,12 @@ export function createApp({
     startPoller: startMealsPoller,
   })
   const speech = createSpeechModule({ requireAuth: auth.requireAuth })
+  const procurements = createProcurementsModule({
+    requireAuth: auth.requireAuth,
+    token: env.EIS_TOKEN,
+    sync: env.EIS_OPEN_SYNC,
+    dir: env.PROCUREMENT_DIR,
+  })
   const news = createNewsModule({
     db: prisma,
     env,
@@ -167,6 +174,7 @@ export function createApp({
   app.route('/api/admin', users.adminRoutes)
   app.route('/api/users', meetings.routes)
   app.route('/api/users', speech.routes)
+  app.route('/api/users', procurements.routes)
   app.route('/api/mentor', users.mentorRoutes)
   app.route('/api/news', news.routes)
   app.use(
@@ -202,6 +210,7 @@ export function createApp({
   return Object.assign(app, {
     dispose: async () => {
       await meals.dispose()
+      await procurements.dispose()
     },
   })
 }

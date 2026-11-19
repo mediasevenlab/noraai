@@ -14,6 +14,7 @@ import { activeMeetingTranscripts } from '@/features/meetings'
 
 import { streamNoraModel } from './api'
 import { bitrixEnabled } from './bitrix-open'
+import { tendersEnabled } from './tenders-open'
 import { internetEnabled } from './internet-open'
 import { reasoningExpanded } from './reasoning-open'
 import { ApiRequestError } from '@/platform/api'
@@ -66,6 +67,7 @@ function chatParts(input: {
   reasoningDoneAt?: number
   searched?: boolean
   portal?: boolean
+  tenders?: boolean
   files?: ReadonlyArray<{ name: string; mime: string; data: string }>
 }) {
   const content: Array<
@@ -73,12 +75,12 @@ function chatParts(input: {
         type: 'reasoning'
         text: string
         timing: { startedAt: number; completedAt?: number }
-        providerMetadata?: { nora: { searched?: true; portal?: true } }
+        providerMetadata?: { nora: { searched?: true; portal?: true; tenders?: true } }
       }
     | { type: 'text'; text: string }
     | { type: 'file'; filename: string; mimeType: string; data: string }
   > = []
-  if (input.reasoning || input.reasoningDoneAt || input.searched || input.portal) {
+  if (input.reasoning || input.reasoningDoneAt || input.searched || input.portal || input.tenders) {
     content.push({
       type: 'reasoning',
       text: input.reasoning,
@@ -86,12 +88,13 @@ function chatParts(input: {
         startedAt: input.startedAt,
         ...(input.reasoningDoneAt ? { completedAt: input.reasoningDoneAt } : {}),
       },
-      ...(input.searched || input.portal
+      ...(input.searched || input.portal || input.tenders
         ? {
             providerMetadata: {
               nora: {
                 ...(input.searched ? { searched: true as const } : {}),
                 ...(input.portal ? { portal: true as const } : {}),
+                ...(input.tenders ? { tenders: true as const } : {}),
               },
             },
           }
@@ -123,6 +126,7 @@ function useNoraChatModel(): ChatModelAdapter {
         let reply = ''
         let searched = false
         let portal = false
+        let tenders = false
         const files: Array<{ name: string; mime: string; data: string }> = []
         let reasoningDoneAt: number | undefined
         try {
@@ -135,18 +139,20 @@ function useNoraChatModel(): ChatModelAdapter {
             thinkOn,
             activeMeetingTranscripts(),
             bitrixEnabled(),
+            tendersEnabled(),
           )) {
             if (event.resetReply) reply = ''
             if (event.searched) searched = true
             if (event.portal) portal = true
+            if (event.tenders) tenders = true
             if (event.file) files.push(event.file)
             if (event.reasoning && thinkOn) reasoning += event.reasoning
             if (event.reply) {
               if (!reasoningDoneAt) reasoningDoneAt = Date.now()
               reply += event.reply
             }
-            if (!reasoning && !reply && !searched && !portal && files.length === 0) continue
-            yield chatParts({ reasoning, reply, startedAt, reasoningDoneAt, searched, portal, files })
+            if (!reasoning && !reply && !searched && !portal && !tenders && files.length === 0) continue
+            yield chatParts({ reasoning, reply, startedAt, reasoningDoneAt, searched, portal, tenders, files })
           }
         } catch (error) {
           if (abortSignal.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
@@ -164,6 +170,7 @@ function useNoraChatModel(): ChatModelAdapter {
           reasoningDoneAt: reasoningDoneAt ?? Date.now(),
           searched,
           portal,
+          tenders,
           files,
         })
       },

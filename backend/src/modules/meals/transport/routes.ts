@@ -712,7 +712,7 @@ export function createMealsRoutes({
         try {
           const events = await streamChatWithNora(c.var.user.id, input, c.req.raw.signal)
           for await (const event of events) {
-            if (event.reasoning || event.reply || event.resetReply || event.searched || event.portal || event.file) write(event)
+            if (event.reasoning || event.reply || event.resetReply || event.searched || event.portal || event.tenders || event.file) write(event)
           }
         } catch (error) {
           if (c.req.raw.signal.aborted) return

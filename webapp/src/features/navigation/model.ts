@@ -13,6 +13,7 @@ export type UserRoutePath =
   | '/app/dialogs'
   | '/app/meetings'
   | '/app/notes'
+  | '/app/procurements'
 export type AdminRoutePath = '/admin' | '/admin/news' | '/admin/profile' | '/admin/users' | '/admin/settings'
 export type MentorRoutePath =
   | '/mentor'
@@ -51,6 +52,7 @@ export function userSplitNutritionGeneralPath(pathname: string): string | null {
 const CONTENT_AREA_PATHS = new Set<WorkspaceRoutePath>([
   '/app/dialogs',
   '/app/meetings',
+  '/app/procurements',
   '/admin/news',
   '/mentor/dialogs',
   '/mentor/meetings',
@@ -63,6 +65,7 @@ const navigationByRole = {
   user: [
     { label: 'Диалоги', to: '/app/dialogs' },
     { label: 'Встречи', to: '/app/meetings' },
+    { label: 'Госзакупки', to: '/app/procurements' },
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Рефералы', to: '/app/referrals' },
     { label: 'Настройки', to: '/app/settings' },

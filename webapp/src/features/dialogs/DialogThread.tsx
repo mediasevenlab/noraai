@@ -77,6 +77,7 @@ import { DialogNoteToggle } from './note-toggle'
 
 import { DialogMarkdown } from './markdown'
 import { bitrixEnabled, setBitrixEnabled, subscribeBitrixOpen } from './bitrix-open'
+import { setTendersEnabled, subscribeTendersOpen, tendersEnabled } from './tenders-open'
 import { internetEnabled, setInternetEnabled, subscribeInternetOpen } from './internet-open'
 import { suggestionsEnabled, subscribeSuggestionsOpen } from './suggestions-open'
 import { reasoningExpanded, setReasoningExpanded, subscribeReasoningOpen } from './reasoning-open'
@@ -310,7 +311,7 @@ function DialogReasoningPart({
 }: {
   text: string
   timing?: { startedAt: number; completedAt?: number }
-  providerMetadata?: { nora?: { searched?: boolean; portal?: boolean } }
+  providerMetadata?: { nora?: { searched?: boolean; portal?: boolean; tenders?: boolean } }
 }) {
   const body = text.trim()
   const messageRunning = useAuiState((state) => state.message.status?.type === 'running')
@@ -331,6 +332,7 @@ function DialogReasoningPart({
           live,
           providerMetadata?.nora?.searched === true,
           providerMetadata?.nora?.portal === true,
+          providerMetadata?.nora?.tenders === true,
         )}
       </p>
       {body ? (
@@ -373,6 +375,49 @@ function BitrixMark({ className }: { className?: string }) {
       />
       <path d="M8.2 5.2v13.6" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
     </svg>
+  )
+}
+
+function useTendersOpen() {
+  const [open, setOpen] = useState(tendersEnabled)
+  useEffect(() => {
+    const unsubscribe = subscribeTendersOpen(() => setOpen(tendersEnabled()))
+    return () => {
+      unsubscribe()
+    }
+  }, [])
+  return open
+}
+
+function TenderMark({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden className={className} fill="none" viewBox="0 0 24 24">
+      <path
+        d="M7 4.5h7.2L18 8.2V19.5H7V4.5Z"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path d="M14 4.8V8.4h3.5" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
+      <path d="M9.5 12.2h5.5M9.5 15.4h5.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+    </svg>
+  )
+}
+
+function DialogTendersToggle() {
+  const open = useTendersOpen()
+  return (
+    <ComposerToolTip label={open ? 'Выключить закупки' : 'Включить закупки'}>
+      <button
+        aria-label={open ? 'Выключить закупки' : 'Включить закупки'}
+        aria-pressed={open}
+        className={cn(dialogComposerToolClass(open), 'size-8')}
+        onClick={() => setTendersEnabled(!open)}
+        type="button"
+      >
+        <TenderMark className="size-4" />
+      </button>
+    </ComposerToolTip>
   )
 }
 
@@ -701,6 +746,7 @@ function DialogComposer({ placeholder = 'Сообщение…' }: { placeholder
           <DialogReasoningToggle />
           <DialogInternetToggle />
           <DialogBitrixToggle />
+          <DialogTendersToggle />
           <div className="flex-1" />
           <MealVoiceControls
             disabled={running}

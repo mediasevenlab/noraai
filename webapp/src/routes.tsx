@@ -205,6 +205,12 @@ const userNotesRoute = createRoute({
   component: lazyRouteComponent(() => import('./pages'), 'UserNotesPage'),
 })
 
+const userProcurementsRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/procurements',
+  component: lazyRouteComponent(() => import('./pages'), 'UserProcurementsPage'),
+})
+
 const adminWorkspaceRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'adminWorkspace',
@@ -418,6 +424,7 @@ const routeTree = rootRoute.addChildren([
     userDialogsRoute,
     userMeetingsRoute,
     userNotesRoute,
+    userProcurementsRoute,
   ]),
   adminWorkspaceRoute.addChildren([
     adminDashboardRoute,

@@ -19,6 +19,7 @@ test('role navigation exposes only the current workspace', () => {
   expect(navigationItemsForRole('user')).toEqual([
     { label: 'Диалоги', to: '/app/dialogs' },
     { label: 'Встречи', to: '/app/meetings' },
+    { label: 'Госзакупки', to: '/app/procurements' },
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Рефералы', to: '/app/referrals' },
     { label: 'Настройки', to: '/app/settings' },
@@ -122,6 +123,8 @@ test('cross-role destinations resolve to the current role home', () => {
 test('return paths accept only known internal destinations for the current role', () => {
   expect(safeReturnPath('user', '/app/profile')).toBe('/app/profile')
   expect(safeReturnPath('user', '/app/meetings')).toBe('/app/meetings')
+  expect(safeReturnPath('user', '/app/procurements')).toBe('/app/procurements')
+  expect(secondaryNavigationItemsForRole('user').some((item) => item.to === '/app/procurements')).toBe(false)
   expect(safeReturnPath('mentor', '/mentor/meetings?id=00000000-0000-7000-8000-000000000001')).toBe(
     '/mentor/meetings?id=00000000-0000-7000-8000-000000000001',
   )

@@ -6,6 +6,7 @@ import { MealsFailure } from '../domain/errors'
 import { splitChatReasoning } from '../domain/chat-reasoning'
 import { consumeChatDelta, emptyChatStream, type ChatStreamState } from '../domain/chat-stream'
 import { askBitrix, createBitrixDocument, createBitrixMeeting, deleteBitrixMeeting, locateBitrixMeeting, placeBitrixFile, readBitrixClients, readBitrixOutcomes, readBitrixTree, takeBitrixFile } from './bitrix-client'
+import { searchEisNotices } from './eis-search'
 import {
   bitrixPrefetch,
   clientAsk,
@@ -81,6 +82,7 @@ export type NoraChatEvent = {
   resetReply?: boolean
   searched?: boolean
   portal?: boolean
+  tenders?: boolean
   file?: { name: string; mime: string; data: string }
 }
 
@@ -100,11 +102,12 @@ export async function completeNoraChat(
   signal?: AbortSignal,
   think?: boolean,
   bitrix?: boolean,
+  tenders?: boolean,
 ) {
   let reply = ''
   let reasoning = ''
   let model = ''
-  for await (const event of streamNoraChat(env, messages, search, knowledge, signal, think, bitrix)) {
+  for await (const event of streamNoraChat(env, messages, search, knowledge, signal, think, bitrix, tenders)) {
     if (event.resetReply) reply = ''
     if (event.reasoning) reasoning += event.reasoning
     if (event.reply) reply += event.reply
@@ -167,10 +170,11 @@ export async function* streamNoraChat(
   signal?: AbortSignal,
   think?: boolean,
   bitrix?: boolean,
+  tenders?: boolean,
 ): AsyncGenerator<NoraChatEvent & { model?: string }> {
   const lastUser = [...messages].reverse().find((message) => message.role === 'user')
   const ready = directKnowledgeReply(knowledge ?? '')
-  if (ready && !lastUser?.images?.length && search !== true && bitrix !== true) {
+  if (ready && !lastUser?.images?.length && search !== true && bitrix !== true && tenders !== true) {
     yield* pacedReply(withSchemes(ready, knowledge), env.LLM_TEXT_MODEL, signal)
     return
   }
@@ -310,6 +314,7 @@ export async function* streamNoraChat(
     vision: env.LLM_VISION_MODEL,
     search: search === true && Boolean(env.LLM_SEARCH_URL),
     bitrix: bitrixMode,
+    tenders: tenders === true,
   }
   let turns = await prepareTurns(messages)
   let photoSubject = ''
@@ -367,6 +372,17 @@ export async function* streamNoraChat(
       }
       if (lines.some(portalReached)) yield { portal: true }
     }
+  }
+  if (tenders === true) {
+    const text = await searchEisNotices(lastUser?.text ?? '', signal).catch((error: unknown) => {
+      if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
+      return 'ЕИС сейчас не отвечает.'
+    })
+    const system = thread.find((message) => message.role === 'system')
+    if (system && typeof system.content === 'string') {
+      system.content += `\n\nЗакупки ЕИС:\n${text}`
+    }
+    yield { tenders: true }
   }
   const chatTools = [
     ...(models.search ? [NORA_WEB_SEARCH_TOOL] : []),

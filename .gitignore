@@ -21,6 +21,8 @@ hybrid/android/captures/
 
 # Local meal image uploads (Telegram / diary)
 backend/uploads/
+# Open-notice archives downloaded in the background
+backend/data/
 
 # Runtime and logs
 *.log

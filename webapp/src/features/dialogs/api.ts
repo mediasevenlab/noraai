@@ -41,12 +41,14 @@ export async function* streamNoraModel(
   think = false,
   meetingIds: string[] = [],
   bitrix = false,
+  tenders = false,
 ): AsyncGenerator<{
   reasoning?: string
   reply?: string
   resetReply?: boolean
   searched?: boolean
   portal?: boolean
+  tenders?: boolean
   file?: { name: string; mime: string; data: string }
 }> {
   const response = await transport.raw('/api/users/me/model-chat', {
@@ -55,6 +57,7 @@ export async function* streamNoraModel(
       messages,
       search,
       bitrix,
+      tenders,
       stream: true,
       think,
       ...(knowledgeBaseIds.length > 0 ? { knowledgeBaseIds } : {}),
@@ -81,6 +84,7 @@ export async function* streamNoraModel(
         resetReply?: boolean
         searched?: boolean
         portal?: boolean
+        tenders?: boolean
         file?: { name: string; mime: string; data: string }
         error?: string
       }

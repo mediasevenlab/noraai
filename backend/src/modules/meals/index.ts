@@ -114,6 +114,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
         undefined,
         input.think,
         input.bitrix,
+        input.tenders,
       )
     },
     compareDocuments: async (
@@ -161,6 +162,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
         signal,
         input.think,
         input.bitrix,
+        input.tenders,
       )
     },
     openBitrixFile: async (id: string) => {

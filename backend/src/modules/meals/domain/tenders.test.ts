@@ -1,0 +1,64 @@
+import { expect, test } from 'bun:test'
+
+import { buildNoraChatRequest } from './nora-chat'
+import { formatTenderNotices, parseTenderSearch, tenderSearchQuery } from './tenders'
+
+const CARD = `
+<div class="search-registry-entry-block box-shadow-search-input">
+  <div class="registry-entry__header-top__title">44-ФЗ Электронный аукцион</div>
+  <div class="registry-entry__header-mid__title">Подача заявок</div>
+  <div class="registry-entry__header-mid__number">
+    <a href="/epz/order/notice/printForm/view.html?regNumber=0156100010726000075">печать</a>
+    <a target="_blank" href="/epz/order/notice/ea20/view/common-info.html?regNumber=0156100010726000075">№ 0156100010726000075</a>
+  </div>
+  <div class="registry-entry__body-title">Объект закупки</div>
+  <div class="registry-entry__body-value">Услуги по техническому обслуживанию зданий</div>
+  <div class="registry-entry__body-href">
+    <a href="/epz/organization/view/info.html?organizationCode=01561000107">СЛЕДСТВЕННОЕ УПРАВЛЕНИЕ</a>
+  </div>
+  <div class="price-block__value">991&nbsp;587,00 &#8381;</div>
+  <div class="data-block__title">Окончание подачи заявок</div>
+  <div class="data-block__value">17.11.2026</div>
+</div>
+<div class="search-registry-entry-block">
+  <div class="registry-entry__body-value"></div>
+</div>
+`
+
+test('a tender question keeps the subject and drops the command', () => {
+  expect(tenderSearchQuery('Найди тендеры на инъекции по укреплению оснований в Норильске')).toBe(
+    'инъекции укреплению оснований Норильске',
+  )
+  expect(tenderSearchQuery('Повтори поиск тендеров на укрепление основания')).toBe('укрепление основания')
+})
+
+test('a public EIS card keeps the notice link, not the print form', () => {
+  const [notice] = parseTenderSearch(CARD)
+  expect(notice).toMatchObject({
+    law: '44-ФЗ Электронный аукцион',
+    status: 'Подача заявок',
+    number: '0156100010726000075',
+    object: 'Услуги по техническому обслуживанию зданий',
+    customer: 'СЛЕДСТВЕННОЕ УПРАВЛЕНИЕ',
+    deadline: '17.11.2026',
+    url: 'https://zakupki.gov.ru/epz/order/notice/ea20/view/common-info.html?regNumber=0156100010726000075',
+  })
+  expect(notice?.price).toContain('991')
+  expect(notice?.price).toContain('₽')
+  const text = formatTenderNotices(parseTenderSearch(CARD), 'укрепление основания')
+  expect(text).toContain('Коммерческих площадок здесь нет')
+  expect(text).toContain('https://zakupki.gov.ru/epz/order/notice/ea20/view/common-info.html?regNumber=0156100010726000075')
+  expect(text).not.toContain('printForm')
+})
+
+test('the tender button tells the model to stay with the EIS cards', () => {
+  const request = buildNoraChatRequest(
+    [{ role: 'user', text: 'инъекции в Норильске' }],
+    { text: 'nora', vision: 'nora-vision', tenders: true },
+  )
+  expect(String(request.messages[0]?.content)).toContain('Кнопка закупок включена')
+})
+
+test('an empty EIS page says there are no open notices', () => {
+  expect(formatTenderNotices([], 'инъекции')).toContain('нет открытых извещений')
+})

@@ -36,6 +36,7 @@ import {
 import { AuthMercuryOrb } from '@/features/auth/components/AuthMercuryOrb'
 import { DialogsPage, DialogsRuntimeProvider } from '@/features/dialogs'
 import { NotesPage } from '@/features/notes'
+import { ProcurementsPage } from '@/features/procurements'
 import { MeetingsPage } from '@/features/meetings'
 import { homePathForRole, postAuthPath } from '@/features/navigation'
 import { NewsPage } from '@/features/news'
@@ -160,6 +161,11 @@ export function UserMeetingsPage() {
 export function UserNotesPage() {
   useWorkspaceUser('user')
   return <NotesPage />
+}
+
+export function UserProcurementsPage() {
+  useWorkspaceUser('user')
+  return <ProcurementsPage />
 }
 
 export function MentorDialogsPage() {

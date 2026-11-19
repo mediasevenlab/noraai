@@ -1,6 +1,7 @@
 import { DialogsNavigation } from '@/features/dialogs'
 import { KnowledgeNavigation } from '@/features/knowledge'
 import { MeetingsNavigation } from '@/features/meetings'
+import { ProcurementsNavigation } from '@/features/procurements'
 
 /** Dialogs are the user workspace. */
 export function UserAppNavigation({ disabled = false }: { disabled?: boolean }) {
@@ -8,6 +9,7 @@ export function UserAppNavigation({ disabled = false }: { disabled?: boolean }) 
     <>
       <DialogsNavigation disabled={disabled} to="/app/dialogs" />
       <MeetingsNavigation disabled={disabled} to="/app/meetings" />
+      <ProcurementsNavigation disabled={disabled} />
       <KnowledgeNavigation disabled={disabled} />
     </>
   )
