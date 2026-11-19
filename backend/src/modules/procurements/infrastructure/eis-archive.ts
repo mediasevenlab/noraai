@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process'
 
 import { EisFailure } from '../domain/errors'
 import { russianRootArgs } from './eis-ca'
-import { readZipXml } from '../domain/zip-xml'
+import { readZipEntries, readZipXml } from '../domain/zip-xml'
 
 const EIS_DOCS = 'https://int.zakupki.gov.ru/eis-integration/services/getDocsIP'
 const SAMPLE_SUBSYSTEM = 'PRIZ'
@@ -16,6 +16,28 @@ export async function downloadNoticeArchive(token: string, subsystem: string, re
   const archiveUrl = page.match(/https:\/\/int\.zakupki\.gov\.ru\/dstore\/common\/download\/compound\?[^\]<\s]+/)?.[0]
   if (!archiveUrl) throw new EisFailure(faultText(page) || 'ЕИС не отдала архив.')
   return getArchive(archiveUrl, token, signal)
+}
+
+const ARCHIVE_URL = /https:\/\/int\.zakupki\.gov\.ru\/dstore\/common\/download\/compound\?[^\]<\s]+/g
+
+/** Every notice of one region, one day and one document type. Empty means the archive had nothing. */
+export async function downloadRegionPack(
+  token: string,
+  cell: { region: string; subsystem: string; documentType: string; day: string },
+  signal?: AbortSignal,
+) {
+  const page = await postSoap(regionEnvelope(token, cell), token, signal)
+  const urls = page.match(ARCHIVE_URL) ?? []
+  if (urls.length === 0) {
+    const fault = faultText(page)
+    if (fault) throw new EisFailure(fault)
+    return []
+  }
+  const files: { name: string; xml: string }[] = []
+  for (const url of urls) {
+    files.push(...readZipEntries(await getArchive(url, token, signal)))
+  }
+  return files
 }
 
 export async function downloadSampleNotice(token: string, signal?: AbortSignal) {
@@ -43,6 +65,32 @@ function envelope(token: string, subsystem: string, registryNumber: string) {
       <index><id>${id}</id><createDateTime>${stamp}</createDateTime><mode>PROD</mode></index>
       <selectionParams><subsystemType>${subsystem}</subsystemType><reestrNumber>${registryNumber}</reestrNumber></selectionParams>
     </ws:getDocsByReestrNumberRequest>
+  </soapenv:Body>
+</soapenv:Envelope>`
+}
+
+function regionEnvelope(
+  token: string,
+  cell: { region: string; subsystem: string; documentType: string; day: string },
+) {
+  if (!/^\d{2}$/.test(cell.region) || !/^[A-Z0-9]+$/.test(cell.subsystem) || !/^[A-Za-z0-9]+$/.test(cell.documentType) || !/^\d{4}-\d{2}-\d{2}$/.test(cell.day)) {
+    throw new EisFailure('ЕИС не отдала архив.')
+  }
+  const id = crypto.randomUUID()
+  const stamp = new Date().toISOString().slice(0, 19)
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ws="http://zakupki.gov.ru/fz44/get-docs-ip/ws">
+  <soapenv:Header><individualPerson_token>${token}</individualPerson_token></soapenv:Header>
+  <soapenv:Body>
+    <ws:getDocsByOrgRegionRequest>
+      <index><id>${id}</id><createDateTime>${stamp}</createDateTime><mode>PROD</mode></index>
+      <selectionParams>
+        <orgRegion>${cell.region}</orgRegion>
+        <subsystemType>${cell.subsystem}</subsystemType>
+        <documentType44>${cell.documentType}</documentType44>
+        <periodInfo><exactDate>${cell.day}</exactDate></periodInfo>
+      </selectionParams>
+    </ws:getDocsByOrgRegionRequest>
   </soapenv:Body>
 </soapenv:Envelope>`
 }

@@ -111,6 +111,10 @@ export function ProcurementsPage() {
 
 function syncLine(sync: ProcurementSync) {
   if (!sync.running) return 'Фоновая выгрузка на этом запуске выключена.'
+  if (sync.phase === 'packs' || sync.phase === 'packs-daily') {
+    const phase = sync.phase === 'packs' ? 'Пачки с 2025 года' : 'Ежедневное дополнение'
+    return `${phase}, ${sync.day}. Оставлено ${sync.saved}, закрытых снято ${sync.dropped}, общий вес ${archiveWeight(sync.zipBytes)}.`
+  }
   const phase = sync.phase === 'catalog' ? 'первый проход' : 'ежедневное дополнение'
   const cut = sync.truncated > 0 ? ` Дней, где список оборвался: ${sync.truncated}.` : ''
   return `${phase}, ${sync.day}, страница ${sync.page}. В очереди ${sync.queued}, архивов ${sync.saved}, общий вес ${archiveWeight(sync.zipBytes)}.${cut}`

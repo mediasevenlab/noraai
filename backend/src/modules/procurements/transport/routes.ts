@@ -26,6 +26,7 @@ export function createProcurementRoutes(options: {
     failed: number
     zipBytes: number
     truncated: number
+    dropped: number
   }
 }) {
   const routes = new OpenAPIHono<AuthHttpEnv>()

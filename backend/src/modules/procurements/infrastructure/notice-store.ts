@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs'
 import { Database } from 'bun:sqlite'
 
+import { initialPackPlan, type PackPlan } from '../domain/pack-sync'
 import { initialPlan, moscowDate, type OpenSyncPlan } from '../domain/open-sync'
 import type { OpenNotice } from '../domain/read-search'
 
@@ -94,6 +95,19 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
       return { ...parsed, truncatedDays: parsed.truncatedDays ?? [] }
     },
     savePlan(plan: OpenSyncPlan) {
+      writePlan.run({ $json: JSON.stringify(plan) })
+    },
+    /** Switches an in-progress number crawl over to day-and-region packs. Saved archives stay. */
+    packPlan(): PackPlan {
+      const row = readPlan.get() as { json: string } | null
+      const parsed = row ? JSON.parse(row.json) as PackPlan : null
+      if (parsed?.mode === 'packs') return { ...initialPackPlan(moscowDate(now())), ...parsed, mode: 'packs' }
+      db.run(`DELETE FROM notices WHERE status = 'queued'`)
+      const fresh = initialPackPlan(moscowDate(now()))
+      writePlan.run({ $json: JSON.stringify(fresh) })
+      return fresh
+    },
+    savePackPlan(plan: PackPlan) {
       writePlan.run({ $json: JSON.stringify(plan) })
     },
     counts(): SyncCounts {

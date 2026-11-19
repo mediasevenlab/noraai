@@ -1,14 +1,13 @@
 import type { MiddlewareHandler } from 'hono'
 
 import type { AuthHttpEnv } from '../auth'
-import { startOpenSync } from './application/open-sync-loop'
+import { startPackSync } from './application/pack-sync-loop'
 import { createProcurementListService } from './application/list-service'
 import { createProcurementSampleService } from './application/sample-service'
 import { EisFailure } from './domain/errors'
-import { openSearchUrl } from './domain/open-sync'
-import { parseProcurementSearch } from './domain/read-search'
-import { downloadNoticeArchive, downloadSampleNotice } from './infrastructure/eis-archive'
-import { downloadOpenNotices, readPublicPage } from './infrastructure/eis-open-list'
+import { PACK_KINDS, PACK_REGIONS } from './domain/pack-sync'
+import { downloadRegionPack, downloadSampleNotice } from './infrastructure/eis-archive'
+import { downloadOpenNotices } from './infrastructure/eis-open-list'
 import { openNoticeStore } from './infrastructure/notice-store'
 import { createProcurementRoutes } from './transport/routes'
 
@@ -22,6 +21,7 @@ const IDLE_SYNC = {
   failed: 0,
   zipBytes: 0,
   truncated: 0,
+  dropped: 0,
 }
 
 export function createProcurementsModule(options: {
@@ -37,27 +37,31 @@ export function createProcurementsModule(options: {
   const list = createProcurementListService((signal) => downloadOpenNotices(signal))
   const store = options.sync && options.token ? openNoticeStore(options.dir || 'data/procurements') : null
   const running = store && options.token
-    ? startOpenSync({
+    ? startPackSync({
         store,
-        search: async (day, page, signal) => parseProcurementSearch(await readPublicPage(openSearchUrl(day, page).toString(), signal), 50),
-        download: (notice, signal) => downloadNoticeArchive(options.token!, notice.subsystem, notice.number, signal),
+        download: (cell, signal) => downloadRegionPack(options.token!, cell, signal),
       })
     : null
-  if (running) console.log('Open procurement sync started')
+  if (running) console.log('Procurement pack sync started')
   const routes = createProcurementRoutes({
     requireAuth: options.requireAuth,
     service,
     list,
     sync: () => {
       if (!store) return IDLE_SYNC
-      const plan = store.plan()
+      const plan = store.packPlan()
+      const counts = store.counts()
       return {
         running: true,
-        phase: plan.phase,
-        day: plan.day,
-        page: plan.page,
-        truncated: plan.truncatedDays.length,
-        ...store.counts(),
+        phase: plan.phase === 'catalog' ? 'packs' : 'packs-daily',
+        day: `${plan.day}, регион ${PACK_REGIONS[plan.regionIndex] ?? ''}, ${PACK_KINDS[plan.kindIndex]?.label ?? ''}`,
+        page: plan.regionIndex,
+        queued: counts.queued,
+        saved: counts.saved,
+        failed: plan.failed,
+        zipBytes: counts.zipBytes,
+        truncated: 0,
+        dropped: plan.dropped,
       }
     },
   })

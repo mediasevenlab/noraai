@@ -95,6 +95,7 @@ export const procurementSyncSchema = z
     failed: z.number().int().nonnegative(),
     zipBytes: z.number().int().nonnegative(),
     truncated: z.number().int().nonnegative(),
+    dropped: z.number().int().nonnegative(),
   })
   .strict()
 
