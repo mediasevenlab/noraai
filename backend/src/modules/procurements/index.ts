@@ -71,7 +71,7 @@ export function createProcurementsModule(options: {
         eta: progress.eta,
       }
     },
-    saved: (page: number) => store?.savedPage(page) ?? { total: 0, page: 1, pageCount: 1, notices: [] },
+    saved: (page: number, raw: { text?: string; laws?: readonly string[] }) => store?.savedPage(page, raw) ?? { total: 0, page: 1, pageCount: 1, notices: [] },
   })
   return {
     ...routes,

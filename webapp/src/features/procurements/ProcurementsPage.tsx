@@ -7,14 +7,35 @@ import { loadProcurementSync, loadSavedProcurements, type ProcurementSavedPage, 
 
 const TEXT = 'font-[family-name:var(--nora-font)] text-[14px] font-normal leading-5'
 
-const LAWS = ['44-ФЗ', '223-ФЗ', 'ПП-615']
+const LAWS = [
+  { id: '44', label: '44-ФЗ' },
+  { id: '223', label: '223-ФЗ' },
+  { id: '615', label: 'ПП-615' },
+] as const
 
 export function ProcurementsPage() {
   const transport = useAuth().transport
   const [page, setPage] = useState(1)
+  const [draft, setDraft] = useState('')
+  const [query, setQuery] = useState('')
+  const [laws, setLaws] = useState<string[]>([])
   const [list, setList] = useState<ProcurementSavedPage | null>(null)
   const [sync, setSync] = useState<ProcurementSync | null>(null)
   const [error, setError] = useState('')
+  const lawsKey = laws.join(',')
+  const narrowed = query.trim().length > 0 || laws.length > 0
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const next = draft.trim()
+      setQuery((current) => (current === next ? current : next))
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [draft])
+
+  useEffect(() => {
+    setPage(1)
+  }, [query, lawsKey])
 
   useEffect(() => {
     let current = true
@@ -27,7 +48,7 @@ export function ProcurementsPage() {
         .catch(() => {
           if (current) setSync(null)
         })
-      loadSavedProcurements(transport, page)
+      loadSavedProcurements(transport, page, { query, laws })
         .then((next) => {
           if (!current) return
           setList(next)
@@ -43,24 +64,28 @@ export function ProcurementsPage() {
       current = false
       clearInterval(timer)
     }
-  }, [transport, page])
+  }, [transport, page, query, lawsKey])
 
   const notices = list?.notices ?? []
 
   return (
     <div className="h-full min-h-0 overflow-y-auto" data-procurements-open="">
       <div className={cn('mx-auto grid w-full max-w-5xl gap-8 px-4 py-6 text-[var(--nora-text)] lg:grid-cols-[minmax(0,1fr)_15rem]', TEXT)}>
-        <div className="flex min-w-0 flex-col gap-2">
+        <div className="order-2 flex min-w-0 flex-col gap-2 lg:order-1">
           <header className="flex flex-col gap-3 pb-2">
             <h1 className="text-[16px] font-medium leading-6">Открытые закупки</h1>
             {sync ? <DownloadProgress sync={sync} /> : null}
             <p className="text-[var(--nora-text-secondary)]">
-              {list ? `Сохранено ${grouped(list.total)}. На странице 50 карточек, список растёт вместе с выгрузкой.` : 'Смотрю сохранённые извещения…'}
+              {list
+                ? `${narrowed ? 'Найдено' : 'Сохранено'} ${grouped(list.total)}. На странице 50 карточек, список растёт вместе с выгрузкой.`
+                : 'Смотрю сохранённые извещения…'}
             </p>
           </header>
           {error ? <p className="text-[var(--nora-text-secondary)]">{error}</p> : null}
           {list && notices.length === 0 && !error ? (
-            <p className="text-[var(--nora-text-secondary)]">Сохранённых извещений пока нет.</p>
+            <p className="text-[var(--nora-text-secondary)]">
+              {narrowed ? 'По этому запросу ничего нет.' : 'Сохранённых извещений пока нет.'}
+            </p>
           ) : null}
           {notices.map((notice) => (
             <article key={notice.number} className="grid gap-3 border-t border-[var(--nora-border)] py-4 sm:grid-cols-[minmax(0,1fr)_11rem] sm:gap-6">
@@ -119,22 +144,39 @@ export function ProcurementsPage() {
             </nav>
           ) : null}
         </div>
-        <aside className="flex flex-col gap-4 lg:pt-1">
+        <aside className="order-1 flex flex-col gap-4 lg:order-2 lg:pt-1">
           <h2 className="text-[15px] font-medium leading-6">Параметры</h2>
+          <input
+            aria-label="Поиск закупок"
+            className="w-full border-b border-[var(--nora-border)] bg-transparent pb-1 outline-none"
+            data-procurements-search=""
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Номер, предмет или заказчик"
+            value={draft}
+          />
           <div className="flex flex-col gap-1">
             <p className="text-[var(--nora-text-secondary)]">Закон</p>
-            <ul>
-              {LAWS.map((law) => (
-                <li key={law}>{law}</li>
-              ))}
-            </ul>
+            {LAWS.map((law) => (
+              <label key={law.id} className="flex items-center gap-2">
+                <input
+                  checked={laws.includes(law.id)}
+                  onChange={() => {
+                    setLaws((current) => current.includes(law.id)
+                      ? current.filter((item) => item !== law.id)
+                      : [...current, law.id])
+                  }}
+                  type="checkbox"
+                />
+                {law.label}
+              </label>
+            ))}
           </div>
           <div className="flex flex-col gap-1">
             <p className="text-[var(--nora-text-secondary)]">Этап</p>
             <p>Подача заявок</p>
           </div>
           <p className="text-[var(--nora-text-secondary)]">
-            Поиск и остальные фильтры заработают на сохранённом наборе открытых заявок.
+            ПП-615 пока не скачивается. Предмет и заказчик ищутся у карточек, где они уже заполнены. Номер ищется всегда.
           </p>
         </aside>
       </div>

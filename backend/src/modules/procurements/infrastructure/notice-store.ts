@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { Database } from 'bun:sqlite'
 
 import { readPackCard, presentDate } from '../domain/pack-card'
+import { normalizeSavedQuery, noticeNeedle, savedNoticeWhere } from '../domain/saved-filter'
 import { initialPackPlan, packCellsDone, SAVED_PAGE_SIZE, type PackPlan } from '../domain/pack-sync'
 import { readZipXml } from '../domain/zip-xml'
 import { initialPlan, moscowDate, type OpenSyncPlan } from '../domain/open-sync'
@@ -34,16 +35,22 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
     deadline TEXT NOT NULL,
     url TEXT NOT NULL,
     zip_bytes INTEGER NOT NULL DEFAULT 0,
-    error TEXT NOT NULL DEFAULT ''
+    error TEXT NOT NULL DEFAULT '',
+    needle TEXT NOT NULL DEFAULT ''
   )`)
+  const columns = db.query(`PRAGMA table_info(notices)`).all() as { name: string }[]
+  if (!columns.some((column) => column.name === 'needle')) {
+    db.run(`ALTER TABLE notices ADD COLUMN needle TEXT NOT NULL DEFAULT ''`)
+  }
   db.run(`CREATE INDEX IF NOT EXISTS notices_saved_order ON notices (status, published, number)`)
+  fillNeedles(db)
   db.run(`CREATE TABLE IF NOT EXISTS sync_plan (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     json TEXT NOT NULL
   )`)
   const remember = db.query(`INSERT INTO notices (
-    number, subsystem, law, status, object, customer, price, published, updated, deadline, url
-  ) VALUES ($number, $subsystem, $law, 'queued', $object, $customer, $price, $published, $updated, $deadline, $url)
+    number, subsystem, law, status, object, customer, price, published, updated, deadline, url, needle
+  ) VALUES ($number, $subsystem, $law, 'queued', $object, $customer, $price, $published, $updated, $deadline, $url, $needle)
   ON CONFLICT(number) DO NOTHING`)
   const nextQueued = db.query(`SELECT number, subsystem, law, status, object, customer, price, published, updated, deadline, url
     FROM notices WHERE status = 'queued' ORDER BY published, number LIMIT 1`)
@@ -67,6 +74,7 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
         $updated: notice.updated,
         $deadline: notice.deadline,
         $url: notice.url,
+        $needle: noticeNeedle(notice),
       })
     },
     nextQueued(): StoredNotice | null {
@@ -128,15 +136,17 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
     savePackPlan(plan: PackPlan) {
       writePlan.run({ $json: JSON.stringify(plan) })
     },
-    savedPage(page: number) {
-      const totalRow = db.query(`SELECT COUNT(*) AS count FROM notices WHERE status = 'saved'`).get() as { count: number }
+    savedPage(page: number, raw: { text?: string; laws?: readonly string[] } = {}) {
+      const filter = savedNoticeWhere(normalizeSavedQuery(raw.text ?? '', raw.laws ?? []))
+      const totalRow = db.query(`SELECT COUNT(*) AS count FROM notices WHERE ${filter.where}`).get(filter.params) as { count: number }
       const total = totalRow.count
       const pageCount = Math.max(1, Math.ceil(total / SAVED_PAGE_SIZE))
       const safePage = Math.min(Math.max(page, 1), pageCount)
       const rows = db.query(`SELECT number, law, status, object, customer, price, published, updated, deadline, url
-        FROM notices WHERE status = 'saved'
+        FROM notices WHERE ${filter.where}
         ORDER BY published DESC, number DESC
         LIMIT $limit OFFSET $offset`).all({
+        ...filter.params,
         $limit: SAVED_PAGE_SIZE,
         $offset: (safePage - 1) * SAVED_PAGE_SIZE,
       }) as SavedRow[]
@@ -179,6 +189,15 @@ type SavedRow = {
   url: string
 }
 
+function fillNeedles(db: Database) {
+  const rows = db.query(`SELECT number, object, customer FROM notices WHERE needle = ''`).all() as { number: string; object: string; customer: string }[]
+  if (rows.length === 0) return
+  const update = db.query(`UPDATE notices SET needle = $needle WHERE number = $number`)
+  db.transaction(() => {
+    for (const row of rows) update.run({ $number: row.number, $needle: noticeNeedle(row) })
+  })()
+}
+
 function fillRow(dir: string, db: Database, row: SavedRow) {
   if (row.object) return row
   try {
@@ -194,7 +213,7 @@ function fillRow(dir: string, db: Database, row: SavedRow) {
       url: card.url || row.url,
     }
     db.query(`UPDATE notices
-      SET object = $object, customer = $customer, price = $price, published = $published, deadline = $deadline, url = $url
+      SET object = $object, customer = $customer, price = $price, published = $published, deadline = $deadline, url = $url, needle = $needle
       WHERE number = $number`).run({
       $number: row.number,
       $object: next.object,
@@ -203,6 +222,7 @@ function fillRow(dir: string, db: Database, row: SavedRow) {
       $published: next.published,
       $deadline: next.deadline,
       $url: next.url,
+      $needle: noticeNeedle(next),
     })
     return next
   } catch {

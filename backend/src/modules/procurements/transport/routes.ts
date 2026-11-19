@@ -31,7 +31,7 @@ export function createProcurementRoutes(options: {
     cellsTotal: number
     eta: string
   }
-  saved: (page: number) => {
+  saved: (page: number, raw: { text?: string; laws?: readonly string[] }) => {
     total: number
     page: number
     pageCount: number
@@ -54,7 +54,11 @@ export function createProcurementRoutes(options: {
   routes.get('/me/procurements/sync', (c) => c.json(procurementSyncSchema.parse(options.sync())))
   routes.get('/me/procurements/saved', (c) => {
     const page = Number(c.req.query('page') ?? '1')
-    return c.json(procurementSavedPageSchema.parse(options.saved(Number.isFinite(page) ? page : 1)))
+    const laws = (c.req.query('law') ?? '').split(',').map((item) => item.trim()).filter(Boolean)
+    return c.json(procurementSavedPageSchema.parse(options.saved(Number.isFinite(page) ? page : 1, {
+      text: c.req.query('q') ?? '',
+      laws,
+    })))
   })
   routes.get('/me/procurements/open', async (c) => {
     try {
