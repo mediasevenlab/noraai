@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test'
 
 import { keepOpen, readPackNotice } from './keep-notice'
-import { advancePack, initialPackPlan, PACK_KINDS, PACK_REGIONS, packCell, packToRun } from './pack-sync'
+import { presentDate, readPackCard } from './pack-card'
+import { advancePack, initialPackPlan, PACK_KINDS, packCellsDone, packCellsTotal, packEta, PACK_REGIONS, packCell, packToRun } from './pack-sync'
 import { readZipEntries, zipSingleXml } from './zip-xml'
 
 const now = new Date('2026-11-19T08:00:00Z')
@@ -36,6 +37,26 @@ test('a passed deadline is dropped and a future one stays', () => {
   expect(keepOpen('2026-11-25T09:00:00+12:00', now)).toBe(true)
   expect(keepOpen('2026-11-01T09:00:00+03:00', now)).toBe(false)
   expect(keepOpen('', now)).toBe(true)
+})
+
+test('progress counts finished days and estimates the rest from the pace', () => {
+  const today = '2026-11-19'
+  const total = packCellsTotal(today)
+  expect(total).toBe(688 * PACK_REGIONS.length * PACK_KINDS.length)
+  const started = { ...initialPackPlan(today), regionIndex: 6, kindIndex: 0, startedAt: '2026-11-19T07:00:00Z', baseDone: 0 }
+  expect(packCellsDone(started, today)).toBe(6 * PACK_KINDS.length)
+  const later = new Date('2026-11-19T09:00:00Z')
+  expect(packEta(started, later).eta).toMatch(/^около /)
+  expect(packEta(initialPackPlan(today), later).eta).toBe('Скорость ещё считается')
+})
+
+test('a pack card keeps the subject, price and a readable date', () => {
+  const card = readPackCard('<purchaseObjectInfo>Поставка топлива</purchaseObjectInfo><fullName>Заказчик</fullName><maxPrice>1240638.5</maxPrice><publishDTInEIS>2026-11-17T10:00:00+03:00</publishDTInEIS><purchaseNumber>100</purchaseNumber>')
+  expect(card.object).toBe('Поставка топлива')
+  expect(card.customer).toBe('Заказчик')
+  expect(card.price).toBe('1 240 638,50 ₽')
+  expect(card.published).toBe('2026-11-17')
+  expect(presentDate(card.published)).toBe('17.11.2026')
 })
 
 test('a kept notice zip round-trips through the archive reader', () => {

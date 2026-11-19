@@ -1,7 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { keepOpen, readPackNotice } from '../domain/keep-notice'
+import { keepOpen } from '../domain/keep-notice'
+import { readPackCard } from '../domain/pack-card'
 import { advancePack, packCell, packToRun, type PackPlan } from '../domain/pack-sync'
 import { zipSingleXml } from '../domain/zip-xml'
 
@@ -86,7 +87,7 @@ export function startPackSync(options: {
           continue
         }
         for (const file of result.files) {
-          const notice = readPackNotice(file.xml)
+          const notice = readPackCard(file.xml)
           if (!/^\d+$/.test(notice.number)) continue
           if (!keepOpen(notice.deadline, now())) {
             dropped += 1
@@ -100,13 +101,13 @@ export function startPackSync(options: {
             subsystem: result.cell.subsystem,
             law: result.cell.label,
             status: 'Подача заявок',
-            object: '',
-            customer: '',
-            price: '',
-            published: result.cell.day,
+            object: notice.object,
+            customer: notice.customer,
+            price: notice.price,
+            published: notice.published || result.cell.day,
             updated: '',
             deadline: notice.deadline,
-            url: '',
+            url: notice.url,
           })
           options.store.markSaved(notice.number, bytes.byteLength)
         }

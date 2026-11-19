@@ -27,6 +27,8 @@ export type PackPlan = {
   todaySweptAt: string
   dropped: number
   failed: number
+  startedAt: string
+  baseDone: number
 }
 
 export function initialPackPlan(today: string): PackPlan {
@@ -40,6 +42,8 @@ export function initialPackPlan(today: string): PackPlan {
     todaySweptAt: '',
     dropped: 0,
     failed: 0,
+    startedAt: '',
+    baseDone: 0,
   }
 }
 
@@ -91,6 +95,63 @@ export function advancePack(plan: PackPlan, now: Date): PackPlan {
     lastClosedDay: shiftDay(today, -1),
     todaySweptAt: now.toISOString(),
   }
+}
+
+export const SAVED_PAGE_SIZE = 50
+
+function daysInclusive(from: string, to: string) {
+  const start = Date.parse(`${from}T00:00:00Z`)
+  const end = Date.parse(`${to}T00:00:00Z`)
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return 1
+  return Math.round((end - start) / 86_400_000) + 1
+}
+
+/** How many day-region-type steps the first pass contains. */
+export function packCellsTotal(today: string) {
+  return daysInclusive(CATALOG_FLOOR, today) * PACK_REGIONS.length * PACK_KINDS.length
+}
+
+/** Steps already finished. The walk goes from today back toward the floor. */
+export function packCellsDone(plan: PackPlan, today: string) {
+  const total = packCellsTotal(today)
+  if (plan.phase === 'catchup') return total
+  const finishedDays = daysInclusive(plan.day, today) - 1
+  const done = finishedDays * PACK_REGIONS.length * PACK_KINDS.length
+    + plan.regionIndex * PACK_KINDS.length
+    + plan.kindIndex
+  return Math.max(0, Math.min(total, done))
+}
+
+export function packEta(plan: PackPlan, now: Date) {
+  const today = moscowDate(now)
+  const total = packCellsTotal(today)
+  const done = packCellsDone(plan, today)
+  if (plan.phase === 'catchup') return { done, total, eta: 'Первый проход закончен' }
+  const elapsed = plan.startedAt ? now.getTime() - Date.parse(plan.startedAt) : 0
+  const gained = done - plan.baseDone
+  if (!plan.startedAt || gained < 30 || elapsed < 2 * 60 * 1000) {
+    return { done, total, eta: 'Скорость ещё считается' }
+  }
+  const remaining = Math.max(0, total - done) * (elapsed / gained)
+  return { done, total, eta: `около ${remainingLabel(remaining)}` }
+}
+
+function remainingLabel(ms: number) {
+  const minutes = Math.max(1, Math.round(ms / 60_000))
+  if (minutes < 90) return `${minutes} ${plural(minutes, 'минуту', 'минуты', 'минут')}`
+  const hours = Math.round(minutes / 60)
+  if (hours < 36) return `${hours} ${plural(hours, 'час', 'часа', 'часов')}`
+  const days = Math.max(1, Math.round(hours / 24))
+  return `${days} ${plural(days, 'день', 'дня', 'дней')}`
+}
+
+function plural(value: number, one: string, few: string, many: string) {
+  const abs = Math.abs(value) % 100
+  const digit = abs % 10
+  if (abs > 10 && abs < 20) return many
+  if (digit === 1) return one
+  if (digit >= 2 && digit <= 4) return few
+  return many
 }
 
 /** Null means today's packs were read recently and the loop should wait. */

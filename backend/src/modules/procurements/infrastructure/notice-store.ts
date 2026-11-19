@@ -1,7 +1,10 @@
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { Database } from 'bun:sqlite'
 
-import { initialPackPlan, type PackPlan } from '../domain/pack-sync'
+import { readPackCard, presentDate } from '../domain/pack-card'
+import { initialPackPlan, packCellsDone, SAVED_PAGE_SIZE, type PackPlan } from '../domain/pack-sync'
+import { readZipXml } from '../domain/zip-xml'
 import { initialPlan, moscowDate, type OpenSyncPlan } from '../domain/open-sync'
 import type { OpenNotice } from '../domain/read-search'
 
@@ -33,6 +36,7 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
     zip_bytes INTEGER NOT NULL DEFAULT 0,
     error TEXT NOT NULL DEFAULT ''
   )`)
+  db.run(`CREATE INDEX IF NOT EXISTS notices_saved_order ON notices (status, published, number)`)
   db.run(`CREATE TABLE IF NOT EXISTS sync_plan (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     json TEXT NOT NULL
@@ -101,14 +105,47 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
     packPlan(): PackPlan {
       const row = readPlan.get() as { json: string } | null
       const parsed = row ? JSON.parse(row.json) as PackPlan : null
-      if (parsed?.mode === 'packs') return { ...initialPackPlan(moscowDate(now())), ...parsed, mode: 'packs' }
+      if (parsed?.mode === 'packs') {
+        const plan = { ...initialPackPlan(moscowDate(now())), ...parsed, mode: 'packs' as const }
+        if (plan.startedAt) return plan
+        const stamped = {
+          ...plan,
+          startedAt: now().toISOString(),
+          baseDone: packCellsDone(plan, moscowDate(now())),
+        }
+        writePlan.run({ $json: JSON.stringify(stamped) })
+        return stamped
+      }
       db.run(`DELETE FROM notices WHERE status = 'queued'`)
-      const fresh = initialPackPlan(moscowDate(now()))
+      const fresh = {
+        ...initialPackPlan(moscowDate(now())),
+        startedAt: now().toISOString(),
+        baseDone: 0,
+      }
       writePlan.run({ $json: JSON.stringify(fresh) })
       return fresh
     },
     savePackPlan(plan: PackPlan) {
       writePlan.run({ $json: JSON.stringify(plan) })
+    },
+    savedPage(page: number) {
+      const totalRow = db.query(`SELECT COUNT(*) AS count FROM notices WHERE status = 'saved'`).get() as { count: number }
+      const total = totalRow.count
+      const pageCount = Math.max(1, Math.ceil(total / SAVED_PAGE_SIZE))
+      const safePage = Math.min(Math.max(page, 1), pageCount)
+      const rows = db.query(`SELECT number, law, status, object, customer, price, published, updated, deadline, url
+        FROM notices WHERE status = 'saved'
+        ORDER BY published DESC, number DESC
+        LIMIT $limit OFFSET $offset`).all({
+        $limit: SAVED_PAGE_SIZE,
+        $offset: (safePage - 1) * SAVED_PAGE_SIZE,
+      }) as SavedRow[]
+      return {
+        total,
+        page: safePage,
+        pageCount,
+        notices: rows.map((row) => presentRow(fillRow(dir, db, row))),
+      }
     },
     counts(): SyncCounts {
       const rows = db.query(`SELECT status, COUNT(*) AS count, COALESCE(SUM(zip_bytes), 0) AS bytes FROM notices GROUP BY status`).all() as { status: string; count: number; bytes: number }[]
@@ -128,3 +165,62 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
 }
 
 export type NoticeStore = ReturnType<typeof openNoticeStore>
+
+type SavedRow = {
+  number: string
+  law: string
+  status: string
+  object: string
+  customer: string
+  price: string
+  published: string
+  updated: string
+  deadline: string
+  url: string
+}
+
+function fillRow(dir: string, db: Database, row: SavedRow) {
+  if (row.object) return row
+  try {
+    const xml = readZipXml(readFileSync(join(dir, 'zips', `${row.number}.zip`))).xml
+    const card = readPackCard(xml)
+    const next = {
+      ...row,
+      object: card.object,
+      customer: card.customer,
+      price: card.price,
+      published: card.published || row.published,
+      deadline: card.deadline || row.deadline,
+      url: card.url || row.url,
+    }
+    db.query(`UPDATE notices
+      SET object = $object, customer = $customer, price = $price, published = $published, deadline = $deadline, url = $url
+      WHERE number = $number`).run({
+      $number: row.number,
+      $object: next.object,
+      $customer: next.customer,
+      $price: next.price,
+      $published: next.published,
+      $deadline: next.deadline,
+      $url: next.url,
+    })
+    return next
+  } catch {
+    return row
+  }
+}
+
+function presentRow(row: SavedRow) {
+  return {
+    law: row.law,
+    status: row.status || 'Подача заявок',
+    number: row.number,
+    object: row.object || 'Извещение ЕИС',
+    customer: row.customer,
+    price: row.price,
+    published: presentDate(row.published),
+    updated: presentDate(row.updated),
+    deadline: presentDate(row.deadline),
+    url: row.url || `https://zakupki.gov.ru/epz/order/extendedsearch/results.html?searchString=${row.number}&fz44=on&fz223=on&ppRf615=on`,
+  }
+}

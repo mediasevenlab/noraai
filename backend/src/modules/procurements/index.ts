@@ -5,7 +5,7 @@ import { startPackSync } from './application/pack-sync-loop'
 import { createProcurementListService } from './application/list-service'
 import { createProcurementSampleService } from './application/sample-service'
 import { EisFailure } from './domain/errors'
-import { PACK_KINDS, PACK_REGIONS } from './domain/pack-sync'
+import { packEta, PACK_KINDS, PACK_REGIONS } from './domain/pack-sync'
 import { downloadRegionPack, downloadSampleNotice } from './infrastructure/eis-archive'
 import { downloadOpenNotices } from './infrastructure/eis-open-list'
 import { openNoticeStore } from './infrastructure/notice-store'
@@ -22,6 +22,9 @@ const IDLE_SYNC = {
   zipBytes: 0,
   truncated: 0,
   dropped: 0,
+  cellsDone: 0,
+  cellsTotal: 0,
+  eta: '',
 }
 
 export function createProcurementsModule(options: {
@@ -51,6 +54,7 @@ export function createProcurementsModule(options: {
       if (!store) return IDLE_SYNC
       const plan = store.packPlan()
       const counts = store.counts()
+      const progress = packEta(plan, new Date())
       return {
         running: true,
         phase: plan.phase === 'catalog' ? 'packs' : 'packs-daily',
@@ -62,8 +66,12 @@ export function createProcurementsModule(options: {
         zipBytes: counts.zipBytes,
         truncated: 0,
         dropped: plan.dropped,
+        cellsDone: progress.done,
+        cellsTotal: progress.total,
+        eta: progress.eta,
       }
     },
+    saved: (page: number) => store?.savedPage(page) ?? { total: 0, page: 1, pageCount: 1, notices: [] },
   })
   return {
     ...routes,

@@ -1,13 +1,18 @@
-import { procurementOpenListSchema, procurementSyncSchema, type ProcurementOpenList, type ProcurementSync } from '@web-app-demo/contracts'
+import {
+  procurementSavedPageSchema,
+  procurementSyncSchema,
+  type ProcurementSavedPage,
+  type ProcurementSync,
+} from '@web-app-demo/contracts'
 
 import type { AuthenticatedTransport } from '@/platform/api'
 
-export function loadOpenProcurements(transport: AuthenticatedTransport) {
-  return transport.request('/api/users/me/procurements/open', procurementOpenListSchema)
+export function loadSavedProcurements(transport: AuthenticatedTransport, page: number) {
+  return transport.request(`/api/users/me/procurements/saved?page=${page}`, procurementSavedPageSchema)
 }
 
 export function loadProcurementSync(transport: AuthenticatedTransport) {
   return transport.request('/api/users/me/procurements/sync', procurementSyncSchema)
 }
 
-export type { ProcurementOpenList, ProcurementSync }
+export type { ProcurementSavedPage, ProcurementSync }

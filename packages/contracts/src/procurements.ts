@@ -84,6 +84,17 @@ export const procurementOpenListSchema = z
 
 export type ProcurementOpenList = z.infer<typeof procurementOpenListSchema>
 
+export const procurementSavedPageSchema = z
+  .object({
+    total: z.number().int().nonnegative(),
+    page: z.number().int().positive(),
+    pageCount: z.number().int().positive(),
+    notices: z.array(procurementNoticeSchema).max(50),
+  })
+  .strict()
+
+export type ProcurementSavedPage = z.infer<typeof procurementSavedPageSchema>
+
 export const procurementSyncSchema = z
   .object({
     running: z.boolean(),
@@ -96,6 +107,9 @@ export const procurementSyncSchema = z
     zipBytes: z.number().int().nonnegative(),
     truncated: z.number().int().nonnegative(),
     dropped: z.number().int().nonnegative(),
+    cellsDone: z.number().int().nonnegative(),
+    cellsTotal: z.number().int().nonnegative(),
+    eta: z.string(),
   })
   .strict()
 

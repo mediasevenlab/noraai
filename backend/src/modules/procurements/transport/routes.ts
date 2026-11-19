@@ -1,7 +1,7 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
 import type { MiddlewareHandler } from 'hono'
 
-import { procurementSyncSchema } from '@web-app-demo/contracts'
+import { procurementSavedPageSchema, procurementSyncSchema } from '@web-app-demo/contracts'
 
 import { AppError } from '../../../http/errors'
 import type { AuthHttpEnv } from '../../auth'
@@ -27,11 +27,35 @@ export function createProcurementRoutes(options: {
     zipBytes: number
     truncated: number
     dropped: number
+    cellsDone: number
+    cellsTotal: number
+    eta: string
+  }
+  saved: (page: number) => {
+    total: number
+    page: number
+    pageCount: number
+    notices: {
+      law: string
+      status: string
+      number: string
+      object: string
+      customer: string
+      price: string
+      published: string
+      updated: string
+      deadline: string
+      url: string
+    }[]
   }
 }) {
   const routes = new OpenAPIHono<AuthHttpEnv>()
   routes.use('*', options.requireAuth)
   routes.get('/me/procurements/sync', (c) => c.json(procurementSyncSchema.parse(options.sync())))
+  routes.get('/me/procurements/saved', (c) => {
+    const page = Number(c.req.query('page') ?? '1')
+    return c.json(procurementSavedPageSchema.parse(options.saved(Number.isFinite(page) ? page : 1)))
+  })
   routes.get('/me/procurements/open', async (c) => {
     try {
       return c.json(await options.list.open(c.req.raw.signal))
