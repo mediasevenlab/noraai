@@ -11,8 +11,10 @@ test('saved pages filter by subject and law without listing a notice that is sti
   const store = openNoticeStore(dir)
   store.remember(notice('100', 'аукцион 44-ФЗ', 'Поставка топлива', 'Дорожная служба'))
   store.markSaved('100', 20)
-  store.remember(notice('200', '223-ФЗ', 'Ремонт кровли', 'Школа'))
+  store.remember(notice('200', '223-ФЗ', 'Ремонт кровли', 'Школа', 'RI223'))
   store.markSaved('200', 20)
+  store.remember(notice('400', 'запрос котировок', 'Кабель', 'Сеть'))
+  store.markSaved('400', 20)
   store.remember(notice('300', 'запрос котировок', 'Поставка топлива', 'Больница'))
   await store.close()
   const reading = openNoticeStore(dir)
@@ -25,6 +27,9 @@ test('saved pages filter by subject and law without listing a notice that is sti
   expect(law.total).toBe(1)
   expect(law.notices[0]?.customer).toBe('Школа')
 
+  const federal = reading.savedPage(1, { text: '', laws: ['44'] })
+  expect(federal.notices.map((item) => item.number).sort()).toEqual(['100', '400'])
+
   const missing = reading.savedPage(1, { text: 'топлива', laws: ['615'] })
   expect(missing.total).toBe(0)
   expect(missing.notices).toEqual([])
@@ -33,10 +38,10 @@ test('saved pages filter by subject and law without listing a notice that is sti
   await rm(dir, { recursive: true, force: true })
 })
 
-function notice(number: string, law: string, object: string, customer: string) {
+function notice(number: string, law: string, object: string, customer: string, subsystem = 'PRIZ') {
   return {
     number,
-    subsystem: 'PRIZ',
+    subsystem,
     law,
     status: 'Подача заявок',
     object,

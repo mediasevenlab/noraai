@@ -8,9 +8,9 @@ export type SavedNoticeQuery = {
 }
 
 const LAW_MATCH: Record<SavedLaw, string> = {
-  '44': "law LIKE '%44-ФЗ%'",
-  '223': "law LIKE '%223-ФЗ%'",
-  '615': "law LIKE '%615%'",
+  '44': "subsystem = 'PRIZ'",
+  '223': "subsystem = 'RI223'",
+  '615': "subsystem = 'P615'",
 }
 
 /** Search text and law checkboxes. An empty law list means every saved notice. */
