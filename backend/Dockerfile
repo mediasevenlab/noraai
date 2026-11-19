@@ -34,6 +34,7 @@ COPY --from=build /app/backend ./backend
 WORKDIR /app/backend
 
 ENV NODE_ENV=production
+ENV NODE_EXTRA_CA_CERTS=/app/backend/certs/russian-trusted-root.pem
 
 # The process runs as bun. The copied tree belongs to root, so the recording
 # folder has to exist and be writable before the user switch.

@@ -17,6 +17,7 @@ type SyncStore = {
 }
 
 const PAGE_PAUSE_MS = 1_500
+const FAILURE_PAUSE_MS = 30_000
 const ZIP_PAUSE_MS = 2_000
 const IDLE_PAUSE_MS = 60_000
 
@@ -43,6 +44,7 @@ export function startOpenSync(options: {
       const plan = options.store.plan()
       const reading = planToRun(plan, now())
       if (reading) {
+        let readFailed = false
         try {
           const notices = await options.search(reading.day, reading.page, signal)
           for (const notice of notices) {
@@ -51,9 +53,10 @@ export function startOpenSync(options: {
           options.store.savePlan(planAfterPage(reading, notices.length, now()))
         } catch (error) {
           if (signal.aborted) return
+          readFailed = true
           console.error('Open procurement list was not read', error instanceof Error ? error.message : error)
         }
-        await sleep(PAGE_PAUSE_MS, signal)
+        await sleep(readFailed ? FAILURE_PAUSE_MS : PAGE_PAUSE_MS, signal)
       }
       const next = options.store.nextQueued()
       if (next) {

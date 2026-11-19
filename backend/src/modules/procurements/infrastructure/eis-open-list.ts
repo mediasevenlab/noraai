@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 
 import { EisFailure } from '../domain/errors'
+import { russianRootArgs } from './eis-ca'
 
 const OPEN_NOTICES =
   'https://zakupki.gov.ru/epz/order/extendedsearch/results.html?morphology=on&pageNumber=1&sortDirection=false&recordsPerPage=_10&showLotsInfoHidden=false&sortBy=UPDATE_DATE&fz44=on&fz223=on&ppRf615=on&af=on&currencyIdGeneral=-1'
@@ -16,7 +17,7 @@ function readWithCurl(url: string, signal?: AbortSignal) {
   return new Promise<string>((resolve, reject) => {
     const child = spawn(
       'curl',
-      ['-sS', '-L', '--max-time', '25', '-A', USER_AGENT, '-w', '\n__NORA_HTTP_%{http_code}', url],
+      ['-sS', '-L', '--max-time', '25', ...russianRootArgs(), '-A', USER_AGENT, '-w', '\n__NORA_HTTP_%{http_code}', url],
       { signal, windowsHide: true },
     )
     const out: Buffer[] = []

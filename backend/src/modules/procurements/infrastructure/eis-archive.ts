@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { spawn } from 'node:child_process'
 
 import { EisFailure } from '../domain/errors'
+import { russianRootArgs } from './eis-ca'
 import { readZipXml } from '../domain/zip-xml'
 
 const EIS_DOCS = 'https://int.zakupki.gov.ru/eis-integration/services/getDocsIP'
@@ -64,7 +65,7 @@ async function postSoap(body: string, token: string, signal?: AbortSignal) {
   } catch (error) {
     if (signal?.aborted || error instanceof EisFailure) throw error
     if (!certificateRejected(error)) throw new EisFailure('ЕИС не отдала архив.')
-    return curlText(['-sS', '--max-time', '45', '-H', 'Content-Type: text/xml; charset=utf-8', '--data-binary', '@FILE', '-w', '\n__NORA_HTTP_%{http_code}', EIS_DOCS], body, token, signal)
+    return curlText(['-sS', '--max-time', '45', ...russianRootArgs(), '-H', 'Content-Type: text/xml; charset=utf-8', '--data-binary', '@FILE', '-w', '\n__NORA_HTTP_%{http_code}', EIS_DOCS], body, token, signal)
   }
 }
 
@@ -76,7 +77,7 @@ async function getArchive(url: string, token: string, signal?: AbortSignal) {
   } catch (error) {
     if (signal?.aborted || error instanceof EisFailure) throw error
     if (!certificateRejected(error)) throw new EisFailure('ЕИС не отдала архив.')
-    return curlFile(['-sS', '--max-time', '60', '-H', `individualPerson_token: ${token}`, '-o', 'FILE', '-w', '%{http_code}', url], token, signal)
+    return curlFile(['-sS', '--max-time', '60', ...russianRootArgs(), '-H', `individualPerson_token: ${token}`, '-o', 'FILE', '-w', '%{http_code}', url], token, signal)
   }
 }
 
