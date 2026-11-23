@@ -25,11 +25,15 @@ export function noticeNeedle(row: { number: string; object: string; customer: st
   return `${row.number}\n${row.object}\n${row.customer}`.toLocaleLowerCase('ru-RU')
 }
 
+export function needlePattern(text: string) {
+  return `%${text.replace(/[\\%_]/g, (char) => `\\${char}`)}%`
+}
+
 export function savedNoticeWhere(query: SavedNoticeQuery) {
   const clauses = [`status = 'saved'`]
   const params: Record<string, string | number> = {}
   if (query.text) {
-    params.$text = `%${query.text.replace(/[\\%_]/g, (char) => `\\${char}`)}%`
+    params.$text = needlePattern(query.text)
     clauses.push(`needle LIKE $text ESCAPE '\\'`)
   }
   if (query.laws.length > 0) {

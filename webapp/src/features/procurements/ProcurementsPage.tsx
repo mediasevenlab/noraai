@@ -151,7 +151,7 @@ export function ProcurementsPage() {
             className="w-full border-b border-[var(--nora-border)] bg-transparent pb-1 outline-none"
             data-procurements-search=""
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="Номер, предмет или заказчик"
+            placeholder="Номер или текст извещения"
             value={draft}
           />
           <div className="flex flex-col gap-1">
@@ -176,7 +176,7 @@ export function ProcurementsPage() {
             <p>Подача заявок</p>
           </div>
           <p className="text-[var(--nora-text-secondary)]">
-            ПП-615 пока не скачивается. Предмет и заказчик ищутся у карточек, где они уже заполнены. Номер ищется всегда.
+            ПП-615 пока не скачивается. Поиск смотрит текст извещения: предмет, заказчика, позиции, контакты и названия вложений. Пока карточка ещё не проиндексирована, ищутся номер, предмет и заказчик.
           </p>
         </aside>
       </div>

@@ -211,6 +211,18 @@ const userProcurementsRoute = createRoute({
   component: lazyRouteComponent(() => import('./pages'), 'UserProcurementsPage'),
 })
 
+const userB2bRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/b2b',
+  component: lazyRouteComponent(() => import('./pages'), 'UserB2bPage'),
+})
+
+const userTenderProRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/tender-pro',
+  component: lazyRouteComponent(() => import('./pages'), 'UserTenderProPage'),
+})
+
 const adminWorkspaceRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'adminWorkspace',
@@ -425,6 +437,8 @@ const routeTree = rootRoute.addChildren([
     userMeetingsRoute,
     userNotesRoute,
     userProcurementsRoute,
+    userB2bRoute,
+    userTenderProRoute,
   ]),
   adminWorkspaceRoute.addChildren([
     adminDashboardRoute,

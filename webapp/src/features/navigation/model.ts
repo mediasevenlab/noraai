@@ -14,6 +14,8 @@ export type UserRoutePath =
   | '/app/meetings'
   | '/app/notes'
   | '/app/procurements'
+  | '/app/b2b'
+  | '/app/tender-pro'
 export type AdminRoutePath = '/admin' | '/admin/news' | '/admin/profile' | '/admin/users' | '/admin/settings'
 export type MentorRoutePath =
   | '/mentor'
@@ -53,6 +55,8 @@ const CONTENT_AREA_PATHS = new Set<WorkspaceRoutePath>([
   '/app/dialogs',
   '/app/meetings',
   '/app/procurements',
+  '/app/b2b',
+  '/app/tender-pro',
   '/admin/news',
   '/mentor/dialogs',
   '/mentor/meetings',
@@ -66,6 +70,8 @@ const navigationByRole = {
     { label: 'Диалоги', to: '/app/dialogs' },
     { label: 'Встречи', to: '/app/meetings' },
     { label: 'Госзакупки', to: '/app/procurements' },
+    { label: 'B2B-Center', to: '/app/b2b' },
+    { label: 'Tender.pro', to: '/app/tender-pro' },
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Рефералы', to: '/app/referrals' },
     { label: 'Настройки', to: '/app/settings' },

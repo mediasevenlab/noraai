@@ -75,6 +75,8 @@ const iconsByPath = {
   '/app/settings': SettingsIcon,
   '/app/notes': BookmarkIcon,
   '/app/procurements': ScaleIcon,
+  '/app/b2b': ScaleIcon,
+  '/app/tender-pro': ScaleIcon,
   '/admin': UsersIcon,
   '/admin/news': NewspaperIcon,
   '/admin/profile': UserIcon,

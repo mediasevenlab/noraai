@@ -1,9 +1,12 @@
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { expect, test } from 'bun:test'
 
+import { initialPackPlan } from '../domain/pack-sync'
+import { zipSingleXml } from '../domain/zip-xml'
 import { openNoticeStore } from './notice-store'
 
 test('saved pages filter by subject and law without listing a notice that is still queued', async () => {
@@ -35,6 +38,55 @@ test('saved pages filter by subject and law without listing a notice that is sti
   expect(missing.notices).toEqual([])
 
   reading.close()
+  await rm(dir, { recursive: true, force: true })
+})
+
+test('saved search reads the notice text and leaves the download cursor alone', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'nora-saved-text-'))
+  const store = openNoticeStore(dir)
+  store.savePackPlan({
+    ...initialPackPlan('2026-11-19'),
+    day: '2025-01-10',
+    regionIndex: 46,
+    kindIndex: 3,
+    dropped: 7,
+    startedAt: '2026-11-19T00:00:00.000Z',
+    baseDone: 10,
+  })
+  store.remember(notice('100', 'аукцион 44-ФЗ', 'Поставка оборудования', 'Завод'))
+  store.markSaved('100', 20)
+  mkdirSync(join(dir, 'zips'), { recursive: true })
+  writeFileSync(join(dir, 'zips', '100.zip'), zipSingleXml('100.xml', `
+    <purchaseObject><name>Трансформатор масляный</name></purchaseObject>
+    <contactEMail>snab@zavod.ru</contactEMail>
+    <fileName>чертеж-ввода.pdf</fileName>
+    <signature>УНИКАЛЬНАЯПОДПИСЬ</signature>
+  `))
+  expect(store.indexNext()).toBe(true)
+  store.remember(notice('200', '223-ФЗ', 'Поставка топлива', 'Школа', 'RI223'))
+  store.markSaved('200', 20)
+
+  const position = store.savedPage(1, { text: 'масляный', laws: [] })
+  expect(position.notices.map((item) => item.number)).toEqual(['100'])
+  const mail = store.savedPage(1, { text: 'snab@zavod.ru', laws: [] })
+  expect(mail.total).toBe(1)
+  const file = store.savedPage(1, { text: 'чертеж-ввода', laws: [] })
+  expect(file.total).toBe(1)
+  const hidden = store.savedPage(1, { text: 'уникальнаяподпись', laws: [] })
+  expect(hidden.total).toBe(0)
+  const fuel = store.savedPage(1, { text: 'топлива', laws: [] })
+  expect(fuel.notices.map((item) => item.number)).toEqual(['200'])
+  const otherLaw = store.savedPage(1, { text: 'масляный', laws: ['223'] })
+  expect(otherLaw.total).toBe(0)
+
+  const plan = store.packPlan()
+  expect(plan.day).toBe('2025-01-10')
+  expect(plan.regionIndex).toBe(46)
+  expect(plan.kindIndex).toBe(3)
+  expect(plan.dropped).toBe(7)
+  expect(store.counts().saved).toBe(2)
+
+  store.close()
   await rm(dir, { recursive: true, force: true })
 })
 

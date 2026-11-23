@@ -36,6 +36,8 @@ import {
 import { AuthMercuryOrb } from '@/features/auth/components/AuthMercuryOrb'
 import { DialogsPage, DialogsRuntimeProvider } from '@/features/dialogs'
 import { NotesPage } from '@/features/notes'
+import { B2bCenterPage } from '@/features/b2b'
+import { TenderProPage } from '@/features/tender-pro'
 import { ProcurementsPage } from '@/features/procurements'
 import { MeetingsPage } from '@/features/meetings'
 import { homePathForRole, postAuthPath } from '@/features/navigation'
@@ -166,6 +168,16 @@ export function UserNotesPage() {
 export function UserProcurementsPage() {
   useWorkspaceUser('user')
   return <ProcurementsPage />
+}
+
+export function UserB2bPage() {
+  useWorkspaceUser('user')
+  return <B2bCenterPage />
+}
+
+export function UserTenderProPage() {
+  useWorkspaceUser('user')
+  return <TenderProPage />
 }
 
 export function MentorDialogsPage() {

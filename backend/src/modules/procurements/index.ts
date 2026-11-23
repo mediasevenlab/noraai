@@ -8,7 +8,7 @@ import { EisFailure } from './domain/errors'
 import { packEta, PACK_KINDS, PACK_REGIONS } from './domain/pack-sync'
 import { downloadRegionPack, downloadSampleNotice } from './infrastructure/eis-archive'
 import { downloadOpenNotices } from './infrastructure/eis-open-list'
-import { openNoticeStore } from './infrastructure/notice-store'
+import { openNoticeStore, startNoticeTextIndex } from './infrastructure/notice-store'
 import { createProcurementRoutes } from './transport/routes'
 
 const IDLE_SYNC = {
@@ -45,6 +45,7 @@ export function createProcurementsModule(options: {
         download: (cell, signal) => downloadRegionPack(options.token!, cell, signal),
       })
     : null
+  const indexing = store ? startNoticeTextIndex(store) : null
   if (running) console.log('Procurement pack sync started')
   const routes = createProcurementRoutes({
     requireAuth: options.requireAuth,
@@ -77,6 +78,7 @@ export function createProcurementsModule(options: {
     ...routes,
     dispose: async () => {
       await running?.stop()
+      await indexing?.stop()
       store?.close()
     },
   }

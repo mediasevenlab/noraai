@@ -14,6 +14,8 @@ import { createKnowledgeModule } from './modules/knowledge'
 import { createMeetingsModule } from './modules/meetings'
 import { createMealsModule } from './modules/meals'
 import { createNewsModule } from './modules/news'
+import { createB2bModule } from './modules/b2b'
+import { createTenderProModule } from './modules/tender-pro'
 import { createProcurementsModule } from './modules/procurements'
 import { createSpeechModule } from './modules/speech'
 import { createQuestionnaireProjectUser, createTelegramLinkStore, createUsersModule } from './modules/users'
@@ -69,6 +71,16 @@ export function createApp({
     startPoller: startMealsPoller,
   })
   const speech = createSpeechModule({ requireAuth: auth.requireAuth })
+  const b2b = createB2bModule({
+    requireAuth: auth.requireAuth,
+    login: env.B2B_LOGIN,
+    password: env.B2B_PASSWORD,
+  })
+  const tenderPro = createTenderProModule({
+    requireAuth: auth.requireAuth,
+    key: env.TENDER_PRO_KEY,
+    companyId: env.TENDER_PRO_COMPANY_ID,
+  })
   const procurements = createProcurementsModule({
     requireAuth: auth.requireAuth,
     token: env.EIS_TOKEN,
@@ -175,6 +187,8 @@ export function createApp({
   app.route('/api/users', meetings.routes)
   app.route('/api/users', speech.routes)
   app.route('/api/users', procurements.routes)
+  app.route('/api/users', b2b.routes)
+  app.route('/api/users', tenderPro.routes)
   app.route('/api/mentor', users.mentorRoutes)
   app.route('/api/news', news.routes)
   app.use(

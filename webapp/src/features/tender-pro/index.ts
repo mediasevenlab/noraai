@@ -1,0 +1,1 @@
+export { TenderProPage } from './TenderProPage'

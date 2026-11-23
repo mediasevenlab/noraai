@@ -2,8 +2,9 @@ import { mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { Database } from 'bun:sqlite'
 
+import { noticeBody, noticeMatch } from '../domain/notice-text'
 import { readPackCard, presentDate } from '../domain/pack-card'
-import { normalizeSavedQuery, noticeNeedle, savedNoticeWhere } from '../domain/saved-filter'
+import { needlePattern, normalizeSavedQuery, noticeNeedle, savedNoticeWhere, type SavedNoticeQuery } from '../domain/saved-filter'
 import { initialPackPlan, packCellsDone, SAVED_PAGE_SIZE, type PackPlan } from '../domain/pack-sync'
 import { readZipXml } from '../domain/zip-xml'
 import { initialPlan, moscowDate, type OpenSyncPlan } from '../domain/open-sync'
@@ -36,13 +37,18 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
     url TEXT NOT NULL,
     zip_bytes INTEGER NOT NULL DEFAULT 0,
     error TEXT NOT NULL DEFAULT '',
-    needle TEXT NOT NULL DEFAULT ''
+    needle TEXT NOT NULL DEFAULT '',
+    indexed INTEGER NOT NULL DEFAULT 0
   )`)
   const columns = db.query(`PRAGMA table_info(notices)`).all() as { name: string }[]
   if (!columns.some((column) => column.name === 'needle')) {
     db.run(`ALTER TABLE notices ADD COLUMN needle TEXT NOT NULL DEFAULT ''`)
   }
+  if (!columns.some((column) => column.name === 'indexed')) {
+    db.run(`ALTER TABLE notices ADD COLUMN indexed INTEGER NOT NULL DEFAULT 0`)
+  }
   db.run(`CREATE INDEX IF NOT EXISTS notices_saved_order ON notices (status, published, number)`)
+  const textReady = openTextIndex(db)
   fillNeedles(db)
   db.run(`CREATE TABLE IF NOT EXISTS sync_plan (
     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -137,7 +143,9 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
       writePlan.run({ $json: JSON.stringify(plan) })
     },
     savedPage(page: number, raw: { text?: string; laws?: readonly string[] } = {}) {
-      const filter = savedNoticeWhere(normalizeSavedQuery(raw.text ?? '', raw.laws ?? []))
+      const filter = textReady
+        ? textSearchWhere(db, normalizeSavedQuery(raw.text ?? '', raw.laws ?? []))
+        : savedNoticeWhere(normalizeSavedQuery(raw.text ?? '', raw.laws ?? []))
       const totalRow = db.query(`SELECT COUNT(*) AS count FROM notices WHERE ${filter.where}`).get(filter.params) as { count: number }
       const total = totalRow.count
       const pageCount = Math.max(1, Math.ceil(total / SAVED_PAGE_SIZE))
@@ -168,9 +176,37 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
       }
       return counts
     },
+    /** Reads one saved archive into the text index. The download cursor stays untouched. */
+    indexNext() {
+      if (!textReady) return false
+      return indexNextNotice(dir, db)
+    },
     close() {
       db.close()
     },
+  }
+}
+
+export function startNoticeTextIndex(store: { indexNext(): boolean }) {
+  const controller = new AbortController()
+  const task = run()
+  return {
+    stop() {
+      controller.abort()
+      return task.catch(() => undefined)
+    },
+  }
+
+  async function run() {
+    while (!controller.signal.aborted) {
+      let found = false
+      try {
+        found = store.indexNext()
+      } catch (error) {
+        console.error('Procurement text was not indexed', error instanceof Error ? error.message : error)
+      }
+      await delay(found ? 50 : 5_000, controller.signal)
+    }
   }
 }
 
@@ -187,6 +223,71 @@ type SavedRow = {
   updated: string
   deadline: string
   url: string
+}
+
+function openTextIndex(db: Database) {
+  try {
+    db.run(`CREATE VIRTUAL TABLE IF NOT EXISTS notice_text USING fts5(body, content='', tokenize = 'unicode61')`)
+    db.run(`CREATE INDEX IF NOT EXISTS notices_text_pending ON notices(indexed) WHERE indexed <> 1`)
+    return true
+  } catch (error) {
+    console.error('Procurement text index was not opened', error instanceof Error ? error.message : error)
+    return false
+  }
+}
+
+function textSearchWhere(db: Database, query: SavedNoticeQuery) {
+  const card = savedNoticeWhere(query)
+  const match = query.text ? noticeMatch(query.text) : ''
+  if (!match) return card
+  const base = savedNoticeWhere({ ...query, text: '' })
+  const pending = db.query(`SELECT 1 AS hit FROM notices WHERE indexed <> 1 AND status = 'saved' LIMIT 1`).get()
+  if (!pending) {
+    return {
+      where: `${base.where} AND rowid IN (SELECT rowid FROM notice_text WHERE notice_text MATCH $match)`,
+      params: { ...base.params, $match: match },
+    }
+  }
+  return {
+    where: `${base.where} AND (rowid IN (SELECT rowid FROM notice_text WHERE notice_text MATCH $match) OR (indexed <> 1 AND needle LIKE $text ESCAPE '\\'))`,
+    params: { ...base.params, $match: match, $text: needlePattern(query.text) },
+  }
+}
+
+function indexNextNotice(dir: string, db: Database) {
+  const row = db.query(`SELECT rowid AS id, number, object, customer
+    FROM notices WHERE status = 'saved' AND indexed = 0 LIMIT 1`).get() as { id: number; number: string; object: string; customer: string } | null
+  if (!row) return false
+  const body = noticeBody(`${row.number}\n${row.object}\n${row.customer}\n${readStoredXml(dir, row.number)}`)
+  const insert = db.query(`INSERT INTO notice_text(rowid, body) VALUES ($id, $body)`)
+  const mark = db.query(`UPDATE notices SET indexed = $indexed WHERE rowid = $id`)
+  try {
+    db.transaction(() => {
+      insert.run({ $id: row.id, $body: body || row.number })
+      mark.run({ $id: row.id, $indexed: 1 })
+    })()
+  } catch {
+    mark.run({ $id: row.id, $indexed: 2 })
+  }
+  return true
+}
+
+function readStoredXml(dir: string, number: string) {
+  try {
+    return readZipXml(readFileSync(join(dir, 'zips', `${number}.zip`))).xml
+  } catch {
+    return ''
+  }
+}
+
+function delay(ms: number, signal: AbortSignal) {
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, ms)
+    signal.addEventListener('abort', () => {
+      clearTimeout(timer)
+      resolve()
+    }, { once: true })
+  })
 }
 
 function fillNeedles(db: Database) {
