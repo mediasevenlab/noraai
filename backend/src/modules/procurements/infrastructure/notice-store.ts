@@ -1,7 +1,8 @@
-import { mkdirSync, readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { Database } from 'bun:sqlite'
 
+import { deadlineMillis } from '../domain/keep-notice'
 import { noticeBody, noticeMatch } from '../domain/notice-text'
 import { readPackCard, presentDate } from '../domain/pack-card'
 import { needlePattern, normalizeSavedQuery, noticeNeedle, savedNoticeWhere, type SavedNoticeQuery } from '../domain/saved-filter'
@@ -38,7 +39,8 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
     zip_bytes INTEGER NOT NULL DEFAULT 0,
     error TEXT NOT NULL DEFAULT '',
     needle TEXT NOT NULL DEFAULT '',
-    indexed INTEGER NOT NULL DEFAULT 0
+    indexed INTEGER NOT NULL DEFAULT 0,
+    deadline_ms INTEGER NOT NULL DEFAULT 0
   )`)
   const columns = db.query(`PRAGMA table_info(notices)`).all() as { name: string }[]
   if (!columns.some((column) => column.name === 'needle')) {
@@ -47,7 +49,12 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
   if (!columns.some((column) => column.name === 'indexed')) {
     db.run(`ALTER TABLE notices ADD COLUMN indexed INTEGER NOT NULL DEFAULT 0`)
   }
+  if (!columns.some((column) => column.name === 'deadline_ms')) {
+    db.run(`ALTER TABLE notices ADD COLUMN deadline_ms INTEGER NOT NULL DEFAULT 0`)
+  }
   db.run(`CREATE INDEX IF NOT EXISTS notices_saved_order ON notices (status, published, number)`)
+  db.run(`CREATE INDEX IF NOT EXISTS notices_expired ON notices(deadline_ms) WHERE status = 'saved' AND deadline_ms > 0`)
+  db.run(`CREATE INDEX IF NOT EXISTS notices_deadline_raw ON notices(number) WHERE deadline_ms = 0 AND deadline != ''`)
   const textReady = openTextIndex(db)
   fillNeedles(db)
   db.run(`CREATE TABLE IF NOT EXISTS sync_plan (
@@ -55,8 +62,8 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
     json TEXT NOT NULL
   )`)
   const remember = db.query(`INSERT INTO notices (
-    number, subsystem, law, status, object, customer, price, published, updated, deadline, url, needle
-  ) VALUES ($number, $subsystem, $law, 'queued', $object, $customer, $price, $published, $updated, $deadline, $url, $needle)
+    number, subsystem, law, status, object, customer, price, published, updated, deadline, url, needle, deadline_ms
+  ) VALUES ($number, $subsystem, $law, 'queued', $object, $customer, $price, $published, $updated, $deadline, $url, $needle, $deadlineMs)
   ON CONFLICT(number) DO NOTHING`)
   const nextQueued = db.query(`SELECT number, subsystem, law, status, object, customer, price, published, updated, deadline, url
     FROM notices WHERE status = 'queued' ORDER BY published, number LIMIT 1`)
@@ -81,6 +88,7 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
         $deadline: notice.deadline,
         $url: notice.url,
         $needle: noticeNeedle(notice),
+        $deadlineMs: deadlineMillis(notice.deadline),
       })
     },
     nextQueued(): StoredNotice | null {
@@ -181,6 +189,10 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
       if (!textReady) return false
       return indexNextNotice(dir, db)
     },
+    /** Drops one saved notice whose application deadline has passed. The download cursor stays. */
+    expireNext() {
+      return expireNextNotice(dir, db, now().getTime())
+    },
     close() {
       db.close()
     },
@@ -206,6 +218,29 @@ export function startNoticeTextIndex(store: { indexNext(): boolean }) {
         console.error('Procurement text was not indexed', error instanceof Error ? error.message : error)
       }
       await delay(found ? 50 : 5_000, controller.signal)
+    }
+  }
+}
+
+export function startNoticeExpiry(store: { expireNext(): boolean }) {
+  const controller = new AbortController()
+  const task = run()
+  return {
+    stop() {
+      controller.abort()
+      return task.catch(() => undefined)
+    },
+  }
+
+  async function run() {
+    while (!controller.signal.aborted) {
+      let removed = false
+      try {
+        removed = store.expireNext()
+      } catch (error) {
+        console.error('Procurement archive was not removed', error instanceof Error ? error.message : error)
+      }
+      await delay(removed ? 20 : 5_000, controller.signal)
     }
   }
 }
@@ -251,6 +286,46 @@ function textSearchWhere(db: Database, query: SavedNoticeQuery) {
   return {
     where: `${base.where} AND (rowid IN (SELECT rowid FROM notice_text WHERE notice_text MATCH $match) OR (indexed <> 1 AND needle LIKE $text ESCAPE '\\'))`,
     params: { ...base.params, $match: match, $text: needlePattern(query.text) },
+  }
+}
+
+function stampDeadlineBatch(db: Database) {
+  const rows = db.query(`SELECT number, deadline FROM notices
+    WHERE status = 'saved' AND deadline_ms = 0 AND deadline != '' LIMIT 200`).all() as { number: string; deadline: string }[]
+  if (rows.length === 0) return 0
+  const update = db.query(`UPDATE notices SET deadline_ms = $ms WHERE number = $number`)
+  db.transaction(() => {
+    for (const row of rows) update.run({ $number: row.number, $ms: deadlineMillis(row.deadline) })
+  })()
+  return rows.length
+}
+
+function expireNextNotice(dir: string, db: Database, nowMs: number) {
+  const stamped = stampDeadlineBatch(db)
+  const row = db.query(`SELECT rowid AS id, number FROM notices
+    WHERE status = 'saved' AND deadline_ms > 0 AND deadline_ms < $now LIMIT 1`).get({ $now: nowMs }) as { id: number; number: string } | null
+  if (!row) return stamped > 0
+  if (!removeArchive(dir, row.number)) {
+    db.query(`UPDATE notices SET deadline_ms = -1 WHERE rowid = $id`).run({ $id: row.id })
+    console.error('Procurement archive was not removed', row.number)
+    return true
+  }
+  db.query(`DELETE FROM notices WHERE rowid = $id`).run({ $id: row.id })
+  try {
+    db.query(`DELETE FROM notice_text WHERE rowid = $id`).run({ $id: row.id })
+  } catch {
+    // A contentless index cannot drop one row. The card is already gone, so search will not show it.
+  }
+  return true
+}
+
+function removeArchive(dir: string, number: string) {
+  if (!/^\d+$/.test(number)) return true
+  try {
+    unlinkSync(join(dir, 'zips', `${number}.zip`))
+    return true
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'ENOENT'
   }
 }
 
@@ -314,7 +389,7 @@ function fillRow(dir: string, db: Database, row: SavedRow) {
       url: card.url || row.url,
     }
     db.query(`UPDATE notices
-      SET object = $object, customer = $customer, price = $price, published = $published, deadline = $deadline, url = $url, needle = $needle
+      SET object = $object, customer = $customer, price = $price, published = $published, deadline = $deadline, url = $url, needle = $needle, deadline_ms = $deadlineMs
       WHERE number = $number`).run({
       $number: row.number,
       $object: next.object,
@@ -324,6 +399,7 @@ function fillRow(dir: string, db: Database, row: SavedRow) {
       $deadline: next.deadline,
       $url: next.url,
       $needle: noticeNeedle(next),
+      $deadlineMs: deadlineMillis(next.deadline),
     })
     return next
   } catch {

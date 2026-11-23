@@ -90,6 +90,43 @@ test('saved search reads the notice text and leaves the download cursor alone', 
   await rm(dir, { recursive: true, force: true })
 })
 
+test('a passed deadline removes the saved card and archive without moving the download cursor', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'nora-expire-'))
+  const store = openNoticeStore(dir, () => new Date('2026-11-23T06:00:00Z'))
+  store.savePackPlan({
+    ...initialPackPlan('2026-11-19'),
+    day: '2025-01-10',
+    regionIndex: 46,
+    kindIndex: 3,
+    dropped: 7,
+    startedAt: '2026-11-19T00:00:00.000Z',
+    baseDone: 10,
+  })
+  store.remember({ ...notice('100', 'аукцион 44-ФЗ', 'Поставка', 'Завод'), deadline: '2026-11-01T09:00:00+03:00' })
+  store.markSaved('100', 40)
+  store.remember({ ...notice('200', 'аукцион 44-ФЗ', 'Поставка', 'Школа'), deadline: '2026-12-01T09:00:00+03:00' })
+  store.markSaved('200', 40)
+  store.remember({ ...notice('300', 'аукцион 44-ФЗ', 'Поставка', 'Больница'), deadline: '' })
+  store.markSaved('300', 10)
+  mkdirSync(join(dir, 'zips'), { recursive: true })
+  writeFileSync(join(dir, 'zips', '100.zip'), zipSingleXml('100.xml', '<purchaseNumber>100</purchaseNumber>'))
+  writeFileSync(join(dir, 'zips', '200.zip'), zipSingleXml('200.xml', '<purchaseNumber>200</purchaseNumber>'))
+
+  expect(store.expireNext()).toBe(true)
+  expect(store.savedPage(1, { text: '', laws: [] }).notices.map((item) => item.number).sort()).toEqual(['200', '300'])
+  expect(await Bun.file(join(dir, 'zips', '100.zip')).exists()).toBe(false)
+  expect(await Bun.file(join(dir, 'zips', '200.zip')).exists()).toBe(true)
+  expect(store.expireNext()).toBe(false)
+  expect(store.counts().saved).toBe(2)
+  const plan = store.packPlan()
+  expect(plan.day).toBe('2025-01-10')
+  expect(plan.regionIndex).toBe(46)
+  expect(plan.dropped).toBe(7)
+
+  store.close()
+  await rm(dir, { recursive: true, force: true })
+})
+
 function notice(number: string, law: string, object: string, customer: string, subsystem = 'PRIZ') {
   return {
     number,
