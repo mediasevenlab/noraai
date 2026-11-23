@@ -30,6 +30,10 @@ export function createProcurementRoutes(options: {
     cellsDone: number
     cellsTotal: number
     eta: string
+    indexed: number
+    sweepDone: number
+    sweepTotal: number
+    sweepNote: string
   }
   saved: (page: number, raw: { text?: string; laws?: readonly string[] }) => {
     total: number

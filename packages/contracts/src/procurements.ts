@@ -110,6 +110,10 @@ export const procurementSyncSchema = z
     cellsDone: z.number().int().nonnegative(),
     cellsTotal: z.number().int().nonnegative(),
     eta: z.string(),
+    indexed: z.number().int().nonnegative(),
+    sweepDone: z.number().int().nonnegative(),
+    sweepTotal: z.number().int().nonnegative(),
+    sweepNote: z.string(),
   })
   .strict()
 

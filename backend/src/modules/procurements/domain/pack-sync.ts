@@ -136,6 +136,24 @@ export function packEta(plan: PackPlan, now: Date) {
   return { done, total, eta: `около ${remainingLabel(remaining)}` }
 }
 
+/** The bar for the work happening now. After the first pass it follows today's sweep. */
+export function packActivity(plan: PackPlan, now: Date) {
+  if (plan.phase === 'catalog') {
+    const progress = packEta(plan, now)
+    return { done: progress.done, total: progress.total, note: progress.eta }
+  }
+  const total = PACK_REGIONS.length * PACK_KINDS.length
+  const reading = packToRun(plan, now)
+  if (!reading) {
+    const swept = plan.todaySweptAt ? Date.parse(plan.todaySweptAt) : now.getTime()
+    const left = Math.max(0, TODAY_SWEEP_MS - (now.getTime() - swept))
+    return { done: total, total, note: `Следующая через ${remainingLabel(left)}` }
+  }
+  const done = Math.min(total, reading.regionIndex * PACK_KINDS.length + reading.kindIndex)
+  const note = reading.day === moscowDate(now) ? 'Идёт подкачка сегодняшнего дня' : `Идёт подкачка за ${reading.day}`
+  return { done, total, note }
+}
+
 function remainingLabel(ms: number) {
   const minutes = Math.max(1, Math.round(ms / 60_000))
   if (minutes < 90) return `${minutes} ${plural(minutes, 'минуту', 'минуты', 'минут')}`

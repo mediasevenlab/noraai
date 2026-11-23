@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test'
 
 import { keepOpen, readPackNotice } from './keep-notice'
 import { presentDate, readPackCard } from './pack-card'
-import { advancePack, initialPackPlan, PACK_KINDS, packCellsDone, packCellsTotal, packEta, PACK_REGIONS, packCell, packToRun } from './pack-sync'
+import { advancePack, initialPackPlan, PACK_KINDS, packActivity, packCellsDone, packCellsTotal, packEta, PACK_REGIONS, packCell, packToRun } from './pack-sync'
 import { readZipEntries, zipSingleXml } from './zip-xml'
 
 const now = new Date('2026-11-19T08:00:00Z')
@@ -48,6 +48,21 @@ test('progress counts finished days and estimates the rest from the pace', () =>
   const later = new Date('2026-11-19T09:00:00Z')
   expect(packEta(started, later).eta).toMatch(/^около /)
   expect(packEta(initialPackPlan(today), later).eta).toBe('Скорость ещё считается')
+})
+
+test('after the first pass the bar follows today and resets when the next sweep starts', () => {
+  const caught = advancePack({
+    ...initialPackPlan('2025-01-01'),
+    regionIndex: PACK_REGIONS.length - 1,
+    kindIndex: PACK_KINDS.length - 1,
+  }, now)
+  const waiting = packActivity(caught, now)
+  expect(waiting.done).toBe(waiting.total)
+  expect(waiting.note).toMatch(/^Следующая через /)
+  const sweeping = packActivity({ ...caught, regionIndex: 2, kindIndex: 1 }, now)
+  expect(sweeping.done).toBe(2 * PACK_KINDS.length + 1)
+  expect(sweeping.total).toBe(PACK_REGIONS.length * PACK_KINDS.length)
+  expect(sweeping.note).toBe('Идёт подкачка сегодняшнего дня')
 })
 
 test('a pack card keeps the subject, price and a readable date', () => {

@@ -59,10 +59,20 @@ export function ProcurementsPage() {
         })
     }
     load()
-    const timer = setInterval(load, 30_000)
+    const syncTimer = setInterval(() => {
+      loadProcurementSync(transport)
+        .then((next) => {
+          if (current) setSync(next)
+        })
+        .catch(() => {
+          if (current) setSync(null)
+        })
+    }, 10_000)
+    const listTimer = setInterval(load, 30_000)
     return () => {
       current = false
-      clearInterval(timer)
+      clearInterval(syncTimer)
+      clearInterval(listTimer)
     }
   }, [transport, page, query, lawsKey])
 
@@ -77,7 +87,7 @@ export function ProcurementsPage() {
             {sync ? <DownloadProgress sync={sync} /> : null}
             <p className="text-[var(--nora-text-secondary)]">
               {list
-                ? `${narrowed ? 'Найдено' : 'Сохранено'} ${grouped(list.total)}. На странице 50 карточек, список растёт вместе с выгрузкой.`
+                ? `${narrowed ? 'Найдено' : 'Сохранено'} ${grouped(list.total)}. На странице 50 карточек.`
                 : 'Смотрю сохранённые извещения…'}
             </p>
           </header>
@@ -176,7 +186,7 @@ export function ProcurementsPage() {
             <p>Подача заявок</p>
           </div>
           <p className="text-[var(--nora-text-secondary)]">
-            ПП-615 пока не скачивается. Поиск смотрит текст извещения: предмет, заказчика, позиции, контакты и названия вложений. Пока карточка ещё не проиндексирована, ищутся номер, предмет и заказчик. Когда срок подачи заявок проходит, карточка и архив удаляются.
+            ПП-615 пока не скачивается. Когда срок подачи заявок проходит, карточка и архив удаляются.
           </p>
         </aside>
       </div>
@@ -188,17 +198,56 @@ function DownloadProgress({ sync }: { sync: ProcurementSync }) {
   if (!sync.running) {
     return <p className="text-[var(--nora-text-secondary)]">Фоновая выгрузка на этом запуске выключена.</p>
   }
-  const ratio = sync.cellsTotal > 0 ? Math.min(100, (sync.cellsDone / sync.cellsTotal) * 100) : 0
-  const shown = ratio < 10 ? ratio.toFixed(1).replace('.', ',') : String(Math.round(ratio))
+  const firstPass = sync.phase === 'packs'
+  const waiting = !firstPass && sync.sweepTotal > 0 && sync.sweepDone >= sync.sweepTotal
   return (
-    <div className="flex flex-col gap-2">
-      <div className="h-1 overflow-hidden rounded-full bg-[var(--nora-border)]">
+    <div className="flex flex-col gap-4">
+      <Meter
+        done={sync.sweepDone}
+        label="Выгрузка"
+        lines={[
+          `${waiting ? 'Последняя позиция' : 'Сейчас'}: ${sync.day}`,
+          firstPass
+            ? `Первый проход: ${grouped(sync.cellsDone)} из ${grouped(sync.cellsTotal)}`
+            : 'Первый проход закончен',
+          firstPass
+            ? `Осталось ${sync.sweepNote}`
+            : `Подкачка: ${sync.sweepNote}. ${grouped(sync.sweepDone)} из ${grouped(sync.sweepTotal)}`,
+          `Сохранено: ${grouped(sync.saved)}`,
+          `Закрытых не записано: ${grouped(sync.dropped)}`,
+          `Архив: ${archiveWeight(sync.zipBytes)}`,
+        ]}
+        total={sync.sweepTotal}
+      />
+      <Meter
+        done={sync.indexed}
+        label="Разбор для поиска"
+        lines={[
+          `Разобрано: ${grouped(sync.indexed)} из ${grouped(sync.saved)}`,
+          'По разобранным поиск идёт по тексту извещения. По остальным — по номеру, предмету и заказчику.',
+        ]}
+        total={sync.saved}
+      />
+    </div>
+  )
+}
+
+function Meter({ done, label, lines, total }: { done: number; label: string; lines: string[]; total: number }) {
+  const ratio = total > 0 ? Math.min(100, (done / total) * 100) : 0
+  const shown = ratio > 0 && ratio < 10 ? ratio.toFixed(1).replace('.', ',') : String(Math.round(ratio))
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-[15px] font-medium leading-6">{label}</h2>
+        <p className="text-[var(--nora-text-secondary)]">{shown}%</p>
+      </div>
+      <div className="h-1 overflow-hidden rounded-full bg-[var(--nora-border)]" aria-hidden="true">
         <div className="h-full bg-[var(--nora-text)]" style={{ width: `${ratio}%` }} />
       </div>
-      <p className="text-[var(--nora-text-secondary)]">
-        {sync.day}. Пройдено {grouped(sync.cellsDone)} из {grouped(sync.cellsTotal)} ({shown}%). Осталось {sync.eta}. Сохранено {grouped(sync.saved)}, закрытых снято {grouped(sync.dropped)}, общий вес {archiveWeight(sync.zipBytes)}.
-      </p>
-    </div>
+      <ul className="flex flex-col gap-1 text-[var(--nora-text-secondary)]">
+        {lines.map((line) => <li key={line}>{line}</li>)}
+      </ul>
+    </section>
   )
 }
 

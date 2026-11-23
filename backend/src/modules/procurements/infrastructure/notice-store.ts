@@ -18,6 +18,7 @@ export type SyncCounts = {
   saved: number
   failed: number
   zipBytes: number
+  indexed: number
 }
 
 export function openNoticeStore(dir: string, now = () => new Date()) {
@@ -174,12 +175,13 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
       }
     },
     counts(): SyncCounts {
-      const rows = db.query(`SELECT status, COUNT(*) AS count, COALESCE(SUM(zip_bytes), 0) AS bytes FROM notices GROUP BY status`).all() as { status: string; count: number; bytes: number }[]
-      const counts = { queued: 0, saved: 0, failed: 0, zipBytes: 0 }
+      const rows = db.query(`SELECT status, indexed, COUNT(*) AS count, COALESCE(SUM(zip_bytes), 0) AS bytes FROM notices GROUP BY status, indexed`).all() as { status: string; indexed: number; count: number; bytes: number }[]
+      const counts = { queued: 0, saved: 0, failed: 0, zipBytes: 0, indexed: 0 }
       for (const row of rows) {
-        if (row.status === 'queued') counts.queued = row.count
-        if (row.status === 'saved') counts.saved = row.count
-        if (row.status === 'failed') counts.failed = row.count
+        if (row.status === 'queued') counts.queued += row.count
+        if (row.status === 'saved') counts.saved += row.count
+        if (row.status === 'saved' && row.indexed === 1) counts.indexed += row.count
+        if (row.status === 'failed') counts.failed += row.count
         counts.zipBytes += row.bytes
       }
       return counts
