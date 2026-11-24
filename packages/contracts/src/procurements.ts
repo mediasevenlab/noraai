@@ -84,12 +84,16 @@ export const procurementOpenListSchema = z
 
 export type ProcurementOpenList = z.infer<typeof procurementOpenListSchema>
 
+const procurementSavedNoticeSchema = procurementNoticeSchema.extend({
+  matches: z.number().int().nonnegative(),
+})
+
 export const procurementSavedPageSchema = z
   .object({
     total: z.number().int().nonnegative(),
     page: z.number().int().positive(),
     pageCount: z.number().int().positive(),
-    notices: z.array(procurementNoticeSchema).max(50),
+    notices: z.array(procurementSavedNoticeSchema).max(50),
   })
   .strict()
 

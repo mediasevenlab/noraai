@@ -1,10 +1,21 @@
+import { noticeMatch } from './notice-text'
+
 export const SAVED_LAWS = ['44', '223', '615'] as const
 
 export type SavedLaw = (typeof SAVED_LAWS)[number]
 
 export type SavedNoticeQuery = {
-  text: string
+  phrases: string[]
   laws: SavedLaw[]
+  rank: boolean
+}
+
+export type SavedSearchMode = 'card' | 'indexed' | 'mixed'
+
+export type SavedSearch = {
+  where: string
+  params: Record<string, string | number>
+  hits: string
 }
 
 const LAW_MATCH: Record<SavedLaw, string> = {
@@ -13,11 +24,34 @@ const LAW_MATCH: Record<SavedLaw, string> = {
   '615': "subsystem = 'P615'",
 }
 
-/** Search text and law checkboxes. An empty law list means every saved notice. */
-export function normalizeSavedQuery(text: string, laws: readonly string[]): SavedNoticeQuery {
+const MAX_PHRASES = 8
+
+/** One remembered search phrase: trimmed, folded, and capped. */
+export function foldPhrase(value: string) {
+  return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ru-RU').replace(/ё/g, 'е').slice(0, 80)
+}
+
+/** Several phrases match a notice when any one of them matches. Rank counts how many. */
+export function normalizeSavedQuery(
+  text: string,
+  laws: readonly string[],
+  phrases: readonly string[] = [],
+  rank = false,
+): SavedNoticeQuery {
+  const source = phrases.length > 0 ? phrases : [text]
+  const seen = new Set<string>()
+  const keys: string[] = []
+  for (const item of source) {
+    const phrase = foldPhrase(item)
+    if (!phrase || seen.has(phrase)) continue
+    seen.add(phrase)
+    keys.push(phrase)
+    if (keys.length === MAX_PHRASES) break
+  }
   return {
-    text: text.trim().toLocaleLowerCase('ru-RU').slice(0, 80),
+    phrases: keys,
     laws: SAVED_LAWS.filter((law) => laws.includes(law)),
+    rank: rank && keys.length > 0,
   }
 }
 
@@ -29,15 +63,31 @@ export function needlePattern(text: string) {
   return `%${text.replace(/[\\%_]/g, (char) => `\\${char}`)}%`
 }
 
-export function savedNoticeWhere(query: SavedNoticeQuery) {
+/** Card fields, or the parsed notice text when that row is already indexed. */
+export function savedSearch(query: SavedNoticeQuery, mode: SavedSearchMode): SavedSearch {
   const clauses = [`status = 'saved'`]
   const params: Record<string, string | number> = {}
-  if (query.text) {
-    params.$text = needlePattern(query.text)
-    clauses.push(`needle LIKE $text ESCAPE '\\'`)
+  const parts = query.phrases.map((phrase, index) => phraseSql(index, phrase, mode))
+  for (const part of parts) Object.assign(params, part.params)
+  if (parts.length > 0) clauses.push(`(${parts.map((part) => part.sql).join(' OR ')})`)
+  if (query.laws.length > 0) clauses.push(`(${query.laws.map((law) => LAW_MATCH[law]).join(' OR ')})`)
+  const hits = parts.length > 0 && query.rank
+    ? parts.map((part) => `(CASE WHEN ${part.sql} THEN 1 ELSE 0 END)`).join(' + ')
+    : '0'
+  return { where: clauses.join(' AND '), params, hits }
+}
+
+function phraseSql(index: number, phrase: string, mode: SavedSearchMode) {
+  const match = noticeMatch(phrase)
+  const params: Record<string, string> = {}
+  const needle = `needle LIKE $t${index} ESCAPE '\\'`
+  if (mode === 'card' || !match) {
+    params[`$t${index}`] = needlePattern(phrase)
+    return { sql: needle, params }
   }
-  if (query.laws.length > 0) {
-    clauses.push(`(${query.laws.map((law) => LAW_MATCH[law]).join(' OR ')})`)
-  }
-  return { where: clauses.join(' AND '), params }
+  params[`$m${index}`] = match
+  const fullText = `rowid IN (SELECT rowid FROM notice_text WHERE notice_text MATCH $m${index})`
+  if (mode === 'indexed') return { sql: fullText, params }
+  params[`$t${index}`] = needlePattern(phrase)
+  return { sql: `(${fullText} OR (indexed <> 1 AND ${needle}))`, params }
 }

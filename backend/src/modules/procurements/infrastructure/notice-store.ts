@@ -3,9 +3,9 @@ import { join } from 'node:path'
 import { Database } from 'bun:sqlite'
 
 import { deadlineMillis } from '../domain/keep-notice'
-import { noticeBody, noticeMatch } from '../domain/notice-text'
+import { noticeBody } from '../domain/notice-text'
 import { readPackCard, presentDate } from '../domain/pack-card'
-import { needlePattern, normalizeSavedQuery, noticeNeedle, savedNoticeWhere, type SavedNoticeQuery } from '../domain/saved-filter'
+import { normalizeSavedQuery, noticeNeedle, savedSearch, type SavedNoticeQuery } from '../domain/saved-filter'
 import { initialPackPlan, packCellsDone, SAVED_PAGE_SIZE, type PackPlan } from '../domain/pack-sync'
 import { readZipXml } from '../domain/zip-xml'
 import { initialPlan, moscowDate, type OpenSyncPlan } from '../domain/open-sync'
@@ -151,17 +151,16 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
     savePackPlan(plan: PackPlan) {
       writePlan.run({ $json: JSON.stringify(plan) })
     },
-    savedPage(page: number, raw: { text?: string; laws?: readonly string[] } = {}) {
-      const filter = textReady
-        ? textSearchWhere(db, normalizeSavedQuery(raw.text ?? '', raw.laws ?? []))
-        : savedNoticeWhere(normalizeSavedQuery(raw.text ?? '', raw.laws ?? []))
+    savedPage(page: number, raw: { text?: string; phrases?: readonly string[]; laws?: readonly string[]; rank?: boolean } = {}) {
+      const query = normalizeSavedQuery(raw.text ?? '', raw.laws ?? [], raw.phrases ?? [], raw.rank === true)
+      const filter = searchFilter(db, textReady, query)
       const totalRow = db.query(`SELECT COUNT(*) AS count FROM notices WHERE ${filter.where}`).get(filter.params) as { count: number }
       const total = totalRow.count
       const pageCount = Math.max(1, Math.ceil(total / SAVED_PAGE_SIZE))
       const safePage = Math.min(Math.max(page, 1), pageCount)
-      const rows = db.query(`SELECT number, law, status, object, customer, price, published, updated, deadline, url
+      const rows = db.query(`SELECT number, law, status, object, customer, price, published, updated, deadline, url, (${filter.hits}) AS matches
         FROM notices WHERE ${filter.where}
-        ORDER BY published DESC, number DESC
+        ORDER BY ${query.rank ? 'matches DESC, ' : ''}published DESC, number DESC
         LIMIT $limit OFFSET $offset`).all({
         ...filter.params,
         $limit: SAVED_PAGE_SIZE,
@@ -260,6 +259,7 @@ type SavedRow = {
   updated: string
   deadline: string
   url: string
+  matches: number
 }
 
 function openTextIndex(db: Database) {
@@ -273,22 +273,10 @@ function openTextIndex(db: Database) {
   }
 }
 
-function textSearchWhere(db: Database, query: SavedNoticeQuery) {
-  const card = savedNoticeWhere(query)
-  const match = query.text ? noticeMatch(query.text) : ''
-  if (!match) return card
-  const base = savedNoticeWhere({ ...query, text: '' })
+function searchFilter(db: Database, textReady: boolean, query: SavedNoticeQuery) {
+  if (!textReady || query.phrases.length === 0) return savedSearch(query, 'card')
   const pending = db.query(`SELECT 1 AS hit FROM notices WHERE indexed <> 1 AND status = 'saved' LIMIT 1`).get()
-  if (!pending) {
-    return {
-      where: `${base.where} AND rowid IN (SELECT rowid FROM notice_text WHERE notice_text MATCH $match)`,
-      params: { ...base.params, $match: match },
-    }
-  }
-  return {
-    where: `${base.where} AND (rowid IN (SELECT rowid FROM notice_text WHERE notice_text MATCH $match) OR (indexed <> 1 AND needle LIKE $text ESCAPE '\\'))`,
-    params: { ...base.params, $match: match, $text: needlePattern(query.text) },
-  }
+  return savedSearch(query, pending ? 'mixed' : 'indexed')
 }
 
 function stampDeadlineBatch(db: Database) {
@@ -421,5 +409,6 @@ function presentRow(row: SavedRow) {
     updated: presentDate(row.updated),
     deadline: presentDate(row.deadline),
     url: row.url || `https://zakupki.gov.ru/epz/order/extendedsearch/results.html?searchString=${row.number}&fz44=on&fz223=on&ppRf615=on`,
+    matches: row.matches ?? 0,
   }
 }

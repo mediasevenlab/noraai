@@ -10,11 +10,12 @@ import type { AuthenticatedTransport } from '@/platform/api'
 export function loadSavedProcurements(
   transport: AuthenticatedTransport,
   page: number,
-  filter: { query: string; laws: readonly string[] },
+  filter: { phrases: readonly string[]; laws: readonly string[]; rank: boolean },
 ) {
   const params = new URLSearchParams({ page: String(page) })
-  if (filter.query.trim()) params.set('q', filter.query.trim())
+  for (const phrase of filter.phrases) params.append('q', phrase)
   if (filter.laws.length > 0) params.set('law', filter.laws.join(','))
+  if (filter.rank && filter.phrases.length > 0) params.set('rank', '1')
   return transport.request(`/api/users/me/procurements/saved?${params}`, procurementSavedPageSchema)
 }
 

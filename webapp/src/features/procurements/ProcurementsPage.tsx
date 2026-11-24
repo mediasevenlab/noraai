@@ -17,25 +17,27 @@ export function ProcurementsPage() {
   const transport = useAuth().transport
   const [page, setPage] = useState(1)
   const [draft, setDraft] = useState('')
-  const [query, setQuery] = useState('')
+  const [phrases, setPhrases] = useState<string[]>([])
+  const [memory, setMemory] = useState<string[]>([])
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [rank, setRank] = useState(false)
   const [laws, setLaws] = useState<string[]>([])
   const [list, setList] = useState<ProcurementSavedPage | null>(null)
   const [sync, setSync] = useState<ProcurementSync | null>(null)
   const [error, setError] = useState('')
   const lawsKey = laws.join(',')
-  const narrowed = query.trim().length > 0 || laws.length > 0
+  const phrasesKey = phrases.join('\n')
+  const narrowed = phrases.length > 0 || laws.length > 0
+  const typed = foldPhrase(draft)
+  const suggestions = memory.filter((item) => !phrases.includes(item) && (!typed || item.includes(typed))).slice(0, 8)
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const next = draft.trim()
-      setQuery((current) => (current === next ? current : next))
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [draft])
+    setMemory(readPhrases())
+  }, [])
 
   useEffect(() => {
     setPage(1)
-  }, [query, lawsKey])
+  }, [phrasesKey, rank, lawsKey])
 
   useEffect(() => {
     let current = true
@@ -48,7 +50,7 @@ export function ProcurementsPage() {
         .catch(() => {
           if (current) setSync(null)
         })
-      loadSavedProcurements(transport, page, { query, laws })
+      loadSavedProcurements(transport, page, { phrases, laws, rank })
         .then((next) => {
           if (!current) return
           setList(next)
@@ -74,7 +76,7 @@ export function ProcurementsPage() {
       clearInterval(syncTimer)
       clearInterval(listTimer)
     }
-  }, [transport, page, query, lawsKey])
+  }, [transport, page, phrasesKey, rank, lawsKey])
 
   const notices = list?.notices ?? []
 
@@ -113,6 +115,9 @@ export function ProcurementsPage() {
                   <span>{notice.status}</span>
                 </div>
                 <h2 className="mt-1 text-[15px] font-medium leading-6">{notice.object}</h2>
+                {rank && phrases.length > 0 ? (
+                  <p className="text-[var(--nora-text-secondary)]">Совпало ключей: {notice.matches}</p>
+                ) : null}
                 {notice.customer ? <p className="text-[var(--nora-text-secondary)]">{notice.customer}</p> : null}
               </div>
               <div className="flex flex-col gap-3 sm:items-end sm:text-right">
@@ -156,14 +161,90 @@ export function ProcurementsPage() {
         </div>
         <aside className="order-1 flex flex-col gap-4 lg:order-2 lg:pt-1">
           <h2 className="text-[15px] font-medium leading-6">Параметры</h2>
-          <input
-            aria-label="Поиск закупок"
-            className="w-full border-b border-[var(--nora-border)] bg-transparent pb-1 outline-none"
-            data-procurements-search=""
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder="Номер или текст извещения"
-            value={draft}
-          />
+          <div className="flex flex-col gap-2">
+            {phrases.length > 0 ? (
+              <ul className="flex flex-wrap gap-1">
+                {phrases.map((phrase) => (
+                  <li key={phrase} className="inline-flex items-center gap-1 rounded-md border border-[var(--nora-border)] px-2 py-0.5">
+                    {phrase}
+                    <button
+                      aria-label={`Убрать ${phrase}`}
+                      className="text-[var(--nora-text-secondary)]"
+                      onClick={() => setPhrases((current) => current.filter((item) => item !== phrase))}
+                      type="button"
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <div className="relative">
+            <input
+              aria-label="Поиск закупок"
+              className="w-full border-b border-[var(--nora-border)] bg-transparent pb-1 outline-none"
+              data-procurements-search=""
+              onBlur={() => setMenuOpen(false)}
+              onChange={(event) => {
+                setDraft(event.target.value)
+                setMenuOpen(true)
+              }}
+              onFocus={() => setMenuOpen(true)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  addPhrase(draft, phrases, setPhrases, setMemory)
+                  setDraft('')
+                  setMenuOpen(false)
+                }
+                if (event.key === 'Backspace' && draft === '') setPhrases((current) => current.slice(0, -1))
+                if (event.key === 'Escape') setMenuOpen(false)
+              }}
+              placeholder="Фраза и Enter"
+              value={draft}
+            />
+            {menuOpen && suggestions.length > 0 ? (
+              <ul className="absolute top-full z-10 mt-1 flex w-full flex-col border border-[var(--nora-border)] bg-[var(--nora-panel)]">
+                {suggestions.map((phrase) => (
+                  <li key={phrase} className="flex items-center gap-2">
+                    <button
+                      className="min-w-0 flex-1 px-2 py-1 text-left"
+                      onMouseDown={(event) => {
+                        event.preventDefault()
+                        addPhrase(phrase, phrases, setPhrases, setMemory)
+                        setDraft('')
+                      }}
+                      type="button"
+                    >
+                      {phrase}
+                    </button>
+                    <button
+                      aria-label={`Удалить ${phrase} из списка`}
+                      className="px-2 py-1 text-[var(--nora-text-secondary)]"
+                      onMouseDown={(event) => {
+                        event.preventDefault()
+                        forgetPhrase(phrase, setMemory)
+                      }}
+                      type="button"
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            </div>
+            <p className="text-[var(--nora-text-secondary)]">Ищет карточки, где есть хотя бы одна фраза.</p>
+            <label className="mt-2 flex items-center gap-2">
+              <input
+                checked={rank}
+                disabled={phrases.length === 0}
+                onChange={() => setRank((current) => !current)}
+                type="checkbox"
+              />
+              По числу совпадений
+            </label>
+          </div>
           <div className="flex flex-col gap-1">
             <p className="text-[var(--nora-text-secondary)]">Закон</p>
             {LAWS.map((law) => (
@@ -250,6 +331,50 @@ function Meter({ done, label, lines, total }: { done: number; label: string; lin
     </section>
   )
 }
+
+function addPhrase(
+  value: string,
+  phrases: string[],
+  setPhrases: (value: string[] | ((current: string[]) => string[])) => void,
+  setMemory: (value: string[] | ((current: string[]) => string[])) => void,
+) {
+  const phrase = foldPhrase(value)
+  if (!phrase || phrases.includes(phrase) || phrases.length >= 8) return
+  setPhrases((current) => current.includes(phrase) || current.length >= 8 ? current : [...current, phrase])
+  setMemory((current) => {
+    const next = [phrase, ...current.filter((item) => item !== phrase)].slice(0, 24)
+    writePhrases(next)
+    return next
+  })
+}
+
+function forgetPhrase(phrase: string, setMemory: (value: string[] | ((current: string[]) => string[])) => void) {
+  setMemory((current) => {
+    const next = current.filter((item) => item !== phrase)
+    writePhrases(next)
+    return next
+  })
+}
+
+function foldPhrase(value: string) {
+  return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ru-RU').replace(/ё/g, 'е').slice(0, 80)
+}
+
+function readPhrases() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PHRASE_KEY) ?? '[]') as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((item): item is string => typeof item === 'string' && foldPhrase(item) === item).slice(0, 24)
+  } catch {
+    return []
+  }
+}
+
+function writePhrases(phrases: string[]) {
+  localStorage.setItem(PHRASE_KEY, JSON.stringify(phrases))
+}
+
+const PHRASE_KEY = 'nora-procurement-phrases'
 
 function grouped(value: number) {
   return new Intl.NumberFormat('ru-RU').format(value)

@@ -90,6 +90,45 @@ test('saved search reads the notice text and leaves the download cursor alone', 
   await rm(dir, { recursive: true, force: true })
 })
 
+test('several phrases match any of them, and rank orders cards by how many matched', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'nora-saved-phrases-'))
+  const store = openNoticeStore(dir)
+  store.savePackPlan({
+    ...initialPackPlan('2026-11-19'),
+    day: '2025-01-10',
+    regionIndex: 46,
+    kindIndex: 3,
+    dropped: 7,
+    startedAt: '2026-11-19T00:00:00.000Z',
+    baseDone: 10,
+  })
+  store.remember({ ...notice('100', 'аукцион 44-ФЗ', 'Поставка оборудования', 'Завод'), published: '2026-11-01' })
+  store.markSaved('100', 20)
+  mkdirSync(join(dir, 'zips'), { recursive: true })
+  writeFileSync(join(dir, 'zips', '100.zip'), zipSingleXml('100.xml', '<name>Трансформатор масляный</name>'))
+  expect(store.indexNext()).toBe(true)
+  store.remember({ ...notice('200', 'аукцион 44-ФЗ', 'Поставка топлива', 'Школа'), published: '2026-11-19' })
+  store.markSaved('200', 20)
+  store.remember({ ...notice('300', 'аукцион 44-ФЗ', 'Кабель масляный, поставка топлива', 'Сеть'), published: '2026-11-10' })
+  store.markSaved('300', 20)
+  store.remember({ ...notice('400', 'аукцион 44-ФЗ', 'Масляный топливный', 'Склад'), published: '2026-11-20' })
+
+  const phrases = ['масляный', 'топлива']
+  const any = store.savedPage(1, { phrases, laws: [], rank: false })
+  expect(any.notices.map((item) => item.number)).toEqual(['200', '300', '100'])
+  const ranked = store.savedPage(1, { phrases, laws: [], rank: true })
+  expect(ranked.notices.map((item) => item.number)).toEqual(['300', '200', '100'])
+  expect(ranked.notices.map((item) => item.matches)).toEqual([2, 1, 1])
+
+  const plan = store.packPlan()
+  expect(plan.day).toBe('2025-01-10')
+  expect(plan.regionIndex).toBe(46)
+  expect(plan.kindIndex).toBe(3)
+  expect(plan.dropped).toBe(7)
+  store.close()
+  await rm(dir, { recursive: true, force: true })
+})
+
 test('a passed deadline removes the saved card and archive without moving the download cursor', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'nora-expire-'))
   const store = openNoticeStore(dir, () => new Date('2026-11-23T06:00:00Z'))

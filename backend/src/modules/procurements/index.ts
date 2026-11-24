@@ -82,7 +82,7 @@ export function createProcurementsModule(options: {
         sweepNote: activity.note,
       }
     },
-    saved: (page: number, raw: { text?: string; laws?: readonly string[] }) => store?.savedPage(page, raw) ?? { total: 0, page: 1, pageCount: 1, notices: [] },
+    saved: (page: number, raw: { text?: string; phrases?: readonly string[]; laws?: readonly string[]; rank?: boolean }) => store?.savedPage(page, raw) ?? { total: 0, page: 1, pageCount: 1, notices: [] },
   })
   return {
     ...routes,

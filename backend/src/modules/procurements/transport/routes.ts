@@ -35,7 +35,7 @@ export function createProcurementRoutes(options: {
     sweepTotal: number
     sweepNote: string
   }
-  saved: (page: number, raw: { text?: string; laws?: readonly string[] }) => {
+  saved: (page: number, raw: { text?: string; phrases?: readonly string[]; laws?: readonly string[]; rank?: boolean }) => {
     total: number
     page: number
     pageCount: number
@@ -50,6 +50,7 @@ export function createProcurementRoutes(options: {
       updated: string
       deadline: string
       url: string
+      matches: number
     }[]
   }
 }) {
@@ -59,9 +60,11 @@ export function createProcurementRoutes(options: {
   routes.get('/me/procurements/saved', (c) => {
     const page = Number(c.req.query('page') ?? '1')
     const laws = (c.req.query('law') ?? '').split(',').map((item) => item.trim()).filter(Boolean)
+    const phrases = new URL(c.req.url).searchParams.getAll('q')
     return c.json(procurementSavedPageSchema.parse(options.saved(Number.isFinite(page) ? page : 1, {
-      text: c.req.query('q') ?? '',
+      phrases,
       laws,
+      rank: c.req.query('rank') === '1',
     })))
   })
   routes.get('/me/procurements/open', async (c) => {
