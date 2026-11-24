@@ -87,7 +87,15 @@ function phraseSql(index: number, phrase: string, mode: SavedSearchMode) {
   }
   params[`$m${index}`] = match
   const fullText = `rowid IN (SELECT rowid FROM notice_text WHERE notice_text MATCH $m${index})`
-  if (mode === 'indexed') return { sql: fullText, params }
+  const byNumber = numberSql(index, phrase, params)
+  if (mode === 'indexed') return { sql: byNumber ? `(${fullText} OR ${byNumber})` : fullText, params }
   params[`$t${index}`] = needlePattern(phrase)
-  return { sql: `(${fullText} OR (indexed <> 1 AND ${needle}))`, params }
+  const text = `(${fullText} OR (indexed <> 1 AND ${needle}))`
+  return { sql: byNumber ? `(${text} OR ${byNumber})` : text, params }
+}
+
+function numberSql(index: number, phrase: string, params: Record<string, string>) {
+  if (!/^\d{8,30}$/.test(phrase)) return ''
+  params[`$n${index}`] = phrase
+  return `number = $n${index}`
 }

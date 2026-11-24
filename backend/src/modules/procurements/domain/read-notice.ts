@@ -174,12 +174,36 @@ function findByName(node: XmlNode, name: string): XmlNode | null {
 
 function collectFields(node: XmlNode): { label: string; value: string }[] {
   if (SKIP_NODE.has(node.name)) return []
+  if (node.name === 'document') return documentFields(node)
   if (node.children.length === 0) {
     const value = showField(node.name, node.text.trim())
     if (!value || value.length > 2000) return []
     return [{ label: FIELD_TITLE[node.name] ?? humanName(node.name), value }]
   }
   return node.children.flatMap((child) => collectFields(child)).slice(0, 120)
+}
+
+function documentFields(node: XmlNode) {
+  const fileName = childText(node, 'fileName')
+  const url = childText(node, 'url')
+  const description = childText(node, 'description')
+  const fields: { label: string; value: string }[] = []
+  if (fileName && url) fields.push({ label: 'Файл', value: `${fileName}\n${url}` })
+  else if (url) fields.push({ label: 'Ссылка', value: url })
+  else if (fileName) fields.push({ label: 'Файл', value: fileName })
+  if (description && !sameFileText(fileName, description)) fields.push({ label: 'Описание', value: description })
+  return fields
+}
+
+function childText(node: XmlNode, name: string) {
+  return node.children.find((child) => child.name === name)?.text.trim() ?? ''
+}
+
+function sameFileText(fileName: string, description: string) {
+  const file = fileName.replace(/\.[a-z0-9]{2,5}$/i, '').trim()
+  const note = description.trim()
+  if (!note || !file) return false
+  return note === fileName || note === file || file.startsWith(note) || note.startsWith(file)
 }
 
 function uniqueFields(fields: { label: string; value: string }[]) {

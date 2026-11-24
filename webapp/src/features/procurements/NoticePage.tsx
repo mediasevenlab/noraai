@@ -8,10 +8,13 @@ import { loadProcurementNotice, type ProcurementNoticeCard } from './api'
 const TEXT = 'font-[family-name:var(--nora-font)] text-[14px] font-normal leading-5'
 
 function FieldValue({ value }: { value: string }) {
-  if (!/^https?:\/\//.test(value)) return value
+  const lines = value.split('\n').map((line) => line.trim()).filter(Boolean)
+  const url = lines.find((line) => /^https?:\/\//.test(line))
+  const name = lines.find((line) => line !== url)
+  if (!url) return value
   return (
-    <a className="underline decoration-[var(--nora-border)] underline-offset-2" href={value} rel="noreferrer" target="_blank">
-      {value}
+    <a className="underline decoration-[var(--nora-border)] underline-offset-2" href={url} rel="noreferrer" target="_blank">
+      {name || url}
     </a>
   )
 }

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 
 import { buildNoraChatRequest } from './nora-chat'
-import { archiveTenderBlock, asksForMore, fallbackTenderTerms, formatTenderNotices, parseTenderSearch, shownNoticeNumbers, tenderSearchQuery } from './tenders'
+import { archiveTenderBlock, asksForMore, fallbackTenderTerms, formatTenderNotices, parseTenderSearch, shownNoticeNumbers, tenderSearchQuery, tenderTurn } from './tenders'
 
 const CARD = `
 <div class="search-registry-entry-block box-shadow-search-input">
@@ -82,6 +82,17 @@ test('a follow-up keeps the first request and skips notices already named', () =
   })
   expect(block).toContain('По словам нашлось 3')
   expect(block).toContain('/app/procurements/0156100010726000099')
+})
+
+test('a notice number starts a new lookup and does not keep the previous topic', () => {
+  const turn = tenderTurn([
+    { role: 'user', text: 'нужны тендеры по ключ рожковый' },
+    { role: 'assistant', text: 'Нашлось 2. № 32515551237' },
+    { role: 'user', text: 'нужен тендер 32515573734' },
+  ])
+  expect(turn.exact).toBe(true)
+  expect(turn.terms).toEqual(['32515573734'])
+  expect(turn.skip).toEqual([])
 })
 
 test('an empty EIS page says there are no open notices', () => {

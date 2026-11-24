@@ -180,6 +180,8 @@ test('chat search counts every word hit and can skip notices already shown', asy
   const next = store.chatMatches(['топлива'], [first])
   expect(next.total).toBe(found.total)
   expect(next.notices.map((item) => item.number)).not.toContain(first)
+  const byNumber = store.chatMatches(['0156100010726000075'], [])
+  expect(byNumber.notices.map((item) => item.number)).toEqual(['0156100010726000075'])
   store.close()
   await rm(dir, { recursive: true, force: true })
 })

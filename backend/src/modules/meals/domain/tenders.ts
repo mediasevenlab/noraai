@@ -1,5 +1,5 @@
 export const TENDER_RULE =
-  ' Кнопка закупок включена. Блок «Наши закупки» — извещения из скачанного архива. Число в начале блока — сколько карточек задели слова. Ты видишь ближайшие из них и выбираешь по смыслу: другая форма слова, близкое название и завуалированное описание тоже подходят. Сначала напиши, сколько карточек нашлось. Затем выведи не больше 20 самых подходящих. Каждую строкой: предмет, номер, закон, заказчик, цена. Если у карточки написано «Карточка открывается», дай ссылку Markdown на этот адрес. Если человек просит следующие или уточняет, не повторяй уже названные номера и держись первой просьбы. Не выдумывай извещения вне блока. Если блок говорит, что карточек нет, так и скажи.'
+  ' Кнопка закупок включена. Блок «Наши закупки» — извещения из скачанного архива. Число в начале блока — сколько карточек нашлось. Если в последней реплике есть номер извещения, это новый запрос: ответь про эту карточку, даже если раньше искали другое. Если просят следующие, ещё или дальше, продолжай прошлый поиск и не повторяй уже названные номера. Новый предмет вместо номера — тоже новый поиск, не продолжение. Сначала напиши, сколько карточек нашлось. Затем выведи не больше 20. Если в блоке уже есть ссылка Markdown, перенеси её в ответ как есть. Не выдумывай извещения вне блока. Если блок говорит, что карточки нет, так и скажи.'
 
 export type ArchiveTenderNotice = {
   number: string
@@ -23,7 +23,7 @@ export function archiveTenderBlock(input: { total: number; notices: readonly Arc
     notice.customer ? `Заказчик: ${notice.customer}` : '',
     notice.price ? `Цена: ${notice.price}` : '',
     notice.parsed
-      ? `Карточка открывается: /app/procurements/${notice.number}`
+      ? `[${notice.object}](/app/procurements/${notice.number})`
       : 'Текст ещё разбирается, полная карточка недоступна.',
     notice.snippet ? `Фрагмент: ${notice.snippet}` : '',
   ].filter(Boolean).join('\n'))
@@ -44,6 +44,28 @@ export function shownNoticeNumbers(messages: readonly { role: string; text: stri
     }
   }
   return [...numbers].slice(0, 80)
+}
+
+export function noticeNumbers(text: string) {
+  return [...new Set([...text.matchAll(/\d{8,30}/g)].map((match) => match[0]))].slice(0, 8)
+}
+
+/** A number starts a new lookup. «Следующие» keeps the earlier request and skips cards already shown. */
+export function tenderTurn(messages: readonly { role: string; text: string }[]) {
+  const users = messages.filter((message) => message.role === 'user' && message.text.trim())
+  const last = users.at(-1)?.text ?? ''
+  const numbers = noticeNumbers(last)
+  if (numbers.length > 0) return { terms: numbers, skip: [] as string[], source: last, exact: true }
+  if (asksForMore(last)) {
+    const earlier = [...users].reverse().find((message) => message.text !== last && !asksForMore(message.text))
+    const source = earlier?.text || last
+    return { terms: wordsOf(source), skip: shownNoticeNumbers(messages), source, exact: false }
+  }
+  return { terms: wordsOf(last), skip: [] as string[], source: last, exact: false }
+}
+
+function wordsOf(text: string) {
+  return tenderSearchQuery(text).split(/\s+/).filter((word) => word.length >= 3).slice(0, 8)
 }
 
 export function fallbackTenderTerms(messages: readonly { role: string; text: string }[]) {

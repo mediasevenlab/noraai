@@ -126,8 +126,7 @@ test('a 223-FZ notice skips the header and keeps the files', () => {
   expect(fields).toEqual(expect.arrayContaining([
     { label: 'Номер', value: '32515573734' },
     { label: 'Организация', value: 'Исследовательский центр' },
-    { label: 'Файл', value: 'Проект.docx' },
-    { label: 'Ссылка', value: 'https://zakupki.gov.ru/file/1' },
+    { label: 'Файл', value: 'Проект.docx\nhttps://zakupki.gov.ru/file/1' },
     { label: 'Предмет', value: 'Отходы класса Б' },
     { label: 'Начальная цена', value: '700 000,00 ₽' },
   ]))

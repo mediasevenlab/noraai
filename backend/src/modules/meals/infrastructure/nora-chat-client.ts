@@ -6,7 +6,7 @@ import { MealsFailure } from '../domain/errors'
 import { splitChatReasoning } from '../domain/chat-reasoning'
 import { consumeChatDelta, emptyChatStream, type ChatStreamState } from '../domain/chat-stream'
 import { askBitrix, createBitrixDocument, createBitrixMeeting, deleteBitrixMeeting, locateBitrixMeeting, placeBitrixFile, readBitrixClients, readBitrixOutcomes, readBitrixTree, takeBitrixFile } from './bitrix-client'
-import { archiveTenderBlock, asksForMore, fallbackTenderTerms, shownNoticeNumbers, type ArchiveTenderNotice } from '../domain/tenders'
+import { archiveTenderBlock, fallbackTenderTerms, tenderTurn, type ArchiveTenderNotice } from '../domain/tenders'
 import { searchEisNotices } from './eis-search'
 import {
   bitrixPrefetch,
@@ -652,9 +652,9 @@ async function archiveSearchText(
   signal?: AbortSignal,
 ) {
   const turns = messages.map((message) => ({ role: message.role, text: message.text }))
-  const last = [...turns].reverse().find((message) => message.role === 'user')?.text ?? ''
-  const terms = await planTenderTerms(env, turns, signal)
-  const skip = asksForMore(last) ? shownNoticeNumbers(turns) : []
+  const turn = tenderTurn(turns)
+  const terms = turn.exact ? turn.terms : await planTenderTerms(env, turn, signal)
+  const skip = turn.skip
   try {
     const found = await searchArchive(terms, skip)
     return `Искали по словам: ${terms.join(', ') || '—'}.\n${archiveTenderBlock(found)}`
@@ -666,22 +666,21 @@ async function archiveSearchText(
 
 async function planTenderTerms(
   env: NoraEnv,
-  messages: readonly { role: string; text: string }[],
+  turn: { terms: string[]; source: string },
   signal?: AbortSignal,
 ) {
-  const fallback = fallbackTenderTerms(messages)
+  const fallback = turn.terms.length > 0 ? turn.terms : fallbackTenderTerms([{ role: 'user', text: turn.source }])
   const baseUrl = env.LLM_BASE_URL?.replace(/\/$/, '')
   if (!baseUrl || !env.LLM_API_KEY || !env.LLM_TEXT_MODEL) return fallback
-  const history = messages.slice(-8).map((message) => `${message.role === 'user' ? 'Человек' : 'Нора'}: ${message.text.slice(0, 500)}`).join('\n')
   try {
     const response = await postOllamaChat(baseUrl, env.LLM_API_KEY, {
       model: env.LLM_TEXT_MODEL,
       messages: [
         {
           role: 'system',
-          content: 'По переписке пойми, какие закупки ищут. Верни только JSON {"terms":["слово"]}. От 1 до 8 слов и коротких фраз: ключи из просьбы, другие формы и близкие по смыслу слова. Если просят следующие, бери ключи из первой просьбы. Без пояснений.',
+          content: 'По этой просьбе пойми, какие закупки ищут. Верни только JSON {"terms":["слово"]}. От 1 до 8 слов и коротких фраз: ключи из просьбы, другие формы и близкие по смыслу слова. Не подменяй просьбу другой темой. Без пояснений.',
         },
-        { role: 'user', content: history },
+        { role: 'user', content: turn.source.slice(0, 1000) },
       ],
       stream: true,
       think: false,
@@ -694,7 +693,8 @@ async function planTenderTerms(
     const terms = Array.isArray(parsed.terms)
       ? parsed.terms.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter((item) => item.length >= 2 && item.length <= 80).slice(0, 8)
       : []
-    return terms.length > 0 ? terms : fallback
+    if (terms.length === 0) return fallback
+    return [...new Set([...fallback, ...terms])].slice(0, 8)
   } catch (error) {
     if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
     return fallback
