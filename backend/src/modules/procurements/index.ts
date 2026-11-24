@@ -83,9 +83,11 @@ export function createProcurementsModule(options: {
       }
     },
     saved: (page: number, raw: { text?: string; phrases?: readonly string[]; laws?: readonly string[]; rank?: boolean }) => store?.savedPage(page, raw) ?? { total: 0, page: 1, pageCount: 1, notices: [] },
+    card: (number: string) => store?.noticeCard(number) ?? null,
   })
   return {
     ...routes,
+    searchForChat: (phrases: readonly string[], skip: readonly string[]) => store?.chatMatches(phrases, skip) ?? { total: 0, notices: [] },
     dispose: async () => {
       await running?.stop()
       await indexing?.stop()

@@ -211,6 +211,12 @@ const userProcurementsRoute = createRoute({
   component: lazyRouteComponent(() => import('./pages'), 'UserProcurementsPage'),
 })
 
+const userProcurementNoticeRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/procurements/$number',
+  component: lazyRouteComponent(() => import('./pages'), 'UserProcurementNoticePage'),
+})
+
 const userB2bRoute = createRoute({
   getParentRoute: () => userWorkspaceRoute,
   path: '/app/b2b',
@@ -437,6 +443,7 @@ const routeTree = rootRoute.addChildren([
     userMeetingsRoute,
     userNotesRoute,
     userProcurementsRoute,
+    userProcurementNoticeRoute,
     userB2bRoute,
     userTenderProRoute,
   ]),

@@ -12,6 +12,7 @@ import {
 import { SidebarSection } from '@/components/dashboard/SidebarSection'
 import { useSidebarSearchQuery } from '@/components/dashboard/SidebarSearch'
 import { sidebarTip } from '@/components/dashboard/sidebar-tip'
+import { setBitrixEnabled } from './bitrix-open'
 import { cn } from '@/lib/utils'
 import {
   SidebarMenu,
@@ -118,7 +119,7 @@ export function DialogsNavigation({
                     disabled={disabled}
                     isActive={!disabled && pathname === to && creating}
                     render={(
-                      <ThreadListPrimitive.New disabled={disabled} onClick={open} />
+                      <ThreadListPrimitive.New disabled={disabled} onClick={() => { setBitrixEnabled(false); open() }} />
                     )}
                     className={
                       pathname === to

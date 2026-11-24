@@ -6,6 +6,7 @@ import { MealsFailure } from '../domain/errors'
 import { splitChatReasoning } from '../domain/chat-reasoning'
 import { consumeChatDelta, emptyChatStream, type ChatStreamState } from '../domain/chat-stream'
 import { askBitrix, createBitrixDocument, createBitrixMeeting, deleteBitrixMeeting, locateBitrixMeeting, placeBitrixFile, readBitrixClients, readBitrixOutcomes, readBitrixTree, takeBitrixFile } from './bitrix-client'
+import { archiveTenderBlock, asksForMore, fallbackTenderTerms, shownNoticeNumbers, type ArchiveTenderNotice } from '../domain/tenders'
 import { searchEisNotices } from './eis-search'
 import {
   bitrixPrefetch,
@@ -103,11 +104,12 @@ export async function completeNoraChat(
   think?: boolean,
   bitrix?: boolean,
   tenders?: boolean,
+  searchArchive?: (phrases: readonly string[], skip: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
 ) {
   let reply = ''
   let reasoning = ''
   let model = ''
-  for await (const event of streamNoraChat(env, messages, search, knowledge, signal, think, bitrix, tenders)) {
+  for await (const event of streamNoraChat(env, messages, search, knowledge, signal, think, bitrix, tenders, searchArchive)) {
     if (event.resetReply) reply = ''
     if (event.reasoning) reasoning += event.reasoning
     if (event.reply) reply += event.reply
@@ -171,6 +173,7 @@ export async function* streamNoraChat(
   think?: boolean,
   bitrix?: boolean,
   tenders?: boolean,
+  searchArchive?: (phrases: readonly string[], skip: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
 ): AsyncGenerator<NoraChatEvent & { model?: string }> {
   const lastUser = [...messages].reverse().find((message) => message.role === 'user')
   const ready = directKnowledgeReply(knowledge ?? '')
@@ -374,13 +377,15 @@ export async function* streamNoraChat(
     }
   }
   if (tenders === true) {
-    const text = await searchEisNotices(lastUser?.text ?? '', signal).catch((error: unknown) => {
-      if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
-      return 'ЕИС сейчас не отвечает.'
-    })
+    const text = searchArchive
+      ? await archiveSearchText(env, messages, searchArchive, signal)
+      : await searchEisNotices(lastUser?.text ?? '', signal).catch((error: unknown) => {
+        if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
+        return 'ЕИС сейчас не отвечает.'
+      })
     const system = thread.find((message) => message.role === 'system')
     if (system && typeof system.content === 'string') {
-      system.content += `\n\nЗакупки ЕИС:\n${text}`
+      system.content += searchArchive ? `\n\nНаши закупки:\n${text}` : `\n\nЗакупки ЕИС:\n${text}`
     }
     yield { tenders: true }
   }
@@ -638,6 +643,62 @@ export async function completeDocumentCompare(
   const reply = (await collectReply(response)).trim()
   if (!reply) throw new MealsFailure('upstream', 'Модель ничего не ответила. Попробуйте ещё раз.')
   return reply
+}
+
+async function archiveSearchText(
+  env: NoraEnv,
+  messages: readonly NoraModelChatMessage[],
+  searchArchive: (phrases: readonly string[], skip: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
+  signal?: AbortSignal,
+) {
+  const turns = messages.map((message) => ({ role: message.role, text: message.text }))
+  const last = [...turns].reverse().find((message) => message.role === 'user')?.text ?? ''
+  const terms = await planTenderTerms(env, turns, signal)
+  const skip = asksForMore(last) ? shownNoticeNumbers(turns) : []
+  try {
+    const found = await searchArchive(terms, skip)
+    return `Искали по словам: ${terms.join(', ') || '—'}.\n${archiveTenderBlock(found)}`
+  } catch (error) {
+    if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
+    return 'Архив закупок сейчас не отвечает.'
+  }
+}
+
+async function planTenderTerms(
+  env: NoraEnv,
+  messages: readonly { role: string; text: string }[],
+  signal?: AbortSignal,
+) {
+  const fallback = fallbackTenderTerms(messages)
+  const baseUrl = env.LLM_BASE_URL?.replace(/\/$/, '')
+  if (!baseUrl || !env.LLM_API_KEY || !env.LLM_TEXT_MODEL) return fallback
+  const history = messages.slice(-8).map((message) => `${message.role === 'user' ? 'Человек' : 'Нора'}: ${message.text.slice(0, 500)}`).join('\n')
+  try {
+    const response = await postOllamaChat(baseUrl, env.LLM_API_KEY, {
+      model: env.LLM_TEXT_MODEL,
+      messages: [
+        {
+          role: 'system',
+          content: 'По переписке пойми, какие закупки ищут. Верни только JSON {"terms":["слово"]}. От 1 до 8 слов и коротких фраз: ключи из просьбы, другие формы и близкие по смыслу слова. Если просят следующие, бери ключи из первой просьбы. Без пояснений.',
+        },
+        { role: 'user', content: history },
+      ],
+      stream: true,
+      think: false,
+      options: { num_predict: 180, temperature: 0.1 },
+    }, signal)
+    const reply = (await collectReply(response)).trim()
+    const start = reply.indexOf('{')
+    const end = reply.lastIndexOf('}')
+    const parsed = JSON.parse(reply.slice(start, end + 1)) as { terms?: unknown }
+    const terms = Array.isArray(parsed.terms)
+      ? parsed.terms.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter((item) => item.length >= 2 && item.length <= 80).slice(0, 8)
+      : []
+    return terms.length > 0 ? terms : fallback
+  } catch (error) {
+    if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
+    return fallback
+  }
 }
 
 async function collectReply(response: Response) {

@@ -1,5 +1,58 @@
 export const TENDER_RULE =
-  ' Кнопка закупок включена. Блок «Закупки ЕИС» ниже — извещения с сайта zakupki.gov.ru по 44-ФЗ, 223-ФЗ и ПП-615. Отвечай только по этим карточкам: объект, номер, закон, заказчик, цена, срок подачи и ссылка. Не выдумывай закупки и не подменяй способ работ: инъекция раствора и проморозка грунта — разные работы. Если предмет карточки про другую работу, так и скажи, не называй её подходящей. Коммерческих торгов вне ЕИС в списке нет. Если блок говорит, что подходящих извещений нет или ЕИС не отвечает, так и скажи.'
+  ' Кнопка закупок включена. Блок «Наши закупки» — извещения из скачанного архива. Число в начале блока — сколько карточек задели слова. Ты видишь ближайшие из них и выбираешь по смыслу: другая форма слова, близкое название и завуалированное описание тоже подходят. Сначала напиши, сколько карточек нашлось. Затем выведи не больше 20 самых подходящих. Каждую строкой: предмет, номер, закон, заказчик, цена. Если у карточки написано «Карточка открывается», дай ссылку Markdown на этот адрес. Если человек просит следующие или уточняет, не повторяй уже названные номера и держись первой просьбы. Не выдумывай извещения вне блока. Если блок говорит, что карточек нет, так и скажи.'
+
+export type ArchiveTenderNotice = {
+  number: string
+  law: string
+  object: string
+  customer: string
+  price: string
+  parsed: boolean
+  snippet: string
+}
+
+export function archiveTenderBlock(input: { total: number; notices: readonly ArchiveTenderNotice[] }) {
+  if (input.notices.length === 0) {
+    return input.total === 0
+      ? 'По словам из запроса в скачанном архиве карточек нет.'
+      : `По словам нашлось ${input.total}, но эта порция уже показана. Следующих в этой выборке нет.`
+  }
+  const lines = input.notices.map((notice, index) => [
+    `${index + 1}. ${notice.object}`,
+    `${notice.law} № ${notice.number}`,
+    notice.customer ? `Заказчик: ${notice.customer}` : '',
+    notice.price ? `Цена: ${notice.price}` : '',
+    notice.parsed
+      ? `Карточка открывается: /app/procurements/${notice.number}`
+      : 'Текст ещё разбирается, полная карточка недоступна.',
+    notice.snippet ? `Фрагмент: ${notice.snippet}` : '',
+  ].filter(Boolean).join('\n'))
+  return `По словам нашлось ${input.total}. Ниже ${input.notices.length} ближайших.\n\n${lines.join('\n\n')}`
+}
+
+export function asksForMore(text: string) {
+  return /следующ|ещё|еще|другие|дальше/i.test(text)
+}
+
+export function shownNoticeNumbers(messages: readonly { role: string; text: string }[]) {
+  const numbers = new Set<string>()
+  for (const message of messages) {
+    if (message.role !== 'assistant') continue
+    for (const match of message.text.matchAll(/(?:№\s*|\/app\/procurements\/)(\d{10,})/g)) {
+      const number = match[1]
+      if (number) numbers.add(number)
+    }
+  }
+  return [...numbers].slice(0, 80)
+}
+
+export function fallbackTenderTerms(messages: readonly { role: string; text: string }[]) {
+  const users = messages.filter((message) => message.role === 'user' && message.text.trim())
+  const last = users.at(-1)?.text ?? ''
+  const earlier = [...users].reverse().find((message) => !asksForMore(message.text))
+  const source = asksForMore(last) ? earlier?.text || last : last
+  return tenderSearchQuery(source).split(/\s+/).filter((word) => word.length >= 3).slice(0, 8)
+}
 
 const STOP_STEMS = [
   'найд',

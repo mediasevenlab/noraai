@@ -86,6 +86,7 @@ export type ProcurementOpenList = z.infer<typeof procurementOpenListSchema>
 
 const procurementSavedNoticeSchema = procurementNoticeSchema.extend({
   matches: z.number().int().nonnegative(),
+  parsed: z.boolean(),
 })
 
 export const procurementSavedPageSchema = z
@@ -98,6 +99,36 @@ export const procurementSavedPageSchema = z
   .strict()
 
 export type ProcurementSavedPage = z.infer<typeof procurementSavedPageSchema>
+
+export const procurementNoticeCardSchema = z
+  .object({
+    law: z.string(),
+    status: z.string(),
+    number: z.string(),
+    object: z.string(),
+    customer: z.string(),
+    price: z.string(),
+    published: z.string(),
+    updated: z.string(),
+    deadline: z.string(),
+    url: z.string(),
+    parsed: z.boolean(),
+    sections: z
+      .array(
+        z
+          .object({
+            title: z.string(),
+            fields: z
+              .array(z.object({ label: z.string(), value: z.string() }).strict())
+              .max(60),
+          })
+          .strict(),
+      )
+      .max(24),
+  })
+  .strict()
+
+export type ProcurementNoticeCard = z.infer<typeof procurementNoticeCardSchema>
 
 export const procurementSyncSchema = z
   .object({

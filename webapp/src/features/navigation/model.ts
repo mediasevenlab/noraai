@@ -173,6 +173,9 @@ export function navigationItemMatchingPath(role: UserRole, pathname: string) {
   ) {
     return items.find((item) => item.to === '/app/dialogs')
   }
+  if (role === 'user' && pathname.startsWith('/app/procurements/')) {
+    return items.find((item) => item.to === '/app/procurements')
+  }
   if (role === 'mentor' && isRetiredMentorRationsPath(pathname)) {
     return items.find((item) => item.to === '/mentor/dialogs')
   }

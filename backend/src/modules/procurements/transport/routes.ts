@@ -1,7 +1,7 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
 import type { MiddlewareHandler } from 'hono'
 
-import { procurementSavedPageSchema, procurementSyncSchema } from '@web-app-demo/contracts'
+import { procurementNoticeCardSchema, procurementSavedPageSchema, procurementSyncSchema } from '@web-app-demo/contracts'
 
 import { AppError } from '../../../http/errors'
 import type { AuthHttpEnv } from '../../auth'
@@ -51,8 +51,23 @@ export function createProcurementRoutes(options: {
       deadline: string
       url: string
       matches: number
+      parsed: boolean
     }[]
   }
+  card: (number: string) => {
+    law: string
+    status: string
+    number: string
+    object: string
+    customer: string
+    price: string
+    published: string
+    updated: string
+    deadline: string
+    url: string
+    parsed: boolean
+    sections: { title: string; fields: { label: string; value: string }[] }[]
+  } | null
 }) {
   const routes = new OpenAPIHono<AuthHttpEnv>()
   routes.use('*', options.requireAuth)
@@ -66,6 +81,11 @@ export function createProcurementRoutes(options: {
       laws,
       rank: c.req.query('rank') === '1',
     })))
+  })
+  routes.get('/me/procurements/notices/:number', (c) => {
+    const card = options.card(c.req.param('number'))
+    if (!card) throw new AppError(404, 'NOT_FOUND', 'Извещение не найдено')
+    return c.json(procurementNoticeCardSchema.parse(card))
   })
   routes.get('/me/procurements/open', async (c) => {
     try {

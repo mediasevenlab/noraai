@@ -24,7 +24,7 @@ export function PurchasesNavigation({ disabled = false }: { disabled?: boolean }
       <SidebarSection forceOpen={query.length > 0} label="Закупки" storageKey="nora-sidebar-purchases">
         <SidebarMenu>
           {shown.map((item) => {
-            const active = pathname === item.to
+            const active = pathname === item.to || (item.to === '/app/procurements' && pathname.startsWith('/app/procurements/'))
             return (
               <SidebarMenuItem key={item.to}>
                 <SidebarMenuButton

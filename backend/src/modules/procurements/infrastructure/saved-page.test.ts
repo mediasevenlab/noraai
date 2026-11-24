@@ -166,6 +166,24 @@ test('a passed deadline removes the saved card and archive without moving the do
   await rm(dir, { recursive: true, force: true })
 })
 
+test('chat search counts every word hit and can skip notices already shown', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'nora-chat-notices-'))
+  const store = openNoticeStore(dir)
+  store.remember(notice('0156100010726000075', 'аукцион 44-ФЗ', 'Поставка топлива', 'Дорожная служба'))
+  store.markSaved('0156100010726000075', 20)
+  store.remember(notice('0156100010726000099', 'аукцион 44-ФЗ', 'Закупка топлива', 'Завод'))
+  store.markSaved('0156100010726000099', 20)
+  const found = store.chatMatches(['топлива'], [])
+  expect(found.total).toBe(2)
+  expect(found.notices).toHaveLength(2)
+  const first = found.notices[0]?.number ?? ''
+  const next = store.chatMatches(['топлива'], [first])
+  expect(next.total).toBe(found.total)
+  expect(next.notices.map((item) => item.number)).not.toContain(first)
+  store.close()
+  await rm(dir, { recursive: true, force: true })
+})
+
 function notice(number: string, law: string, object: string, customer: string, subsystem = 'PRIZ') {
   return {
     number,

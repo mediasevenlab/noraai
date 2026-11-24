@@ -59,6 +59,7 @@ type CreateMealsModuleOptions = {
     query: string
   }) => Promise<string>
   readDocument?: (name: string, bytes: Buffer) => Promise<string>
+  searchProcurements?: (phrases: readonly string[], skip: readonly string[]) => { total: number; notices: readonly { number: string; law: string; object: string; customer: string; price: string; parsed: boolean; snippet: string }[] }
   startPoller?: boolean
 }
 
@@ -115,6 +116,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
         input.think,
         input.bitrix,
         input.tenders,
+        options.searchProcurements,
       )
     },
     compareDocuments: async (
@@ -163,6 +165,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
         input.think,
         input.bitrix,
         input.tenders,
+        options.searchProcurements,
       )
     },
     openBitrixFile: async (id: string) => {

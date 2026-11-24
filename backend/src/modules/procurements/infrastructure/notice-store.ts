@@ -5,6 +5,7 @@ import { Database } from 'bun:sqlite'
 import { deadlineMillis } from '../domain/keep-notice'
 import { noticeBody } from '../domain/notice-text'
 import { readPackCard, presentDate } from '../domain/pack-card'
+import { readNoticeDocument } from '../domain/read-notice'
 import { normalizeSavedQuery, noticeNeedle, savedSearch, type SavedNoticeQuery } from '../domain/saved-filter'
 import { initialPackPlan, packCellsDone, SAVED_PAGE_SIZE, type PackPlan } from '../domain/pack-sync'
 import { readZipXml } from '../domain/zip-xml'
@@ -158,7 +159,7 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
       const total = totalRow.count
       const pageCount = Math.max(1, Math.ceil(total / SAVED_PAGE_SIZE))
       const safePage = Math.min(Math.max(page, 1), pageCount)
-      const rows = db.query(`SELECT number, law, status, object, customer, price, published, updated, deadline, url, (${filter.hits}) AS matches
+      const rows = db.query(`SELECT number, law, status, object, customer, price, published, updated, deadline, url, indexed, (${filter.hits}) AS matches
         FROM notices WHERE ${filter.where}
         ORDER BY ${query.rank ? 'matches DESC, ' : ''}published DESC, number DESC
         LIMIT $limit OFFSET $offset`).all({
@@ -171,6 +172,51 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
         page: safePage,
         pageCount,
         notices: rows.map((row) => presentRow(fillRow(dir, db, row))),
+      }
+    },
+    noticeCard(number: string) {
+      if (!/^\d{5,30}$/.test(number)) return null
+      const row = db.query(`SELECT number, law, status, object, customer, price, published, updated, deadline, url, indexed, 0 AS matches
+        FROM notices WHERE number = $number AND status = 'saved'`).get({ $number: number }) as SavedRow | null
+      if (!row) return null
+      const shown = presentRow(fillRow(dir, db, row))
+      if (row.indexed !== 1) return { ...cardBody(shown), parsed: false, sections: [] }
+      const document = readNoticeDocument(readStoredXml(dir, number))
+      return {
+        ...cardBody(shown),
+        parsed: document.sections.length > 0,
+        sections: document.sections,
+      }
+    },
+    chatMatches(phrases: readonly string[], skip: readonly string[]) {
+      const query = normalizeSavedQuery('', [], phrases, true)
+      if (query.phrases.length === 0) return { total: 0, notices: [] as ChatNotice[] }
+      const filter = searchFilter(db, textReady, query)
+      const totalRow = db.query(`SELECT COUNT(*) AS count FROM notices WHERE ${filter.where}`).get(filter.params) as { count: number }
+      const params: Record<string, string | number> = { ...filter.params }
+      const safeSkip = skip.filter((item) => /^\d+$/.test(item)).slice(0, 80)
+      for (const [index, item] of safeSkip.entries()) params[`$skip${index}`] = item
+      const where = safeSkip.length === 0
+        ? filter.where
+        : `${filter.where} AND number NOT IN (${safeSkip.map((_, index) => `$skip${index}`).join(', ')})`
+      const rows = db.query(`SELECT rowid AS id, number, law, status, object, customer, price, published, updated, deadline, url, indexed, (${filter.hits}) AS matches
+        FROM notices WHERE ${where}
+        ORDER BY matches DESC, published DESC, number DESC
+        LIMIT 40`).all(params) as Array<SavedRow & { id: number }>
+      return {
+        total: totalRow.count,
+        notices: rows.map((row) => {
+          const shown = presentRow(row)
+          return {
+            number: shown.number,
+            law: shown.law,
+            object: shown.object,
+            customer: shown.customer,
+            price: shown.price,
+            parsed: row.indexed === 1,
+            snippet: noticeSnippet(db, row),
+          }
+        }),
       }
     },
     counts(): SyncCounts {
@@ -260,6 +306,18 @@ type SavedRow = {
   deadline: string
   url: string
   matches: number
+  indexed?: number
+  id?: number
+}
+
+type ChatNotice = {
+  number: string
+  law: string
+  object: string
+  customer: string
+  price: string
+  parsed: boolean
+  snippet: string
 }
 
 function openTextIndex(db: Database) {
@@ -410,5 +468,34 @@ function presentRow(row: SavedRow) {
     deadline: presentDate(row.deadline),
     url: row.url || `https://zakupki.gov.ru/epz/order/extendedsearch/results.html?searchString=${row.number}&fz44=on&fz223=on&ppRf615=on`,
     matches: row.matches ?? 0,
+    parsed: row.indexed === 1,
   }
+}
+
+function cardBody(row: ReturnType<typeof presentRow>) {
+  return {
+    law: row.law,
+    status: row.status,
+    number: row.number,
+    object: row.object,
+    customer: row.customer,
+    price: row.price,
+    published: row.published,
+    updated: row.updated,
+    deadline: row.deadline,
+    url: row.url,
+  }
+}
+
+function noticeSnippet(db: Database, row: SavedRow) {
+  if (row.indexed === 1 && row.id) {
+    try {
+      const found = db.query(`SELECT substr(body, 1, 420) AS snippet FROM notice_text WHERE rowid = $id`).get({ $id: row.id }) as { snippet: string } | null
+      const snippet = found?.snippet?.trim()
+      if (snippet) return snippet
+    } catch {
+      // A contentless text table may refuse to return the stored body.
+    }
+  }
+  return `${row.object}\n${row.customer}`.trim().slice(0, 420)
 }

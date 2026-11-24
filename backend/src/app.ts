@@ -58,6 +58,12 @@ export function createApp({
     env,
     requireAuth: auth.requireAuth,
   })
+  const procurements = createProcurementsModule({
+    requireAuth: auth.requireAuth,
+    token: env.EIS_TOKEN,
+    sync: env.EIS_OPEN_SYNC,
+    dir: env.PROCUREMENT_DIR,
+  })
   const meals = createMealsModule({
     backgroundTasks,
     completeTelegramLink: (code, proof, extras) => telegramLinks.complete(code, proof, extras),
@@ -68,6 +74,7 @@ export function createApp({
     loadKnowledge: knowledge.loadContext,
     loadMeetings: meetings.loadForChat,
     readDocument: (name, bytes) => knowledge.readDocument(name, bytes),
+    searchProcurements: (phrases, skip) => procurements.searchForChat(phrases, skip),
     startPoller: startMealsPoller,
   })
   const speech = createSpeechModule({ requireAuth: auth.requireAuth })
@@ -80,12 +87,6 @@ export function createApp({
     requireAuth: auth.requireAuth,
     key: env.TENDER_PRO_KEY,
     companyId: env.TENDER_PRO_COMPANY_ID,
-  })
-  const procurements = createProcurementsModule({
-    requireAuth: auth.requireAuth,
-    token: env.EIS_TOKEN,
-    sync: env.EIS_OPEN_SYNC,
-    dir: env.PROCUREMENT_DIR,
   })
   const news = createNewsModule({
     db: prisma,

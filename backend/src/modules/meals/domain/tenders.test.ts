@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 
 import { buildNoraChatRequest } from './nora-chat'
-import { formatTenderNotices, parseTenderSearch, tenderSearchQuery } from './tenders'
+import { archiveTenderBlock, asksForMore, fallbackTenderTerms, formatTenderNotices, parseTenderSearch, shownNoticeNumbers, tenderSearchQuery } from './tenders'
 
 const CARD = `
 <div class="search-registry-entry-block box-shadow-search-input">
@@ -57,6 +57,31 @@ test('the tender button tells the model to stay with the EIS cards', () => {
     { text: 'nora', vision: 'nora-vision', tenders: true },
   )
   expect(String(request.messages[0]?.content)).toContain('Кнопка закупок включена')
+})
+
+test('a follow-up keeps the first request and skips notices already named', () => {
+  const messages = [
+    { role: 'user', text: 'Найди тендеры на инъекции по укреплению оснований' },
+    { role: 'assistant', text: 'Нашлось 3. № 0156100010726000075 [карточка](/app/procurements/0156100010726000075)' },
+    { role: 'user', text: 'Покажи следующие' },
+  ]
+  expect(asksForMore('Покажи следующие')).toBe(true)
+  expect(fallbackTenderTerms(messages)).toEqual(['инъекции', 'укреплению', 'оснований'])
+  expect(shownNoticeNumbers(messages)).toEqual(['0156100010726000075'])
+  const block = archiveTenderBlock({
+    total: 3,
+    notices: [{
+      number: '0156100010726000099',
+      law: '44-ФЗ',
+      object: 'Укрепление основания',
+      customer: 'Завод',
+      price: '100 ₽',
+      parsed: true,
+      snippet: 'инъекция раствора',
+    }],
+  })
+  expect(block).toContain('По словам нашлось 3')
+  expect(block).toContain('/app/procurements/0156100010726000099')
 })
 
 test('an empty EIS page says there are no open notices', () => {

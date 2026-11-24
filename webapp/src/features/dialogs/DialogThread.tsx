@@ -826,6 +826,9 @@ export function DialogThread() {
     }
   }, [empty])
   useEffect(() => {
+    if (empty) setBitrixEnabled(false)
+  }, [empty])
+  useEffect(() => {
     const onReveal = (event: Event) => {
       const quote = readFragmentQuote(event)
       const origin = quote ? quoteOrigin(quote.messageId) : null

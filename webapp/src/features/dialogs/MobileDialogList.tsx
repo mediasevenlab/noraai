@@ -4,6 +4,7 @@ import { MessageCircleIcon, PlusIcon, XIcon } from '@/components/icons'
 import { toast } from '@/components/ui/toast'
 import { dialogDatesLabel, ruCalendarDate } from '@/lib/ru-when'
 import { cn } from '@/lib/utils'
+import { setBitrixEnabled } from './bitrix-open'
 
 function dialogWhen(userId: string, remoteId: string | undefined, lastMessageAt?: Date) {
   const stored = userId && remoteId
@@ -28,6 +29,7 @@ export function MobileDialogList({
   const mainId = useAuiState((state) => state.threads.mainThreadId)
 
   function openNew() {
+    setBitrixEnabled(false)
     aui.threads.switchToNewThread()
     onOpen()
     if (pathname !== to) void navigate({ to })

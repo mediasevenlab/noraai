@@ -114,7 +114,15 @@ export function ProcurementsPage() {
                   </a>
                   <span>{notice.status}</span>
                 </div>
-                <h2 className="mt-1 text-[15px] font-medium leading-6">{notice.object}</h2>
+                {notice.parsed ? (
+                  <h2 className="mt-1 text-[15px] font-medium leading-6">
+                    <a className="underline decoration-[var(--nora-border)] underline-offset-2" href={`/app/procurements/${notice.number}`}>
+                      {notice.object}
+                    </a>
+                  </h2>
+                ) : (
+                  <h2 className="mt-1 text-[15px] font-medium leading-6">{notice.object}</h2>
+                )}
                 {rank && phrases.length > 0 ? (
                   <p className="text-[var(--nora-text-secondary)]">Совпало ключей: {notice.matches}</p>
                 ) : null}

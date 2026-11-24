@@ -29,6 +29,111 @@ type XmlNode = {
   text: string
 }
 
+const SKIP_NODE = new Set(['signature', 'cryptoSigns', 'printForm', 'signatureInfo', 'printFormInfo'])
+
+const SECTION_TITLE: Record<string, string> = {
+  commonInfo: 'Общие сведения',
+  purchaseResponsibleInfo: 'Контакты',
+  notificationInfo: 'Условия закупки',
+  attachmentsInfo: 'Вложения',
+  serviceSigns: 'Служебные признаки',
+  modificationInfo: 'Изменения',
+  documentation: 'Документация',
+  lot: 'Лот',
+  lots: 'Лоты',
+  customer: 'Заказчик',
+}
+
+const FIELD_TITLE: Record<string, string> = {
+  purchaseNumber: 'Номер',
+  purchaseObjectInfo: 'Предмет',
+  subject: 'Предмет',
+  fullName: 'Организация',
+  name: 'Название',
+  maxPrice: 'Начальная цена',
+  initialSum: 'Начальная цена',
+  price: 'Цена',
+  quantity: 'Количество',
+  publishDTInEIS: 'Опубликовано',
+  publicationDateTime: 'Опубликовано',
+  endDT: 'Окончание подачи заявок',
+  submissionCloseDateTime: 'Окончание подачи заявок',
+  contactEMail: 'Почта',
+  contactPhone: 'Телефон',
+  lastName: 'Фамилия',
+  firstName: 'Имя',
+  middleName: 'Отчество',
+  INN: 'ИНН',
+  KPP: 'КПП',
+  factAddress: 'Адрес',
+  deliveryPlace: 'Место поставки',
+  GARAddress: 'Адрес поставки',
+  fileName: 'Файл',
+  docDescription: 'Описание файла',
+  url: 'Ссылка',
+  href: 'Ссылка',
+  amount: 'Сумма',
+  part: 'Доля',
+  purchaseCode: 'Идентификационный код',
+  placingWay: 'Способ',
+}
+
+export type NoticeDocument = {
+  sections: { title: string; fields: { label: string; value: string }[] }[]
+}
+
+/** Readable sections of one saved notice. Signatures and print forms stay out. */
+export function readNoticeDocument(xml: string): NoticeDocument {
+  const root = parseXml(xml)
+  const notice = root.children.find((node) => node.children.length > 0) ?? root
+  const sections: NoticeDocument['sections'] = []
+  for (const child of notice.children) {
+    if (SKIP_NODE.has(child.name)) continue
+    const fields = uniqueFields(collectFields(child)).slice(0, 60)
+    if (fields.length === 0) continue
+    sections.push({ title: SECTION_TITLE[child.name] ?? humanName(child.name), fields })
+    if (sections.length >= 24) break
+  }
+  return { sections }
+}
+
+function collectFields(node: XmlNode): { label: string; value: string }[] {
+  if (SKIP_NODE.has(node.name)) return []
+  if (node.children.length === 0) {
+    const value = showField(node.name, node.text.trim())
+    if (!value || value.length > 500) return []
+    return [{ label: FIELD_TITLE[node.name] ?? humanName(node.name), value }]
+  }
+  return node.children.flatMap((child) => collectFields(child)).slice(0, 60)
+}
+
+function uniqueFields(fields: { label: string; value: string }[]) {
+  const seen = new Set<string>()
+  return fields.filter((field) => {
+    const key = `${field.label}\n${field.value}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function showField(name: string, value: string) {
+  if (!value || /^\s*[A-Za-z0-9+/=]{80,}\s*$/.test(value)) return ''
+  if (name === 'maxPrice' || name === 'initialSum' || name === 'price' || name === 'amount') {
+    return Number.isFinite(Number(value)) ? `${money(value)} ₽` : value
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return ruDate(value)
+  return value
+}
+
+function humanName(name: string) {
+  const words = name
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .trim()
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : name
+}
+
 export function readNoticeXml(xml: string): NoticeCard {
   const root = parseXml(xml)
   const notice = root.children.find((node) => node.name === 'epNotificationEF2020') ?? root

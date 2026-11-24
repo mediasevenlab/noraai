@@ -214,3 +214,7 @@ test('mentor plans keep one sidebar item for the list and an opened plan', () =>
   expect(safeReturnPath('mentor', '/mentor/plans/abc-uuid')).toBe('/mentor/dialogs')
   expect(postAuthPath('mentor', '/mentor/plans/abc-uuid')).toBe('/mentor/dialogs')
 })
+
+test('an opened procurement card stays in the procurements section', () => {
+  expect(navigationItemMatchingPath('user', '/app/procurements/0156100010726000075')?.label).toBe('Госзакупки')
+})

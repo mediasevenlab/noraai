@@ -1,7 +1,7 @@
 import { deflateRawSync } from 'node:zlib'
 import { describe, expect, test } from 'bun:test'
 
-import { readNoticeXml } from './read-notice'
+import { readNoticeDocument, readNoticeXml } from './read-notice'
 import { readZipXml } from './zip-xml'
 
 const NOTICE = `<?xml version="1.0" encoding="UTF-8"?>
@@ -88,6 +88,19 @@ test('notice xml becomes a short card and keeps the position count', () => {
   ]))
   expect(card.sections[1]?.fields.find((field) => field.label === 'Контакт')?.value).toBe('Иванова Мария')
   expect(card.blocks.map((block) => block.name)).toContain('commonInfo')
+})
+
+test('a saved notice is grouped into sections and a signature is left out', () => {
+  const document = readNoticeDocument(
+    NOTICE.replace(
+      '</ns3:epNotificationEF2020>',
+      '<signature>УНИКАЛЬНАЯПОДПИСЬ</signature></ns3:epNotificationEF2020>',
+    ),
+  )
+  const fields = document.sections.flatMap((section) => section.fields)
+  expect(document.sections.some((section) => section.title === 'Общие сведения')).toBe(true)
+  expect(fields.some((field) => field.label === 'Номер' && field.value === '0156100010726000075')).toBe(true)
+  expect(fields.some((field) => field.value.includes('УНИКАЛЬНАЯПОДПИСЬ'))).toBe(false)
 })
 
 test('zip reader accepts a deflated entry whose sizes live in the central directory', () => {

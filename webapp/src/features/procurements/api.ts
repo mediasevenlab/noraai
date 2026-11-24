@@ -1,6 +1,8 @@
 import {
+  procurementNoticeCardSchema,
   procurementSavedPageSchema,
   procurementSyncSchema,
+  type ProcurementNoticeCard,
   type ProcurementSavedPage,
   type ProcurementSync,
 } from '@web-app-demo/contracts'
@@ -19,8 +21,12 @@ export function loadSavedProcurements(
   return transport.request(`/api/users/me/procurements/saved?${params}`, procurementSavedPageSchema)
 }
 
+export function loadProcurementNotice(transport: AuthenticatedTransport, number: string) {
+  return transport.request(`/api/users/me/procurements/notices/${number}`, procurementNoticeCardSchema)
+}
+
 export function loadProcurementSync(transport: AuthenticatedTransport) {
   return transport.request('/api/users/me/procurements/sync', procurementSyncSchema)
 }
 
-export type { ProcurementSavedPage, ProcurementSync }
+export type { ProcurementNoticeCard, ProcurementSavedPage, ProcurementSync }
