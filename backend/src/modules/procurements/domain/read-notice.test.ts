@@ -103,6 +103,36 @@ test('a saved notice is grouped into sections and a signature is left out', () =
   expect(fields.some((field) => field.value.includes('УНИКАЛЬНАЯПОДПИСЬ'))).toBe(false)
 })
 
+test('a 223-FZ notice skips the header and keeps the files', () => {
+  const document = readNoticeDocument(`<?xml version="1.0" encoding="UTF-8"?>
+<purchaseNotice>
+  <header><guid>SECRET-GUID</guid><createDateTime>2026-11-01T10:00:00</createDateTime></header>
+  <body><item><purchaseNoticeData>
+    <registrationNumber>32515573734</registrationNumber>
+    <name>Вывоз отходов</name>
+    <customer><mainInfo><fullName>Исследовательский центр</fullName><inn>5407073206</inn></mainInfo></customer>
+    <attachments><document>
+      <fileName>Проект.docx</fileName>
+      <url>https://zakupki.gov.ru/file/1</url>
+      <cryptoSigns><signature>УНИКАЛЬНАЯПОДПИСЬ</signature></cryptoSigns>
+    </document></attachments>
+    <lots><lot><lotData><subject>Отходы класса Б</subject><initialSum>700000</initialSum></lotData></lot></lots>
+  </purchaseNoticeData></item></body>
+</purchaseNotice>`)
+  const fields = document.sections.flatMap((section) => section.fields)
+  expect(document.sections.map((section) => section.title)).toEqual(['Общие сведения', 'Заказчик', 'Вложения', 'Лоты'])
+  expect(fields.some((field) => field.value === 'SECRET-GUID')).toBe(false)
+  expect(fields.some((field) => field.value.includes('УНИКАЛЬНАЯПОДПИСЬ'))).toBe(false)
+  expect(fields).toEqual(expect.arrayContaining([
+    { label: 'Номер', value: '32515573734' },
+    { label: 'Организация', value: 'Исследовательский центр' },
+    { label: 'Файл', value: 'Проект.docx' },
+    { label: 'Ссылка', value: 'https://zakupki.gov.ru/file/1' },
+    { label: 'Предмет', value: 'Отходы класса Б' },
+    { label: 'Начальная цена', value: '700 000,00 ₽' },
+  ]))
+})
+
 test('zip reader accepts a deflated entry whose sizes live in the central directory', () => {
   const xml = '<root><name>архив</name></root>'
   const packed = deflateRawSync(Buffer.from(xml))

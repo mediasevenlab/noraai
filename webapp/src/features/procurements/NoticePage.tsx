@@ -7,6 +7,15 @@ import { loadProcurementNotice, type ProcurementNoticeCard } from './api'
 
 const TEXT = 'font-[family-name:var(--nora-font)] text-[14px] font-normal leading-5'
 
+function FieldValue({ value }: { value: string }) {
+  if (!/^https?:\/\//.test(value)) return value
+  return (
+    <a className="underline decoration-[var(--nora-border)] underline-offset-2" href={value} rel="noreferrer" target="_blank">
+      {value}
+    </a>
+  )
+}
+
 export function NoticePage() {
   const transport = useAuth().transport
   const pathname = useRouterState({ select: (state) => state.location.pathname })
@@ -61,7 +70,7 @@ export function NoticePage() {
                     {section.fields.map((field, fieldIndex) => (
                       <div key={`${field.label}-${fieldIndex}`} className="grid gap-1 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4">
                         <dt className="text-[var(--nora-text-secondary)]">{field.label}</dt>
-                        <dd className="whitespace-pre-wrap break-words">{field.value}</dd>
+                        <dd className="whitespace-pre-wrap break-words"><FieldValue value={field.value} /></dd>
                       </div>
                     ))}
                   </dl>

@@ -120,11 +120,11 @@ export const procurementNoticeCardSchema = z
             title: z.string(),
             fields: z
               .array(z.object({ label: z.string(), value: z.string() }).strict())
-              .max(60),
+              .max(120),
           })
           .strict(),
       )
-      .max(24),
+      .max(40),
   })
   .strict()
 

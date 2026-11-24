@@ -29,7 +29,23 @@ type XmlNode = {
   text: string
 }
 
-const SKIP_NODE = new Set(['signature', 'cryptoSigns', 'printForm', 'signatureInfo', 'printFormInfo'])
+const SKIP_NODE = new Set([
+  'signature',
+  'cryptoSigns',
+  'printForm',
+  'signatureInfo',
+  'printFormInfo',
+  'header',
+  'extendedType',
+  'guid',
+  'contentUid',
+  'saveUserId',
+  'userSignature',
+  'trustedSignature',
+  'userSignatureUid',
+  'trustedUserSignatureUid',
+  'xsltFileDsUid',
+])
 
 const SECTION_TITLE: Record<string, string> = {
   commonInfo: 'Общие сведения',
@@ -41,7 +57,21 @@ const SECTION_TITLE: Record<string, string> = {
   documentation: 'Документация',
   lot: 'Лот',
   lots: 'Лоты',
+  lotData: 'Лот',
+  lotItems: 'Позиции',
+  lotItem: 'Позиция',
   customer: 'Заказчик',
+  placer: 'Организатор',
+  contact: 'Контакт',
+  mainInfo: 'Организация',
+  documentationDelivery: 'Документация',
+  attachments: 'Вложения',
+  document: 'Файл',
+  deliveryPlace: 'Место поставки',
+  currency: 'Валюта',
+  okpd2: 'ОКПД2',
+  okved2: 'ОКВЭД2',
+  timeZone: 'Часовой пояс',
 }
 
 const FIELD_TITLE: Record<string, string> = {
@@ -76,6 +106,35 @@ const FIELD_TITLE: Record<string, string> = {
   part: 'Доля',
   purchaseCode: 'Идентификационный код',
   placingWay: 'Способ',
+  urlEIS: 'Карточка на сайте',
+  registrationNumber: 'Номер',
+  purchaseMethodCode: 'Код способа',
+  purchaseCodeName: 'Способ',
+  modificationDate: 'Изменено',
+  deliveryStartDateTime: 'Начало выдачи документации',
+  deliveryEndDateTime: 'Окончание выдачи документации',
+  place: 'Место',
+  procedure: 'Порядок',
+  status: 'Статус',
+  version: 'Версия',
+  email: 'Почта',
+  phone: 'Телефон',
+  shortName: 'Краткое название',
+  iko: 'ИКО',
+  ogrn: 'ОГРН',
+  legalAddress: 'Юридический адрес',
+  postalAddress: 'Почтовый адрес',
+  okato: 'ОКАТО',
+  okopf: 'Код ОКОПФ',
+  okopfName: 'ОКОПФ',
+  okpo: 'ОКПО',
+  okfs: 'Код ОКФС',
+  okfsName: 'ОКФС',
+  region: 'Регион',
+  description: 'Описание',
+  ordinalNumber: 'Номер',
+  additionalInfo: 'Дополнительно',
+  code: 'Код',
 }
 
 export type NoticeDocument = {
@@ -85,26 +144,42 @@ export type NoticeDocument = {
 /** Readable sections of one saved notice. Signatures and print forms stay out. */
 export function readNoticeDocument(xml: string): NoticeDocument {
   const root = parseXml(xml)
-  const notice = root.children.find((node) => node.children.length > 0) ?? root
+  const notice = findByName(root, 'purchaseNoticeData') ?? firstContent(root)
   const sections: NoticeDocument['sections'] = []
+  const common: { label: string; value: string }[] = []
   for (const child of notice.children) {
     if (SKIP_NODE.has(child.name)) continue
-    const fields = uniqueFields(collectFields(child)).slice(0, 60)
+    const fields = uniqueFields(collectFields(child)).slice(0, 120)
     if (fields.length === 0) continue
-    sections.push({ title: SECTION_TITLE[child.name] ?? humanName(child.name), fields })
-    if (sections.length >= 24) break
+    if (child.children.length === 0) common.push(...fields)
+    else sections.push({ title: SECTION_TITLE[child.name] ?? humanName(child.name), fields })
+    if (sections.length >= 40) break
   }
-  return { sections }
+  if (common.length > 0) sections.unshift({ title: 'Общие сведения', fields: uniqueFields(common).slice(0, 120) })
+  return { sections: sections.slice(0, 40) }
+}
+
+function firstContent(node: XmlNode) {
+  return node.children.find((child) => child.children.length > 0 && !SKIP_NODE.has(child.name)) ?? node
+}
+
+function findByName(node: XmlNode, name: string): XmlNode | null {
+  if (node.name === name) return node
+  for (const child of node.children) {
+    const found = findByName(child, name)
+    if (found) return found
+  }
+  return null
 }
 
 function collectFields(node: XmlNode): { label: string; value: string }[] {
   if (SKIP_NODE.has(node.name)) return []
   if (node.children.length === 0) {
     const value = showField(node.name, node.text.trim())
-    if (!value || value.length > 500) return []
+    if (!value || value.length > 2000) return []
     return [{ label: FIELD_TITLE[node.name] ?? humanName(node.name), value }]
   }
-  return node.children.flatMap((child) => collectFields(child)).slice(0, 60)
+  return node.children.flatMap((child) => collectFields(child)).slice(0, 120)
 }
 
 function uniqueFields(fields: { label: string; value: string }[]) {
@@ -119,6 +194,7 @@ function uniqueFields(fields: { label: string; value: string }[]) {
 
 function showField(name: string, value: string) {
   if (!value || /^\s*[A-Za-z0-9+/=]{80,}\s*$/.test(value)) return ''
+  if (value === 'true' || value === 'false') return value === 'true' ? 'Да' : 'Нет'
   if (name === 'maxPrice' || name === 'initialSum' || name === 'price' || name === 'amount') {
     return Number.isFinite(Number(value)) ? `${money(value)} ₽` : value
   }
