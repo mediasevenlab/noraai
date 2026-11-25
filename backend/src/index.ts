@@ -1,7 +1,26 @@
+import { spawn } from 'node:child_process'
+import { resolve } from 'node:path'
+
 import { createApp } from './app'
 import { ensureBuiltinHandbook } from './modules/knowledge'
 import { createBackendRuntime } from './runtime'
 import { shutdownBackend } from './shutdown'
+
+if (process.env.NODE_ENV === 'production') {
+  const migration = await new Promise<number>((resolveStatus, reject) => {
+    const child = spawn(process.execPath, ['run', 'prisma:deploy'], {
+      cwd: resolve(import.meta.dir, '..'),
+      env: process.env,
+      stdio: 'inherit',
+    })
+    child.on('error', reject)
+    child.on('exit', (code) => resolveStatus(code ?? 1))
+  })
+  if (migration !== 0) {
+    console.error('Database migration failed')
+    process.exit(migration)
+  }
+}
 
 const runtime = createBackendRuntime()
 await ensureBuiltinHandbook(runtime.prisma).catch((error: unknown) => {
