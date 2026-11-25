@@ -9,8 +9,10 @@ import { askBitrix, createBitrixDocument, createBitrixMeeting, deleteBitrixMeeti
 import {
   archiveTenderBlock,
   COMPANY_JUDGE_SYSTEM,
+  COMPANY_TALK_SYSTEM,
   companyJudgeUser,
   companyRequiredPhrases,
+  companyTalkBrief,
   companyTenderReply,
   rankCompanyNotices,
   fallbackTenderTerms,
@@ -670,14 +672,17 @@ export async function completeDocumentCompare(
 async function archiveSearchText(
   env: NoraEnv,
   messages: readonly NoraModelChatMessage[],
-  searchArchive: (phrases: readonly string[], skip: readonly string[], take?: number, required?: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
+  searchArchive: (phrases: readonly string[], skip: readonly string[], take?: number, required?: readonly string[]) => { total: number; pending?: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; pending?: number; notices: readonly ArchiveTenderNotice[] }>,
   signal: AbortSignal | undefined,
   companies: readonly CompanySearchProfile[],
   judge?: TenderJudge,
 ) {
   const turns = messages.map((message) => ({ role: message.role, text: message.text }))
   const turn = tenderTurn(turns, companies)
-  if (!turn.exact && companies.length > 0) return judgeCompanyArchive(turn, companies, searchArchive, signal, judge)
+  if (!turn.exact && companies.length > 0) {
+    if (turn.mode === 'talk') return talkAboutCompany(messages, companies, signal, judge)
+    return judgeCompanyArchive(turn, companies, searchArchive, signal, judge)
+  }
   const terms = turn.exact || turn.terms.length > 0
     ? turn.terms
     : await planTenderTerms(env, turn, signal, false)
@@ -695,35 +700,58 @@ async function archiveSearchText(
 async function judgeCompanyArchive(
   turn: { terms: string[]; skip: string[] },
   companies: readonly CompanySearchProfile[],
-  searchArchive: (phrases: readonly string[], skip: readonly string[], take?: number, required?: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
+  searchArchive: (phrases: readonly string[], skip: readonly string[], take?: number, required?: readonly string[]) => { total: number; pending?: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; pending?: number; notices: readonly ArchiveTenderNotice[] }>,
   signal: AbortSignal | undefined,
   judge?: TenderJudge,
 ) {
   const names = companies.map((company) => company.name.trim()).filter(Boolean).join(', ')
   const speaker = judge ?? { id: 'nora' as const, name: 'Нора', ready: false, ask: async () => '' }
   if (!speaker.ready) return missingAgentReply(speaker)
-  let found: { notices: readonly ArchiveTenderNotice[] }
+  let page: { total: number; pending?: number; notices: readonly ArchiveTenderNotice[] }
   try {
     const required = companyRequiredPhrases(companies)
-    found = await searchArchive(turn.terms, turn.skip, required.length > 0 ? 40 : 16, required)
-    found = { notices: rankCompanyNotices(found.notices, companies).slice(0, 16) }
+    page = await searchArchive(turn.terms, turn.skip, required.length > 0 ? 40 : 20, required)
   } catch (error) {
     if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
     return 'Архив закупок сейчас не отвечает.'
   }
-  if (found.notices.length === 0) return companyTenderReply({ names, reviewed: [], picks: [] })
+  const reviewed = rankCompanyNotices(page.notices, companies).slice(0, 20)
+  const left = Math.max(0, (page.pending ?? page.total) - reviewed.length)
+  if (reviewed.length === 0) return companyTenderReply({ names, found: page.total, left: 0, reviewed: [], picks: [] })
   try {
-    const reply = await speaker.ask(COMPANY_JUDGE_SYSTEM, companyJudgeUser(companies, found.notices), signal)
-    const parsed = parseTenderPicks(reply, new Set(found.notices.map((notice) => notice.number)))
+    const reply = await speaker.ask(COMPANY_JUDGE_SYSTEM, companyJudgeUser(companies, reviewed), signal)
+    const parsed = parseTenderPicks(reply, new Set(reviewed.map((notice) => notice.number)))
     return companyTenderReply({
       names,
-      reviewed: found.notices,
+      found: page.total,
+      left,
+      reviewed,
       picks: parsed.picks,
       unreadable: !parsed.ok,
     })
   } catch (error) {
     if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
     return `${names ? `Компании: ${names}.\n` : ''}${speaker.name} сейчас не отвечает. Попробуйте ещё раз.`
+  }
+}
+
+async function talkAboutCompany(
+  messages: readonly NoraModelChatMessage[],
+  companies: readonly CompanySearchProfile[],
+  signal: AbortSignal | undefined,
+  judge?: TenderJudge,
+) {
+  const speaker = judge ?? { id: 'nora' as const, name: 'Нора', ready: false, ask: async () => '' }
+  if (!speaker.ready) return missingAgentReply(speaker)
+  const turns = messages.map((message) => ({ role: message.role, text: message.text }))
+  const question = [...turns].reverse().find((message) => message.role === 'user')?.text ?? ''
+  try {
+    const reply = (await speaker.ask(COMPANY_TALK_SYSTEM, companyTalkBrief(companies, turns, question), signal)).trim()
+    if (!reply) return `${speaker.name} сейчас не отвечает. Попробуйте ещё раз.`
+    return reply
+  } catch (error) {
+    if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
+    return `${speaker.name} сейчас не отвечает. Попробуйте ещё раз.`
   }
 }
 

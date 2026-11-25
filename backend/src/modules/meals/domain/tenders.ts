@@ -12,6 +12,7 @@ export type ArchiveTenderNotice = {
 }
 
 const CHAT_CARDS = 12
+const COMPANY_REVIEW = 20
 
 function folded(text: string) {
   return text.toLocaleLowerCase('ru-RU').replace(/ё/g, 'е')
@@ -69,6 +70,7 @@ export function archiveTenderBlock(input: {
 }
 
 export function asksForMore(text: string) {
+  if (/[?？]|почему|зачем|какой|какая|какие|какое|сколько|расскаж|поясн|сравни|подробн/i.test(text)) return false
   return /следующ|ещё|еще|другие|дальше|новые/i.test(text)
 }
 
@@ -253,7 +255,7 @@ export const COMPANY_JUDGE_SYSTEM = [
   'Верни только JSON {"picks":[{"number":"номер извещения","reason":"одна короткая фраза"}]}',
   'Бери извещение, если предмет поставки подходит заданию по смыслу, даже другими словами.',
   'Не бери то, что задание прямо исключает, и то, где нужный товар лишь упомянут среди чужого.',
-  'Не выдумывай номера. Если ничего не подходит, верни {"picks":[]}. Не больше 12.',
+  'Не выдумывай номера. Если ничего не подходит, верни {"picks":[]}. Не больше 20.',
 ].join(' ')
 
 export function companyJudgeUser(
@@ -265,7 +267,7 @@ export function companyJudgeUser(
     .filter(Boolean)
     .join('\n\n')
     .slice(0, 4000)
-  const lines = notices.slice(0, 16).map((notice, index) => {
+  const lines = notices.slice(0, COMPANY_REVIEW).map((notice, index) => {
     const snippet = notice.snippet.replace(/\s+/g, ' ').trim().slice(0, 240)
     return `${index + 1}. ${notice.number} | ${notice.object.slice(0, 180)} | ${notice.customer.slice(0, 80)} | ${snippet}`
   })
@@ -282,7 +284,7 @@ export function parseTenderPicks(text: string, allowed: ReadonlySet<string>) {
     const number = match[1] ?? ''
     if (!allowed.has(number) || picks.some((item) => item.number === number)) continue
     picks.push({ number, reason: cleanReason(match[2] ?? '') || 'подходит по заданию компании' })
-    if (picks.length === 12) break
+    if (picks.length === COMPANY_REVIEW) break
   }
   if (picks.length > 0) return { ok: true as const, picks }
   return { ok: false as const, picks }
@@ -305,7 +307,7 @@ function readJsonPicks(text: string, allowed: ReadonlySet<string>) {
         number,
         reason: cleanReason(String(record.reason ?? record.why ?? '')) || 'подходит по заданию компании',
       })
-      if (picks.length === 12) break
+      if (picks.length === COMPANY_REVIEW) break
     }
     return { ok: true as const, picks }
   } catch {
@@ -330,26 +332,40 @@ export function missingAgentReply(agent: { id: string; name: string }) {
 
 export function companyTenderReply(input: {
   names: string
+  found?: number
+  left?: number
   reviewed: readonly ArchiveTenderNotice[]
   picks: readonly TenderPick[]
   unreadable?: boolean
 }) {
   const head = input.names ? `Компании: ${input.names}.\n` : ''
+  const found = input.found ?? 0
+  const left = input.left ?? 0
   const seen = seenNoticeTrailer(input.reviewed.map((notice) => notice.number))
   const byNumber = new Map(input.reviewed.map((notice) => [notice.number, notice]))
   const chosen = input.picks.flatMap((pick) => {
     const notice = byNumber.get(pick.number)
     return notice ? [{ notice, reason: pick.reason }] : []
-  }).slice(0, CHAT_CARDS)
-  if (input.unreadable) {
-    return `${head}Агент не смог разобрать выборку. Эти извещения пропущены, можно попросить следующие.${seen}`
-  }
-  if (chosen.length === 0) {
-    const empty = input.reviewed.length === 0
+  }).slice(0, COMPANY_REVIEW)
+  if (input.reviewed.length === 0) {
+    const line = found === 0
       ? 'По заданию компании в скачанном архиве подходящих извещений не нашлось.'
-      : `Просмотрено ${input.reviewed.length} извещений по заданию компании. В этой порции подходящих нет. Можно попросить следующие.`
-    return `${head}${empty}${seen}`
+      : `В архиве ${found} извещений по карточке. Все они уже просмотрены, дальше смотреть нечего.`
+    return `${head}${line}`
   }
+  const fit = input.unreadable
+    ? 'Агент не смог разобрать выборку.'
+    : chosen.length === 0
+      ? 'В этой пачке подходящих нет.'
+      : `Подходят ${chosen.length}.`
+  const opening = [
+    found > 0 ? `В архиве ${found} извещений по карточке.` : '',
+    `Просмотрено ${input.reviewed.length}.`,
+    fit,
+  ].filter(Boolean).join(' ')
+  const closing = left > 0
+    ? `Ещё не просмотрено ${left}. Можно написать «следующие».`
+    : 'Это все извещения по карточке, дальше смотреть нечего.'
   const cards = chosen.map(({ notice, reason }, index) => [
     `**${index + 1}. ${notice.object}**`,
     `${notice.law} № ${notice.number}`,
@@ -360,7 +376,33 @@ export function companyTenderReply(input: {
       ? `[Открыть карточку](/app/procurements/${notice.number})`
       : 'Текст ещё разбирается, полная карточка недоступна.',
   ].filter(Boolean).join('\n\n'))
-  return `${head}По заданию компании подходят ${chosen.length} из ${input.reviewed.length} просмотренных.\n\n${cards.join('\n\n---\n\n')}${seen}`
+  const body = cards.length > 0 ? `\n\n${cards.join('\n\n---\n\n')}\n\n${closing}` : `\n\n${closing}`
+  return `${head}${opening}${body}${seen}`
+}
+
+export const COMPANY_TALK_SYSTEM = [
+  'Ты ведёшь диалог о уже показанных закупках.',
+  'Отвечай по карточкам и заданию компании из переписки. Не выдумывай номера, цены и заказчиков.',
+  'Если спрашивают про карточку, отвечай по ней. Если просят следующую пачку, предложи написать «следующие».',
+  'Пиши коротко по-русски.',
+].join(' ')
+
+export function companyTalkBrief(
+  companies: readonly CompanySearchProfile[],
+  messages: readonly { role: string; text: string }[],
+  question: string,
+) {
+  const brief = companies
+    .map((company) => [company.name.trim(), company.prompt.trim()].filter(Boolean).join('\n'))
+    .filter(Boolean)
+    .join('\n\n')
+    .slice(0, 4000)
+  const earlier = messages.slice(0, -1).slice(-8).map((message) => {
+    const text = message.text.replace(/\n*<!--\s*seen:[0-9,]+\s*-->/g, '').trim().slice(0, 2500)
+    const who = message.role === 'assistant' ? 'Нора' : 'Пользователь'
+    return text ? `${who}: ${text}` : ''
+  }).filter(Boolean)
+  return `Задание компании:\n${brief}\n\nПереписка:\n${earlier.join('\n\n')}\n\nНовый вопрос:\n${question.trim().slice(0, 1000)}`
 }
 
 export function shownNoticeNumbers(messages: readonly { role: string; text: string }[]) {
@@ -384,6 +426,15 @@ export function noticeNumbers(text: string) {
   return [...new Set([...text.matchAll(/\d{8,30}/g)].map((match) => match[0]))].slice(0, 8)
 }
 
+function asksForList(text: string) {
+  return /тендер|закупк|извещен|подходящ/i.test(text)
+    && /дай|найд|подбер|покаж|нужн|ищ|список|актуальн/i.test(text)
+}
+
+function hasShownList(messages: readonly { role: string; text: string }[]) {
+  return messages.some((message) => message.role === 'assistant' && (/<!--\s*seen:/.test(message.text) || /\/app\/procurements\/\d{8,}/.test(message.text)))
+}
+
 /** A number starts a new lookup. «Следующие» keeps the earlier request and skips cards already shown. */
 export function tenderTurn(
   messages: readonly { role: string; text: string }[],
@@ -392,14 +443,17 @@ export function tenderTurn(
   const users = messages.filter((message) => message.role === 'user' && message.text.trim())
   const last = users.at(-1)?.text ?? ''
   const numbers = noticeNumbers(last)
-  if (numbers.length > 0) return { terms: numbers, skip: [] as string[], source: last, exact: true }
+  if (numbers.length > 0) return { terms: numbers, skip: [] as string[], source: last, exact: true, mode: 'exact' as const }
   const profile = profileText(companies)
   if (asksForMore(last)) {
     const earlier = [...users].reverse().find((message) => message.text !== last && !asksForMore(message.text))
     const earlierText = earlier?.text ?? ''
     const source = [profile, earlierText].filter(Boolean).join('\n') || last
     const terms = profile ? companyRecallTerms(companies) : wordsOf(source)
-    return { terms, skip: shownNoticeNumbers(messages), source, exact: false }
+    return { terms, skip: shownNoticeNumbers(messages), source, exact: false, mode: 'more' as const }
+  }
+  if (profile && hasShownList(messages) && !asksForList(last)) {
+    return { terms: [] as string[], skip: [] as string[], source: last, exact: false, mode: 'talk' as const }
   }
   if (profile) {
     return {
@@ -407,9 +461,10 @@ export function tenderTurn(
       skip: [] as string[],
       source: `${profile}\n${last}`.slice(0, 4000),
       exact: false,
+      mode: 'search' as const,
     }
   }
-  return { terms: wordsOf(last), skip: [] as string[], source: last, exact: false }
+  return { terms: wordsOf(last), skip: [] as string[], source: last, exact: false, mode: 'search' as const }
 }
 
 function wordsOf(text: string) {

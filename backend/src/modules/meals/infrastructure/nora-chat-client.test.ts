@@ -1291,6 +1291,32 @@ describe('company procurement agent', () => {
     expect(reply).toContain('seen:32515573734,32515573735')
   })
 
+  test('a question about the shown cards does not start a new search', async () => {
+    const events: Array<{ reply?: string }> = []
+    for await (const event of streamNoraChat(
+      env,
+      [
+        { role: 'user', text: 'Дай подходящие тендеры' },
+        { role: 'assistant', text: 'В архиве 49.\n\n**1. Кувалда искробезопасная**\n\n<!-- seen:32515573734 -->' },
+        { role: 'user', text: 'Почему подходит первая?' },
+      ],
+      false,
+      undefined,
+      undefined,
+      false,
+      true,
+      true,
+      async () => {
+        throw new Error('archive should not be searched')
+      },
+      [{ name: 'СПЕЦГАЗ', prompt: 'Искробезопасный инструмент' }],
+      { id: 'nora', name: 'Нора', ready: true, ask: async () => 'Первая — кувалда искробезопасная.' },
+    )) events.push(event)
+    const reply = events.map((event) => event.reply ?? '').join('')
+    expect(reply).toContain('кувалда искробезопасная')
+    expect(reply).not.toContain('seen:')
+  })
+
   test('an agent without a key explains that it is not connected', async () => {
     const events: Array<{ reply?: string }> = []
     for await (const event of streamNoraChat(

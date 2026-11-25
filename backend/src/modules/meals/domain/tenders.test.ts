@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 
 import { buildNoraChatRequest } from './nora-chat'
-import { archiveTenderBlock, asksForMore, companyRecallTerms, companyRequiredPhrases, companyTenderReply, fallbackTenderTerms, formatTenderNotices, parseTenderPicks, parseTenderSearch, rankCompanyNotices, shownNoticeNumbers, tenderSearchQuery, tenderTurn } from './tenders'
+import { archiveTenderBlock, asksForMore, companyRecallTerms, companyRequiredPhrases, companyTalkBrief, companyTenderReply, fallbackTenderTerms, formatTenderNotices, parseTenderPicks, parseTenderSearch, rankCompanyNotices, shownNoticeNumbers, tenderSearchQuery, tenderTurn } from './tenders'
 
 const CARD = `
 <div class="search-registry-entry-block box-shadow-search-input">
@@ -152,6 +152,14 @@ test('a company card is recalled by stems, and the model keeps only the notices 
   expect(block).toContain('[Открыть карточку](/app/procurements/32515573734)')
   const followed = shownNoticeNumbers([{ role: 'assistant', text: block }])
   expect(followed).toEqual(['32515573734', '32515573735'])
+  const counted = companyTenderReply({ names: 'СПЕЦГАЗ', found: 49, left: 29, reviewed: notices, picks: parsed.picks })
+  expect(counted).toContain('В архиве 49 извещений по карточке.')
+  expect(counted).toContain('Просмотрено 2.')
+  expect(counted).toContain('Подходят 1.')
+  expect(counted.indexOf('Ещё не просмотрено 29.')).toBeGreaterThan(counted.indexOf('Почему подходит'))
+  const done = companyTenderReply({ names: 'СПЕЦГАЗ', found: 49, left: 0, reviewed: notices, picks: [] })
+  expect(done).toContain('В этой пачке подходящих нет.')
+  expect(done).toContain('дальше смотреть нечего')
   expect(companyRequiredPhrases(companies)).toContain('искробезопас')
   expect(companyRequiredPhrases(companies)).toContain('разгон фланц')
   expect(companyRequiredPhrases(companies)).not.toContain('ключ')
@@ -160,6 +168,26 @@ test('a company card is recalled by stems, and the model keeps only the notices 
     { object: 'Поставка инструмента', snippet: 'кувалда искробезопасная омедненная' },
   ], companies)
   expect(ranked[0]?.snippet).toContain('кувалда')
+})
+
+test('a question about shown cards stays with those cards', () => {
+  const companies = [{ name: 'СПЕЦГАЗ', prompt: 'Искробезопасный инструмент' }]
+  const messages = [
+    { role: 'user', text: 'Дай подходящие тендеры' },
+    { role: 'assistant', text: 'В архиве 49.\n\n**1. Кувалда**\n\n[Открыть карточку](/app/procurements/32515573734)\n\n<!-- seen:32515573734 -->' },
+    { role: 'user', text: 'Почему подходит первая?' },
+  ]
+  expect(tenderTurn(messages, companies).mode).toBe('talk')
+  const brief = companyTalkBrief(companies, messages, 'Почему подходит первая?')
+  expect(brief).toContain('Кувалда')
+  expect(brief).not.toContain('seen:')
+  const more = tenderTurn([
+    messages[0]!,
+    messages[1]!,
+    { role: 'user', text: 'следующие' },
+  ], companies)
+  expect(more.mode).toBe('more')
+  expect(more.skip).toEqual(['32515573734'])
 })
 
 test('a notice number starts a new lookup and does not keep the previous topic', () => {

@@ -50,7 +50,7 @@ async function completeNora(env: AgentTextEnv, system: string, user: string, sig
       ],
       stream: false,
       think: false,
-      options: { num_ctx: 8192, num_predict: 900, temperature: 0.1 },
+      options: { num_ctx: 8192, num_predict: 1200, temperature: 0.1 },
     }),
     signal: linkedSignal(signal, 180_000),
   })
@@ -75,7 +75,7 @@ async function completeOpenAi(env: AgentTextEnv, system: string, user: string, s
     body: JSON.stringify({
       model: env.OPENAI_MODEL,
       temperature: 0.1,
-      max_tokens: 900,
+      max_tokens: 1200,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: system },
@@ -104,7 +104,7 @@ async function completeGemini(env: AgentTextEnv, system: string, user: string, s
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts: [{ text: user }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 900, responseMimeType: 'application/json' },
+      generationConfig: { temperature: 0.1, maxOutputTokens: 1200, responseMimeType: 'application/json' },
     }),
     signal: linkedSignal(signal, 60_000),
   })
