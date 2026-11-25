@@ -188,6 +188,25 @@ test('chat search counts every word hit and can skip notices already shown', asy
   await rm(dir, { recursive: true, force: true })
 })
 
+test('company recall keeps the notice that names the product and shows that line', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'nora-chat-anchor-'))
+  const store = openNoticeStore(dir)
+  mkdirSync(join(dir, 'zips'), { recursive: true })
+  store.remember(notice('100', 'аукцион 44-ФЗ', 'Поставка ключей и молотков', 'Склад'))
+  store.markSaved('100', 20)
+  writeFileSync(join(dir, 'zips', '100.zip'), zipSingleXml('100.xml', '<name>Ключ гаечный и молоток слесарный</name>'))
+  store.remember(notice('200', 'аукцион 44-ФЗ', 'Поставка инструмента', 'Газпром'))
+  store.markSaved('200', 20)
+  writeFileSync(join(dir, 'zips', '200.zip'), zipSingleXml('200.xml', '<name>Кувалда искробезопасная омедненная 2 кг</name>'))
+  expect(store.indexNext()).toBe(true)
+  expect(store.indexNext()).toBe(true)
+  const found = store.chatMatches(['ключ', 'молот', 'искробезопас', 'омеднен'], [], 16, ['искробезопас', 'омеднен'])
+  expect(found.notices.map((item) => item.number)).toEqual(['200'])
+  expect(found.notices[0]?.snippet).toContain('кувалда искробезопасная')
+  store.close()
+  await rm(dir, { recursive: true, force: true })
+})
+
 function notice(number: string, law: string, object: string, customer: string, subsystem = 'PRIZ') {
   return {
     number,

@@ -10,7 +10,9 @@ import {
   archiveTenderBlock,
   COMPANY_JUDGE_SYSTEM,
   companyJudgeUser,
+  companyRequiredPhrases,
   companyTenderReply,
+  rankCompanyNotices,
   fallbackTenderTerms,
   missingAgentReply,
   parseTenderPicks,
@@ -116,7 +118,7 @@ export async function completeNoraChat(
   think?: boolean,
   bitrix?: boolean,
   tenders?: boolean,
-  searchArchive?: (phrases: readonly string[], skip: readonly string[], take?: number) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
+  searchArchive?: (phrases: readonly string[], skip: readonly string[], take?: number, required?: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
   companies?: readonly CompanySearchProfile[],
   judge?: TenderJudge,
 ) {
@@ -187,7 +189,7 @@ export async function* streamNoraChat(
   think?: boolean,
   bitrix?: boolean,
   tenders?: boolean,
-  searchArchive?: (phrases: readonly string[], skip: readonly string[], take?: number) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
+  searchArchive?: (phrases: readonly string[], skip: readonly string[], take?: number, required?: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
   companies?: readonly CompanySearchProfile[],
   judge?: TenderJudge,
 ): AsyncGenerator<NoraChatEvent & { model?: string }> {
@@ -668,7 +670,7 @@ export async function completeDocumentCompare(
 async function archiveSearchText(
   env: NoraEnv,
   messages: readonly NoraModelChatMessage[],
-  searchArchive: (phrases: readonly string[], skip: readonly string[], take?: number) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
+  searchArchive: (phrases: readonly string[], skip: readonly string[], take?: number, required?: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
   signal: AbortSignal | undefined,
   companies: readonly CompanySearchProfile[],
   judge?: TenderJudge,
@@ -693,7 +695,7 @@ async function archiveSearchText(
 async function judgeCompanyArchive(
   turn: { terms: string[]; skip: string[] },
   companies: readonly CompanySearchProfile[],
-  searchArchive: (phrases: readonly string[], skip: readonly string[], take?: number) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
+  searchArchive: (phrases: readonly string[], skip: readonly string[], take?: number, required?: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
   signal: AbortSignal | undefined,
   judge?: TenderJudge,
 ) {
@@ -702,7 +704,9 @@ async function judgeCompanyArchive(
   if (!speaker.ready) return missingAgentReply(speaker)
   let found: { notices: readonly ArchiveTenderNotice[] }
   try {
-    found = await searchArchive(turn.terms, turn.skip, 16)
+    const required = companyRequiredPhrases(companies)
+    found = await searchArchive(turn.terms, turn.skip, required.length > 0 ? 40 : 16, required)
+    found = { notices: rankCompanyNotices(found.notices, companies).slice(0, 16) }
   } catch (error) {
     if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
     return 'Архив закупок сейчас не отвечает.'

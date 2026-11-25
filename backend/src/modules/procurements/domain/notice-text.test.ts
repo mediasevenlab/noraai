@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 
-import { noticeBody, noticeMatch } from './notice-text'
+import { excerptAround, noticeBody, noticeMatch } from './notice-text'
 
 test('notice text keeps positions and drops the signature', () => {
   const body = noticeBody(`
@@ -17,6 +17,13 @@ test('notice text keeps positions and drops the signature', () => {
   expect(body).toContain('чертеж-ввода.pdf')
   expect(body).not.toContain('уникальнаяподпись')
   expect(body).not.toContain('aaaa')
+})
+
+test('an excerpt stays on the line that names the searched product', () => {
+  const header = 'уровень взрывозащиты взрывобезопасное оборудование '.repeat(40)
+  const excerpt = excerptAround(`${header} кувалда искробезопасная омедненная 2 кг`, ['взрывобезопас', 'искробезопас', 'омеднен'])
+  expect(excerpt).toContain('кувалда искробезопасная')
+  expect(excerpt).toContain('омедненная')
 })
 
 test('a search phrase becomes a short prefix query', () => {

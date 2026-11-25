@@ -60,7 +60,7 @@ type CreateMealsModuleOptions = {
     query: string
   }) => Promise<string>
   readDocument?: (name: string, bytes: Buffer) => Promise<string>
-  searchProcurements?: (phrases: readonly string[], skip: readonly string[], take?: number) => { total: number; notices: readonly { number: string; law: string; object: string; customer: string; price: string; parsed: boolean; snippet: string }[] }
+  searchProcurements?: (phrases: readonly string[], skip: readonly string[], take?: number, required?: readonly string[]) => { total: number; notices: readonly { number: string; law: string; object: string; customer: string; price: string; parsed: boolean; snippet: string }[] }
   companyProfiles?: (userId: string, ids: readonly string[]) => Promise<readonly { name: string; prompt: string }[]>
   tenderJudge?: (userId: string) => Promise<TenderJudge>
   startPoller?: boolean

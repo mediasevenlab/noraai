@@ -3,10 +3,10 @@ import { join } from 'node:path'
 import { Database } from 'bun:sqlite'
 
 import { deadlineMillis } from '../domain/keep-notice'
-import { noticeBody } from '../domain/notice-text'
+import { excerptAround, noticeBody } from '../domain/notice-text'
 import { readPackCard, presentDate } from '../domain/pack-card'
 import { readNoticeDocument } from '../domain/read-notice'
-import { normalizeSavedQuery, noticeNeedle, savedSearch, type SavedNoticeQuery } from '../domain/saved-filter'
+import { normalizeSavedQuery, noticeNeedle, savedPhraseClause, savedSearch, type SavedNoticeQuery } from '../domain/saved-filter'
 import { initialPackPlan, packCellsDone, SAVED_PAGE_SIZE, type PackPlan } from '../domain/pack-sync'
 import { readZipXml } from '../domain/zip-xml'
 import { initialPlan, moscowDate, type OpenSyncPlan } from '../domain/open-sync'
@@ -188,22 +188,31 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
         sections: document.sections,
       }
     },
-    chatMatches(phrases: readonly string[], skip: readonly string[], take = 12) {
+    chatMatches(phrases: readonly string[], skip: readonly string[], take = 12, required: readonly string[] = []) {
       const query = normalizeSavedQuery('', [], phrases, true, 16)
-      if (query.phrases.length === 0) return { total: 0, notices: [] as ChatNotice[] }
-      const filter = savedSearch(query, textReady ? 'indexed' : 'card')
-      const totalRow = db.query(`SELECT COUNT(*) AS count FROM notices WHERE ${filter.where}`).get(filter.params) as { count: number }
+      const needed = normalizeSavedQuery('', [], required, false, 8)
+      if (query.phrases.length === 0 && needed.phrases.length === 0) return { total: 0, notices: [] as ChatNotice[] }
+      const mode = textReady ? 'indexed' : 'card'
+      const filter = savedSearch(query.phrases.length > 0 ? query : { ...query, phrases: needed.phrases, rank: false }, mode)
       const params: Record<string, string | number> = { ...filter.params }
+      const anchors = needed.phrases.map((phrase, index) => savedPhraseClause(index + 20, phrase, mode))
+      for (const anchor of anchors) Object.assign(params, anchor.params)
+      const matched = anchors.length > 0
+        ? `${filter.where} AND (${anchors.map((anchor) => anchor.sql).join(' OR ')})`
+        : filter.where
+      const totalRow = db.query(`SELECT COUNT(*) AS count FROM notices WHERE ${matched}`).get(params) as { count: number }
       const safeSkip = skip.filter((item) => /^\d+$/.test(item)).slice(0, 80)
       for (const [index, item] of safeSkip.entries()) params[`$skip${index}`] = item
       const where = safeSkip.length === 0
-        ? filter.where
-        : `${filter.where} AND number NOT IN (${safeSkip.map((_, index) => `$skip${index}`).join(', ')})`
-      params.$take = Math.min(24, Math.max(1, Math.trunc(take)))
+        ? matched
+        : `${matched} AND number NOT IN (${safeSkip.map((_, index) => `$skip${index}`).join(', ')})`
+      const pool = anchors.length > 0 ? 40 : 24
+      params.$take = Math.min(pool, Math.max(1, Math.trunc(take)))
       const rows = db.query(`SELECT rowid AS id, number, law, status, object, customer, price, published, updated, deadline, url, indexed, (${filter.hits}) AS matches
         FROM notices WHERE ${where}
-        ORDER BY matches DESC, published DESC, number DESC
+        ORDER BY ${anchors.length > 0 ? '' : 'matches DESC, '}published DESC, number DESC
         LIMIT $take`).all(params) as Array<SavedRow & { id: number }>
+      const needles = [...needed.phrases, ...query.phrases]
       return {
         total: totalRow.count,
         notices: rows.map((row) => {
@@ -215,7 +224,7 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
             customer: shown.customer,
             price: shown.price,
             parsed: row.indexed === 1,
-            snippet: noticeSnippet(db, row),
+            snippet: noticeSnippet(dir, row, needles),
           }
         }),
       }
@@ -488,15 +497,9 @@ function cardBody(row: ReturnType<typeof presentRow>) {
   }
 }
 
-function noticeSnippet(db: Database, row: SavedRow) {
-  if (row.indexed === 1 && row.id) {
-    try {
-      const found = db.query(`SELECT substr(body, 1, 420) AS snippet FROM notice_text WHERE rowid = $id`).get({ $id: row.id }) as { snippet: string } | null
-      const snippet = found?.snippet?.trim()
-      if (snippet) return snippet
-    } catch {
-      // A contentless text table may refuse to return the stored body.
-    }
-  }
-  return `${row.object}\n${row.customer}`.trim().slice(0, 420)
+function noticeSnippet(dir: string, row: SavedRow, needles: readonly string[]) {
+  const body = noticeBody(`${row.object}\n${row.customer}\n${readStoredXml(dir, row.number)}`)
+  const excerpt = excerptAround(body, needles)
+  if (excerpt) return excerpt
+  return `${row.object}\n${row.customer}`.trim().slice(0, 260)
 }

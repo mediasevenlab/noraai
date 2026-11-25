@@ -79,6 +79,11 @@ export function savedSearch(query: SavedNoticeQuery, mode: SavedSearchMode): Sav
   return { where: clauses.join(' AND '), params, hits }
 }
 
+/** One phrase as a SQL condition. Indexes must not collide when several groups are combined. */
+export function savedPhraseClause(index: number, phrase: string, mode: SavedSearchMode) {
+  return phraseSql(index, phrase, mode)
+}
+
 function phraseSql(index: number, phrase: string, mode: SavedSearchMode) {
   const match = noticeMatch(phrase)
   const params: Record<string, string> = {}

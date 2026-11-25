@@ -85,7 +85,7 @@ export function createApp({
     loadKnowledge: knowledge.loadContext,
     loadMeetings: meetings.loadForChat,
     readDocument: (name, bytes) => knowledge.readDocument(name, bytes),
-    searchProcurements: (phrases, skip, take) => procurements.searchForChat(phrases, skip, take),
+    searchProcurements: (phrases, skip, take, required) => procurements.searchForChat(phrases, skip, take, required),
     companyProfiles: (userId, ids) => companies.profilesForChat(userId, ids),
     tenderJudge: async (userId) => {
       const id = await agents.preference(userId)

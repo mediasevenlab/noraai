@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 
 import { buildNoraChatRequest } from './nora-chat'
-import { archiveTenderBlock, asksForMore, companyRecallTerms, companyTenderReply, fallbackTenderTerms, formatTenderNotices, parseTenderPicks, parseTenderSearch, shownNoticeNumbers, tenderSearchQuery, tenderTurn } from './tenders'
+import { archiveTenderBlock, asksForMore, companyRecallTerms, companyRequiredPhrases, companyTenderReply, fallbackTenderTerms, formatTenderNotices, parseTenderPicks, parseTenderSearch, rankCompanyNotices, shownNoticeNumbers, tenderSearchQuery, tenderTurn } from './tenders'
 
 const CARD = `
 <div class="search-registry-entry-block box-shadow-search-input">
@@ -152,6 +152,14 @@ test('a company card is recalled by stems, and the model keeps only the notices 
   expect(block).toContain('[Открыть карточку](/app/procurements/32515573734)')
   const followed = shownNoticeNumbers([{ role: 'assistant', text: block }])
   expect(followed).toEqual(['32515573734', '32515573735'])
+  expect(companyRequiredPhrases(companies)).toContain('искробезопас')
+  expect(companyRequiredPhrases(companies)).toContain('разгон фланц')
+  expect(companyRequiredPhrases(companies)).not.toContain('ключ')
+  const ranked = rankCompanyNotices([
+    { object: 'Поставка защитной пленки для взрывобезопасного остекления', snippet: 'пленка для остекления' },
+    { object: 'Поставка инструмента', snippet: 'кувалда искробезопасная омедненная' },
+  ], companies)
+  expect(ranked[0]?.snippet).toContain('кувалда')
 })
 
 test('a notice number starts a new lookup and does not keep the previous topic', () => {

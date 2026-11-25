@@ -94,18 +94,32 @@ function profileText(companies: readonly CompanySearchProfile[]) {
 
 const RECALL_LIMIT = 16
 
-/** Product stems the archive should recall. The model, not this list, decides which notices fit. */
-const RECALL_HINTS = [
+/** Words that mean the company's own product, not the ordinary nouns in its catalog. */
+const ANCHOR_HINTS = [
   'искробезопас',
   'взрывобезопас',
   'неискрящ',
   'безискров',
   'безыскров',
   'омеднен',
-  'разгон',
-  'фланц',
   'спредер',
   'спецгаз',
+]
+
+const STRONG_ANCHORS = [
+  'искробезопас',
+  'взрывобезопас',
+  'неискрящ',
+  'безискров',
+  'безыскров',
+  'омеднен',
+]
+
+/** Product stems the archive should recall. The model, not this list, decides which notices fit. */
+const RECALL_HINTS = [
+  ...ANCHOR_HINTS,
+  'разгон',
+  'фланц',
   'бронз',
   'плоскогуб',
   'длинногуб',
@@ -196,6 +210,42 @@ export function companyRecallTerms(companies: readonly CompanySearchProfile[]) {
   if (terms.length > 0) return terms
   const name = tenderSearchQuery(companies.map((company) => company.name).join(' '))
   return name ? [name.slice(0, 40)] : []
+}
+
+/** Anchors a company card insists on. Ordinary catalog nouns do not open the pool by themselves. */
+export function companyRequiredPhrases(companies: readonly CompanySearchProfile[]) {
+  const text = folded(recallSource(companies))
+  if (!text) return []
+  const required = ANCHOR_HINTS.filter((hint) => hintPresent(text, hint))
+  if (hintPresent(text, 'разгон') && hintPresent(text, 'фланц')) required.push('разгон фланц')
+  return required
+}
+
+const TOOL_NOUNS = RECALL_HINTS.filter((hint) => !ANCHOR_HINTS.includes(hint) && hint !== 'разгон' && hint !== 'фланц' && hint !== 'бронз')
+
+/** Put notices whose own text names the product ahead of a passing mention. */
+export function rankCompanyNotices<T extends { object: string; snippet: string }>(
+  notices: readonly T[],
+  companies: readonly CompanySearchProfile[],
+) {
+  const source = folded(recallSource(companies))
+  if (!ANCHOR_HINTS.some((hint) => hintPresent(source, hint))) return [...notices]
+  const nouns = TOOL_NOUNS.filter((hint) => hintPresent(source, hint))
+  return [...notices].sort((left, right) => companyNoticeScore(right, nouns) - companyNoticeScore(left, nouns))
+}
+
+function companyNoticeScore(notice: { object: string; snippet: string }, nouns: readonly string[]) {
+  const text = folded(`${notice.object}\n${notice.snippet}`)
+  const strong = STRONG_ANCHORS.some((hint) => text.includes(hint))
+  const noun = text.includes('инструмент') || nouns.some((hint) => text.includes(hint))
+  const brand = text.includes('спецгаз') && !text.includes('спецгазов') && !text.includes('газового оборудован')
+  let score = 0
+  if (strong && noun) score += 10
+  else if (strong) score += 2
+  if (brand && noun) score += 6
+  else if (brand) score += 1
+  if (text.includes('разгон') && text.includes('фланц')) score += 8
+  return score
 }
 
 export const COMPANY_JUDGE_SYSTEM = [
