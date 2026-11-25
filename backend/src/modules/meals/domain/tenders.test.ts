@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 
 import { buildNoraChatRequest } from './nora-chat'
-import { archiveTenderBlock, asksForMore, companySearchPhrases, fallbackTenderTerms, formatTenderNotices, parseTenderSearch, shownNoticeNumbers, tenderSearchQuery, tenderTurn } from './tenders'
+import { archiveTenderBlock, asksForMore, companySearchTerms, fallbackTenderTerms, formatTenderNotices, parseTenderSearch, shownNoticeNumbers, tenderSearchQuery, tenderTurn } from './tenders'
 
 const CARD = `
 <div class="search-registry-entry-block box-shadow-search-input">
@@ -106,8 +106,15 @@ test('selected companies set the search, and a later ask skips cards already sho
 test('a company prompt is searched by its phrases, and each card says what matched', () => {
   const companies = [{ name: 'СПЕЦГАЗ', prompt: 'Клещи взрывобезопасные, Плоскогубцы комбинированные' }]
   const turn = tenderTurn([{ role: 'user', text: 'Дай подходящие тендеры' }], companies)
-  expect(companySearchPhrases(companies)).toEqual(['Клещи взрывобезопасные', 'Плоскогубцы комбинированные'])
-  expect(turn.terms).toEqual(['Клещи взрывобезопасные', 'Плоскогубцы комбинированные'])
+  expect(companySearchTerms(companies)).toEqual([
+    'Клещи взрывобезопасные',
+    'Плоскогубцы комбинированные',
+    'Клещи',
+    'взрывобезопасные',
+    'Плоскогубцы',
+    'комбинированные',
+  ])
+  expect(turn.terms).toEqual(companySearchTerms(companies))
   expect(turn.terms.join(' ')).not.toContain('подходящ')
   const block = archiveTenderBlock({
     total: 2,

@@ -11,6 +11,7 @@ import { notifyCompanyCatalog } from './selection'
 export function CompaniesPage({ user }: { user: UserDto }) {
   const transport = useAuth().transport
   const [companies, setCompanies] = useState<Company[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
@@ -19,10 +20,14 @@ export function CompaniesPage({ user }: { user: UserDto }) {
     let current = true
     loadCompanies(transport)
       .then((result) => {
-        if (current) setCompanies(result.companies)
+        if (!current) return
+        setCompanies(result.companies)
+        setLoaded(true)
       })
       .catch((reason: unknown) => {
-        if (current) setError(reason instanceof Error ? reason.message : 'Не удалось открыть компании')
+        if (!current) return
+        setLoaded(true)
+        setError(reason instanceof Error ? reason.message : 'Не удалось открыть компании')
       })
     return () => {
       current = false
@@ -78,7 +83,11 @@ export function CompaniesPage({ user }: { user: UserDto }) {
         title="Карточки"
       >
         {error ? <p className="mb-3 text-[13px] text-[var(--nora-error)]">{error}</p> : null}
-        {companies.length === 0 ? (
+        {!loaded ? (
+          <p className="font-[family-name:var(--nora-font)] text-[13px] leading-5 text-[var(--nora-text-secondary)]">
+            Открываю компании…
+          </p>
+        ) : companies.length === 0 ? (
           <p className="font-[family-name:var(--nora-font)] text-[13px] leading-5 text-[var(--nora-text-secondary)]">
             Пока нет компаний.
           </p>
@@ -120,11 +129,16 @@ export function CompaniesPage({ user }: { user: UserDto }) {
         <CompanyDialog
           company={opened}
           onClose={() => setOpenId(null)}
-          onDelete={async () => {
-            await deleteCompany(transport, opened.id)
-            setCompanies((current) => current.filter((company) => company.id !== opened.id))
+          onDelete={() => {
+            const id = opened.id
+            const snapshot = companies
+            setCompanies((current) => current.filter((company) => company.id !== id))
             setOpenId(null)
             notifyCompanyCatalog()
+            void deleteCompany(transport, id).catch((reason: unknown) => {
+              setCompanies(snapshot)
+              setError(reason instanceof Error ? reason.message : 'Не удалось удалить')
+            })
           }}
           onSave={async (patch) => {
             const saved = await updateCompany(transport, opened.id, patch)
@@ -145,12 +159,11 @@ function CompanyDialog({
 }: {
   company: Company
   onClose: () => void
-  onDelete: () => Promise<void>
+  onDelete: () => void
   onSave: (patch: { name: string; prompt: string }) => Promise<void>
 }) {
   const [name, setName] = useState(company.name)
   const [prompt, setPrompt] = useState(company.prompt)
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
 
@@ -161,17 +174,6 @@ function CompanyDialog({
       await onSave({ name, prompt })
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Не удалось сохранить')
-      setPending(false)
-    }
-  }
-
-  async function remove() {
-    setError('')
-    setPending(true)
-    try {
-      await onDelete()
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Не удалось удалить')
       setPending(false)
     }
   }
@@ -209,15 +211,9 @@ function CompanyDialog({
         />
         {error ? <p className="mt-2 text-[13px] text-[var(--nora-error)]">{error}</p> : null}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-          {confirmDelete ? (
-            <button className="text-[13px] text-[var(--nora-error)]" disabled={pending} type="button" onClick={() => void remove()}>
-              Удалить компанию
-            </button>
-          ) : (
-            <button className="text-[13px] text-[var(--nora-error)]" disabled={pending} type="button" onClick={() => setConfirmDelete(true)}>
-              Удалить
-            </button>
-          )}
+          <button className="text-[13px] text-[var(--nora-error)]" disabled={pending} type="button" onClick={onDelete}>
+            Удалить
+          </button>
           <div className="flex gap-2">
             <button className="h-8 rounded-full px-3 text-[13px]" type="button" onClick={onClose}>Закрыть</button>
             <button

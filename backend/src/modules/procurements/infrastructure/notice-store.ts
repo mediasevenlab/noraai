@@ -191,7 +191,7 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
     chatMatches(phrases: readonly string[], skip: readonly string[]) {
       const query = normalizeSavedQuery('', [], phrases, true)
       if (query.phrases.length === 0) return { total: 0, notices: [] as ChatNotice[] }
-      const filter = searchFilter(db, textReady, query)
+      const filter = savedSearch(query, textReady ? 'indexed' : 'card')
       const totalRow = db.query(`SELECT COUNT(*) AS count FROM notices WHERE ${filter.where}`).get(filter.params) as { count: number }
       const params: Record<string, string | number> = { ...filter.params }
       const safeSkip = skip.filter((item) => /^\d+$/.test(item)).slice(0, 80)

@@ -98,11 +98,13 @@ export function CompanyTenderMenu() {
       </Tooltip>
       <DropdownMenuContent
         align="start"
-        className={available.length === 0 ? 'w-56 max-w-56' : 'w-max min-w-0 max-w-[min(22rem,calc(100vw-2rem))]'}
+        className={!loaded || available.length === 0 ? 'w-56 max-w-56' : 'w-max min-w-0 max-w-[min(22rem,calc(100vw-2rem))]'}
         side="top"
         sideOffset={8}
       >
-        {available.length === 0 ? (
+        {!loaded ? (
+          <p className="px-2 py-1.5 text-[12px] leading-5 text-[var(--nora-text-secondary)]">Открываю компании…</p>
+        ) : available.length === 0 ? (
           <p className="px-2 py-1.5 text-[12px] leading-5 whitespace-normal text-[var(--nora-text-secondary)]">
             {companies.length === 0
               ? 'Сначала создайте компанию в разделе '

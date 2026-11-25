@@ -103,6 +103,13 @@ export function companySearchPhrases(companies: readonly CompanySearchProfile[])
   return [...new Set(phrases)].slice(0, 8)
 }
 
+/** Phrases stay together, and each distinctive word is added so a related notice is not dropped. */
+export function companySearchTerms(companies: readonly CompanySearchProfile[]) {
+  const phrases = companySearchPhrases(companies)
+  const words = phrases.flatMap((phrase) => phrase.split(/\s+/).filter((word) => word.length >= 5))
+  return [...new Set([...phrases, ...words])].slice(0, 8)
+}
+
 export function shownNoticeNumbers(messages: readonly { role: string; text: string }[]) {
   const numbers = new Set<string>()
   for (const message of messages) {
@@ -133,12 +140,12 @@ export function tenderTurn(
     const earlier = [...users].reverse().find((message) => message.text !== last && !asksForMore(message.text))
     const earlierText = earlier?.text ?? ''
     const source = [profile, earlierText].filter(Boolean).join('\n') || last
-    const terms = profile ? companySearchPhrases(companies) : wordsOf(source)
+    const terms = profile ? companySearchTerms(companies) : wordsOf(source)
     return { terms, skip: shownNoticeNumbers(messages), source, exact: false }
   }
   if (profile) {
     return {
-      terms: companySearchPhrases(companies),
+      terms: companySearchTerms(companies),
       skip: [] as string[],
       source: `${profile}\n${last}`.slice(0, 4000),
       exact: false,
