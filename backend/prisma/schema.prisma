@@ -46,6 +46,7 @@ model User {
   newsPosts        NewsPost[]
   knowledgeBases   KnowledgeBase[]
   meetings         Meeting[]
+  companyProfiles  CompanyProfile[]
   generationUsage  Json          @default("{}") @map("generation_usage")
 
   @@index([role], map: "users_role_idx")
@@ -400,4 +401,18 @@ model Meeting {
 
   @@index([userId, updatedAt], map: "meetings_user_id_updated_at_idx")
   @@map("meetings")
+}
+
+model CompanyProfile {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String   @db.VarChar(80)
+  prompt    String   @default("")
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "company_profiles_user_id_fkey")
+
+  @@index([userId, createdAt], map: "company_profiles_user_id_created_at_idx")
+  @@map("company_profiles")
 }

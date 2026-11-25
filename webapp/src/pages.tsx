@@ -38,6 +38,7 @@ import { DialogsPage, DialogsRuntimeProvider } from '@/features/dialogs'
 import { NotesPage } from '@/features/notes'
 import { B2bCenterPage } from '@/features/b2b'
 import { TenderProPage } from '@/features/tender-pro'
+import { CompaniesPage } from '@/features/companies'
 import { NoticePage, ProcurementsPage } from '@/features/procurements'
 import { MeetingsPage } from '@/features/meetings'
 import { homePathForRole, postAuthPath } from '@/features/navigation'
@@ -257,6 +258,11 @@ export function UserProfilePage() {
 export function UserSettingsPage() {
   const user = useWorkspaceUser('user')
   return <UserSettings user={user} />
+}
+
+export function UserCompaniesPage() {
+  const user = useWorkspaceUser('user')
+  return <CompaniesPage user={user} />
 }
 
 export function UserReferralsPage() {

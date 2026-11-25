@@ -41,7 +41,7 @@ export async function* streamNoraModel(
   think = false,
   meetingIds: string[] = [],
   bitrix = false,
-  tenders = false,
+  companyIds: readonly string[] = [],
 ): AsyncGenerator<{
   reasoning?: string
   reply?: string
@@ -57,7 +57,8 @@ export async function* streamNoraModel(
       messages,
       search,
       bitrix,
-      tenders,
+      tenders: companyIds.length > 0,
+      ...(companyIds.length > 0 ? { companyIds } : {}),
       stream: true,
       think,
       ...(knowledgeBaseIds.length > 0 ? { knowledgeBaseIds } : {}),

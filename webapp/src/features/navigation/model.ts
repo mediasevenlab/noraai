@@ -9,6 +9,7 @@ export type UserRoutePath =
   | '/app/onboarding'
   | '/app/profile'
   | '/app/settings'
+  | '/app/companies'
   | '/app/referrals'
   | '/app/dialogs'
   | '/app/meetings'
@@ -75,6 +76,7 @@ const navigationByRole = {
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Рефералы', to: '/app/referrals' },
     { label: 'Настройки', to: '/app/settings' },
+    { label: 'Компании', to: '/app/companies' },
     { label: 'Заметки', to: '/app/notes' },
   ],
   admin: [

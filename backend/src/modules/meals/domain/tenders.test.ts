@@ -84,6 +84,25 @@ test('a follow-up keeps the first request and skips notices already named', () =
   expect(block).toContain('/app/procurements/0156100010726000099')
 })
 
+test('selected companies set the search, and a later ask skips cards already shown', () => {
+  const companies = [{ name: 'Промальянс', prompt: 'вывоз медицинских отходов\nобезвреживание' }]
+  const first = tenderTurn([{ role: 'user', text: 'Найди актуальные тендеры' }], companies)
+  expect(first.exact).toBe(false)
+  expect(first.terms).toContain('вывоз медицинских отходов')
+  expect(first.terms).toContain('обезвреживание')
+  expect(first.skip).toEqual([])
+  const next = tenderTurn([
+    { role: 'user', text: 'Найди актуальные тендеры' },
+    { role: 'assistant', text: '№ 32515573734' },
+    { role: 'user', text: 'покажи новые' },
+  ], companies)
+  expect(next.skip).toEqual(['32515573734'])
+  expect(next.terms).toContain('вывоз медицинских отходов')
+  const numbered = tenderTurn([{ role: 'user', text: 'тендер 32515573734' }], companies)
+  expect(numbered.exact).toBe(true)
+  expect(numbered.terms).toEqual(['32515573734'])
+})
+
 test('a notice number starts a new lookup and does not keep the previous topic', () => {
   const turn = tenderTurn([
     { role: 'user', text: 'нужны тендеры по ключ рожковый' },

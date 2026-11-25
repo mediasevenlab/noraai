@@ -698,6 +698,7 @@ export const noraModelChatRequestSchema = z
     search: z.boolean().optional(),
     bitrix: z.boolean().optional(),
     tenders: z.boolean().optional(),
+    companyIds: z.array(z.string().uuid()).max(8).optional(),
     knowledgeBaseIds: z.array(z.string().uuid()).max(8).optional(),
     meetingIds: z.array(z.string().uuid()).max(1).optional(),
     stream: z.boolean().optional(),

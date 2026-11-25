@@ -10,6 +10,7 @@ import type { AppEnv } from './env'
 import { errorResponse, handleError, validationErrorHook } from './http/errors'
 import { createAuthSecurity, createInternalRateLimit } from './http/security'
 import { createAuthModule, type AuthHttpEnv } from './modules/auth'
+import { createCompaniesModule } from './modules/companies'
 import { createKnowledgeModule } from './modules/knowledge'
 import { createMeetingsModule } from './modules/meetings'
 import { createMealsModule } from './modules/meals'
@@ -64,6 +65,10 @@ export function createApp({
     sync: env.EIS_OPEN_SYNC,
     dir: env.PROCUREMENT_DIR,
   })
+  const companies = createCompaniesModule({
+    db: prisma,
+    requireAuth: auth.requireAuth,
+  })
   const meals = createMealsModule({
     backgroundTasks,
     completeTelegramLink: (code, proof, extras) => telegramLinks.complete(code, proof, extras),
@@ -75,6 +80,7 @@ export function createApp({
     loadMeetings: meetings.loadForChat,
     readDocument: (name, bytes) => knowledge.readDocument(name, bytes),
     searchProcurements: (phrases, skip) => procurements.searchForChat(phrases, skip),
+    companyProfiles: (userId, ids) => companies.profilesForChat(userId, ids),
     startPoller: startMealsPoller,
   })
   const speech = createSpeechModule({ requireAuth: auth.requireAuth })
@@ -182,6 +188,7 @@ export function createApp({
 
   app.route('/api/auth', auth.routes)
   app.route('/api/users', users.userRoutes)
+  app.route('/api/users', companies.routes)
   app.route('/api/users', meals.userMealsRoutes)
   app.route('/api/users', knowledge.routes)
   app.route('/api/admin', users.adminRoutes)

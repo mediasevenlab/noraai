@@ -1,5 +1,5 @@
 export const TENDER_RULE =
-  ' Кнопка закупок включена. Блок «Наши закупки» — извещения из скачанного архива. Число в начале блока — сколько карточек нашлось. Если в последней реплике есть номер извещения, это новый запрос: ответь про эту карточку, даже если раньше искали другое. Если просят следующие, ещё или дальше, продолжай прошлый поиск и не повторяй уже названные номера. Новый предмет вместо номера — тоже новый поиск, не продолжение. Сначала напиши, сколько карточек нашлось. Затем выведи не больше 20. Если в блоке уже есть ссылка Markdown, перенеси её в ответ как есть. Не выдумывай извещения вне блока. Если блок говорит, что карточки нет, так и скажи.'
+  ' Кнопка закупок включена. Блок «Наши закупки» — извещения из скачанного архива. Если в блоке указаны компании, подбирай извещения под их описание и ключевые слова, а не под общие слова просьбы. Число в начале блока — сколько карточек нашлось. Если в последней реплике есть номер извещения, это новый запрос: ответь про эту карточку, даже если раньше искали другое. Если просят следующие, ещё, дальше или новые, продолжай прошлый поиск и не повторяй уже названные номера. Новый предмет вместо номера — тоже новый поиск, не продолжение. Сначала напиши, сколько карточек нашлось. Затем выведи не больше 20. Если в блоке уже есть ссылка Markdown, перенеси её в ответ как есть. Не выдумывай извещения вне блока. Если блок говорит, что карточки нет, так и скажи.'
 
 export type ArchiveTenderNotice = {
   number: string
@@ -31,7 +31,26 @@ export function archiveTenderBlock(input: { total: number; notices: readonly Arc
 }
 
 export function asksForMore(text: string) {
-  return /следующ|ещё|еще|другие|дальше/i.test(text)
+  return /следующ|ещё|еще|другие|дальше|новые/i.test(text)
+}
+
+export type CompanySearchProfile = {
+  name: string
+  prompt: string
+}
+
+function profileText(companies: readonly CompanySearchProfile[]) {
+  return companies
+    .map((company) => [company.name.trim(), company.prompt.trim()].filter(Boolean).join('\n'))
+    .filter(Boolean)
+    .join('\n')
+    .slice(0, 4000)
+}
+
+function profileTerms(text: string) {
+  const lines = text.split(/\n+/).map((line) => tenderSearchQuery(line)).filter((line) => line.length >= 2)
+  if (lines.length > 1) return [...new Set(lines)].slice(0, 8)
+  return wordsOf(text)
 }
 
 export function shownNoticeNumbers(messages: readonly { role: string; text: string }[]) {
@@ -51,15 +70,27 @@ export function noticeNumbers(text: string) {
 }
 
 /** A number starts a new lookup. «Следующие» keeps the earlier request and skips cards already shown. */
-export function tenderTurn(messages: readonly { role: string; text: string }[]) {
+export function tenderTurn(
+  messages: readonly { role: string; text: string }[],
+  companies: readonly CompanySearchProfile[] = [],
+) {
   const users = messages.filter((message) => message.role === 'user' && message.text.trim())
   const last = users.at(-1)?.text ?? ''
   const numbers = noticeNumbers(last)
   if (numbers.length > 0) return { terms: numbers, skip: [] as string[], source: last, exact: true }
+  const profile = profileText(companies)
   if (asksForMore(last)) {
     const earlier = [...users].reverse().find((message) => message.text !== last && !asksForMore(message.text))
-    const source = earlier?.text || last
-    return { terms: wordsOf(source), skip: shownNoticeNumbers(messages), source, exact: false }
+    const earlierText = earlier?.text ?? ''
+    const source = [profile, earlierText].filter(Boolean).join('\n') || last
+    const terms = profile
+      ? [...new Set([...profileTerms(profile).slice(0, 6), ...wordsOf(earlierText).slice(0, 2)])].slice(0, 8)
+      : wordsOf(source)
+    return { terms, skip: shownNoticeNumbers(messages), source, exact: false }
+  }
+  if (profile) {
+    const terms = [...new Set([...profileTerms(profile).slice(0, 6), ...wordsOf(last).slice(0, 2)])].slice(0, 8)
+    return { terms, skip: [] as string[], source: `${profile}\n${last}`.slice(0, 4000), exact: false }
   }
   return { terms: wordsOf(last), skip: [] as string[], source: last, exact: false }
 }

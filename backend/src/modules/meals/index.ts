@@ -60,6 +60,7 @@ type CreateMealsModuleOptions = {
   }) => Promise<string>
   readDocument?: (name: string, bytes: Buffer) => Promise<string>
   searchProcurements?: (phrases: readonly string[], skip: readonly string[]) => { total: number; notices: readonly { number: string; law: string; object: string; customer: string; price: string; parsed: boolean; snippet: string }[] }
+  companyProfiles?: (userId: string, ids: readonly string[]) => Promise<readonly { name: string; prompt: string }[]>
   startPoller?: boolean
 }
 
@@ -107,6 +108,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
     chatWithNora: async (userId, input) => {
       if (input.suggestions) return completeFollowUps(options.env, input.messages)
       const prepared = await prepareNoraChat(options, userId, input)
+      const companies = await companiesForChat(options, userId, input)
       return completeNoraChat(
         options.env,
         prepared.messages,
@@ -117,6 +119,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
         input.bitrix,
         input.tenders,
         options.searchProcurements,
+        companies,
       )
     },
     compareDocuments: async (
@@ -156,6 +159,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
     },
     streamChatWithNora: async (userId, input, signal) => {
       const prepared = await prepareNoraChat(options, userId, input)
+      const companies = await companiesForChat(options, userId, input)
       return streamNoraChat(
         options.env,
         prepared.messages,
@@ -166,6 +170,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
         input.bitrix,
         input.tenders,
         options.searchProcurements,
+        companies,
       )
     },
     openBitrixFile: async (id: string) => {
@@ -232,6 +237,15 @@ function modelTurnText(message: ChatTurn) {
   if (!name) return message.text
   if (!text) return `Что в файле «${name}»?`
   return `${text}\n(файл «${name}»)`
+}
+
+async function companiesForChat(
+  options: CreateMealsModuleOptions,
+  userId: string,
+  input: { tenders?: boolean; companyIds?: readonly string[] },
+) {
+  if (input.tenders !== true || !input.companyIds?.length || !options.companyProfiles) return []
+  return options.companyProfiles(userId, input.companyIds)
 }
 
 async function prepareNoraChat(

@@ -6,7 +6,7 @@ import { MealsFailure } from '../domain/errors'
 import { splitChatReasoning } from '../domain/chat-reasoning'
 import { consumeChatDelta, emptyChatStream, type ChatStreamState } from '../domain/chat-stream'
 import { askBitrix, createBitrixDocument, createBitrixMeeting, deleteBitrixMeeting, locateBitrixMeeting, placeBitrixFile, readBitrixClients, readBitrixOutcomes, readBitrixTree, takeBitrixFile } from './bitrix-client'
-import { archiveTenderBlock, fallbackTenderTerms, tenderTurn, type ArchiveTenderNotice } from '../domain/tenders'
+import { archiveTenderBlock, fallbackTenderTerms, tenderTurn, type ArchiveTenderNotice, type CompanySearchProfile } from '../domain/tenders'
 import { searchEisNotices } from './eis-search'
 import {
   bitrixPrefetch,
@@ -105,11 +105,12 @@ export async function completeNoraChat(
   bitrix?: boolean,
   tenders?: boolean,
   searchArchive?: (phrases: readonly string[], skip: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
+  companies?: readonly CompanySearchProfile[],
 ) {
   let reply = ''
   let reasoning = ''
   let model = ''
-  for await (const event of streamNoraChat(env, messages, search, knowledge, signal, think, bitrix, tenders, searchArchive)) {
+  for await (const event of streamNoraChat(env, messages, search, knowledge, signal, think, bitrix, tenders, searchArchive, companies)) {
     if (event.resetReply) reply = ''
     if (event.reasoning) reasoning += event.reasoning
     if (event.reply) reply += event.reply
@@ -174,10 +175,13 @@ export async function* streamNoraChat(
   bitrix?: boolean,
   tenders?: boolean,
   searchArchive?: (phrases: readonly string[], skip: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
+  companies?: readonly CompanySearchProfile[],
 ): AsyncGenerator<NoraChatEvent & { model?: string }> {
+  const briefs = tenders === true ? (companies ?? []).filter((company) => company.name.trim()) : []
+  const tendersOn = briefs.length > 0
   const lastUser = [...messages].reverse().find((message) => message.role === 'user')
   const ready = directKnowledgeReply(knowledge ?? '')
-  if (ready && !lastUser?.images?.length && search !== true && bitrix !== true && tenders !== true) {
+  if (ready && !lastUser?.images?.length && search !== true && bitrix !== true && !tendersOn) {
     yield* pacedReply(withSchemes(ready, knowledge), env.LLM_TEXT_MODEL, signal)
     return
   }
@@ -317,7 +321,7 @@ export async function* streamNoraChat(
     vision: env.LLM_VISION_MODEL,
     search: search === true && Boolean(env.LLM_SEARCH_URL),
     bitrix: bitrixMode,
-    tenders: tenders === true,
+    tenders: tendersOn,
   }
   let turns = await prepareTurns(messages)
   let photoSubject = ''
@@ -376,9 +380,9 @@ export async function* streamNoraChat(
       if (lines.some(portalReached)) yield { portal: true }
     }
   }
-  if (tenders === true) {
+  if (tendersOn) {
     const text = searchArchive
-      ? await archiveSearchText(env, messages, searchArchive, signal)
+      ? await archiveSearchText(env, messages, searchArchive, signal, briefs)
       : await searchEisNotices(lastUser?.text ?? '', signal).catch((error: unknown) => {
         if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
         return 'ЕИС сейчас не отвечает.'
@@ -649,15 +653,18 @@ async function archiveSearchText(
   env: NoraEnv,
   messages: readonly NoraModelChatMessage[],
   searchArchive: (phrases: readonly string[], skip: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
-  signal?: AbortSignal,
+  signal: AbortSignal | undefined,
+  companies: readonly CompanySearchProfile[],
 ) {
   const turns = messages.map((message) => ({ role: message.role, text: message.text }))
-  const turn = tenderTurn(turns)
-  const terms = turn.exact ? turn.terms : await planTenderTerms(env, turn, signal)
+  const turn = tenderTurn(turns, companies)
+  const terms = turn.exact ? turn.terms : await planTenderTerms(env, turn, signal, companies.length > 0)
   const skip = turn.skip
   try {
     const found = await searchArchive(terms, skip)
-    return `Искали по словам: ${terms.join(', ') || '—'}.\n${archiveTenderBlock(found)}`
+    const names = companies.map((company) => company.name.trim()).filter(Boolean).join(', ')
+    const head = names ? `Компании: ${names}.\n` : ''
+    return `${head}Искали по словам: ${terms.join(', ') || '—'}.\n${archiveTenderBlock(found)}`
   } catch (error) {
     if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
     return 'Архив закупок сейчас не отвечает.'
@@ -668,6 +675,7 @@ async function planTenderTerms(
   env: NoraEnv,
   turn: { terms: string[]; source: string },
   signal?: AbortSignal,
+  profile = false,
 ) {
   const fallback = turn.terms.length > 0 ? turn.terms : fallbackTenderTerms([{ role: 'user', text: turn.source }])
   const baseUrl = env.LLM_BASE_URL?.replace(/\/$/, '')
@@ -678,9 +686,11 @@ async function planTenderTerms(
       messages: [
         {
           role: 'system',
-          content: 'По этой просьбе пойми, какие закупки ищут. Верни только JSON {"terms":["слово"]}. От 1 до 8 слов и коротких фраз: ключи из просьбы, другие формы и близкие по смыслу слова. Не подменяй просьбу другой темой. Без пояснений.',
+          content: profile
+            ? 'Это описание компаний и просьба в чате. Подбери закупки, которые подходят этим компаниям. Верни только JSON {"terms":["фраза"]}. От 1 до 8 слов и коротких фраз: ключи из описания, другие формы и близкие по смыслу. Не подменяй деятельность компании другой темой. Без пояснений.'
+            : 'По этой просьбе пойми, какие закупки ищут. Верни только JSON {"terms":["слово"]}. От 1 до 8 слов и коротких фраз: ключи из просьбы, другие формы и близкие по смыслу слова. Не подменяй просьбу другой темой. Без пояснений.',
         },
-        { role: 'user', content: turn.source.slice(0, 1000) },
+        { role: 'user', content: turn.source.slice(0, profile ? 2000 : 1000) },
       ],
       stream: true,
       think: false,

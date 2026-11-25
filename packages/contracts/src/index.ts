@@ -1,4 +1,5 @@
 export * from './auth'
+export * from './companies'
 export * from './knowledge'
 export * from './meetings'
 export * from './errors'

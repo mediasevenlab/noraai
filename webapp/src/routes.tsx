@@ -174,6 +174,12 @@ const userSettingsRoute = createRoute({
   component: lazyRouteComponent(() => import('./pages'), 'UserSettingsPage'),
 })
 
+const userCompaniesRoute = createRoute({
+  getParentRoute: () => userWorkspaceRoute,
+  path: '/app/companies',
+  component: lazyRouteComponent(() => import('./pages'), 'UserCompaniesPage'),
+})
+
 const userReferralsRoute = createRoute({
   getParentRoute: () => userWorkspaceRoute,
   path: '/app/referrals',
@@ -437,6 +443,7 @@ const routeTree = rootRoute.addChildren([
     userOnboardingRoute,
     userProfileRoute,
     userSettingsRoute,
+    userCompaniesRoute,
     userReferralsRoute,
     userPaymentsRoute,
     userDialogsRoute,

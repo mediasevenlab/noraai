@@ -14,7 +14,7 @@ import { activeMeetingTranscripts } from '@/features/meetings'
 
 import { streamNoraModel } from './api'
 import { bitrixEnabled } from './bitrix-open'
-import { tendersEnabled } from './tenders-open'
+import { selectedCompanyIds } from '@/features/companies'
 import { internetEnabled } from './internet-open'
 import { reasoningExpanded } from './reasoning-open'
 import { ApiRequestError } from '@/platform/api'
@@ -139,7 +139,7 @@ function useNoraChatModel(): ChatModelAdapter {
             thinkOn,
             activeMeetingTranscripts(),
             bitrixEnabled(),
-            tendersEnabled(),
+            selectedCompanyIds(),
           )) {
             if (event.resetReply) reply = ''
             if (event.searched) searched = true
