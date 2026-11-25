@@ -74,6 +74,7 @@ export function CompaniesPage({ user }: { user: UserDto }) {
       <SettingsEntry
         description="Включённая компания появляется в кнопке закупок. Нажмите карточку, чтобы переименовать её и записать описание."
         hideTitleOnMobile={false}
+        controlsClassName="px-4 py-4"
         title="Карточки"
       >
         {error ? <p className="mb-3 text-[13px] text-[var(--nora-error)]">{error}</p> : null}
@@ -84,18 +85,19 @@ export function CompaniesPage({ user }: { user: UserDto }) {
         ) : (
           <ul className="flex flex-col">
             {companies.map((company) => (
-              <li key={company.id} className="flex items-start gap-3 border-t border-[var(--nora-divider)] py-3 first:border-t-0 first:pt-0 last:pb-0">
+              <li key={company.id} className="flex items-center gap-4 border-t border-[var(--nora-divider)] py-3 first:border-t-0 first:pt-1 last:pb-1">
                 <button
-                  className="min-w-0 flex-1 text-left"
+                  className="min-w-0 flex-1 py-1.5 text-left"
+                  data-text-button=""
                   type="button"
                   onClick={() => setOpenId(company.id)}
                 >
-                  <span className="block truncate font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
+                  <div className="truncate font-[family-name:var(--nora-font)] text-[13px] font-medium leading-5 text-[var(--nora-text)]">
                     {company.name}
-                  </span>
-                  <span className="mt-0.5 block truncate font-[family-name:var(--nora-font)] text-[12px] leading-5 text-[var(--nora-text-tertiary)]">
+                  </div>
+                  <div className="mt-1 truncate font-[family-name:var(--nora-font)] text-[12px] leading-5 text-[var(--nora-text-tertiary)]">
                     {company.prompt.trim() || 'Описание не заполнено'}
-                  </span>
+                  </div>
                 </button>
                 <Switch
                   aria-label={company.enabled ? `Выключить ${company.name}` : `Включить ${company.name}`}

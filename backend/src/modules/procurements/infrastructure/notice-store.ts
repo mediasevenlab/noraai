@@ -202,7 +202,7 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
       const rows = db.query(`SELECT rowid AS id, number, law, status, object, customer, price, published, updated, deadline, url, indexed, (${filter.hits}) AS matches
         FROM notices WHERE ${where}
         ORDER BY matches DESC, published DESC, number DESC
-        LIMIT 40`).all(params) as Array<SavedRow & { id: number }>
+        LIMIT 12`).all(params) as Array<SavedRow & { id: number }>
       return {
         total: totalRow.count,
         notices: rows.map((row) => {

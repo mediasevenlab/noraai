@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 
 import { buildNoraChatRequest } from './nora-chat'
-import { archiveTenderBlock, asksForMore, fallbackTenderTerms, formatTenderNotices, parseTenderSearch, shownNoticeNumbers, tenderSearchQuery, tenderTurn } from './tenders'
+import { archiveTenderBlock, asksForMore, companySearchPhrases, fallbackTenderTerms, formatTenderNotices, parseTenderSearch, shownNoticeNumbers, tenderSearchQuery, tenderTurn } from './tenders'
 
 const CARD = `
 <div class="search-registry-entry-block box-shadow-search-input">
@@ -101,6 +101,42 @@ test('selected companies set the search, and a later ask skips cards already sho
   const numbered = tenderTurn([{ role: 'user', text: 'тендер 32515573734' }], companies)
   expect(numbered.exact).toBe(true)
   expect(numbered.terms).toEqual(['32515573734'])
+})
+
+test('a company prompt is searched by its phrases, and each card says what matched', () => {
+  const companies = [{ name: 'СПЕЦГАЗ', prompt: 'Клещи взрывобезопасные, Плоскогубцы комбинированные' }]
+  const turn = tenderTurn([{ role: 'user', text: 'Дай подходящие тендеры' }], companies)
+  expect(companySearchPhrases(companies)).toEqual(['Клещи взрывобезопасные', 'Плоскогубцы комбинированные'])
+  expect(turn.terms).toEqual(['Клещи взрывобезопасные', 'Плоскогубцы комбинированные'])
+  expect(turn.terms.join(' ')).not.toContain('подходящ')
+  const block = archiveTenderBlock({
+    total: 2,
+    phrases: turn.terms,
+    notices: [
+      {
+        number: '32515573734',
+        law: '223-ФЗ',
+        object: 'Поставка клещей взрывобезопасных',
+        customer: 'Завод',
+        price: '10 ₽',
+        parsed: true,
+        snippet: '',
+      },
+      {
+        number: '32515573735',
+        law: '44-ФЗ',
+        object: 'Проведение соревнований по плаванию',
+        customer: 'Центр',
+        price: '20 ₽',
+        parsed: false,
+        snippet: 'купание',
+      },
+    ],
+  })
+  expect(block).toContain('Почему подходит: в названии или фрагменте есть «Клещи взрывобезопасные»')
+  expect(block).toContain('в коротком названии его не видно')
+  expect(block).toContain('\n\n---\n\n')
+  expect(block).toContain('[Открыть карточку](/app/procurements/32515573734)')
 })
 
 test('a notice number starts a new lookup and does not keep the previous topic', () => {

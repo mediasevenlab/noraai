@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Link } from '@tanstack/react-router'
 
-import { composerPickerMenuClass, dialogComposerToolClass } from '@/components/dialog-composer-tool'
+import { dialogComposerToolClass } from '@/components/dialog-composer-tool'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -96,7 +96,12 @@ export function CompanyTenderMenu() {
           Компании для закупок
         </TooltipContent>
       </Tooltip>
-      <DropdownMenuContent align="start" className={cn(composerPickerMenuClass, 'w-72 max-w-72')} side="top" sideOffset={8}>
+      <DropdownMenuContent
+        align="start"
+        className={available.length === 0 ? 'w-56 max-w-56' : 'w-max min-w-0 max-w-[min(22rem,calc(100vw-2rem))]'}
+        side="top"
+        sideOffset={8}
+      >
         {available.length === 0 ? (
           <p className="px-2 py-1.5 text-[12px] leading-5 whitespace-normal text-[var(--nora-text-secondary)]">
             {companies.length === 0
@@ -109,11 +114,11 @@ export function CompanyTenderMenu() {
             <DropdownMenuCheckboxItem
               key={company.id}
               checked={selected.includes(company.id)}
-              className="overflow-hidden"
+              className="w-auto"
               closeOnClick={false}
               onCheckedChange={() => toggleSelectedCompany(company.id)}
             >
-              <span className="block min-w-0 flex-1 truncate">{company.name}</span>
+              <span className="whitespace-nowrap">{company.name}</span>
             </DropdownMenuCheckboxItem>
           ))
         )}

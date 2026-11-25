@@ -380,17 +380,19 @@ export async function* streamNoraChat(
       if (lines.some(portalReached)) yield { portal: true }
     }
   }
+  if (tendersOn && searchArchive) {
+    const text = await archiveSearchText(env, messages, searchArchive, signal, briefs)
+    yield { tenders: true }
+    yield { reply: text, model: env.LLM_TEXT_MODEL }
+    return
+  }
   if (tendersOn) {
-    const text = searchArchive
-      ? await archiveSearchText(env, messages, searchArchive, signal, briefs)
-      : await searchEisNotices(lastUser?.text ?? '', signal).catch((error: unknown) => {
-        if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
-        return 'ЕИС сейчас не отвечает.'
-      })
+    const text = await searchEisNotices(lastUser?.text ?? '', signal).catch((error: unknown) => {
+      if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
+      return 'ЕИС сейчас не отвечает.'
+    })
     const system = thread.find((message) => message.role === 'system')
-    if (system && typeof system.content === 'string') {
-      system.content += searchArchive ? `\n\nНаши закупки:\n${text}` : `\n\nЗакупки ЕИС:\n${text}`
-    }
+    if (system && typeof system.content === 'string') system.content += `\n\nЗакупки ЕИС:\n${text}`
     yield { tenders: true }
   }
   const chatTools = [
@@ -658,13 +660,15 @@ async function archiveSearchText(
 ) {
   const turns = messages.map((message) => ({ role: message.role, text: message.text }))
   const turn = tenderTurn(turns, companies)
-  const terms = turn.exact ? turn.terms : await planTenderTerms(env, turn, signal, companies.length > 0)
+  const terms = turn.exact || (companies.length > 0 && turn.terms.length > 0)
+    ? turn.terms
+    : await planTenderTerms(env, turn, signal, companies.length > 0)
   const skip = turn.skip
   try {
     const found = await searchArchive(terms, skip)
     const names = companies.map((company) => company.name.trim()).filter(Boolean).join(', ')
     const head = names ? `Компании: ${names}.\n` : ''
-    return `${head}Искали по словам: ${terms.join(', ') || '—'}.\n${archiveTenderBlock(found)}`
+    return `${head}${archiveTenderBlock({ ...found, phrases: terms })}`
   } catch (error) {
     if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
     return 'Архив закупок сейчас не отвечает.'

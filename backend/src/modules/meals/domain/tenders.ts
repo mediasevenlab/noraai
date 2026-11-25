@@ -11,23 +11,61 @@ export type ArchiveTenderNotice = {
   snippet: string
 }
 
-export function archiveTenderBlock(input: { total: number; notices: readonly ArchiveTenderNotice[] }) {
-  if (input.notices.length === 0) {
+const CHAT_CARDS = 12
+
+function folded(text: string) {
+  return text.toLocaleLowerCase('ru-RU').replace(/ё/g, 'е')
+}
+
+function wordStem(word: string) {
+  if (word.length <= 4) return word
+  return word.slice(0, Math.max(4, word.length - 2))
+}
+
+/** Which company phrases are visible in the title, customer, or snippet. */
+export function tenderMatchReason(notice: ArchiveTenderNotice, phrases: readonly string[]) {
+  const hay = folded(`${notice.object}\n${notice.customer}\n${notice.snippet}`)
+  const hits = phrases.filter((phrase) => {
+    const foldedPhrase = folded(phrase)
+    if (foldedPhrase.length >= 3 && hay.includes(foldedPhrase)) return true
+    const words = foldedPhrase.split(/\s+/).filter((word) => word.length >= 4)
+    return words.length > 0 && words.every((word) => hay.includes(wordStem(word)))
+  })
+  if (hits.length > 0) {
+    return `Почему подходит: в названии или фрагменте есть «${hits.slice(0, 2).join('», «')}».`
+  }
+  if (phrases.length > 0) {
+    return 'Почему подходит: совпадение есть в полном тексте извещения, в коротком названии его не видно.'
+  }
+  return ''
+}
+
+export function archiveTenderBlock(input: {
+  total: number
+  notices: readonly ArchiveTenderNotice[]
+  phrases?: readonly string[]
+}) {
+  const notices = input.notices.slice(0, CHAT_CARDS)
+  if (notices.length === 0) {
     return input.total === 0
       ? 'По словам из запроса в скачанном архиве карточек нет.'
       : `По словам нашлось ${input.total}, но эта порция уже показана. Следующих в этой выборке нет.`
   }
-  const lines = input.notices.map((notice, index) => [
-    `${index + 1}. ${notice.object}`,
-    `${notice.law} № ${notice.number}`,
-    notice.customer ? `Заказчик: ${notice.customer}` : '',
-    notice.price ? `Цена: ${notice.price}` : '',
-    notice.parsed
-      ? `[${notice.object}](/app/procurements/${notice.number})`
-      : 'Текст ещё разбирается, полная карточка недоступна.',
-    notice.snippet ? `Фрагмент: ${notice.snippet}` : '',
-  ].filter(Boolean).join('\n'))
-  return `По словам нашлось ${input.total}. Ниже ${input.notices.length} ближайших.\n\n${lines.join('\n\n')}`
+  const phrases = input.phrases ?? []
+  const cards = notices.map((notice, index) => {
+    const reason = tenderMatchReason(notice, phrases)
+    return [
+      `**${index + 1}. ${notice.object}**`,
+      `${notice.law} № ${notice.number}`,
+      notice.customer ? `Заказчик: ${notice.customer}` : '',
+      notice.price ? `Цена: ${notice.price}` : '',
+      reason,
+      notice.parsed
+        ? `[Открыть карточку](/app/procurements/${notice.number})`
+        : 'Текст ещё разбирается, полная карточка недоступна.',
+    ].filter(Boolean).join('\n\n')
+  })
+  return `По словам нашлось ${input.total}. Ниже ${notices.length} ближайших.\n\n${cards.join('\n\n---\n\n')}`
 }
 
 export function asksForMore(text: string) {
@@ -47,10 +85,22 @@ function profileText(companies: readonly CompanySearchProfile[]) {
     .slice(0, 4000)
 }
 
-function profileTerms(text: string) {
-  const lines = text.split(/\n+/).map((line) => tenderSearchQuery(line)).filter((line) => line.length >= 2)
-  if (lines.length > 1) return [...new Set(lines)].slice(0, 8)
-  return wordsOf(text)
+/** Comma and line breaks in a company description are separate search phrases, not one bag of words. */
+export function companySearchPhrases(companies: readonly CompanySearchProfile[]) {
+  const phrases: string[] = []
+  for (const company of companies) {
+    const own: string[] = []
+    for (const part of company.prompt.split(/[\n,;]+/)) {
+      const phrase = tenderSearchQuery(part)
+      if (phrase.length >= 3) own.push(phrase)
+    }
+    if (own.length === 0) {
+      const name = tenderSearchQuery(company.name)
+      if (name.length >= 3) own.push(name)
+    }
+    phrases.push(...own)
+  }
+  return [...new Set(phrases)].slice(0, 8)
 }
 
 export function shownNoticeNumbers(messages: readonly { role: string; text: string }[]) {
@@ -83,14 +133,16 @@ export function tenderTurn(
     const earlier = [...users].reverse().find((message) => message.text !== last && !asksForMore(message.text))
     const earlierText = earlier?.text ?? ''
     const source = [profile, earlierText].filter(Boolean).join('\n') || last
-    const terms = profile
-      ? [...new Set([...profileTerms(profile).slice(0, 6), ...wordsOf(earlierText).slice(0, 2)])].slice(0, 8)
-      : wordsOf(source)
+    const terms = profile ? companySearchPhrases(companies) : wordsOf(source)
     return { terms, skip: shownNoticeNumbers(messages), source, exact: false }
   }
   if (profile) {
-    const terms = [...new Set([...profileTerms(profile).slice(0, 6), ...wordsOf(last).slice(0, 2)])].slice(0, 8)
-    return { terms, skip: [] as string[], source: `${profile}\n${last}`.slice(0, 4000), exact: false }
+    return {
+      terms: companySearchPhrases(companies),
+      skip: [] as string[],
+      source: `${profile}\n${last}`.slice(0, 4000),
+      exact: false,
+    }
   }
   return { terms: wordsOf(last), skip: [] as string[], source: last, exact: false }
 }
@@ -124,6 +176,7 @@ const STOP_STEMS = [
   'откро',
   'подбер',
   'отбер',
+  'подходящ',
   'список',
   'как',
   'есть',
@@ -167,6 +220,7 @@ const STOP_WORDS = new Set([
   'не',
   'ни',
   'да',
+  'дай',
   'нет',
   'сайт',
   'сайта',
@@ -191,6 +245,7 @@ export function tenderSearchQuery(text: string) {
     .split(/[^\p{L}\p{N}-]+/u)
     .map((word) => word.trim())
     .filter((word) => {
+      if (!word) return false
       const lower = word.toLocaleLowerCase('ru')
       if (STOP_WORDS.has(lower)) return false
       return !STOP_STEMS.some((stem) => lower.startsWith(stem) && lower.length <= stem.length + 6)
