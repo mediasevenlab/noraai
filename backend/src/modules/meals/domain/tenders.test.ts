@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 
 import { buildNoraChatRequest } from './nora-chat'
-import { archiveTenderBlock, asksForMore, companySearchTerms, fallbackTenderTerms, formatTenderNotices, parseTenderSearch, shownNoticeNumbers, tenderSearchQuery, tenderTurn } from './tenders'
+import { archiveTenderBlock, asksForMore, companyRecallTerms, companyTenderReply, fallbackTenderTerms, formatTenderNotices, parseTenderPicks, parseTenderSearch, shownNoticeNumbers, tenderSearchQuery, tenderTurn } from './tenders'
 
 const CARD = `
 <div class="search-registry-entry-block box-shadow-search-input">
@@ -88,8 +88,9 @@ test('selected companies set the search, and a later ask skips cards already sho
   const companies = [{ name: 'Промальянс', prompt: 'вывоз медицинских отходов\nобезвреживание' }]
   const first = tenderTurn([{ role: 'user', text: 'Найди актуальные тендеры' }], companies)
   expect(first.exact).toBe(false)
-  expect(first.terms).toContain('вывоз медицинских отходов')
-  expect(first.terms).toContain('обезвреживание')
+  expect(first.terms).toContain('выво')
+  expect(first.terms).toContain('обезвреживан')
+  expect(first.terms.every((term) => !term.includes(' '))).toBe(true)
   expect(first.skip).toEqual([])
   const next = tenderTurn([
     { role: 'user', text: 'Найди актуальные тендеры' },
@@ -97,53 +98,60 @@ test('selected companies set the search, and a later ask skips cards already sho
     { role: 'user', text: 'покажи новые' },
   ], companies)
   expect(next.skip).toEqual(['32515573734'])
-  expect(next.terms).toContain('вывоз медицинских отходов')
+  expect(next.terms).toContain('выво')
   const numbered = tenderTurn([{ role: 'user', text: 'тендер 32515573734' }], companies)
   expect(numbered.exact).toBe(true)
   expect(numbered.terms).toEqual(['32515573734'])
 })
 
-test('a company prompt is searched by its phrases, and each card says what matched', () => {
-  const companies = [{ name: 'СПЕЦГАЗ', prompt: 'Клещи взрывобезопасные, Плоскогубцы комбинированные' }]
+test('a company card is recalled by stems, and the model keeps only the notices it accepts', () => {
+  const prompt = [
+    'Компания СПЕЦГАЗ. Искробезопасный и неискрящий инструмент, ключи и клещи.',
+    'Отдельно: разгонщики фланцев механические.',
+    'Не подходит поставка газов и обычный абразивный инструмент.',
+  ].join('\n')
+  const companies = [{ name: 'СПЕЦГАЗ', prompt }]
   const turn = tenderTurn([{ role: 'user', text: 'Дай подходящие тендеры' }], companies)
-  expect(companySearchTerms(companies)).toEqual([
-    'Клещи взрывобезопасные',
-    'Плоскогубцы комбинированные',
-    'Клещи',
-    'взрывобезопасные',
-    'Плоскогубцы',
-    'комбинированные',
-  ])
-  expect(turn.terms).toEqual(companySearchTerms(companies))
+  expect(companyRecallTerms(companies)).toEqual(turn.terms)
+  expect(turn.terms.some((term) => term.startsWith('искробезопас'))).toBe(true)
+  expect(turn.terms).toContain('разгон')
+  expect(turn.terms).toContain('фланц')
+  expect(turn.terms.join(' ')).not.toContain('абразив')
+  expect(turn.terms.every((term) => !term.includes(' '))).toBe(true)
   expect(turn.terms.join(' ')).not.toContain('подходящ')
-  const block = archiveTenderBlock({
-    total: 2,
-    phrases: turn.terms,
-    notices: [
-      {
-        number: '32515573734',
-        law: '223-ФЗ',
-        object: 'Поставка клещей взрывобезопасных',
-        customer: 'Завод',
-        price: '10 ₽',
-        parsed: true,
-        snippet: '',
-      },
-      {
-        number: '32515573735',
-        law: '44-ФЗ',
-        object: 'Проведение соревнований по плаванию',
-        customer: 'Центр',
-        price: '20 ₽',
-        parsed: false,
-        snippet: 'купание',
-      },
-    ],
-  })
-  expect(block).toContain('Почему подходит: в названии или фрагменте есть «Клещи взрывобезопасные»')
-  expect(block).toContain('в коротком названии его не видно')
-  expect(block).toContain('\n\n---\n\n')
+  const notices = [
+    {
+      number: '32515573734',
+      law: '223-ФЗ',
+      object: 'Поставка клещей взрывобезопасных',
+      customer: 'Завод',
+      price: '10 ₽',
+      parsed: true,
+      snippet: '',
+    },
+    {
+      number: '32515573735',
+      law: '44-ФЗ',
+      object: 'Поставка технического газа',
+      customer: 'Центр',
+      price: '20 ₽',
+      parsed: true,
+      snippet: 'пропан',
+    },
+  ]
+  const parsed = parseTenderPicks(
+    '{"picks":[{"number":"32515573734","reason":"клещи для взрывоопасной зоны"},{"number":"999","reason":"чужой"}]}',
+    new Set(notices.map((notice) => notice.number)),
+  )
+  expect(parsed.ok).toBe(true)
+  expect(parsed.picks).toEqual([{ number: '32515573734', reason: 'клещи для взрывоопасной зоны' }])
+  const block = companyTenderReply({ names: 'СПЕЦГАЗ', reviewed: notices, picks: parsed.picks })
+  expect(block).toContain('Почему подходит: клещи для взрывоопасной зоны')
+  expect(block).not.toContain('Поставка технического газа')
+  expect(block).toContain('<!-- seen:32515573734,32515573735 -->')
   expect(block).toContain('[Открыть карточку](/app/procurements/32515573734)')
+  const followed = shownNoticeNumbers([{ role: 'assistant', text: block }])
+  expect(followed).toEqual(['32515573734', '32515573735'])
 })
 
 test('a notice number starts a new lookup and does not keep the previous topic', () => {

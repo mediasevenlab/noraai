@@ -87,7 +87,7 @@ export function createProcurementsModule(options: {
   })
   return {
     ...routes,
-    searchForChat: (phrases: readonly string[], skip: readonly string[]) => store?.chatMatches(phrases, skip) ?? { total: 0, notices: [] },
+    searchForChat: (phrases: readonly string[], skip: readonly string[], take?: number) => store?.chatMatches(phrases, skip, take) ?? { total: 0, notices: [] },
     dispose: async () => {
       await running?.stop()
       await indexing?.stop()

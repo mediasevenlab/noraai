@@ -18,6 +18,12 @@ test('keeps scheme drawings under the answer and on one line', () => {
   expect(prepared.indexOf('Размеры выемок')).toBeLessThan(prepared.indexOf(row))
 })
 
+test('hides the procurement skip marker', () => {
+  const prepared = prepareDialogMarkdown('Подходят 1 из 2.\n\n<!-- seen:32515573734,32515573735 -->')
+  expect(prepared).toContain('Подходят 1 из 2.')
+  expect(prepared).not.toContain('seen:')
+})
+
 test('keeps a plain line break and leaves a markdown list alone', () => {
   const prepared = prepareDialogMarkdown('Раздел 1. О проекте\nРаздел 2. Руководитель\n\n- аудио\n- видео')
   expect(prepared).toContain('Раздел 1. О проекте  \nРаздел 2. Руководитель')

@@ -20,6 +20,7 @@ model User {
   role         UserRole      @default(user)
   mealEngine      String        @default("gemini") @map("meal_engine")
   geminiThinking  Boolean       @default(true) @map("gemini_thinking")
+  chatAgent       String        @default("nora") @map("chat_agent") @db.VarChar(16)
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   referredByUserId    String?            @map("referred_by_user_id") @db.Uuid

@@ -6,7 +6,19 @@ import { MealsFailure } from '../domain/errors'
 import { splitChatReasoning } from '../domain/chat-reasoning'
 import { consumeChatDelta, emptyChatStream, type ChatStreamState } from '../domain/chat-stream'
 import { askBitrix, createBitrixDocument, createBitrixMeeting, deleteBitrixMeeting, locateBitrixMeeting, placeBitrixFile, readBitrixClients, readBitrixOutcomes, readBitrixTree, takeBitrixFile } from './bitrix-client'
-import { archiveTenderBlock, fallbackTenderTerms, tenderTurn, type ArchiveTenderNotice, type CompanySearchProfile } from '../domain/tenders'
+import {
+  archiveTenderBlock,
+  COMPANY_JUDGE_SYSTEM,
+  companyJudgeUser,
+  companyTenderReply,
+  fallbackTenderTerms,
+  missingAgentReply,
+  parseTenderPicks,
+  tenderTurn,
+  type ArchiveTenderNotice,
+  type CompanySearchProfile,
+  type TenderJudge,
+} from '../domain/tenders'
 import { searchEisNotices } from './eis-search'
 import {
   bitrixPrefetch,
@@ -104,13 +116,14 @@ export async function completeNoraChat(
   think?: boolean,
   bitrix?: boolean,
   tenders?: boolean,
-  searchArchive?: (phrases: readonly string[], skip: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
+  searchArchive?: (phrases: readonly string[], skip: readonly string[], take?: number) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
   companies?: readonly CompanySearchProfile[],
+  judge?: TenderJudge,
 ) {
   let reply = ''
   let reasoning = ''
   let model = ''
-  for await (const event of streamNoraChat(env, messages, search, knowledge, signal, think, bitrix, tenders, searchArchive, companies)) {
+  for await (const event of streamNoraChat(env, messages, search, knowledge, signal, think, bitrix, tenders, searchArchive, companies, judge)) {
     if (event.resetReply) reply = ''
     if (event.reasoning) reasoning += event.reasoning
     if (event.reply) reply += event.reply
@@ -174,8 +187,9 @@ export async function* streamNoraChat(
   think?: boolean,
   bitrix?: boolean,
   tenders?: boolean,
-  searchArchive?: (phrases: readonly string[], skip: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
+  searchArchive?: (phrases: readonly string[], skip: readonly string[], take?: number) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
   companies?: readonly CompanySearchProfile[],
+  judge?: TenderJudge,
 ): AsyncGenerator<NoraChatEvent & { model?: string }> {
   const briefs = tenders === true ? (companies ?? []).filter((company) => company.name.trim()) : []
   const tendersOn = briefs.length > 0
@@ -381,9 +395,9 @@ export async function* streamNoraChat(
     }
   }
   if (tendersOn && searchArchive) {
-    const text = await archiveSearchText(env, messages, searchArchive, signal, briefs)
+    const text = await archiveSearchText(env, messages, searchArchive, signal, briefs, judge)
     yield { tenders: true }
-    yield { reply: text, model: env.LLM_TEXT_MODEL }
+    yield { reply: text, model: judge?.id === 'nora' || !judge ? env.LLM_TEXT_MODEL : judge.name }
     return
   }
   if (tendersOn) {
@@ -654,24 +668,58 @@ export async function completeDocumentCompare(
 async function archiveSearchText(
   env: NoraEnv,
   messages: readonly NoraModelChatMessage[],
-  searchArchive: (phrases: readonly string[], skip: readonly string[]) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
+  searchArchive: (phrases: readonly string[], skip: readonly string[], take?: number) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
   signal: AbortSignal | undefined,
   companies: readonly CompanySearchProfile[],
+  judge?: TenderJudge,
 ) {
   const turns = messages.map((message) => ({ role: message.role, text: message.text }))
   const turn = tenderTurn(turns, companies)
-  const terms = turn.exact || (companies.length > 0 && turn.terms.length > 0)
+  if (!turn.exact && companies.length > 0) return judgeCompanyArchive(turn, companies, searchArchive, signal, judge)
+  const terms = turn.exact || turn.terms.length > 0
     ? turn.terms
-    : await planTenderTerms(env, turn, signal, companies.length > 0)
-  const skip = turn.skip
+    : await planTenderTerms(env, turn, signal, false)
   try {
-    const found = await searchArchive(terms, skip)
+    const found = await searchArchive(terms, turn.skip)
     const names = companies.map((company) => company.name.trim()).filter(Boolean).join(', ')
     const head = names ? `Компании: ${names}.\n` : ''
     return `${head}${archiveTenderBlock({ ...found, phrases: terms })}`
   } catch (error) {
     if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
     return 'Архив закупок сейчас не отвечает.'
+  }
+}
+
+async function judgeCompanyArchive(
+  turn: { terms: string[]; skip: string[] },
+  companies: readonly CompanySearchProfile[],
+  searchArchive: (phrases: readonly string[], skip: readonly string[], take?: number) => { total: number; notices: readonly ArchiveTenderNotice[] } | Promise<{ total: number; notices: readonly ArchiveTenderNotice[] }>,
+  signal: AbortSignal | undefined,
+  judge?: TenderJudge,
+) {
+  const names = companies.map((company) => company.name.trim()).filter(Boolean).join(', ')
+  const speaker = judge ?? { id: 'nora' as const, name: 'Нора', ready: false, ask: async () => '' }
+  if (!speaker.ready) return missingAgentReply(speaker)
+  let found: { notices: readonly ArchiveTenderNotice[] }
+  try {
+    found = await searchArchive(turn.terms, turn.skip, 16)
+  } catch (error) {
+    if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
+    return 'Архив закупок сейчас не отвечает.'
+  }
+  if (found.notices.length === 0) return companyTenderReply({ names, reviewed: [], picks: [] })
+  try {
+    const reply = await speaker.ask(COMPANY_JUDGE_SYSTEM, companyJudgeUser(companies, found.notices), signal)
+    const parsed = parseTenderPicks(reply, new Set(found.notices.map((notice) => notice.number)))
+    return companyTenderReply({
+      names,
+      reviewed: found.notices,
+      picks: parsed.picks,
+      unreadable: !parsed.ok,
+    })
+  } catch (error) {
+    if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
+    return `${names ? `Компании: ${names}.\n` : ''}${speaker.name} сейчас не отвечает. Попробуйте ещё раз.`
   }
 }
 

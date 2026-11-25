@@ -1135,7 +1135,7 @@ describe('Nora settings chat request', () => {
       const url = String(input)
       calls.push(url)
       if (url.endsWith('/calendar.event.get.json')) {
-        return new Response(JSON.stringify({ result: [{ ID: '3746', NAME: 'Встреча: Дмитрий Резанов', DATE_FROM: '04.11.2026 12:00:00' }] }), { status: 200 })
+        return new Response(JSON.stringify({ result: [{ ID: '3746', NAME: 'Встреча: Дмитрий Резанов', DATE_FROM: '04.12.2026 12:00:00' }] }), { status: 200 })
       }
       return new Response('model should not be called', { status: 500 })
     }) as typeof fetch
@@ -1154,7 +1154,7 @@ describe('Nora settings chat request', () => {
       globalThis.fetch = original
     }
     const reply = events.map((event) => event.reply ?? '').join('')
-    expect(reply).toContain('04.11.2026 12:00')
+    expect(reply).toContain('04.12.2026 12:00')
     expect(reply).toContain('Дмитрий Резанов')
     expect(reply).not.toContain('создана')
     expect(reply).not.toContain('Откройте Битрикс24')
@@ -1203,7 +1203,7 @@ describe('Nora settings chat request', () => {
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       const url = String(input)
       if (url.endsWith('/calendar.event.get.json')) {
-        return new Response(JSON.stringify({ result: [{ ID: '3746', NAME: 'Встреча: Дмитрий Резанов', DATE_FROM: '04.11.2026 12:00:00' }] }), { status: 200 })
+        return new Response(JSON.stringify({ result: [{ ID: '3746', NAME: 'Встреча: Дмитрий Резанов', DATE_FROM: '04.12.2026 12:00:00' }] }), { status: 200 })
       }
       return new Response('model should not be called', { status: 500 })
     }) as typeof fetch
@@ -1230,5 +1230,84 @@ describe('Nora settings chat request', () => {
     expect(reply).toContain('Дмитрий Резанов')
     expect(reply).not.toContain('xlsx')
     expect(reply).not.toContain('Юлия')
+  })
+})
+
+describe('company procurement agent', () => {
+  test('the selected agent reads the company card and drops notices it does not accept', async () => {
+    const original = globalThis.fetch
+    globalThis.fetch = (async () => {
+      throw new Error('the model endpoint should not be called directly')
+    }) as unknown as typeof fetch
+    const events: Array<{ reply?: string; tenders?: boolean }> = []
+    try {
+      for await (const event of streamNoraChat(
+        env,
+        [{ role: 'user', text: 'Дай подходящие тендеры' }],
+        false,
+        undefined,
+        undefined,
+        false,
+        true,
+        true,
+        async () => ({
+          total: 2,
+          notices: [
+            {
+              number: '32515573734',
+              law: '223-ФЗ',
+              object: 'Поставка клещей взрывобезопасных',
+              customer: 'Завод',
+              price: '10 ₽',
+              parsed: true,
+              snippet: 'искробезопасный инструмент',
+            },
+            {
+              number: '32515573735',
+              law: '44-ФЗ',
+              object: 'Поставка технического газа',
+              customer: 'Газ',
+              price: '20 ₽',
+              parsed: true,
+              snippet: 'пропан',
+            },
+          ],
+        }),
+        [{ name: 'СПЕЦГАЗ', prompt: 'Искробезопасный инструмент и разгонщики фланцев. Не подходит поставка газов.' }],
+        {
+          id: 'chatgpt',
+          name: 'ChatGPT',
+          ready: true,
+          ask: async () => '{"picks":[{"number":"32515573734","reason":"клещи для взрывоопасной зоны"}]}',
+        },
+      )) events.push(event)
+    } finally {
+      globalThis.fetch = original
+    }
+    const reply = events.map((event) => event.reply ?? '').join('')
+    expect(events.some((event) => event.tenders)).toBe(true)
+    expect(reply).toContain('клещи для взрывоопасной зоны')
+    expect(reply).not.toContain('Поставка технического газа')
+    expect(reply).toContain('seen:32515573734,32515573735')
+  })
+
+  test('an agent without a key explains that it is not connected', async () => {
+    const events: Array<{ reply?: string }> = []
+    for await (const event of streamNoraChat(
+      env,
+      [{ role: 'user', text: 'Дай подходящие тендеры' }],
+      false,
+      undefined,
+      undefined,
+        false,
+        true,
+        true,
+        async () => {
+          throw new Error('archive should not be searched')
+        },
+      [{ name: 'СПЕЦГАЗ', prompt: 'Искробезопасный инструмент' }],
+      { id: 'gemini', name: 'Gemini', ready: false, ask: async () => '' },
+    )) events.push(event)
+    expect(events.map((event) => event.reply ?? '').join('')).toContain('нет ключа API')
   })
 })

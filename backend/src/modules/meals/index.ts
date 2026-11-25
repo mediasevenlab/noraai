@@ -34,6 +34,7 @@ import {
   type TelegramNotifyPoller,
 } from './telegram-notify-poller'
 import { MealsFailure } from './domain/errors'
+import type { TenderJudge } from './domain/tenders'
 import { createMealsRoutes } from './transport/routes'
 import { attachedFileContext, chooseAttachedFile, combineKnowledgeContext } from '../knowledge'
 
@@ -59,8 +60,9 @@ type CreateMealsModuleOptions = {
     query: string
   }) => Promise<string>
   readDocument?: (name: string, bytes: Buffer) => Promise<string>
-  searchProcurements?: (phrases: readonly string[], skip: readonly string[]) => { total: number; notices: readonly { number: string; law: string; object: string; customer: string; price: string; parsed: boolean; snippet: string }[] }
+  searchProcurements?: (phrases: readonly string[], skip: readonly string[], take?: number) => { total: number; notices: readonly { number: string; law: string; object: string; customer: string; price: string; parsed: boolean; snippet: string }[] }
   companyProfiles?: (userId: string, ids: readonly string[]) => Promise<readonly { name: string; prompt: string }[]>
+  tenderJudge?: (userId: string) => Promise<TenderJudge>
   startPoller?: boolean
 }
 
@@ -109,6 +111,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
       if (input.suggestions) return completeFollowUps(options.env, input.messages)
       const prepared = await prepareNoraChat(options, userId, input)
       const companies = await companiesForChat(options, userId, input)
+      const judge = input.tenders === true && options.tenderJudge ? await options.tenderJudge(userId) : undefined
       return completeNoraChat(
         options.env,
         prepared.messages,
@@ -120,6 +123,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
         input.tenders,
         options.searchProcurements,
         companies,
+        judge,
       )
     },
     compareDocuments: async (
@@ -160,6 +164,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
     streamChatWithNora: async (userId, input, signal) => {
       const prepared = await prepareNoraChat(options, userId, input)
       const companies = await companiesForChat(options, userId, input)
+      const judge = input.tenders === true && options.tenderJudge ? await options.tenderJudge(userId) : undefined
       return streamNoraChat(
         options.env,
         prepared.messages,
@@ -171,6 +176,7 @@ export function createMealsModule(options: CreateMealsModuleOptions) {
         input.tenders,
         options.searchProcurements,
         companies,
+        judge,
       )
     },
     openBitrixFile: async (id: string) => {

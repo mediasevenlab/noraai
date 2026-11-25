@@ -41,5 +41,6 @@ function groupSchemeImages(text: string) {
 
 /** LaTeX brackets become dollar math, and prices stay prices. */
 export function prepareDialogMarkdown(text: string) {
-  return groupSchemeImages(keepPlainLineBreaks(escapeCurrencyDollars(normalizeMathDelimiters(text))))
+  const visible = text.replace(/\n*<!--\s*seen:[0-9,]+\s*-->/g, '')
+  return groupSchemeImages(keepPlainLineBreaks(escapeCurrencyDollars(normalizeMathDelimiters(visible))))
 }

@@ -188,8 +188,8 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
         sections: document.sections,
       }
     },
-    chatMatches(phrases: readonly string[], skip: readonly string[]) {
-      const query = normalizeSavedQuery('', [], phrases, true)
+    chatMatches(phrases: readonly string[], skip: readonly string[], take = 12) {
+      const query = normalizeSavedQuery('', [], phrases, true, 16)
       if (query.phrases.length === 0) return { total: 0, notices: [] as ChatNotice[] }
       const filter = savedSearch(query, textReady ? 'indexed' : 'card')
       const totalRow = db.query(`SELECT COUNT(*) AS count FROM notices WHERE ${filter.where}`).get(filter.params) as { count: number }
@@ -199,10 +199,11 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
       const where = safeSkip.length === 0
         ? filter.where
         : `${filter.where} AND number NOT IN (${safeSkip.map((_, index) => `$skip${index}`).join(', ')})`
+      params.$take = Math.min(24, Math.max(1, Math.trunc(take)))
       const rows = db.query(`SELECT rowid AS id, number, law, status, object, customer, price, published, updated, deadline, url, indexed, (${filter.hits}) AS matches
         FROM notices WHERE ${where}
         ORDER BY matches DESC, published DESC, number DESC
-        LIMIT 12`).all(params) as Array<SavedRow & { id: number }>
+        LIMIT $take`).all(params) as Array<SavedRow & { id: number }>
       return {
         total: totalRow.count,
         notices: rows.map((row) => {

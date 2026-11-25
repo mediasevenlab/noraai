@@ -173,6 +173,8 @@ test('chat search counts every word hit and can skip notices already shown', asy
   store.markSaved('0156100010726000075', 20)
   store.remember(notice('0156100010726000099', 'аукцион 44-ФЗ', 'Закупка топлива', 'Завод'))
   store.markSaved('0156100010726000099', 20)
+  expect(store.indexNext()).toBe(true)
+  expect(store.indexNext()).toBe(true)
   const found = store.chatMatches(['топлива'], [])
   expect(found.total).toBe(2)
   expect(found.notices).toHaveLength(2)

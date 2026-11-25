@@ -26,6 +26,7 @@ test('role navigation exposes only the current workspace', () => {
     { label: 'Рефералы', to: '/app/referrals' },
     { label: 'Настройки', to: '/app/settings' },
     { label: 'Компании', to: '/app/companies' },
+    { label: 'ИИ агенты', to: '/app/agents' },
     { label: 'Заметки', to: '/app/notes' },
   ])
   expect(navigationItemsForRole('admin')).toEqual([
@@ -64,6 +65,7 @@ test('role navigation separates primary and account-menu destinations', () => {
     { label: 'Профиль', to: '/app/profile' },
     { label: 'Настройки', to: '/app/settings' },
     { label: 'Компании', to: '/app/companies' },
+    { label: 'ИИ агенты', to: '/app/agents' },
     { label: 'Заметки', to: '/app/notes' },
   ])
   expect(primaryNavigationItemsForRole('admin')).toEqual([])

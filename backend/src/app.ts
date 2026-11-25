@@ -9,6 +9,7 @@ import { disabledEmailDelivery, type EmailDelivery } from './email/service'
 import type { AppEnv } from './env'
 import { errorResponse, handleError, validationErrorHook } from './http/errors'
 import { createAuthSecurity, createInternalRateLimit } from './http/security'
+import { createAgentsModule } from './modules/agents'
 import { createAuthModule, type AuthHttpEnv } from './modules/auth'
 import { createCompaniesModule } from './modules/companies'
 import { createKnowledgeModule } from './modules/knowledge'
@@ -69,6 +70,11 @@ export function createApp({
     db: prisma,
     requireAuth: auth.requireAuth,
   })
+  const agents = createAgentsModule({
+    db: prisma,
+    env,
+    requireAuth: auth.requireAuth,
+  })
   const meals = createMealsModule({
     backgroundTasks,
     completeTelegramLink: (code, proof, extras) => telegramLinks.complete(code, proof, extras),
@@ -79,8 +85,17 @@ export function createApp({
     loadKnowledge: knowledge.loadContext,
     loadMeetings: meetings.loadForChat,
     readDocument: (name, bytes) => knowledge.readDocument(name, bytes),
-    searchProcurements: (phrases, skip) => procurements.searchForChat(phrases, skip),
+    searchProcurements: (phrases, skip, take) => procurements.searchForChat(phrases, skip, take),
     companyProfiles: (userId, ids) => companies.profilesForChat(userId, ids),
+    tenderJudge: async (userId) => {
+      const id = await agents.preference(userId)
+      return {
+        id,
+        name: agents.name(id),
+        ready: agents.ready()[id],
+        ask: (system: string, user: string, signal?: AbortSignal) => agents.completeText(id, system, user, signal),
+      }
+    },
     startPoller: startMealsPoller,
   })
   const speech = createSpeechModule({ requireAuth: auth.requireAuth })
@@ -189,6 +204,7 @@ export function createApp({
   app.route('/api/auth', auth.routes)
   app.route('/api/users', users.userRoutes)
   app.route('/api/users', companies.routes)
+  app.route('/api/users', agents.routes)
   app.route('/api/users', meals.userMealsRoutes)
   app.route('/api/users', knowledge.routes)
   app.route('/api/admin', users.adminRoutes)

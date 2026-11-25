@@ -77,6 +77,13 @@ export type CompanySearchProfile = {
   prompt: string
 }
 
+export type TenderJudge = {
+  id: 'nora' | 'chatgpt' | 'gemini'
+  name: string
+  ready: boolean
+  ask: (system: string, user: string, signal?: AbortSignal) => Promise<string>
+}
+
 function profileText(companies: readonly CompanySearchProfile[]) {
   return companies
     .map((company) => [company.name.trim(), company.prompt.trim()].filter(Boolean).join('\n'))
@@ -85,29 +92,225 @@ function profileText(companies: readonly CompanySearchProfile[]) {
     .slice(0, 4000)
 }
 
-/** Comma and line breaks in a company description are separate search phrases, not one bag of words. */
-export function companySearchPhrases(companies: readonly CompanySearchProfile[]) {
-  const phrases: string[] = []
-  for (const company of companies) {
-    const own: string[] = []
-    for (const part of company.prompt.split(/[\n,;]+/)) {
-      const phrase = tenderSearchQuery(part)
-      if (phrase.length >= 3) own.push(phrase)
-    }
-    if (own.length === 0) {
-      const name = tenderSearchQuery(company.name)
-      if (name.length >= 3) own.push(name)
-    }
-    phrases.push(...own)
-  }
-  return [...new Set(phrases)].slice(0, 8)
+const RECALL_LIMIT = 16
+
+/** Product stems the archive should recall. The model, not this list, decides which notices fit. */
+const RECALL_HINTS = [
+  'искробезопас',
+  'взрывобезопас',
+  'неискрящ',
+  'безискров',
+  'безыскров',
+  'омеднен',
+  'разгон',
+  'фланц',
+  'спредер',
+  'спецгаз',
+  'бронз',
+  'плоскогуб',
+  'длинногуб',
+  'кусачк',
+  'болторез',
+  'зубил',
+  'напильник',
+  'наковальн',
+  'кувалд',
+  'серповид',
+  'вентильн',
+  'разводн',
+  'крацов',
+  'ножниц',
+  'отверт',
+  'клещ',
+  'головк',
+  'лопат',
+  'молот',
+  'топор',
+  'щетк',
+  'ключ',
+  'ворот',
+  'шила',
+  'ножи',
+  'ломы',
+  'лом',
+]
+
+const RECALL_SKIP = new Set([
+  'компан',
+  'собствен',
+  'линейк',
+  'инструмен',
+  'ручног',
+  'заказч',
+  'покупа',
+  'заказыва',
+  'изготовлен',
+  'поставк',
+  'описан',
+  'номенклатур',
+  'исполнен',
+  'отдельн',
+  'приспособлен',
+  'механическ',
+  'написа',
+  'назван',
+  'маркиров',
+  'сертификац',
+  'материа',
+  'площадк',
+  'количеств',
+  'обязательн',
+  'словам',
+  'позиц',
+  'котор',
+])
+
+function hintPresent(text: string, hint: string) {
+  if (hint.length >= 6) return text.includes(hint)
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}])${hint}`, 'u').test(text)
 }
 
-/** Phrases stay together, and each distinctive word is added so a related notice is not dropped. */
-export function companySearchTerms(companies: readonly CompanySearchProfile[]) {
-  const phrases = companySearchPhrases(companies)
-  const words = phrases.flatMap((phrase) => phrase.split(/\s+/).filter((word) => word.length >= 5))
-  return [...new Set([...phrases, ...words])].slice(0, 8)
+function recallSource(companies: readonly CompanySearchProfile[]) {
+  return companies
+    .map((company) => {
+      const prompt = company.prompt.trim()
+      const cut = folded(prompt).search(/не подходит/)
+      const kept = cut === -1 ? prompt : prompt.slice(0, cut)
+      return kept.trim() || company.name.trim()
+    })
+    .filter(Boolean)
+    .join('\n')
+}
+
+/** Short stems for the archive. A prose card is not searched as its first sentences. */
+export function companyRecallTerms(companies: readonly CompanySearchProfile[]) {
+  const source = recallSource(companies)
+  const text = folded(source)
+  if (!text) return []
+  const hints = RECALL_HINTS.filter((hint) => hintPresent(text, hint))
+  const words = text
+    .split(/[^\p{L}\p{N}]+/u)
+    .map((word) => wordStem(word))
+    .filter((stem) => stem.length >= 4 && !RECALL_SKIP.has(stem) && !STOP_WORDS.has(stem))
+  const terms = [...new Set([...hints, ...words])].slice(0, RECALL_LIMIT)
+  if (terms.length > 0) return terms
+  const name = tenderSearchQuery(companies.map((company) => company.name).join(' '))
+  return name ? [name.slice(0, 40)] : []
+}
+
+export const COMPANY_JUDGE_SYSTEM = [
+  'Ты отбираешь извещения госзакупок по заданию компании.',
+  'Верни только JSON {"picks":[{"number":"номер извещения","reason":"одна короткая фраза"}]}',
+  'Бери извещение, если предмет поставки подходит заданию по смыслу, даже другими словами.',
+  'Не бери то, что задание прямо исключает, и то, где нужный товар лишь упомянут среди чужого.',
+  'Не выдумывай номера. Если ничего не подходит, верни {"picks":[]}. Не больше 12.',
+].join(' ')
+
+export function companyJudgeUser(
+  companies: readonly CompanySearchProfile[],
+  notices: readonly ArchiveTenderNotice[],
+) {
+  const brief = companies
+    .map((company) => [company.name.trim(), company.prompt.trim()].filter(Boolean).join('\n'))
+    .filter(Boolean)
+    .join('\n\n')
+    .slice(0, 4000)
+  const lines = notices.slice(0, 16).map((notice, index) => {
+    const snippet = notice.snippet.replace(/\s+/g, ' ').trim().slice(0, 240)
+    return `${index + 1}. ${notice.number} | ${notice.object.slice(0, 180)} | ${notice.customer.slice(0, 80)} | ${snippet}`
+  })
+  return `Задание компании:\n${brief}\n\nИзвещения:\n${lines.join('\n')}`
+}
+
+export type TenderPick = { number: string; reason: string }
+
+export function parseTenderPicks(text: string, allowed: ReadonlySet<string>) {
+  const fromJson = readJsonPicks(text, allowed)
+  if (fromJson) return fromJson
+  const picks: TenderPick[] = []
+  for (const match of text.matchAll(/(\d{8,30})\s*[—–\-:]\s*([^\n]{3,200})/g)) {
+    const number = match[1] ?? ''
+    if (!allowed.has(number) || picks.some((item) => item.number === number)) continue
+    picks.push({ number, reason: cleanReason(match[2] ?? '') || 'подходит по заданию компании' })
+    if (picks.length === 12) break
+  }
+  if (picks.length > 0) return { ok: true as const, picks }
+  return { ok: false as const, picks }
+}
+
+function readJsonPicks(text: string, allowed: ReadonlySet<string>) {
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start < 0 || end <= start) return null
+  try {
+    const parsed = JSON.parse(text.slice(start, end + 1)) as { picks?: unknown }
+    if (!parsed || !Array.isArray(parsed.picks)) return null
+    const picks: TenderPick[] = []
+    for (const item of parsed.picks) {
+      if (!item || typeof item !== 'object') continue
+      const record = item as { number?: unknown; n?: unknown; reason?: unknown; why?: unknown }
+      const number = String(record.number ?? record.n ?? '').replace(/\D/g, '')
+      if (!allowed.has(number) || picks.some((pick) => pick.number === number)) continue
+      picks.push({
+        number,
+        reason: cleanReason(String(record.reason ?? record.why ?? '')) || 'подходит по заданию компании',
+      })
+      if (picks.length === 12) break
+    }
+    return { ok: true as const, picks }
+  } catch {
+    return null
+  }
+}
+
+function cleanReason(value: string) {
+  return value.replace(/[«»"“”]/g, '').replace(/\s+/g, ' ').trim().slice(0, 180)
+}
+
+export function seenNoticeTrailer(numbers: readonly string[]) {
+  const unique = [...new Set(numbers.filter((number) => /^\d{8,30}$/.test(number)))].slice(0, 80)
+  if (unique.length === 0) return ''
+  return `\n\n<!-- seen:${unique.join(',')} -->`
+}
+
+export function missingAgentReply(agent: { id: string; name: string }) {
+  if (agent.id === 'nora') return 'Локальная модель Нора сейчас не настроена, поэтому отобрать закупки по карточке не получится.'
+  return `${agent.name} ещё не подключён: нет ключа API. Отбор закупок по карточке заработает после ключа. Пока можно включить Нору в разделе «ИИ агенты».`
+}
+
+export function companyTenderReply(input: {
+  names: string
+  reviewed: readonly ArchiveTenderNotice[]
+  picks: readonly TenderPick[]
+  unreadable?: boolean
+}) {
+  const head = input.names ? `Компании: ${input.names}.\n` : ''
+  const seen = seenNoticeTrailer(input.reviewed.map((notice) => notice.number))
+  const byNumber = new Map(input.reviewed.map((notice) => [notice.number, notice]))
+  const chosen = input.picks.flatMap((pick) => {
+    const notice = byNumber.get(pick.number)
+    return notice ? [{ notice, reason: pick.reason }] : []
+  }).slice(0, CHAT_CARDS)
+  if (input.unreadable) {
+    return `${head}Агент не смог разобрать выборку. Эти извещения пропущены, можно попросить следующие.${seen}`
+  }
+  if (chosen.length === 0) {
+    const empty = input.reviewed.length === 0
+      ? 'По заданию компании в скачанном архиве подходящих извещений не нашлось.'
+      : `Просмотрено ${input.reviewed.length} извещений по заданию компании. В этой порции подходящих нет. Можно попросить следующие.`
+    return `${head}${empty}${seen}`
+  }
+  const cards = chosen.map(({ notice, reason }, index) => [
+    `**${index + 1}. ${notice.object}**`,
+    `${notice.law} № ${notice.number}`,
+    notice.customer ? `Заказчик: ${notice.customer}` : '',
+    notice.price ? `Цена: ${notice.price}` : '',
+    `Почему подходит: ${reason}`,
+    notice.parsed
+      ? `[Открыть карточку](/app/procurements/${notice.number})`
+      : 'Текст ещё разбирается, полная карточка недоступна.',
+  ].filter(Boolean).join('\n\n'))
+  return `${head}По заданию компании подходят ${chosen.length} из ${input.reviewed.length} просмотренных.\n\n${cards.join('\n\n---\n\n')}${seen}`
 }
 
 export function shownNoticeNumbers(messages: readonly { role: string; text: string }[]) {
@@ -117,6 +320,11 @@ export function shownNoticeNumbers(messages: readonly { role: string; text: stri
     for (const match of message.text.matchAll(/(?:№\s*|\/app\/procurements\/)(\d{10,})/g)) {
       const number = match[1]
       if (number) numbers.add(number)
+    }
+    for (const match of message.text.matchAll(/<!--\s*seen:([0-9,]+)\s*-->/g)) {
+      for (const number of (match[1] ?? '').split(',')) {
+        if (/^\d{8,30}$/.test(number)) numbers.add(number)
+      }
     }
   }
   return [...numbers].slice(0, 80)
@@ -140,12 +348,12 @@ export function tenderTurn(
     const earlier = [...users].reverse().find((message) => message.text !== last && !asksForMore(message.text))
     const earlierText = earlier?.text ?? ''
     const source = [profile, earlierText].filter(Boolean).join('\n') || last
-    const terms = profile ? companySearchTerms(companies) : wordsOf(source)
+    const terms = profile ? companyRecallTerms(companies) : wordsOf(source)
     return { terms, skip: shownNoticeNumbers(messages), source, exact: false }
   }
   if (profile) {
     return {
-      terms: companySearchTerms(companies),
+      terms: companyRecallTerms(companies),
       skip: [] as string[],
       source: `${profile}\n${last}`.slice(0, 4000),
       exact: false,

@@ -37,8 +37,10 @@ export function normalizeSavedQuery(
   laws: readonly string[],
   phrases: readonly string[] = [],
   rank = false,
+  phraseLimit = MAX_PHRASES,
 ): SavedNoticeQuery {
   const source = phrases.length > 0 ? phrases : [text]
+  const limit = Math.min(16, Math.max(1, Math.trunc(phraseLimit)))
   const seen = new Set<string>()
   const keys: string[] = []
   for (const item of source) {
@@ -46,7 +48,7 @@ export function normalizeSavedQuery(
     if (!phrase || seen.has(phrase)) continue
     seen.add(phrase)
     keys.push(phrase)
-    if (keys.length === MAX_PHRASES) break
+    if (keys.length === limit) break
   }
   return {
     phrases: keys,
