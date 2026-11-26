@@ -54,3 +54,37 @@ test('a closing document removes an undated notice and leaves a dated one and th
   store.close()
   await rm(dir, { recursive: true, force: true })
 })
+
+test('a closing pass reads three portions at once', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'nora-closure-width-'))
+  const store = openNoticeStore(dir, () => new Date('2026-11-26T08:00:00Z'))
+  let open = 0
+  let peak = 0
+  const running = startClosureSync({
+    store,
+    now: () => new Date('2026-11-26T08:00:00Z'),
+    sleep: (_ms, signal) => new Promise((resolve) => {
+      const timer = setTimeout(resolve, 5)
+      signal.addEventListener('abort', () => {
+        clearTimeout(timer)
+        resolve()
+      }, { once: true })
+    }),
+    download: async () => {
+      open += 1
+      peak = Math.max(peak, open)
+      await new Promise((resolve) => setTimeout(resolve, 40))
+      open -= 1
+      return []
+    },
+  })
+  const ready = Date.now() + 2_000
+  while (peak < 3 && Date.now() < ready) {
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  }
+  await running.stop()
+  expect(peak).toBe(3)
+  expect(store.closurePlan().kindIndex).toBeGreaterThanOrEqual(3)
+  store.close()
+  await rm(dir, { recursive: true, force: true })
+})

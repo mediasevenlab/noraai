@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 
-import { advanceClosure, CLOSURE_KINDS, closureCell, closureNumbers, closureStatus, closureToRun, initialClosurePlan } from './closure-sync'
+import { advanceClosure, CLOSURE_KINDS, closureCell, closureCellsDone, closureNumbers, closureStatus, closureToRun, initialClosurePlan } from './closure-sync'
 import { PACK_REGIONS } from './pack-sync'
 
 const now = new Date('2026-11-26T08:00:00Z')
@@ -54,6 +54,22 @@ test('the closing bar counts finished steps and waits after today is read', () =
   expect(quiet.done).toBe(quiet.total)
   expect(quiet.note).toContain('Следующая через')
   expect(quiet.cellsDone).toBe(quiet.cellsTotal)
+})
+
+test('the closing estimate follows the pace since the speed change', () => {
+  const slow = {
+    ...initialClosurePlan('2026-11-26'),
+    startedAt: '2026-11-20T08:00:00.000Z',
+    regionIndex: 2,
+  }
+  const done = closureCellsDone(slow, '2026-11-26')
+  const paced = {
+    ...slow,
+    paceStartedAt: '2026-11-26T06:00:00.000Z',
+    paceBaseDone: done - 40,
+  }
+  expect(closureStatus(paced, now).note).toContain('около')
+  expect(closureStatus({ ...slow, regionIndex: 2, kindIndex: 5 }, now).note).toBe('Скорость ещё считается')
 })
 
 test('a closing file yields the purchase number and ignores other digits', () => {

@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { Database } from 'bun:sqlite'
 
-import { initialClosurePlan, type ClosurePlan } from '../domain/closure-sync'
+import { closureCellsDone, initialClosurePlan, type ClosurePlan } from '../domain/closure-sync'
 import { deadlineMillis } from '../domain/keep-notice'
 import { excerptAround, noticeBody } from '../domain/notice-text'
 import { readPackCard, presentDate } from '../domain/pack-card'
@@ -163,7 +163,18 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
     closurePlan(): ClosurePlan {
       const row = readClosure.get() as { json: string } | null
       const parsed = row ? JSON.parse(row.json) as ClosurePlan : null
-      if (parsed?.mode === 'closure') return { ...initialClosurePlan(moscowDate(now())), ...parsed, mode: 'closure' }
+      if (parsed?.mode === 'closure') {
+        const plan = { ...initialClosurePlan(moscowDate(now())), ...parsed, mode: 'closure' as const }
+        if (plan.paceStartedAt) return plan
+        const today = moscowDate(now())
+        const stamped = {
+          ...plan,
+          paceStartedAt: now().toISOString(),
+          paceBaseDone: closureCellsDone(plan, today),
+        }
+        writeClosure.run({ $json: JSON.stringify(stamped) })
+        return stamped
+      }
       const fresh = { ...initialClosurePlan(moscowDate(now())), startedAt: now().toISOString() }
       writeClosure.run({ $json: JSON.stringify(fresh) })
       return fresh

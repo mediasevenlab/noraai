@@ -1,5 +1,6 @@
 import { advanceClosure, closureCell, closureToRun, closureNumbers, type ClosurePlan } from '../domain/closure-sync'
 
+const WIDTH = 3
 const FAILURE_PAUSE_MS = 30_000
 const STEP_PAUSE_MS = 1_000
 
@@ -36,23 +37,37 @@ export function startClosureSync(options: {
         await sleep(60_000, signal)
         continue
       }
-      const cell = closureCell(reading)
-      const cursor = advanceClosure(reading, now())
+      const batch: ReturnType<typeof closureCell>[] = []
+      let cursor = reading
+      while (batch.length < WIDTH) {
+        batch.push(closureCell(cursor))
+        const next = advanceClosure(cursor, now())
+        cursor = next
+        if (next.phase !== reading.phase) break
+      }
       let failed = false
       let removed = cursor.removed
       let failures = cursor.failed
-      try {
-        const files = await options.download(cell, signal)
-        for (const file of files) {
+      const results = await Promise.all(batch.map(async (cell) => {
+        try {
+          return { cell, files: await options.download(cell, signal), error: '' }
+        } catch (error) {
+          if (signal.aborted) throw error
+          return { cell, files: [] as ClosureFile[], error: error instanceof Error ? error.message : 'ЕИС не отдала архив.' }
+        }
+      }))
+      for (const result of results) {
+        if (result.error) {
+          failed = true
+          failures += 1
+          console.error('Procurement closure pack was not read', result.cell.day, result.cell.region, result.cell.documentType, result.error)
+          continue
+        }
+        for (const file of result.files) {
           for (const number of closureNumbers(file.xml)) {
             if (options.store.dropUndated(number)) removed += 1
           }
         }
-      } catch (error) {
-        if (signal.aborted) throw error
-        failed = true
-        failures += 1
-        console.error('Procurement closure pack was not read', cell.day, cell.region, cell.documentType, error instanceof Error ? error.message : error)
       }
       plan = { ...cursor, removed, failed: failures }
       options.store.saveClosurePlan(plan)

@@ -27,6 +27,9 @@ export type ClosurePlan = {
   removed: number
   failed: number
   startedAt: string
+  /** Cells already finished when the current pace began. Keeps an old slow run out of the estimate. */
+  paceBaseDone: number
+  paceStartedAt: string
 }
 
 export function initialClosurePlan(today: string): ClosurePlan {
@@ -41,6 +44,8 @@ export function initialClosurePlan(today: string): ClosurePlan {
     removed: 0,
     failed: 0,
     startedAt: '',
+    paceBaseDone: 0,
+    paceStartedAt: '',
   }
 }
 
@@ -134,11 +139,14 @@ export function closureEta(plan: ClosurePlan, now: Date) {
   const total = closureCellsTotal(today)
   const done = closureCellsDone(plan, today)
   if (plan.phase === 'catchup') return { done, total, eta: 'Первый проход закончен' }
-  const elapsed = plan.startedAt ? now.getTime() - Date.parse(plan.startedAt) : 0
-  if (!plan.startedAt || done < 30 || elapsed < 2 * 60 * 1000) {
+  const paceStart = plan.paceStartedAt ? Date.parse(plan.paceStartedAt) : (plan.startedAt ? Date.parse(plan.startedAt) : 0)
+  const base = plan.paceStartedAt ? plan.paceBaseDone : 0
+  const gained = done - base
+  const elapsed = paceStart ? now.getTime() - paceStart : 0
+  if (!paceStart || gained < 30 || elapsed < 2 * 60 * 1000) {
     return { done, total, eta: 'Скорость ещё считается' }
   }
-  const remaining = Math.max(0, total - done) * (elapsed / done)
+  const remaining = Math.max(0, total - done) * (elapsed / gained)
   return { done, total, eta: `около ${remainingLabel(remaining)}` }
 }
 
