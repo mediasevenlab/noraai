@@ -4,9 +4,6 @@ import { PACK_REGIONS, remainingLabel } from './pack-sync'
 /** Documents that mean a purchase is finished or cancelled. Notices stay on their own queue. */
 export const CLOSURE_KINDS = [
   { subsystem: 'PRIZ', documentType: 'epProtocolEZT2020Final', label: 'итог единственного поставщика' },
-  { subsystem: 'PRIZ', documentType: 'epProtocolEF2020Final', label: 'итог аукциона' },
-  { subsystem: 'PRIZ', documentType: 'epProtocolEOK2020Final', label: 'итог конкурса' },
-  { subsystem: 'PRIZ', documentType: 'epProtocolEZK2020Final', label: 'итог котировок' },
   { subsystem: 'PRIZ', documentType: 'epNotificationCancel', label: 'отмена извещения' },
   { subsystem: 'PRIZ', documentType: 'fcsNotificationCancel', label: 'отмена старого извещения' },
   { subsystem: 'RI223', documentType: 'purchaseProtocol', label: 'протокол 223-ФЗ' },
@@ -30,6 +27,8 @@ export type ClosurePlan = {
   /** Cells already finished when the current pace began. Keeps an old slow run out of the estimate. */
   paceBaseDone: number
   paceStartedAt: string
+  /** How many document types this cursor was counted with. */
+  kindCount: number
 }
 
 export function initialClosurePlan(today: string): ClosurePlan {
@@ -46,7 +45,17 @@ export function initialClosurePlan(today: string): ClosurePlan {
     startedAt: '',
     paceBaseDone: 0,
     paceStartedAt: '',
+    kindCount: CLOSURE_KINDS.length,
   }
+}
+
+/** The first queue also asked for auction, contest and quote finals. Those steps now continue at the next kept document. */
+const PREVIOUS_KIND_INDEX = [0, 1, 1, 1, 1, 2, 3, 4, 5, 6, 7]
+
+export function closureKindAfterTrim(kindIndex: number, previousCount: number | undefined) {
+  if (previousCount === CLOSURE_KINDS.length) return Math.min(kindIndex, CLOSURE_KINDS.length - 1)
+  if (previousCount == null || previousCount === PREVIOUS_KIND_INDEX.length) return PREVIOUS_KIND_INDEX[kindIndex] ?? 0
+  return Math.min(Math.max(kindIndex, 0), CLOSURE_KINDS.length - 1)
 }
 
 export function closureCell(plan: ClosurePlan) {

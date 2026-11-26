@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 
-import { advanceClosure, CLOSURE_KINDS, closureCell, closureCellsDone, closureNumbers, closureStatus, closureToRun, initialClosurePlan } from './closure-sync'
+import { advanceClosure, CLOSURE_KINDS, closureCell, closureCellsDone, closureKindAfterTrim, closureNumbers, closureStatus, closureToRun, initialClosurePlan } from './closure-sync'
 import { PACK_REGIONS } from './pack-sync'
 
 const now = new Date('2026-11-26T08:00:00Z')
@@ -8,7 +8,10 @@ const now = new Date('2026-11-26T08:00:00Z')
 test('closing documents walk kinds, then regions, then the previous day', () => {
   const first = initialClosurePlan('2026-11-26')
   expect(closureCell(first)).toMatchObject({ day: '2026-11-26', region: '01', documentType: 'epProtocolEZT2020Final' })
-  expect(advanceClosure(first, now).kindIndex).toBe(1)
+  expect(closureCell(advanceClosure(first, now)).documentType).toBe('epNotificationCancel')
+  expect(CLOSURE_KINDS.some((kind) => kind.documentType === 'epProtocolEF2020Final')).toBe(false)
+  expect(closureKindAfterTrim(2, 11)).toBe(1)
+  expect(closureKindAfterTrim(6, 11)).toBe(3)
   const lastKind = { ...first, kindIndex: CLOSURE_KINDS.length - 1 }
   const nextRegion = advanceClosure(lastKind, now)
   expect(nextRegion.regionIndex).toBe(1)

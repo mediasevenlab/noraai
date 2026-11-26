@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { Database } from 'bun:sqlite'
 
-import { closureCellsDone, initialClosurePlan, type ClosurePlan } from '../domain/closure-sync'
+import { CLOSURE_KINDS, closureCellsDone, closureKindAfterTrim, initialClosurePlan, type ClosurePlan } from '../domain/closure-sync'
 import { deadlineMillis } from '../domain/keep-notice'
 import { excerptAround, noticeBody } from '../domain/notice-text'
 import { readPackCard, presentDate } from '../domain/pack-card'
@@ -165,6 +165,19 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
       const parsed = row ? JSON.parse(row.json) as ClosurePlan : null
       if (parsed?.mode === 'closure') {
         const plan = { ...initialClosurePlan(moscowDate(now())), ...parsed, mode: 'closure' as const }
+        if (parsed.kindCount !== CLOSURE_KINDS.length) {
+          const today = moscowDate(now())
+          const switched = {
+            ...plan,
+            kindIndex: closureKindAfterTrim(plan.kindIndex, parsed.kindCount),
+            kindCount: CLOSURE_KINDS.length,
+            paceStartedAt: now().toISOString(),
+            paceBaseDone: 0,
+          }
+          switched.paceBaseDone = closureCellsDone(switched, today)
+          writeClosure.run({ $json: JSON.stringify(switched) })
+          return switched
+        }
         if (plan.paceStartedAt) return plan
         const today = moscowDate(now())
         const stamped = {
