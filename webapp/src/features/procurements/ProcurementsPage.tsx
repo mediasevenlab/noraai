@@ -308,6 +308,7 @@ function DownloadProgress({ sync }: { sync: ProcurementSync }) {
         ]}
         total={sync.sweepTotal}
       />
+      <ClosureProgress sync={sync} />
       <Meter
         done={sync.indexed}
         label="Разбор для поиска"
@@ -318,6 +319,28 @@ function DownloadProgress({ sync }: { sync: ProcurementSync }) {
         total={sync.saved}
       />
     </div>
+  )
+}
+
+function ClosureProgress({ sync }: { sync: ProcurementSync }) {
+  const firstPass = sync.closure.phase === 'closure'
+  const waiting = !firstPass && sync.closure.total > 0 && sync.closure.done >= sync.closure.total
+  return (
+    <Meter
+      done={sync.closure.done}
+      label="Закрытые без срока"
+      lines={[
+        `${waiting ? 'Последняя позиция' : 'Сейчас'}: ${sync.closure.day}`,
+        firstPass
+          ? `Первый проход: ${grouped(sync.closure.cellsDone)} из ${grouped(sync.closure.cellsTotal)}`
+          : 'Первый проход закончен',
+        firstPass
+          ? `Осталось ${sync.closure.note}`
+          : `Проверка: ${sync.closure.note}. ${grouped(sync.closure.done)} из ${grouped(sync.closure.total)}`,
+        `Снято карточек: ${grouped(sync.closure.removed)}`,
+      ]}
+      total={sync.closure.total}
+    />
   )
 }
 

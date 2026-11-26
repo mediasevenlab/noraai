@@ -6,6 +6,7 @@ import { startPackSync } from './application/pack-sync-loop'
 import { createProcurementListService } from './application/list-service'
 import { createProcurementSampleService } from './application/sample-service'
 import { EisFailure } from './domain/errors'
+import { closureStatus } from './domain/closure-sync'
 import { packActivity, packEta, PACK_KINDS, PACK_REGIONS } from './domain/pack-sync'
 import { downloadRegionPack, downloadSampleNotice } from './infrastructure/eis-archive'
 import { downloadOpenNotices } from './infrastructure/eis-open-list'
@@ -30,6 +31,16 @@ const IDLE_SYNC = {
   sweepDone: 0,
   sweepTotal: 0,
   sweepNote: '',
+  closure: {
+    phase: 'off',
+    day: '',
+    done: 0,
+    total: 0,
+    note: '',
+    removed: 0,
+    cellsDone: 0,
+    cellsTotal: 0,
+  },
 }
 
 export function createProcurementsModule(options: {
@@ -88,6 +99,7 @@ export function createProcurementsModule(options: {
         sweepDone: activity.done,
         sweepTotal: activity.total,
         sweepNote: activity.note,
+        closure: closureStatus(store.closurePlan(), new Date()),
       }
     },
     saved: (page: number, raw: { text?: string; phrases?: readonly string[]; laws?: readonly string[]; rank?: boolean }) => store?.savedPage(page, raw) ?? { total: 0, page: 1, pageCount: 1, notices: [] },

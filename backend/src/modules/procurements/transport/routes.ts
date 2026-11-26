@@ -34,6 +34,16 @@ export function createProcurementRoutes(options: {
     sweepDone: number
     sweepTotal: number
     sweepNote: string
+    closure: {
+      phase: string
+      day: string
+      done: number
+      total: number
+      note: string
+      removed: number
+      cellsDone: number
+      cellsTotal: number
+    }
   }
   saved: (page: number, raw: { text?: string; phrases?: readonly string[]; laws?: readonly string[]; rank?: boolean }) => {
     total: number

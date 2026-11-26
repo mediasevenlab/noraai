@@ -154,7 +154,7 @@ export function packActivity(plan: PackPlan, now: Date) {
   return { done, total, note }
 }
 
-function remainingLabel(ms: number) {
+export function remainingLabel(ms: number) {
   const minutes = Math.max(1, Math.round(ms / 60_000))
   if (minutes < 90) return `${minutes} ${plural(minutes, 'минуту', 'минуты', 'минут')}`
   const hours = Math.round(minutes / 60)

@@ -149,6 +149,18 @@ export const procurementSyncSchema = z
     sweepDone: z.number().int().nonnegative(),
     sweepTotal: z.number().int().nonnegative(),
     sweepNote: z.string(),
+    closure: z
+      .object({
+        phase: z.string(),
+        day: z.string(),
+        done: z.number().int().nonnegative(),
+        total: z.number().int().nonnegative(),
+        note: z.string(),
+        removed: z.number().int().nonnegative(),
+        cellsDone: z.number().int().nonnegative(),
+        cellsTotal: z.number().int().nonnegative(),
+      })
+      .strict(),
   })
   .strict()
 

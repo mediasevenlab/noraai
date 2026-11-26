@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 
-import { advanceClosure, CLOSURE_KINDS, closureCell, closureNumbers, closureToRun, initialClosurePlan } from './closure-sync'
+import { advanceClosure, CLOSURE_KINDS, closureCell, closureNumbers, closureStatus, closureToRun, initialClosurePlan } from './closure-sync'
 import { PACK_REGIONS } from './pack-sync'
 
 const now = new Date('2026-11-26T08:00:00Z')
@@ -27,6 +27,33 @@ test('the closing catalog stops at the floor and waits six hours before reading 
   expect(closureToRun(done, now)).toBeNull()
   const later = new Date(now.getTime() + 6 * 60 * 60 * 1000)
   expect(closureToRun(done, later)?.day).toBe('2026-11-26')
+})
+
+test('the closing bar counts finished steps and waits after today is read', () => {
+  const start = { ...initialClosurePlan('2026-11-26'), startedAt: now.toISOString(), removed: 0 }
+  const early = closureStatus(start, now)
+  expect(early.phase).toBe('closure')
+  expect(early.cellsDone).toBe(0)
+  expect(early.note).toBe('Скорость ещё считается')
+  expect(early.day).toContain('регион 01')
+
+  const moved = { ...start, regionIndex: 1, removed: 4 }
+  const reading = closureStatus(moved, now)
+  expect(reading.cellsDone).toBe(CLOSURE_KINDS.length)
+  expect(reading.removed).toBe(4)
+
+  const finished = {
+    ...start,
+    phase: 'catchup' as const,
+    lastClosedDay: '2026-11-25',
+    todaySweptAt: now.toISOString(),
+    removed: 12,
+  }
+  const quiet = closureStatus(finished, now)
+  expect(quiet.phase).toBe('closure-daily')
+  expect(quiet.done).toBe(quiet.total)
+  expect(quiet.note).toContain('Следующая через')
+  expect(quiet.cellsDone).toBe(quiet.cellsTotal)
 })
 
 test('a closing file yields the purchase number and ignores other digits', () => {
