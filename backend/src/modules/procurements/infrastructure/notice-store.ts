@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { Database } from 'bun:sqlite'
 
+import { initialClosurePlan, type ClosurePlan } from '../domain/closure-sync'
 import { deadlineMillis } from '../domain/keep-notice'
 import { excerptAround, noticeBody } from '../domain/notice-text'
 import { readPackCard, presentDate } from '../domain/pack-card'
@@ -63,6 +64,10 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
     id INTEGER PRIMARY KEY CHECK (id = 1),
     json TEXT NOT NULL
   )`)
+  db.run(`CREATE TABLE IF NOT EXISTS closure_plan (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    json TEXT NOT NULL
+  )`)
   const remember = db.query(`INSERT INTO notices (
     number, subsystem, law, status, object, customer, price, published, updated, deadline, url, needle, deadline_ms
   ) VALUES ($number, $subsystem, $law, 'queued', $object, $customer, $price, $published, $updated, $deadline, $url, $needle, $deadlineMs)
@@ -73,6 +78,9 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
   const markFailed = db.query(`UPDATE notices SET status = 'failed', error = $error WHERE number = $number`)
   const readPlan = db.query(`SELECT json FROM sync_plan WHERE id = 1`)
   const writePlan = db.query(`INSERT INTO sync_plan (id, json) VALUES (1, $json)
+    ON CONFLICT(id) DO UPDATE SET json = excluded.json`)
+  const readClosure = db.query(`SELECT json FROM closure_plan WHERE id = 1`)
+  const writeClosure = db.query(`INSERT INTO closure_plan (id, json) VALUES (1, $json)
     ON CONFLICT(id) DO UPDATE SET json = excluded.json`)
 
   return {
@@ -151,6 +159,31 @@ export function openNoticeStore(dir: string, now = () => new Date()) {
     },
     savePackPlan(plan: PackPlan) {
       writePlan.run({ $json: JSON.stringify(plan) })
+    },
+    closurePlan(): ClosurePlan {
+      const row = readClosure.get() as { json: string } | null
+      const parsed = row ? JSON.parse(row.json) as ClosurePlan : null
+      if (parsed?.mode === 'closure') return { ...initialClosurePlan(moscowDate(now())), ...parsed, mode: 'closure' }
+      const fresh = { ...initialClosurePlan(moscowDate(now())), startedAt: now().toISOString() }
+      writeClosure.run({ $json: JSON.stringify(fresh) })
+      return fresh
+    },
+    saveClosurePlan(plan: ClosurePlan) {
+      writeClosure.run({ $json: JSON.stringify(plan) })
+    },
+    /** Removes a saved notice that has no application deadline. Dated notices stay for the expiry job. */
+    dropUndated(number: string) {
+      if (!/^\d+$/.test(number)) return false
+      const row = db.query(`SELECT rowid AS id, deadline FROM notices WHERE number = $number AND status = 'saved'`).get({ $number: number }) as { id: number; deadline: string } | null
+      if (!row || row.deadline !== '') return false
+      if (!removeArchive(dir, number)) return false
+      db.query(`DELETE FROM notices WHERE rowid = $id`).run({ $id: row.id })
+      try {
+        db.query(`DELETE FROM notice_text WHERE rowid = $id`).run({ $id: row.id })
+      } catch {
+        // A contentless index cannot drop one row. The card is already gone, so search will not show it.
+      }
+      return true
     },
     savedPage(page: number, raw: { text?: string; phrases?: readonly string[]; laws?: readonly string[]; rank?: boolean } = {}) {
       const query = normalizeSavedQuery(raw.text ?? '', raw.laws ?? [], raw.phrases ?? [], raw.rank === true)

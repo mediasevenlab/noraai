@@ -1,6 +1,7 @@
 import type { MiddlewareHandler } from 'hono'
 
 import type { AuthHttpEnv } from '../auth'
+import { startClosureSync } from './application/closure-sync-loop'
 import { startPackSync } from './application/pack-sync-loop'
 import { createProcurementListService } from './application/list-service'
 import { createProcurementSampleService } from './application/sample-service'
@@ -49,9 +50,16 @@ export function createProcurementsModule(options: {
         download: (cell, signal) => downloadRegionPack(options.token!, cell, signal),
       })
     : null
+  const closing = store && options.token
+    ? startClosureSync({
+        store,
+        download: (cell, signal) => downloadRegionPack(options.token!, cell, signal),
+      })
+    : null
   const indexing = store ? startNoticeTextIndex(store) : null
   const expiry = store ? startNoticeExpiry(store) : null
   if (running) console.log('Procurement pack sync started')
+  if (closing) console.log('Procurement closure sync started')
   const routes = createProcurementRoutes({
     requireAuth: options.requireAuth,
     service,
@@ -90,6 +98,7 @@ export function createProcurementsModule(options: {
     searchForChat: (phrases: readonly string[], skip: readonly string[], take?: number, required?: readonly string[]) => store?.chatMatches(phrases, skip, take, required) ?? { total: 0, notices: [] },
     dispose: async () => {
       await running?.stop()
+      await closing?.stop()
       await indexing?.stop()
       await expiry?.stop()
       store?.close()
